@@ -7,11 +7,11 @@
     <script type = "text/javascript">
       const module = {}
     </script>
-    <script src="../checkerboard/checkerboard.js" charset="utf-8"></script>
-    <script src="../camcode.js" charset="utf-8"></script>
-    <script type="module" src="../JackNet/jacknet.js" charset="utf-8"></script>
+    <script src="../src/checkerboard/checkerboard.js" charset="utf-8"></script>
+    <script src="./camcode.js" charset="utf-8"></script>
+    <script type="module" src="../src/JackNet/jacknet.js" charset="utf-8"></script>
     <script type="module"> 
-      import { setJackNet, clearConsole, runSearch } from "../JackNet/jacknet.js";
+      import { setJackNet, clearConsole, runSearch } from "../src/JackNet/jacknet.js";
       module.setJackNet = setJackNet;
       module.clearConsole = clearConsole;
       module.runSearch = runSearch;
@@ -19,7 +19,7 @@
       /* import { setChecker } from "../checkerboard/checkerboard.js";
       module.setChecker = setChecker; */
       console.log("hello")
-      fetch("../checkerboard/checkerboard.js")
+      fetch("../src/checkerboard/checkerboard.js")
         .then((response) => {
           module.setChecker = response.setChecker
           console.log("test")
