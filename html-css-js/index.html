@@ -3,8 +3,11 @@
   <head>
     <meta charset="UTF-8" />
 
-    <link rel="stylesheet" href="page.css">
+    <link rel="stylesheet" type="text/css" href="page.css">
     <script type = "text/javascript">
+      let fs = require('fs');
+      let files = fs.readdirSync('./');
+      console.log(files);
       const module = {}
     </script>
     <script src="../src/checkerboard/checkerboard.js" charset="utf-8"></script>
@@ -40,7 +43,7 @@
     <div class="program_board">
       <p> Local dashboard of stuff // maybe a feed</p>
       <div class="program_guts">
-        <p> hi you started the program</p>
+        <p> Hi you started the program</p>
       </div>
     </div>
   </body>

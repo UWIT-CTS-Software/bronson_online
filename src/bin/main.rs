@@ -22,17 +22,30 @@ fn handle_connection(mut stream: TcpStream) {
 
     stream.read(&mut buffer).unwrap();
 
-    let get = b"GET / HTTP/1.1\r\n";
-    let (status_line, filename) = if buffer.starts_with(get) {
-	("HTTP/1.1 200 OK", "html-css-js/index.html")
+    let get_index = b"GET / HTTP/1.1\r\n";
+    let get_css = b"GET /page.css HTTP/1.1\r\n";
+    let get_cc = b"GET /camcode.js HTTP/1.1\r\n";
+    let get_cb = b"GET /checkerboard.js HTTP/1.1\r\n";
+    let get_main = b"GET /main.js HTTP/1.1\r\n";
+
+    let (status_line, filename) = if buffer.starts_with(get_index) {
+	    ("HTTP/1.1 200 OK", "html-css-js/index.html")
+    } else if buffer.starts_with(get_css) {
+        ("HTTP/1.1 200 OK", "html-css-js/page.css")
+    } else if buffer.starts_with(get_cc) {
+        ("HTTP/1.1 200 OK", "html-css-js/camcode.js")
+    } else if buffer.starts_with(get_cb) {
+        ("HTTP/1.1 200 OK", "html-css-js/checkerboard.js")
+    } else if buffer.starts_with(get_main) {
+        ("HTTP/1.1 200 OK", "html-css-js/main.js")
     } else {
-	("HTTP/1.1 404 NOT FOUND", "html-css-js/404.html")
+	    ("HTTP/1.1 404 NOT FOUND", "html-css-js/404.html")
     };
 
     let contents = fs::read_to_string(filename).unwrap();
     let response = format!(
-	"{}\r\nContent-Length: {}\r\n\r\n{}",
-	status_line, contents.len(), contents
+	    "{}\r\nContent-Length: {}\r\n\r\n{}",
+	    status_line, contents.len(), contents
     );
     stream.write(response.as_bytes()).unwrap();
     stream.flush().unwrap();
