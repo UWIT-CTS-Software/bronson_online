@@ -4,30 +4,9 @@
     <meta charset="UTF-8" />
 
     <link rel="stylesheet" type="text/css" href="page.css">
-    <script type = "text/javascript">
-      let fs = require('fs');
-      let files = fs.readdirSync('./');
-      console.log(files);
-      const module = {}
-    </script>
-    <script src="../src/checkerboard/checkerboard.js" charset="utf-8"></script>
-    <script src="./camcode.js" charset="utf-8"></script>
-    <script type="module" src="../src/JackNet/jacknet.js" charset="utf-8"></script>
-    <script type="module"> 
-      import { setJackNet, clearConsole, runSearch } from "../src/JackNet/jacknet.js";
-      module.setJackNet = setJackNet;
-      module.clearConsole = clearConsole;
-      module.runSearch = runSearch;
-
-      /* import { setChecker } from "../checkerboard/checkerboard.js";
-      module.setChecker = setChecker; */
-      console.log("hello")
-      fetch("../src/checkerboard/checkerboard.js")
-        .then((response) => {
-          module.setChecker = response.setChecker
-          console.log("test")
-        })
-    </script>
+    <script src="camcode.js" charset="utf-8"></script>
+    <script src="checkerboard.js" type="text/javascript" charset="utf-8"></script>
+    <script src="jacknet.js" type="text/javascript" charset="utf-8"></script>
   </head>
 <!--  -->
   <body>
@@ -36,7 +15,7 @@
       <h1>Welcome to Bronson</h1>
       <p> The swiss army knife for U.W.I.T. department</p>
       <button id="CBButton" onclick="setChecker()" type="button"> Checkerboard </button>
-      <button id="JNButton" onclick="module.setJackNet()" type="button"> JackNet </button>
+      <button id="JNButton" onclick="setJackNet()" type="button"> JackNet </button>
       <button id="CCButton" onclick="setCamCode()" type="button"> CamCode </button>
     </div>
     <br>
