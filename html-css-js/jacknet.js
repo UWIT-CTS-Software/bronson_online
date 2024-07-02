@@ -179,16 +179,7 @@ async function getData() {
     });
 };
 
-// TODO: Ping
-// async function pingThis(hostnames) {
-//     return await fetch('ping', {
-//         method: 'POST',
-//         body: JSON.stringify({
-//             hostnames: hostnames,
-//         })
-//     });
-// };
-
+// Requests ping with device list and building.
 async function pingThis(devices, building) {
     return await fetch('ping', {
         method: 'POST',
@@ -196,6 +187,14 @@ async function pingThis(devices, building) {
             devices: devices,
             building: building
         })
+    });
+};
+
+//TO-DO: ping fetch results
+async function pingGet() {
+    return await fetch('ping', {
+        method: 'GET',
+        body: {}
     });
 };
 
