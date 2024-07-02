@@ -201,7 +201,6 @@ async function pingThis(devices, building) {
         })
     });
 };
-}
 
 // - ---- ----- - - - EXPORT FUNCTIONS
 // TODO: Export findings as csv
