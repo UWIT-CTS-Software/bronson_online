@@ -241,6 +241,7 @@ async function runSearch() {
 
     // Check if the pack of building flag is raised (all buildings/zone selection) and then ping every generated hostname
     pingThis(devices, building);
+    pingThis(devices, building);
     return;
 };
 
