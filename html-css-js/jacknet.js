@@ -183,11 +183,12 @@ async function getData() {
 };
 
 // TODO: Ping
-async function pingThis(hostnames) {
+async function pingThis(devices, buildings) {
     return await fetch('ping', {
         method: 'POST',
         body: JSON.stringify({
-            hostnames: hostnames,
+            devices: devices,
+            buildings: buildings,
         })
     });
 };
@@ -234,7 +235,7 @@ async function runSearch() {
     // build progress bar here ?
 
     // Check if the pack of building flag is raised (all buildings/zone selection) and then ping every generated hostname
-    pingThis(hostnames);
+    pingThis(devices, building);
     return;
 };
 

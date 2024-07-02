@@ -3,6 +3,21 @@ checkboard.js
 
 This file contains all code relating to checkboard and will manipulate the DOM in index.html accordingly
 */
+class Time {
+    constructor() { this.time = ''; }
+
+    setTime(time) { this.time = time; }
+
+    getTime() { return this.time; }
+}
+
+class Cookie {
+    constructor() { this.value = "none"; }
+
+    setCookie(id) { this.value = id; }
+
+    getCookie() { return this.value; }
+}
 
 function setChecker() {
 
@@ -14,19 +29,6 @@ function setChecker() {
 
   var base_time = new Time;
   base_time.setTime("2024-06-01");
-
-  /* let buildingSelect = document.createElement('select');
-  buildingSelect.classList.add('building_List');
-  let option = document.createElement('option');
-  option.innerHTML = 'All Buildings';
-  buildingSelect.appendChild(option);
-  // TO-DO: add zone options here
-  let bl = [];
-  for(var i in bl) {
-      let option = document.createElement('option');
-      option.innerHTML = bl[i];
-      buildingSelect.appendChild(option);
-  }; */
 
   let devSelect = document.createElement("fieldset");
   devSelect.classList.add('devSelect');
@@ -43,7 +45,7 @@ function setChecker() {
   // html options: menu
   let bottomMenu = document.createElement("fieldset");
   bottomMenu.classList.add('bottomMenu');
-  bottomMenu.innerHTML = `<legend>Options: </legend> \n <menu> \n <button id="test" onclick="getRoomChecks()">Test</button> \n </menu>`;
+  bottomMenu.innerHTML = `<legend>Options: </legend> \n <menu> \n <button id="test" onclick="getRoomChecks()">Test</button> \n <button id="print" onclick="printToConsole()">Print</button> \n </menu>`;
 
   main_container.append(devSelect, consoleOutput, bottomMenu);
   main_container.classList.add('program_guts');
@@ -59,7 +61,7 @@ async function getRoomChecks() {
 }
 
 async function cbSearch(init_time, end_time, cookie) {
-    let url = `https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%5B${init_time}%2C${end_time}%5D%7D`;
+    /* let url = `https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%5B${init_time}%2C${end_time}%5D%7D`;
     let xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.setRequestHeader('Accept', 'application/json');
@@ -69,35 +71,27 @@ async function cbSearch(init_time, end_time, cookie) {
           console.log(xhr.responseText);
         }
     };
-    xhr.send();
+    xhr.send(); */
+
+    response = await fetch('lsm', {
+        method: "POST",
+        body: JSON.stringify({
+            start_time: init_time,
+            end_time, end_time,
+        })
+    });
+    console.log(response);
 
     return;
 }
 
-class Time {
-    constructor() {
-        this.time = '';
+function printToConsole() {
+    let str = 'awginearhoi5nh345980uq3o4hnaerhklq3-40haekbkln   23y09jearhbjn   234t09jq3rhoinq34y09'
+    let console = document.querySelector('.innerConsole');
+    let inner = console.value.substring(0, console.value.length);
+    for (var i=0; i<20; ++i) {
+        inner += `\n-- ${str.slice((i*4), ((i*4)+5))} ${i}   |`;
     }
-
-    setTime(time) {
-        this.time = time;
-    }
-
-    getTime() {
-        return this.time;
-    }
-}
-
-class Cookie {
-    constructor() {
-        this.value = "none";
-    }
-
-    setCookie(id) {
-        this.value = id;
-    }
-
-    getCookie() {
-        return this.value;
-    }
+    console.value = inner;
+    console.scrollTop = console.scrollHeight;
 }
