@@ -107,7 +107,7 @@ async function getRooms(buildingName) {
     let buildingData = JSON.parse(data).buildingData;
     for(var i = 0; i < buildingData.length; i++) {
         if(buildingData[i].name == buildingName) {
-            return buildingData[i].Rooms;
+            return buildingData[i].rooms;
         };
     };
 };
@@ -158,6 +158,8 @@ function pad(n, width, z) {
 async function genHostnames(devices, buildingName) {
     let ab = await getAbbrev(buildingName);
     let rms = await getRooms(buildingName);
+    console.log(rms);
+    console.log(ab);
     let hnList = [];
     // go through devices here and generate hostnames
     // ABBREVIATION-####-DEVICE#
@@ -169,6 +171,7 @@ async function genHostnames(devices, buildingName) {
     return hnList;
 };
 
+// copy this to extract info from ping response
 async function getData() {
     return fetch('campus.json')
         .then(response => {
@@ -178,6 +181,11 @@ async function getData() {
             return response.json();
     });
 };
+
+// TODO - handle ping resonse apporpriately
+async function getPingData() {
+    return
+}
 
 // Requests ping with device list and building.
 async function pingThis(devices, building) {
@@ -241,7 +249,7 @@ async function runSearch() {
 
     // Check if the pack of building flag is raised (all buildings/zone selection) and then ping every generated hostname
     pingThis(devices, building);
-    pingThis(devices, building);
+    //pingThis(devices, building);
     return;
 };
 
