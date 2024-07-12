@@ -2,16 +2,73 @@ use jn_server::ThreadPool;
 use lambda_http::Body;
 
 use std::io::prelude::*;
+use std::io::BufReader;
+use std::io::Read;
+
 use std::net::TcpStream;
 use std::net::TcpListener;
 use std::fs;
+use std::fs::File;
+use std::path::Path;
 use std::str;
+use std::env;
+use std::env::*;
 use std::collections::HashMap;
 use std::error::Error;
 
 use reqwest::{ Response, header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT, COOKIE }};
 
+use serde::{Deserialize, Serialize};
+
+// ----------- Structs
+// campus.json format
+#[derive(Serialize, Deserialize)]
+struct BuildingData {
+    buildingData: Vec<Building>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Building {
+    name: String,
+    abbrev: String,
+    rooms: Vec<String>
+}
+
+#[derive(Serialize, Deserialize)]
+struct PingRequest {
+    devices: Vec<String>,
+    building: String
+}
+
+static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bin/campus.json"));
+/*
+Jacks TODO 7/2/2024
+
+ - JackNet 
+        - potential scoping issues
+    - read doc on lambda_http to handle ping request
+    - pull data on body store in struct
+    - reference struct to build hostnames w. campus.json
+    - ping hosts
+    - return boolean outputs of found or not.
+     - type: string w/ json formatting.
+    - ONCE THIS WORKS PROPOGATE TO USE MULTIPLE WORKS
+ - CLI with JackNet
+    - powershell istream doesnt work
+ - CamCode (see curtis)
+    - Make DOM
+    - prints out info on config _PROTOTYPE ITERATE_
+        - block for proj1 
+        - block for proj2
+    - get compiled Q-SYS files to grep binary patterns
+    - Build an Error Log for server to pull back output,
+        - text file, return error and export it
+        - get logic that logs the buffer for 404 requests
+*/
+
 fn main() {
+    //debug setting
+    env::set_var("RUST_BACKTRACE", "1");
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
     let pool = ThreadPool::new(4);
 
@@ -82,23 +139,98 @@ fn handle_connection(mut stream: TcpStream) {
         (status_line, contents) = ("HTTP/1.1 404 NOT FOUND", String::from("Empty"));
     }
 
-
+    // NOTE - look at this for error log format
+    // ie:  
+    //  if status_line == 404 not found
+    //      then put in error file instead.
+    //      add timestamp at top of line
     let response = format!(
         "{}\r\nContent-Length: {}\r\n\r\n{}",
         status_line, contents.len(), contents
     );
 
+    // Sends to STDOUT
     stream.write(response.as_bytes()).unwrap();
     stream.flush().unwrap();
 
     println!("Request: {}", str::from_utf8(&buffer).unwrap());
 }
 
+// TODO - execute_ping
+// call ping_this executible here
+// 7.8.2024 notes
+//  -- starting to spin wheels, loaded in the campu.json as CAMPUS_STR
+//  -- struggling with rust and manipulating variables
+//  need to break the buffer up into correct variables as well as
+//  load in the correct data from CAMPUS_STR
 fn execute_ping(buffer: &mut [u8]) -> String {
     println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
+
+    // load ping options
+    // println!("testtestestes: {}", input);
+    let pr: PingRequest = serde_json::from_str(&String::from_utf8_lossy(&buffer[..]))
+        .expect("REASON");
+
+    // println!("Looking for {}", pr);
+
+    println!("Looking for {:?} in {}", pr.devices, pr.building);
+    // Read the json file (../../html-css-js/jacknet.js)
+    // where am i
+    // print out the json for test
+    //println!("Final directory: {}", CAMPUS_STR);
+    // store relevant campus_str entries for use
+    let b: BuildingData = serde_json::from_str(CAMPUS_STR).expect("REASON");
+
+    println!("Rooms within {:?}", b.buildingData[0].name);
+
+    // Alex's addition
+    let output = Command::new("./src/ping_this")
+        .arg("bc-0138-proc1")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .output()
+        .expect("[-] Failed to execute")
+    ;
+
+    println!("{:?}", output);
+
+    if let Some(exit_code) = output.status.code() {
+        if exit_code == 0 {
+            println!("[+] Ok.");
+        } else {
+            eprintln!("[-] Failed with exit code {}", exit_code);
+        }
+    } else {
+        eprintln!("[!] Interrupted!");
+    }
     
-    return String::from("Empty");
+    return String::from_utf8(output.stdout).unwrap();
 }
+
+// Debug function
+//   Prints the type of a variable
+fn print_type_of<T>(_: &T) {
+    println!("{}", std::any::type_name::<T>());
+}
+
+// TODO - read json file
+fn read_from_file<P: AsRef<Path>>(path: P) -> Result<Building, Box<dyn Error>> {
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+
+    // Read JSON file
+    let b = serde_json::from_reader(reader)?;
+    Ok(b)
+}
+
+// TODO - compile hostnames with devices and building
+// fn gen_hostnames(devices: [&String], building: String) -> [&String] {
+//     return
+//}
+
+
+
+
 
 fn get_room_schedule(buffer: &mut [u8]) -> String {
     return String::from("Empty");
@@ -114,6 +246,9 @@ async fn get_lsm(buffer: &mut [u8]) -> String {
     println!("Response: {:?}", resp); */
     return String::from("Test");
 }
+
+// NOTE: do something like this when receiving ping info (this doesnt work)
+// THEN reference this in gen_hostnames to compile a list of pingable hostnames.
 
 /* pub struct Headers<'a> {
     auth: &'a str,
@@ -141,3 +276,4 @@ fn construct_headers() -> HeaderMap {
 
     return header_map;
 }
+
