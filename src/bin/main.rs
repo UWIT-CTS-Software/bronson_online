@@ -15,6 +15,9 @@ use std::env;
 use std::env::*;
 use std::collections::HashMap;
 use std::error::Error;
+use std::borrow::Borrow;
+//use pad::{PadStr, Alignment};
+use std::process::*;
 
 use reqwest::{ Response, header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT, COOKIE }};
 
@@ -22,25 +25,45 @@ use serde::{Deserialize, Serialize};
 
 // ----------- Structs
 // campus.json format
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct BuildingData {
     buildingData: Vec<Building>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct Building {
     name: String,
     abbrev: String,
     rooms: Vec<String>
 }
 
-#[derive(Serialize, Deserialize)]
+// impl Iterator for BuildingData {
+//     type Item = Building;
+
+//     fn next(&mut self) -> Option<Self::Item> {
+
+//     }
+// }
+
+// building.get_building_hostnames()
+//   - Could this be a good idea?
+//   - TODO (?)
+// impl Building {
+//     fn get_building_hostnames(&self) -> Vec<String> {
+//         let mut string_vec: Vec<String> = ["EN-0104-PROC1"];
+//         string_vec
+//     }
+// }
+
+#[derive(Serialize, Deserialize, Debug)]
 struct PingRequest {
     devices: Vec<String>,
     building: String
 }
 
 static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bin/campus.json"));
+
+
 /*
 Jacks TODO 7/2/2024
 
@@ -166,45 +189,63 @@ fn handle_connection(mut stream: TcpStream) {
 fn execute_ping(buffer: &mut [u8]) -> String {
     println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
 
-    // load ping options
-    // println!("testtestestes: {}", input);
-    let pr: PingRequest = serde_json::from_str(&String::from_utf8_lossy(&buffer[..]))
-        .expect("REASON");
+    //let b: BuildingData = serde_json::from_str(CAMPUS_STR)
+    //    .expect("REASON");
+    let bs: BuildingData = serde_json::from_str(CAMPUS_STR)
+        .expect("Fatal Error: Failed to build building data structs");
+    //println!("Building Data DEBUG1: {:?}", b.buildingData[0]);
+    println!("Building Data DEBUG1:\n {:?}", bs.buildingData[0]);
+    println!("Building Data DEBUG2:\n {:?}", bs.buildingData[0].name);
+    println!("Building Data DEBUG3:\n {:?}", bs.buildingData[0].abbrev);
+    println!("Building Data DEBUG4:\n {:?}", bs.buildingData[0].rooms);
 
-    // println!("Looking for {}", pr);
+    // you need to figure out how to filter the junk out of the buffer.
+    let mut buff_copy: String = String::from_utf8_lossy(&buffer[..])
+        .to_string();
 
-    println!("Looking for {:?} in {}", pr.devices, pr.building);
-    // Read the json file (../../html-css-js/jacknet.js)
-    // where am i
-    // print out the json for test
-    //println!("Final directory: {}", CAMPUS_STR);
-    // store relevant campus_str entries for use
-    let b: BuildingData = serde_json::from_str(CAMPUS_STR).expect("REASON");
+    // functon that returns first '{' index location and it's '}' location
+    let (i, j) = find_curls(&buff_copy);
+    let buff_copy = &buff_copy[i..j+1];
 
-    println!("Rooms within {:?}", b.buildingData[0].name);
 
+    println!("Buffer Output:\n {}", buff_copy);
+    let pr: PingRequest = serde_json::from_str(buff_copy)
+        .expect("Fatal Error 2: Failed to parse ping request");
+    println!("Ping Request: \n {:?}", pr);
+
+    // Generate the hostnames here
+    let hostnames: Vec<String> = gen_hostnames(
+        pr.devices,
+        pr.building,
+        bs);
+
+    println!("{:?}", hostnames);
     // Alex's addition
-    let output = Command::new("./src/ping_this")
-        .arg("bc-0138-proc1")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .output()
-        .expect("[-] Failed to execute")
-    ;
 
-    println!("{:?}", output);
+    // for hn in hostnames {
+    //     let output = Command::new("./src/ping_this")
+    //         .arg(hn)
+    //         .stdin(Stdio::piped())
+    //         .stdout(Stdio::piped())
+    //         .output()
+    //         .expect("[-] Failed to execute")
+    //     ;
 
-    if let Some(exit_code) = output.status.code() {
-        if exit_code == 0 {
-            println!("[+] Ok.");
-        } else {
-            eprintln!("[-] Failed with exit code {}", exit_code);
-        }
-    } else {
-        eprintln!("[!] Interrupted!");
-    }
+    //     println!("{:?}", output);
+
+    //     if let Some(exit_code) = output.status.code() {
+    //         if exit_code == 0 {
+    //             println!("[+] Ok.");
+    //         } else {
+    //             eprintln!("[-] Failed with exit code {}", exit_code);
+    //         }
+    //     } else {
+    //         eprintln!("[!] Interrupted!");
+    //     }
+    // }
     
-    return String::from_utf8(output.stdout).unwrap();
+    // return String::from_utf8(output.stdout).unwrap();
+    String::from("test")
 }
 
 // Debug function
@@ -213,24 +254,110 @@ fn print_type_of<T>(_: &T) {
     println!("{}", std::any::type_name::<T>());
 }
 
-// TODO - read json file
-fn read_from_file<P: AsRef<Path>>(path: P) -> Result<Building, Box<dyn Error>> {
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-
-    // Read JSON file
-    let b = serde_json::from_reader(reader)?;
-    Ok(b)
+// used to trim excess info off of the buffer
+fn find_curls(s: &String) -> (usize, usize) {
+    let bytes = s.as_bytes();
+    let mut i_return: usize = 0;
+    
+    for (i, &item) in bytes.iter().enumerate() {
+        if item == b'{' {
+            i_return = i;
+        }
+        if item == b'}' {
+            return (i_return, i);
+        }
+    }
+    (s.len(), s.len())
 }
 
-// TODO - compile hostnames with devices and building
-// fn gen_hostnames(devices: [&String], building: String) -> [&String] {
-//     return
-//}
+// this could change alot,
+// we want to implement device counts into the campus.json/csv
+// that will come into play here
+//    gen_hostnames(
+//      sel_devs - Selected Devices from ping request (TODO: use booleans)
+//      sel_b    - Selected building form ping request (TODO: Use an ID number)
+//      bd       - Building Data
+fn gen_hostnames(
+    sel_devs: Vec<String>, 
+    sel_b: String,
+    bd: BuildingData) -> Vec<String> {
+    // init
+    let mut devices: Vec<bool> = [false ,false ,false ,false ,false].to_vec();
+    let mut hostnames = Vec::new();
+    let mut temp_hostname = String::new();
+    let mut tmp_tmp = String::new();
+    
 
+    // hostnames.push("HostnameTest0".to_string());
+    // hostnames.push("HostnameTest1".to_string());
 
+    // Set selection flags
+    for i in sel_devs {
+        match i.as_ref() {
+            "proc"  => devices[0] = true,
+            "pj"    => devices[1] = true,
+            "ws"    => devices[2] = true,
+            "tp"    => devices[3] = true,
+            "cmicx" => devices[4] = true,
+            &_      => ()
+        }
+    }
+    println!("Boolean Device Flags: \n {:?}", devices);
+    // Implement device count here (Probably)
+        
+    // Find relavant data in struct AND build
+    for item in bd.buildingData { //  For each building in the data
+        if sel_b == item.name { // check selection
+            for j in item.rooms { // iterate through rooms
+                // Build and append hostnames
+                temp_hostname.push_str(&item.abbrev);
+                temp_hostname.push('-');
+                temp_hostname.push_str(&format!("{:0>4}", j).to_string());
+                temp_hostname.push('-');
+                if devices[0] {
+                    tmp_tmp = temp_hostname.clone();
+                    tmp_tmp.push_str("proc1");
+                    println!("generated hostname: \n {}", tmp_tmp);
+                    hostnames.push(tmp_tmp);
+                }
+                if devices [1] {
+                    tmp_tmp = temp_hostname.clone();
+                    tmp_tmp.push_str("pj1");
+                    println!("generated hostname: \n {}", tmp_tmp);
+                    hostnames.push(tmp_tmp);
+                }
+                if devices [2] {
+                    tmp_tmp = temp_hostname.clone();
+                    tmp_tmp.push_str("ws1");
+                    println!("generated hostname: \n {}", tmp_tmp);
+                    hostnames.push(tmp_tmp);
+                }
+                if devices [3] {
+                    tmp_tmp = temp_hostname.clone();
+                    tmp_tmp.push_str("tp1");
+                    println!("generated hostname: \n {}", tmp_tmp);
+                    hostnames.push(tmp_tmp);
+                }
+                if devices [4] {
+                    tmp_tmp = temp_hostname.clone();
+                    tmp_tmp.push_str("cmicx1");
+                    println!("generated hostname: \n {}", tmp_tmp);
+                    hostnames.push(tmp_tmp);
+                }
+                /* TODO (?): FORMAT WHEN QUANTITY IS KNOWN
+                for q in procCount {
+                    hostnames.push(temp_hostname.push("proc{}", q))
+                } */
+                
+                //hostnames.push(temp_hostname.clone());
+                temp_hostname = String::new();
+            }       
+        }
+    }
 
-
+    // Return value
+    hostnames
+}
 
 fn get_room_schedule(buffer: &mut [u8]) -> String {
     return String::from("Empty");
