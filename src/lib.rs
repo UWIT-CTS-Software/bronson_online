@@ -3,6 +3,8 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use serde::{Deserialize, Serialize};
+
 trait FnBox {
     fn call_box(self: Box<Self>);
 }
@@ -106,3 +108,40 @@ impl Drop for ThreadPool {
 	}
     }
 }
+
+// 
+
+// ----------- Custom structs for JackNet Requests
+// campus.json format
+#[derive(Serialize, Deserialize, Debug)]
+pub struct BuildingData {
+    pub buildingData: Vec<Building>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Building {
+    pub name: String,
+    pub abbrev: String,
+    pub rooms: Vec<String>
+}
+
+// building.get_building_hostnames()
+//   - Could this be a good idea?
+//   - TODO (?)
+// impl Building {
+//     fn get_building_hostnames(&self) -> Vec<String> {
+//         let mut string_vec: Vec<String> = ["EN-0104-PROC1"];
+//         string_vec
+//     }
+// }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PingRequest {
+    pub devices: Vec<String>,
+    pub building: String
+}
+
+// Ping Module
+mod jack_ping;
+
+pub use crate::jack_ping::jp;
