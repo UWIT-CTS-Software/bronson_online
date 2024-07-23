@@ -184,7 +184,7 @@ async function getData() {
 
 // TODO - handle ping resonse apporpriately
 async function getPingData() {
-    return
+    return;
 }
 
 // Requests ping with device list and building.
@@ -195,7 +195,9 @@ async function pingThis(devices, building) {
             devices: devices,
             building: building
         })
-    });
+    })
+    .then((response) => response.json())
+    .then((json) => {return json;});
 };
 
 //TO-DO: ping fetch results
@@ -248,8 +250,25 @@ async function runSearch() {
     // build progress bar here ?
 
     // Check if the pack of building flag is raised (all buildings/zone selection) and then ping every generated hostname
-    pingThis(devices, building);
-    //pingThis(devices, building);
+    pingThis(devices, building)
+        .then((value) => { 
+            let ping_result = value;
+            console.log(ping_result);
+            updateConsole("Ping Response: \n");
+            updateConsole(ping_result.building);
+            updateConsole(ping_result.hostnames);
+            updateConsole(ping_result.ips);
+        });
+
+    // console.log(ping_result);
+    // updateConsole("Ping Response: \n");
+    // updateConsole(ping_result.building);
+    // updateConsole(ping_result.hostnames);
+    // updateConsole(ping_result.ips);
+
+
+
+    // print pingThis results to console
     return;
 };
 

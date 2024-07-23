@@ -37,7 +37,10 @@ pub mod jp {
                 //println!("Duration: {:?}\nPong String: \n {}", dur, string);
                 pong_string = string;
             },
-            PingResult::Timeout(string) => println!("Timeout:\n{}", string),
+            PingResult::Timeout(string) => {
+                println!("Timeout:\n{}", string);
+                return String::from("x");
+            },
             PingResult::Unknown(string) => println!("Unknown:\n{}",string),
             PingResult::PingExited(es, string) => {
                 println!("Ping Failed Exit:\n{}", string);
