@@ -29,6 +29,7 @@ use std::process::*;
 use reqwest::{ Response, header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT, COOKIE }};
 
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bin/campus.json"));
 
@@ -164,10 +165,10 @@ fn execute_ping(buffer: &mut [u8]) -> String {
     let bs: BuildingData = serde_json::from_str(CAMPUS_STR)
         .expect("Fatal Error: Failed to build building data structs");
     //println!("Building Data DEBUG1: {:?}", b.buildingData[0]);
-    println!("Building Data DEBUG1:\n {:?}", bs.buildingData[0]);
-    println!("Building Data DEBUG2:\n {:?}", bs.buildingData[0].name);
-    println!("Building Data DEBUG3:\n {:?}", bs.buildingData[0].abbrev);
-    println!("Building Data DEBUG4:\n {:?}", bs.buildingData[0].rooms);
+    // println!("Building Data DEBUG1:\n {:?}", bs.buildingData[0]);
+    // println!("Building Data DEBUG2:\n {:?}", bs.buildingData[0].name);
+    // println!("Building Data DEBUG3:\n {:?}", bs.buildingData[0].abbrev);
+    // println!("Building Data DEBUG4:\n {:?}", bs.buildingData[0].rooms);
 
     // you need to figure out how to filter the junk out of the buffer.
     let mut buff_copy: String = String::from_utf8_lossy(&buffer[..])
@@ -186,7 +187,7 @@ fn execute_ping(buffer: &mut [u8]) -> String {
     // Generate the hostnames here
     let hostnames: Vec<String> = gen_hostnames(
         pr.devices,
-        pr.building,
+        pr.building.clone(),
         bs);
 
     println!("{:?}", hostnames);
@@ -198,14 +199,29 @@ fn execute_ping(buffer: &mut [u8]) -> String {
     //println!("JackPing Function Response:\n {}", jp_result);
 
     // Write for loop through hostnames
-    for hn in hostnames {
+    let mut hn_ips: Vec<String> = Vec::new();
+
+    for hn in hostnames.clone() {
         println!("Hostname: {}", hn);
         let hn_ip = ping_this(hn);
         println!("IpAdr:    {}", hn_ip);
+        hn_ips.push(hn_ip);
     }
 
+    // format data into json using Serde
+    let json_return = json!({
+        "building": pr.building,
+        "hostnames": hostnames,
+        "ips": hn_ips
+    });
+
+    // convert to string and return it
+    println!("Pulled IP's:\n{:?}",hn_ips);
     println!("----\n------\nEND OF execute_ping() FUNCTION\n------\n-----\n");
-    String::from("test")
+
+    // TODO: Get this return to output in the console on the site.
+    //String::from("jackpingtest")
+    json_return.to_string()
 }
 
 // Debug function
@@ -277,31 +293,31 @@ fn gen_hostnames(
                 if devices[0] {
                     tmp_tmp = temp_hostname.clone();
                     tmp_tmp.push_str("proc1");
-                    println!("generated hostname: \n {}", tmp_tmp);
+                    //println!("generated hostname: \n {}", tmp_tmp);
                     hostnames.push(tmp_tmp);
                 }
                 if devices [1] {
                     tmp_tmp = temp_hostname.clone();
                     tmp_tmp.push_str("pj1");
-                    println!("generated hostname: \n {}", tmp_tmp);
+                    //println!("generated hostname: \n {}", tmp_tmp);
                     hostnames.push(tmp_tmp);
                 }
                 if devices [2] {
                     tmp_tmp = temp_hostname.clone();
                     tmp_tmp.push_str("ws1");
-                    println!("generated hostname: \n {}", tmp_tmp);
+                    //println!("generated hostname: \n {}", tmp_tmp);
                     hostnames.push(tmp_tmp);
                 }
                 if devices [3] {
                     tmp_tmp = temp_hostname.clone();
                     tmp_tmp.push_str("tp1");
-                    println!("generated hostname: \n {}", tmp_tmp);
+                    //println!("generated hostname: \n {}", tmp_tmp);
                     hostnames.push(tmp_tmp);
                 }
                 if devices [4] {
                     tmp_tmp = temp_hostname.clone();
                     tmp_tmp.push_str("cmicx1");
-                    println!("generated hostname: \n {}", tmp_tmp);
+                    //println!("generated hostname: \n {}", tmp_tmp);
                     hostnames.push(tmp_tmp);
                 }
                 /* TODO (?): FORMAT WHEN QUANTITY IS KNOWN
