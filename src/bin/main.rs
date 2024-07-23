@@ -191,14 +191,18 @@ fn execute_ping(buffer: &mut [u8]) -> String {
 
     println!("{:?}", hostnames);
     
-    // Jack's Rust Ping
+    // Jack's Rust Ping - Testing
     //   NOTE: 10.126.0.210 is EN 1055 PROC1, good test
-    println!("Testing hostname:\n {}", hostnames[0]);
-    let jp_result = ping_this(hostnames[0].clone());
-    println!("JackPing Function Response:\n {}", jp_result);
-    let jp_result2 = ping_this("10.125.0.210".to_string());
-    println!("JackPing Function Response:\n {}", jp_result2);
-    // return String::from_utf8(output.stdout).unwrap();
+    //println!("Testing hostname:\n {}", hostnames[0]);
+    //let jp_result = ping_this(hostnames[0].clone());
+    //println!("JackPing Function Response:\n {}", jp_result);
+
+    // Write for loop through hostnames
+    for hn in hostnames {
+        println!("Hostname: {}", hn);
+        let hn_ip = ping_this(hn);
+        println!("IpAdr:    {}", hn_ip);
+    }
 
     println!("----\n------\nEND OF execute_ping() FUNCTION\n------\n-----\n");
     String::from("test")
