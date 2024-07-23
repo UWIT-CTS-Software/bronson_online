@@ -1,4 +1,11 @@
 use jn_server::ThreadPool;
+use jn_server::BuildingData;
+use jn_server::Building;
+use jn_server::PingRequest;
+
+use jn_server::jp::{ping_this};
+
+
 use lambda_http::Body;
 
 use std::io::prelude::*;
@@ -8,85 +15,51 @@ use std::io::Read;
 use std::net::TcpStream;
 use std::net::TcpListener;
 use std::fs;
-use std::fs::File;
-use std::path::Path;
+//use std::fs::File;
+//use std::path::Path;
 use std::str;
 use std::env;
 use std::env::*;
 use std::collections::HashMap;
-use std::error::Error;
-use std::borrow::Borrow;
-//use pad::{PadStr, Alignment};
+//use std::error::Error;
+//use std::borrow::Borrow;
+
 use std::process::*;
 
 use reqwest::{ Response, header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT, COOKIE }};
 
 use serde::{Deserialize, Serialize};
 
-// ----------- Structs
-// campus.json format
-#[derive(Serialize, Deserialize, Debug)]
-struct BuildingData {
-    buildingData: Vec<Building>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Building {
-    name: String,
-    abbrev: String,
-    rooms: Vec<String>
-}
-
-// impl Iterator for BuildingData {
-//     type Item = Building;
-
-//     fn next(&mut self) -> Option<Self::Item> {
-
-//     }
-// }
-
-// building.get_building_hostnames()
-//   - Could this be a good idea?
-//   - TODO (?)
-// impl Building {
-//     fn get_building_hostnames(&self) -> Vec<String> {
-//         let mut string_vec: Vec<String> = ["EN-0104-PROC1"];
-//         string_vec
-//     }
-// }
-
-#[derive(Serialize, Deserialize, Debug)]
-struct PingRequest {
-    devices: Vec<String>,
-    building: String
-}
-
 static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bin/campus.json"));
 
 
 /*
 Jacks TODO 7/2/2024
+updated 7/17/2024
 
  - JackNet 
         - potential scoping issues
-    - read doc on lambda_http to handle ping request
-    - pull data on body store in struct
-    - reference struct to build hostnames w. campus.json
-    - ping hosts
-    - return boolean outputs of found or not.
-     - type: string w/ json formatting.
-    - ONCE THIS WORKS PROPOGATE TO USE MULTIPLE WORKS
- - CLI with JackNet
-    - powershell istream doesnt work
- - CamCode (see curtis)
-    - Make DOM
-    - prints out info on config _PROTOTYPE ITERATE_
-        - block for proj1 
-        - block for proj2
-    - get compiled Q-SYS files to grep binary patterns
-    - Build an Error Log for server to pull back output,
-        - text file, return error and export it
-        - get logic that logs the buffer for 404 requests
+    [ ]  read doc on lambda_http to handle ping request response.
+    [x]  pull data on body store in struct
+    [x]  reference struct to build hostnames w. campus.json
+    [x]  ping hosts
+         - ping c code doesnt support windows
+         - permission issues w/ unix
+         - looking into writing ping in rust
+    [ ]  return boolean outputs of found or not.
+         - type: string w/ json formatting.
+         - ONCE THIS WORKS PROPOGATE TO USE MULTIPLE WORKS
+    [ ]  CLI with JackNet
+         - powershell istream doesnt work
+    [ ]  CamCode (see curtis)
+         [ ] Make DOM
+         [ ] prints out info on config _PROTOTYPE ITERATE_
+            - block for proj1 
+            - block for proj2
+         [ ] get compiled Q-SYS files to grep binary patterns
+         [ ] Build an Error Log for server to pull back output,
+            [ ] text file, return error and export it
+            [ ] get logic that logs the buffer for 404 requests
 */
 
 fn main() {
@@ -179,13 +152,10 @@ fn handle_connection(mut stream: TcpStream) {
     println!("Request: {}", str::from_utf8(&buffer).unwrap());
 }
 
-// TODO - execute_ping
+// TODO - execute_ping()
+//    [ ] Implement working ping
+//    [ ] return ping results to client
 // call ping_this executible here
-// 7.8.2024 notes
-//  -- starting to spin wheels, loaded in the campu.json as CAMPUS_STR
-//  -- struggling with rust and manipulating variables
-//  need to break the buffer up into correct variables as well as
-//  load in the correct data from CAMPUS_STR
 fn execute_ping(buffer: &mut [u8]) -> String {
     println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
 
@@ -220,31 +190,17 @@ fn execute_ping(buffer: &mut [u8]) -> String {
         bs);
 
     println!("{:?}", hostnames);
-    // Alex's addition
-
-    // for hn in hostnames {
-    //     let output = Command::new("./src/ping_this")
-    //         .arg(hn)
-    //         .stdin(Stdio::piped())
-    //         .stdout(Stdio::piped())
-    //         .output()
-    //         .expect("[-] Failed to execute")
-    //     ;
-
-    //     println!("{:?}", output);
-
-    //     if let Some(exit_code) = output.status.code() {
-    //         if exit_code == 0 {
-    //             println!("[+] Ok.");
-    //         } else {
-    //             eprintln!("[-] Failed with exit code {}", exit_code);
-    //         }
-    //     } else {
-    //         eprintln!("[!] Interrupted!");
-    //     }
-    // }
     
+    // Jack's Rust Ping
+    //   NOTE: 10.126.0.210 is EN 1055 PROC1, good test
+    println!("Testing hostname:\n {}", hostnames[0]);
+    let jp_result = ping_this(hostnames[0].clone());
+    println!("JackPing Function Response:\n {}", jp_result);
+    let jp_result2 = ping_this("10.125.0.210".to_string());
+    println!("JackPing Function Response:\n {}", jp_result2);
     // return String::from_utf8(output.stdout).unwrap();
+
+    println!("----\n------\nEND OF execute_ping() FUNCTION\n------\n-----\n");
     String::from("test")
 }
 
@@ -303,7 +259,7 @@ fn gen_hostnames(
         }
     }
     println!("Boolean Device Flags: \n {:?}", devices);
-    // Implement device count here (Probably)
+    // Implement device count here (Probably?)
         
     // Find relavant data in struct AND build
     for item in bd.buildingData { //  For each building in the data
