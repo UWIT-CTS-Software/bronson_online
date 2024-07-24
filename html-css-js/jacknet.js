@@ -88,6 +88,17 @@ function updateConsole(text) {
 };
 
 // - - -- ----- - - CMAPUS.JSON GET INFO FUNCTIONS
+// copy this to extract info from ping response
+async function getData() {
+    return fetch('campus.json')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("HTTP error " + response.status);
+            }
+            return response.json();
+    });
+};
+
 // Returns a list of buildings
 async function getBuildingList() {
     let data = await getData();
@@ -123,8 +134,10 @@ async function getAbbrev(buildingName) {
         };
     };
 };
+
 // ---- ---- -- -- -  GET USER CONFIG FUNCTIONS
-// TO-DO: return list of checked devices
+// getSelectedDevices()
+//   - returns a list of user-selected devices to search for.
 function getSelectedDevices() {
     let devices = document.getElementsByName('dev');
     let devList = [];
@@ -136,7 +149,8 @@ function getSelectedDevices() {
     return devList;
 }
 
-// TO-DO: return the selected option in the dropdown menu for buildings/zones
+// getBuildingSelection()
+//   - returns the user-selected building/area
 async function getBuildingSelection() {
     let buildingList = await getBuildingList();
     let select = document.getElementById('building_List');
@@ -147,45 +161,17 @@ async function getBuildingSelection() {
     }
 }
 
+// pad()
+//  n     - what you are padding
+//  width - number of space
+//  z     - what you are padding with (optional, default: 0)
 function pad(n, width, z) {
     z = z || '0';
     n = n + '';
     return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
 }
 
-// - - ---- -- - ---- PING FUNCTIONS
-//TO-DO: generate host names based on rooms/devices selected.
-async function genHostnames(devices, buildingName) {
-    let ab = await getAbbrev(buildingName);
-    let rms = await getRooms(buildingName);
-    console.log(rms);
-    console.log(ab);
-    let hnList = [];
-    // go through devices here and generate hostnames
-    // ABBREVIATION-####-DEVICE#
-    for(var i = 0; i < rms.length; ++i) {
-        for(var j = 0; j < devices.length; ++j) {
-            hnList.push(ab + '-' + pad(rms[i], 4) + '-' + devices[j] + '1');
-        }
-    }
-    return hnList;
-};
-
-// copy this to extract info from ping response
-async function getData() {
-    return fetch('campus.json')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("HTTP error " + response.status);
-            }
-            return response.json();
-    });
-};
-
-// TODO - handle ping resonse apporpriately
-async function getPingData() {
-    return;
-}
+// // - - ---- -- - ---- PING FUNCTIONS
 
 // Requests ping with device list and building.
 async function pingThis(devices, building) {
@@ -200,13 +186,63 @@ async function pingThis(devices, building) {
     .then((json) => {return json;});
 };
 
-//TO-DO: ping fetch results
-async function pingGet() {
-    return await fetch('ping', {
-        method: 'GET',
-        body: {}
-    });
-};
+async function pingpong(devices, building) {
+    return await pingThis(devices, building)
+        .then((value) => { 
+            // updateConsole("Ping Response: \n");
+            // updateConsole(value.building);
+            // updateConsole(value.hostnames);
+            // updateConsole(value.ips);
+            return [value.hostnames, value.ips];
+        });
+    
+}
+
+// printPingResult(
+//      - pingResult => [[Hostnames], [IP Addresses]]
+// )
+// Print the result of a ping to the user's console.
+async function printPingResult(pingResult, building) {
+    let hns = pingResult[0];
+    let ips = pingResult[1];
+
+    let printHostnames = "";
+    let printIps       = "";
+
+    let rooms   = await getRooms(building);
+    let bAbbrev = await getAbbrev(building);
+
+    // updateConsole("DEBUG 1:\n" + hns);
+    // updateConsole("DEBUG 2:\n" + ips);
+    // updateConsole("DEBUG 3:\n" + rooms);
+    // updateConsole("DEBUG 4:\n" + bAbbrev);
+
+
+    // Display the ping results
+    //  room 1055
+    //    en-1055-proc1    en-1055-ws1   ...
+    //      10.10.10.10              x   ...
+    //  ...
+    for (var i = 0; i < rooms.length; i++) {
+        printHostnames = "";
+        printIps       = "";
+        updateConsole("---------")
+        updateConsole(bAbbrev + " " + rooms[i]);
+        for (var j=0; j < hns.length; j++) {
+            // if hostname contains room#
+            //   add to printout hostname line
+            //   add corresponding ip
+            if(hns[j].includes(pad(rooms[i], 4))){
+                printHostnames += pad(hns[j], 15, " ") + "|";
+                printIps       += pad(ips[j], 15, " ") + "|";
+            }
+        }
+        updateConsole("Hostnames: " + printHostnames);
+        updateConsole("IP's     : " + printIps);
+    }    
+
+    return;
+}
 
 // - ---- ----- - - - EXPORT FUNCTIONS
 // TODO: Export findings as csv
@@ -218,62 +254,82 @@ function exportCsv() {
 // runs the search and calls the above functions to do so.
 async function runSearch() {
     updateConsole("====--------------------========--------------------====");
-    const devices = getSelectedDevices();
+    // get user-selection
+    const devices  = getSelectedDevices();
     const building = await getBuildingSelection();
-    console.log(building);
-    let hostnames = [];
-    let totalNumDevices = 0;
-    updateConsole("Selected Devices: " + devices);
-    // When the time comes do something simular for zones
+    // const rooms    = await getRooms(building);
+    // const bAbbrev  = await getAbbrev(building);
+
+    // Variables
+    let totalNumDevices =  0;
+    let not_found_count =  0;
+    // let printHostnames  = "";
+    // let printIps        = "";
+    let f_hns           = [];
+    let f_ips           = [];
+    let pingResult      = [[],[]];
+    let f_all_buildings = false;   // all buildings flag (changes alot)
+
+    // tell the user what they did
+    updateConsole("Selected Devices:\n" + devices);
+    updateConsole("Searching " + building);
+    // updateConsole("Total Devices:\n" + totalNumDevices);
+
+
+    // Check All Buildings Flag
     if (building == "All Buildings") {
-        let buildingList = await getBuildingList();
-        updateConsole("Selected Buildings: " + buildingList);
-        // iterate through each building and create hostnames for each and ping
-        for (var i=0; i < buildingList.length; ++i) {
-            let newHosts = await genHostnames(devices, buildingList[i]);
-            for (var j=0; j < newHosts.length; ++j) {
-                hostnames.push(newHosts[j]);
-            }
-            totalNumDevices += newHosts.length;
+        f_all_buildings = true;
+    }
+
+    // do the ping
+    if (f_all_buildings) {
+        let bdl = await getBuildingList();
+        for (var i = 0; i < bdl.length; i++) {
+            updateConsole("=-+-+-+-=\n Now Searching " + bdl[i] + "\n=-+-+-+-=");
+            pingResult = await pingpong(devices, bdl[i]);
+            await printPingResult(pingResult, bdl[i]);
+            f_hns += pingResult[0];
+            f_ips += pingResult[1];
+            //updateConsole("DEBUG 69:\n" + f_hns);
         }
-        //updateConsole(hostnames);
-        //console.log(hostnames)
     }
-    else {
-        updateConsole("Selected Building: " + building);
-        // generate hostnames
-        hostnames = await genHostnames(devices, building);
-        totalNumDevices = hostnames.length;
-        //updateConsole(hostnames);
+    else if (!f_all_buildings) { 
+        pingResult = await pingpong(devices, building);
+        await printPingResult(pingResult, building);
+        f_hns = pingResult[0]; // hostnames
+        f_ips = pingResult[1]; // ips
     }
-    updateConsole("Searching for " + totalNumDevices + " devices.");
-    // build progress bar here ?
 
-    // Check if the pack of building flag is raised (all buildings/zone selection) and then ping every generated hostname
-    pingThis(devices, building)
-        .then((value) => { 
-            let ping_result = value;
-            console.log(ping_result);
-            updateConsole("Ping Response: \n");
-            updateConsole(ping_result.building);
-            updateConsole(ping_result.hostnames);
-            updateConsole(ping_result.ips);
-        });
-
-    // console.log(ping_result);
-    // updateConsole("Ping Response: \n");
-    // updateConsole(ping_result.building);
-    // updateConsole(ping_result.hostnames);
-    // updateConsole(ping_result.ips);
+    // updateConsole("DEBUG 5:\n" + f_hns);
+    // updateConsole("DEBUG 6:\n" + f_ips);
 
 
+    // TODO: Set the CSV Export with ping result
 
-    // print pingThis results to console
+    
+
+    updateConsole("====--------------------========--------------------====");
+
+    // Double check operation
+    if (f_hns.length != f_ips.length) {
+        updateConsole("FATAL ERROR: Unexpected difference in number of returns.");
+    }
+
+    // Find number of devices not found
+    for (var i = 0; i < f_ips.length; i++) {
+        if(f_ips[i] == "x") {
+            not_found_count += 1;
+        }
+    }
+
+    console.log(f_hns.length);
+    totalNumDevices = f_hns.length;
+
+    updateConsole("Search Complete");
+    updateConsole("Found " + (totalNumDevices - not_found_count) + "/" + totalNumDevices + " devices.");
+
+    updateConsole("CSV Export Available (kinda not really sry)");
+    // maybe return ping result to ge
+
     return;
 };
-
-// DEBUG/testing commands
-// let bl = getBuildingList()
-// console.log(bl)
-// let rooms_test = getRooms(bl[0])
-// console.log(rooms_test)
