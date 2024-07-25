@@ -212,12 +212,6 @@ async function printPingResult(pingResult, building) {
     let rooms   = await getRooms(building);
     let bAbbrev = await getAbbrev(building);
 
-    // updateConsole("DEBUG 1:\n" + hns);
-    // updateConsole("DEBUG 2:\n" + ips);
-    // updateConsole("DEBUG 3:\n" + rooms);
-    // updateConsole("DEBUG 4:\n" + bAbbrev);
-
-
     // Display the ping results
     //  room 1055
     //    en-1055-proc1    en-1055-ws1   ...
@@ -257,14 +251,10 @@ async function runSearch() {
     // get user-selection
     const devices  = getSelectedDevices();
     const building = await getBuildingSelection();
-    // const rooms    = await getRooms(building);
-    // const bAbbrev  = await getAbbrev(building);
 
     // Variables
     let totalNumDevices =  0;
     let not_found_count =  0;
-    // let printHostnames  = "";
-    // let printIps        = "";
     let f_hns           = [];
     let f_ips           = [];
     let pingResult      = [[],[]];
@@ -300,13 +290,7 @@ async function runSearch() {
         f_ips = pingResult[1]; // ips
     }
 
-    // updateConsole("DEBUG 5:\n" + f_hns);
-    // updateConsole("DEBUG 6:\n" + f_ips);
-
-
-    // TODO: Set the CSV Export with ping result
-
-    
+    // TODO: Set the CSV Export with ping result (Maybe?)    
 
     updateConsole("====--------------------========--------------------====");
 
