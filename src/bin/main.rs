@@ -1,40 +1,27 @@
-use jn_server::ThreadPool;
-use jn_server::BuildingData;
-use jn_server::Building;
-use jn_server::PingRequest;
-
-use jn_server::jp::{ping_this};
-
-
-use lambda_http::Body;
-
-use std::io::prelude::*;
-use std::io::BufReader;
-use std::io::Read;
-
-use std::net::TcpStream;
-use std::net::TcpListener;
-use std::fs;
-//use std::fs::File;
-//use std::path::Path;
-use std::str;
-use std::env;
-use std::env::*;
-use std::collections::HashMap;
-//use std::error::Error;
-//use std::borrow::Borrow;
-
-use std::process::*;
-
-use reqwest::{ Response, header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT, COOKIE }};
-
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-
-static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bin/campus.json"));
-
-
 /*
+                  _                  
+                 (_)                 
+  _ __ ___   __ _ _ _ __    _ __ ___ 
+ | '_ ` _ \ / _` | | '_ \  | '__/ __|
+ | | | | | | (_| | | | | |_| |  \__ \
+ |_| |_| |_|\__,_|_|_| |_(_)_|  |___/         
+
+
+Backend
+    - main()
+    - handle_connection(stream: TcpStream)
+
+JackNet
+    - execute_ping(buffer) -> String
+    - print_type_of<T>(_: &T)
+    - find_curls(s) -> (usize, usize)
+    - gen_hostnames(sel_devs, sel_b, bd) -> Vec<String>
+
+ChkrBrd
+    - get_room_schedule(buffer) -> String
+    - get_lsm(buffer) -> String
+    - construct_headers() -> HeaderMap
+
 Jacks TODO 7/2/2024
 updated 7/17/2024
 
@@ -61,6 +48,48 @@ updated 7/17/2024
          [ ] Build an Error Log for server to pull back output,
             [ ] text file, return error and export it
             [ ] get logic that logs the buffer for 404 requests
+ */
+
+use jn_server::ThreadPool;
+use jn_server::BuildingData;
+use jn_server::Building;
+use jn_server::PingRequest;
+
+use jn_server::jp::{ping_this};
+
+use lambda_http::Body;
+
+use std::io::prelude::*;
+use std::io::BufReader;
+use std::io::Read;
+
+use std::net::TcpStream;
+use std::net::TcpListener;
+use std::fs;
+
+use std::str;
+use std::env;
+use std::env::*;
+use std::collections::HashMap;
+
+use std::process::*;
+
+use reqwest::{ Response, header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT, COOKIE }};
+
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+
+static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bin/campus.json"));
+
+/*
+$$$$$$$\                      $$\                                 $$\ 
+$$  __$$\                     $$ |                                $$ |
+$$ |  $$ | $$$$$$\   $$$$$$$\ $$ |  $$\  $$$$$$\  $$$$$$$\   $$$$$$$ |
+$$$$$$$\ | \____$$\ $$  _____|$$ | $$  |$$  __$$\ $$  __$$\ $$  __$$ |
+$$  __$$\  $$$$$$$ |$$ /      $$$$$$  / $$$$$$$$ |$$ |  $$ |$$ /  $$ |
+$$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$   ____|$$ |  $$ |$$ |  $$ |
+$$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |  $$ |\$$$$$$$ |
+\_______/  \_______| \_______|\__|  \__| \_______|\__|  \__| \_______|
 */
 
 fn main() {
@@ -153,6 +182,18 @@ fn handle_connection(mut stream: TcpStream) {
     println!("Request: {}", str::from_utf8(&buffer).unwrap());
 }
 
+/*
+   $$$$$\                     $$\       $$\   $$\            $$\     
+   \__$$ |                    $$ |      $$$\  $$ |           $$ |    
+      $$ | $$$$$$\   $$$$$$$\ $$ |  $$\ $$$$\ $$ | $$$$$$\ $$$$$$\   
+      $$ | \____$$\ $$  _____|$$ | $$  |$$ $$\$$ |$$  __$$\\_$$  _|  
+$$\   $$ | $$$$$$$ |$$ /      $$$$$$  / $$ \$$$$ |$$$$$$$$ | $$ |    
+$$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\ 
+\$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ $$ | \$$ |\$$$$$$$\  \$$$$  |
+ \______/  \_______| \_______|\__|  \__|\__|  \__| \_______|  \____/ 
+        
+*/
+
 // TODO - execute_ping()
 //    [ ] Implement working ping
 //    [ ] return ping results to client
@@ -160,17 +201,9 @@ fn handle_connection(mut stream: TcpStream) {
 fn execute_ping(buffer: &mut [u8]) -> String {
     println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
 
-    //let b: BuildingData = serde_json::from_str(CAMPUS_STR)
-    //    .expect("REASON");
     let bs: BuildingData = serde_json::from_str(CAMPUS_STR)
         .expect("Fatal Error: Failed to build building data structs");
-    //println!("Building Data DEBUG1: {:?}", b.buildingData[0]);
-    // println!("Building Data DEBUG1:\n {:?}", bs.buildingData[0]);
-    // println!("Building Data DEBUG2:\n {:?}", bs.buildingData[0].name);
-    // println!("Building Data DEBUG3:\n {:?}", bs.buildingData[0].abbrev);
-    // println!("Building Data DEBUG4:\n {:?}", bs.buildingData[0].rooms);
 
-    // you need to figure out how to filter the junk out of the buffer.
     let mut buff_copy: String = String::from_utf8_lossy(&buffer[..])
         .to_string();
 
@@ -191,12 +224,6 @@ fn execute_ping(buffer: &mut [u8]) -> String {
         bs);
 
     println!("{:?}", hostnames);
-    
-    // Jack's Rust Ping - Testing
-    //   NOTE: 10.126.0.210 is EN 1055 PROC1, good test
-    //println!("Testing hostname:\n {}", hostnames[0]);
-    //let jp_result = ping_this(hostnames[0].clone());
-    //println!("JackPing Function Response:\n {}", jp_result);
 
     // Write for loop through hostnames
     let mut hn_ips: Vec<String> = Vec::new();
@@ -262,10 +289,6 @@ fn gen_hostnames(
     let mut hostnames = Vec::new();
     let mut temp_hostname = String::new();
     let mut tmp_tmp = String::new();
-    
-
-    // hostnames.push("HostnameTest0".to_string());
-    // hostnames.push("HostnameTest1".to_string());
 
     // Set selection flags
     for i in sel_devs {
@@ -334,6 +357,17 @@ fn gen_hostnames(
     // Return value
     hostnames
 }
+
+/*
+$$$$$$\  $$\       $$\                 $$$$$$$\                  $$\ 
+$$  __$$\ $$ |      $$ |                $$  __$$\                 $$ |
+$$ /  \__|$$$$$$$\  $$ |  $$\  $$$$$$\  $$ |  $$ | $$$$$$\   $$$$$$$ |
+$$ |      $$  __$$\ $$ | $$  |$$  __$$\ $$$$$$$\ |$$  __$$\ $$  __$$ |
+$$ |      $$ |  $$ |$$$$$$  / $$ |  \__|$$  __$$\ $$ |  \__|$$ /  $$ |
+$$ |  $$\ $$ |  $$ |$$  _$$<  $$ |      $$ |  $$ |$$ |      $$ |  $$ |
+\$$$$$$  |$$ |  $$ |$$ | \$$\ $$ |      $$$$$$$  |$$ |      \$$$$$$$ |
+ \______/ \__|  \__|\__|  \__|\__|      \_______/ \__|       \_______|      
+*/
 
 fn get_room_schedule(buffer: &mut [u8]) -> String {
     return String::from("Empty");
