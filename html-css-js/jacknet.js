@@ -446,7 +446,7 @@ async function setJackNet() {
     console.log('Switching to jacknet');
     let progGuts = document.querySelector('.program_board .program_guts');
     let main_container = document.createElement('div');
-    main_container.innerHTML = '<p>hello world - jacknet</p>';
+    main_container.innerHTML = '<p>JackNet</p>';
 
     // Make a box for list of buildings
     /* 
