@@ -13,6 +13,12 @@ This file contains all code relating to camcode and will manipulate the DOM in i
 TODO:
   [ ] - Define the parameters we are using
   [ ] - Prepare a library of Q-SYS files
+
+Q-SYS has a multitude of modules and we will be retrieving these modules based on the parameters given in the form.
+
+NOTE:
+Final CamCode DOM will NOT use the console prompt,
+I am only using that to debug.
 */
 
 function findFiles() {
@@ -27,11 +33,22 @@ function setCamCode() {
     main_container.innerHTML = '<p>hello world - CamCode</p>';
 
     // Room Orientation
+    // Projectors or displays?
+    //   proj - lazer or bulb
     let projectorSection = document.createElement("fieldset");
     projectorSection.classList.add('proj_sel');
     let set_Inner = '<select id="proj_sel"><option>1</option><option>2</option></select>';
     projectorSection.innerHTML = `<legend>Number of Projector(s):</legend> ${set_Inner}`;
 
+    // Speakers
+    //    wall or ceiling
+    //    kind of speakers
+    //    quauntity
+    // Mics
+    //    kind of mics
+    //    quantity
+    //    speaking zones? 
+    
     let srcSelect = document.createElement("fieldset");
     srcSelect.classList.add('devSelect');
     srcSelect.innerHTML = '<legend>Sources in Classroom: </legend> \n <input class="cbSrc" type ="checkbox" id="pc" name="dev" value="Room PC" /> \n <label for="pc"> Room PC </label><br> \n <input class="cbSrc" type="checkbox" id="laptop" name="dev" value="laptop" /> \n <label for="laptop">Laptop</label><br> \n <input class="cbSrc" type="checkbox" id="ws" name="dev" value="Wyo Shares" /> \n <label for="ws">Wyo Shares</label><br> \n <input class="cbSrc" type="checkbox" id="bd" name="dev" value="Blu-Ray" /> \n <label for="bd">Blu-Ray Player</label><br> \n <input class="cbSrc" type ="checkbox" id="elmo" name="dev" value="Document Camera" /> \n <label for="elmo"> Document Camera </label><br> \n ';
