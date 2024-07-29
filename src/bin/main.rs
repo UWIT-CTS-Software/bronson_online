@@ -195,8 +195,8 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 */
 
 // TODO - execute_ping()
-//    [ ] Implement working ping
-//    [ ] return ping results to client
+//    [x] Implement working ping
+//    [x] return ping results to client
 // call ping_this executible here
 fn execute_ping(buffer: &mut [u8]) -> String {
     println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
@@ -366,7 +366,7 @@ $$ |      $$  __$$\ $$ | $$  |$$  __$$\ $$$$$$$\ |$$  __$$\ $$  __$$ |
 $$ |      $$ |  $$ |$$$$$$  / $$ |  \__|$$  __$$\ $$ |  \__|$$ /  $$ |
 $$ |  $$\ $$ |  $$ |$$  _$$<  $$ |      $$ |  $$ |$$ |      $$ |  $$ |
 \$$$$$$  |$$ |  $$ |$$ | \$$\ $$ |      $$$$$$$  |$$ |      \$$$$$$$ |
- \______/ \__|  \__|\__|  \__|\__|      \_______/ \__|       \_______|      
+ \______/ \__|  \__|\__|  \__|\__|      \_______/ \__|       \_______|
 */
 
 fn get_room_schedule(buffer: &mut [u8]) -> String {

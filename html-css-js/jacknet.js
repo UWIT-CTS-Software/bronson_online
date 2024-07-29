@@ -172,19 +172,58 @@ setCSVExport(hns, ips, rms)
     [x] - Update the CSV Export Object
     [ ] - ? Maybe, Set CSV Button Opacity (If first search)
 
-IDEAL CSV FORMAT
-// EN 1055
-    //    en-1055-proc1    en-1055-ws1   ...
-    //      10.10.10.10              x   ...
-    //  ...
+
 
 */
 
 function runExport() {
+    // IDEAL CSV FORMAT
+    // EN 1055
+    // Hostname:   en-1055-proc1    en-1055-ws1   ...
+    // Ip:           10.10.10.10              x   ...
+    //  ...
     csvRows = [];
     const headers = Object.keys(CSV_EXPORT);
     const values = Object.values(CSV_EXPORT);
-    downloadCsv([headers.join(','), values.join(',')].join('\n'));
+    // Break values into better variables
+    let hostnames = values[0];
+    let ips = values[1];
+    let rms = values[2];
+    updateConsole("-------=-------");
+    updateConsole("Exporting CSV");
+    // updateConsole(hostnames[0]);
+    // updateConsole(rms);
+    //updateConsole("DEBUG: Values:\n" + values);
+    console.log(values);
+
+    var hii = 0;
+    let hostBuff = [headers[0]];
+    let ipBuff = [headers[1]];
+
+    for(var i = 0; i < rms.length; i++) {
+        let num = rms[i].split(" ")[1];
+        //updateConsole("NumCheck:\n" + num);
+        //updateConsole("PAD CHECK:\n "+ pad(num, 4));
+        while (hostnames[hii].includes(pad(num, 4))) {
+            //updateConsole(pad(num, 4));
+            hostBuff.push(hostnames[hii]);
+            //updateConsole(hostnames[hii]);
+            ipBuff.push(ips[hii]);
+            if(hii >= hostnames.length - 1){
+                break;
+            }
+            hii ++;
+        }
+        csvRows.push([rms[i]]);
+        csvRows.push([hostBuff.join(',')]);
+        csvRows.push([ipBuff.join(',')]);
+
+        hostBuff = [headers[0]];
+        ipBuff = [headers[1]];
+        hii = hii;
+    }
+    //downloadCsv([headers.join(','), values.join(',')].join('\n'));
+    downloadCsv(csvRows.join('\n'));
     return;
 };
 
@@ -196,9 +235,13 @@ function downloadCsv(data) {
     const a = document.createElement('a');
 
     a.href = url;
-    a.download = 'download.csv';
+    // Change to jn-{$timestamp}.csv
+    let filename = new Date().getTime();
+    a.download = filename + '.csv';
 
     a.click();
+
+    updateConsole("Downloaded " + filename + '.csv');
 }
 
 // setCSVExport(hns, ips, rms)
@@ -278,7 +321,7 @@ async function printPingResult(pingResult, building) {
         printIps       = "";
         updateConsole("---------")
         updateConsole(bAbbrev + " " + rooms[i]);
-        rms += (bAbbrev + " " + rooms[i]);
+        rms.push(bAbbrev + " " + rooms[i]);
         for (var j=0; j < hns.length; j++) {
             // if hostname contains room#
             //   add to printout hostname line
@@ -365,7 +408,7 @@ async function runSearch() {
 
     // CSV Export
     setCSVExport(f_hns, f_ips, f_rms);
-    updateConsole("CSV Export Available (kinda not really sry)");
+    updateConsole("CSV Export Available");
 
     return;
 };
