@@ -84,65 +84,21 @@ function newSpkrSection() {
 function newMicSection() {
   updateConsole("Adding New Microphone Field");
   let spkrSection = document.querySelector('.program_board .program_guts .mic_sel');
-  spkrSection.innerHTML += '<div> \n <select id="mic_model"><option>microphone</option><option>2</option></select> <select id="mic_location"><option>Ceiling</option><option>table</option></select> <input type="number"> \n </div>';
+  spkrSection.innerHTML += '<div> \n <select id="mic_model"><option>microphone</option><option>2</option></select> <select id="mic_location"><option>Ceiling</option><option>table</option></select> <input type="number"> <button onclick="deleteMicSection()">x</button> \n </div>';
   return;
 }
 
-// Change the DOM for Crestron File Manager
-async function setCrestronFile() {
-  console.log('switching to camcode-cfm');
-  let progGuts = document.querySelector('.program_board .program_guts');
-  let main_container = document.createElement('div');
-  main_container.innerHTML = '<p>hello world - CamCode (Crestron File Manager) </p> \n <button id="cam_code" onclick="setCamCode()"> CamCode (Q-SYS) </button> \n <p>\n</p> ';
-
-  // Get Building List
-  let buildingSelect = document.createElement("Fieldset");
-  let set_inner_html = '<select id="building_List" onchange="updateRoomList()">';
-  let bl = await getBuildingList();
-  for(var i in bl) {
-    set_inner_html += `<option value=${i}>${bl[i]}</option>`;
-  };
-  set_inner_html += '</select>';
-  buildingSelect.innerHTML = `<legend>Choose Building(s): </legend> ${set_inner_html}`;
-
-  // Get room list based on selected building
-  // might need to be a seperate function so it updates on new building selections.
-  let roomSelect = document.createElement("Fieldset");
-  set_inner_html = '<select id="room_List">';
-  let selected_building = document.getElementById('building_list');
-  let rl = await getRooms('Agriculture');
-  for(var i in rl) {
-    set_inner_html += `<option value=${i}>${rl[i]}</option>`;
-  };
-  set_inner_html += '</select>';
-  roomSelect.innerHTML = `<legend>Choose Rooms(s): </legend> ${set_inner_html}`;
-
-  // Console Output
-  let consoleOutput = document.createElement("fieldset");
-  consoleOutput.classList.add('consoleOutput');
-  consoleOutput.innerHTML = '<legend> Console Output: </legend> \n <textarea readonly rows="10" cols ="80" class="innerConsole" name="consoleOutput" spellcheck="false"> Console: Example </textarea>';
-
-  // Bottom Menu buttons
-  // html options: menu
-  let bottomMenu = document.createElement("fieldset");
-  bottomMenu.classList.add('bottomMenu');
-  bottomMenu.innerHTML = '<legend>Options: </legend> \n <menu> \n <button id="run" onclick="findFiles()"> Generate Files </button> \n <button id="clearCon" onclick="clearConsole()"> Clear Console </button> \n <button id="reset" onclick="resetCamCode()"> Reset </button> \n </menu>';
-
-  main_container.appendChild(buildingSelect);
-  main_container.appendChild(roomSelect);
-  main_container.appendChild(consoleOutput);
-  main_container.appendChild(bottomMenu);
-  main_container.classList.add('program_guts');
-  progGuts.replaceWith(main_container);
+function deleteMicSection() {
   return;
 }
+
 
 // Change the DOM for CamCode (Q-SYS Module Manager)
 async function setCamCode() {
     console.log('Switching to camcode')
     let progGuts = document.querySelector('.program_board .program_guts');
     let main_container = document.createElement('div');
-    main_container.innerHTML = '<p>hello world - CamCode</p> \n <button id="crestron_files" onclick="setCrestronFile()"> Crestron File Manager </button> \n ';
+    main_container.innerHTML = '<p>hello world - CamCode</p> \n <button id="crestron_files" onclick="setCrestronFile()"> Crestron File Manager </button>\n <p>\n</p>';
 
     // Room Orientation
     // Projectors or displays?
@@ -196,5 +152,73 @@ async function setCamCode() {
     main_container.classList.add('program_guts');
     //p.appendChild(select)
     progGuts.replaceWith(main_container);
-    return
+    return;
   }
+
+/*
+CFM STUFF HERE
+*/
+
+// TODO: MAKE THIS WORK IT DOESNT.
+async function updateRoomList() {
+  let rl = document.querySelector('.program_board .program_guts .room_List');
+  let sel_building = await getBuildingSelection();
+  let new_rl = await getRooms(sel_building);
+  for(var i in rl) {
+    set_inner_html += `<option value=${i}>${rl[i]}</option>`;
+  };
+  set_inner_html += '</select>';
+  roomSelect.innerHTML = `<legend>Choose Rooms(s): </legend> ${set_inner_html}`;
+
+  return;
+}
+
+
+// Change the DOM for Crestron File Manager
+async function setCrestronFile() {
+  console.log('switching to camcode-cfm');
+  let progGuts = document.querySelector('.program_board .program_guts');
+  let main_container = document.createElement('div');
+  main_container.innerHTML = '<p>hello world - CamCode (Crestron File Manager) </p> \n <button id="cam_code" onclick="setCamCode()"> CamCode (Q-SYS) </button> \n <p>\n</p> ';
+
+  // Get Building List
+  let buildingSelect = document.createElement("Fieldset");
+  let set_inner_html = '<select id="building_List" onchange="updateRoomList()">';
+  let bl = await getBuildingList();
+  for(var i in bl) {
+    set_inner_html += `<option value=${i}>${bl[i]}</option>`;
+  };
+  set_inner_html += '</select>';
+  buildingSelect.innerHTML = `<legend>Choose Building(s): </legend> ${set_inner_html}`;
+
+  // Get room list based on selected building
+  // might need to be a seperate function so it updates on new building selections.
+  let roomSelect = document.createElement("Fieldset");
+  set_inner_html = '<select id="room_List">';
+  let selected_building = document.getElementById('building_list');
+  let rl = await getRooms('Agriculture');
+  for(var i in rl) {
+    set_inner_html += `<option value=${i}>${rl[i]}</option>`;
+  };
+  set_inner_html += '</select>';
+  roomSelect.innerHTML = `<legend>Choose Rooms(s): </legend> ${set_inner_html}`;
+
+  // Console Output
+  let consoleOutput = document.createElement("fieldset");
+  consoleOutput.classList.add('consoleOutput');
+  consoleOutput.innerHTML = '<legend> Console Output: </legend> \n <textarea readonly rows="10" cols ="80" class="innerConsole" name="consoleOutput" spellcheck="false"> Console: Example </textarea>';
+
+  // Bottom Menu buttons
+  // html options: menu
+  let bottomMenu = document.createElement("fieldset");
+  bottomMenu.classList.add('bottomMenu');
+  bottomMenu.innerHTML = '<legend>Options: </legend> \n <menu> \n <button id="run" onclick="findFiles()"> Generate Files </button> \n <button id="clearCon" onclick="clearConsole()"> Clear Console </button> \n <button id="reset" onclick="resetCamCode()"> Reset </button> \n </menu>';
+
+  main_container.appendChild(buildingSelect);
+  main_container.appendChild(roomSelect);
+  main_container.appendChild(consoleOutput);
+  main_container.appendChild(bottomMenu);
+  main_container.classList.add('program_guts');
+  progGuts.replaceWith(main_container);
+  return;
+}
