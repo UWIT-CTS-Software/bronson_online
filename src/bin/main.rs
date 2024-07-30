@@ -192,11 +192,10 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 \$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ $$ | \$$ |\$$$$$$$\  \$$$$  |
  \______/  \_______| \_______|\__|  \__|\__|  \__| \_______|  \____/ 
         
+TODO:
+   [ ] - Rewrite find_curls() for '(' instead to handle "hn.uwyo.edu (ip-addr)"
 */
 
-// TODO - execute_ping()
-//    [x] Implement working ping
-//    [x] return ping results to client
 // call ping_this executible here
 fn execute_ping(buffer: &mut [u8]) -> String {
     println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
@@ -256,6 +255,7 @@ fn execute_ping(buffer: &mut [u8]) -> String {
 fn print_type_of<T>(_: &T) {
     println!("{}", std::any::type_name::<T>());
 }
+
 
 // used to trim excess info off of the buffer
 fn find_curls(s: &String) -> (usize, usize) {
