@@ -10,13 +10,28 @@
 
 This file contains all code relating to camcode and will manipulate the DOM in index.html accordingly
 
-HTML
+CC
+ - findFiles()
+
+CFM
+ - cfmGetFiles()
+ - cfmGetFileJson()
+ - cfmGetBuildingRoom()
+ - cfmFiles()
+
+HTML-CC
  - resetCamCode()
  - updateRoomList()
  - newPjSection()
  - newSpkrSection()
  - newMicSection()
+[ ] removeSection()
  - setCamCode()
+ 
+ HMTL-CFM
+ - setBrowserCode()
+ - updateRoomList()
+ - setCrestronFile()
 
 CamCode (Q-SYS)
 TODO:
@@ -64,32 +79,25 @@ _|        _|_|_|    _|  _|  _|
 _|        _|        _|      _|  
   _|_|_|  _|        _|      _|  
 */
-
-// TODO: cfmFiles()
-async function cfmFiles() {
-  updateConsole("CFM Currently Nonfunctional Sorry :(");
-  let brm = cfmGetBuildingRoom(); //brm[0] = building, brm[1] = room
-  updateConsole(brm[0] + " " + brm[1]);
-
-  let abbrev = getAbbrev(brm[0]);
-
-  let files = await cfmGetFiles(abbrev, brm[1]);
-
-  updateConsole(files.names);
-  return;
-}
-
-async function cfmGetFiles(abbrev, rm) {
+async function cfmGetFiles(building, abbrev, rm) {
   return await fetch('cfm', {
     method: 'POST',
     body: JSON.stringify({
+      building: building,
       abbrev: abbrev,
-      room_number: rm
+      rm: rm
     })
   })
   .then((response) => response.json())
   .then((json) => {return json;});
 };
+
+async function cfmGetFileJson(building, abbrev, rm) {
+  return await cfmGetFiles(building, abbrev, rm)
+    .then((value) => {
+      return value.names;
+    });
+}
 
 function cfmGetBuildingRoom(){
   let bl = document.getElementById('building_list');
@@ -100,6 +108,36 @@ function cfmGetBuildingRoom(){
 
   return [building, room];
 }
+
+// TODO: cfmFiles()
+async function cfmFiles() {
+  updateConsole("CFM Currently Nonfunctional Sorry :(");
+  let brm = cfmGetBuildingRoom(); //brm[0] = building, brm[1] = room
+  updateConsole(brm[0] + " " + brm[1]);
+
+  let abbrev = await getAbbrev(brm[0]);
+
+  let files = [];
+  let header = "";
+
+  // Get Files (Add Error Check: Room Directory Not Found)
+  let received_filenames = await cfmGetFileJson(brm[0], abbrev, brm[1]);
+  
+  for (var i = 0; i < received_filenames.length; i++) {
+    let tmp = received_filenames[i].split("CFM_Code")[1];
+    header = tmp.split(brm[1] + "/")[0] + brm[1] + "/";
+    files.push(tmp.split(brm[1] + "/")[1]);
+  }
+
+  //updateConsole(received_filenames);
+  updateConsole("Header:\n" + header);
+  updateConsole("FILES:\n" + files);
+
+  setBrowserConsole(header, files);
+  return;
+}
+
+
 
 /*
 $$\   $$\ $$$$$$$$\ $$\      $$\ $$\       
@@ -117,6 +155,8 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
  _|        _|        
    _|_|_|    _|_|_|
 */
+
+
 
 // return hmtl to start config
 function resetCamCode() {
@@ -223,7 +263,25 @@ async function setCamCode() {
    _|_|_|  _|        _|      _|  
 */
 
-// TODO: MAKE THIS WORK IT DOESNT.
+// CONSOLE REVAMP FUNCTIONS HERE
+//    MAKE A WEIRD SUDO DIRECTORY BROWSER
+// Note:
+// Console Stuff: rows=10, cols=80
+function setBrowserConsole(header, files) {
+  let conObj = document.querySelector('.innerConsole');
+  
+  // center header
+  let numberOfSpaces = 80 - header.length;
+  let newHeader = header.padStart((numberOfSpaces/2), " ");
+  let list = "";
+
+  for(var i = 0; i < files.length; i++) {
+    list += files[i] + '\n';
+  }
+  conObj.value = newHeader + '\n' + list;
+  return;
+}
+
 async function updateRoomList() {
   let rl = document.querySelector('.program_board .program_guts .rmSelect');
   let rms = document.createElement("Fieldset");
@@ -242,7 +300,6 @@ async function updateRoomList() {
   rl.replaceWith(rms);
   return;
 }
-
 
 // Change the DOM for Crestron File Manager
 async function setCrestronFile() {

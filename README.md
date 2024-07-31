@@ -26,7 +26,9 @@ This can be used to find rooms that are not online that we did not know about. W
 
 #### TODO's:
 
-    [ ] - CSV Exports
+    [ ] - CSV Exports ("All Buildings") HINT (?): hashmap
+    [ ] - "hostname.uwyo.edu (ip-address)" return needs formatted
+    [ ] - Color code print out (Span attribute ?)
     [ ] - Server-Side CLI Debug Functionality
     [ ] - EC: Cool Visualizations w/ Building Floor Layouts.
 
@@ -39,12 +41,32 @@ A classroom programming helper. Given a specific set of parameters describing a 
 
 This is intended to help program Q-SYS systems.
 
+Added Module: CFM
+
+Interface to pull specific room files, the database is built from the 2023 Crestron Software Database on the I.T. Warehouse server drive (`ctsmain$\CTS_Software\_Code Database 2023`). Upon selected room, returns a list of files and option to download all of them as a zip file.
+
+NOTE: Due to the size of this database it is not included in this github and needs to be independently downloaded and placed within the `\bronson_online\` directory.
+
 #### TODO's:
 
     [ ] - Setting a DOM
+        [ ] - add an 'x' button to remove additional fieldsß
     [ ] - Defining the classroom parameters
     [ ] - Assemble Pre-built programs for these parameters
 
+#### CFM TODO's:
+    [ ] - Access the CFM_Code files and return the contents of a requested folder.
+    [ ] - Create a handler for when CFM_Code is not found
+    [ ] - Make a variant of the console to select lines on click
+        [ ] - Expand by using a double click to download a specific file in the returned list.
+    [ ] - (?) Include a text log file open to edit.
 
 ---
 
+GENERAL TODO's:
+
+    [ ] - Refactor Code Base
+        [ ] - Process Buffer Function in Rust
+        [ ] - break jacknet.js into another file
+            [ ] - Replace campus.json with a more versitile structure
+            [ ] - break the campus.json functions out of jacknet.js
