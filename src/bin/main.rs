@@ -47,6 +47,8 @@ use jn_server::BuildingData;
 use jn_server::Building;
 use jn_server::PingRequest;
 
+use jn_server::CFMRequest;
+
 use jn_server::jp::{ping_this};
 
 use lambda_http::Body;
@@ -68,10 +70,12 @@ use std::process::*;
 
 use reqwest::{ Response, header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT, COOKIE }};
 
-use serde::{Deserialize, Serialize};
+//use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bin/campus.json"));
+
+static CFM_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
 
 /*
 $$$$$$$\                      $$\                                 $$\ 
@@ -240,8 +244,7 @@ fn execute_ping(buffer: &mut [u8]) -> String {
     println!("Pulled IP's:\n{:?}",hn_ips);
     println!("----\n------\nEND OF execute_ping() FUNCTION\n------\n-----\n");
 
-    // TODO: Get this return to output in the console on the site.
-    //String::from("jackpingtest")
+    // Return JSON with ping results
     json_return.to_string()
 }
 
@@ -250,7 +253,6 @@ fn execute_ping(buffer: &mut [u8]) -> String {
 fn print_type_of<T>(_: &T) {
     println!("{}", std::any::type_name::<T>());
 }
-
 
 // used to trim excess info off of the buffer
 fn find_curls(s: &String) -> (usize, usize) {
@@ -424,6 +426,7 @@ $$ |  $$\ $$  __$$ |$$ | $$ | $$ |$$ |  $$\ $$ |  $$ |$$ |  $$ |$$   ____|
 fn get_cfm(buffer: &mut [u8]) -> String {
     println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
  
+    // Get User Parameters
     let mut buff_copy: String = String::from_utf8_lossy(&buffer[..])
         .to_string();
 
@@ -431,4 +434,61 @@ fn get_cfm(buffer: &mut [u8]) -> String {
     let buff_copy = &buff_copy[i..j+1];
 
     println!("Buffer Output:\n {}", buff_copy);
+
+    // crestron file manager request
+    //   - building
+    //   - abbrev
+    //   - rm
+    let cfmr: CFMRequest = serde_json::from_str(buff_copy)
+        .expect("Fatal Error 3: Failed to parse cfm request");
+    
+    println!("CFM Request:\n {:?}", cfmr);
+    
+    // Check for CFM_Code Directory
+    if dir_exists(CFM_DIR) {
+        println!("SUCCESS: CFM_Code Directory Found");
+    }
+
+    let cfm_files = find_files(cfmr.building, cfmr.abbrev, cfmr.rm);
+
+    // return file
+    let json_return = json!({
+        "names": cfm_files
+    });
+
+    println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
+
+    json_return.to_string()
+    //return String::from("{names: cfm-test}");
+}
+
+fn dir_exists(path: &str) -> bool {
+    fs::metadata(path).is_ok()
+}
+
+fn find_files(building: String, abbrev: String, rm: String) -> Vec<String> {
+    let mut strings = Vec::new();
+    let mut path = String::from(CFM_DIR.clone());
+    path.push_str("/");
+    path.push_str(&building);
+    path.push_str("/");
+    path.push_str(&abbrev);
+    path.push_str(" ");
+    path.push_str(&rm);
+    //path.push_str("/");
+
+    println!("CFM Debug - Looking for path:\n{:?}", path);
+
+    if dir_exists(&path) {
+        println!("SUCCESS 2: ROOM DIRECTORY FOUND");
+        let paths = fs::read_dir(&path).unwrap();
+        for p in paths {
+            println!("{}\n", p.as_ref().unwrap().path().display());
+            strings.push(p.unwrap().path().display().to_string());
+        }
+        return strings;
+    }
+    
+    println!("Fatal Error 4: ROOM DIRECTORY DOES NOT EXIST");
+    return strings;
 }

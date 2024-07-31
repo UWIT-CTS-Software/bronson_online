@@ -457,7 +457,7 @@ async function setJackNet() {
     // UNcomment this if the fieldset supremecy mindset sucks
     let buildingSelect = document.createElement("fieldset");
     buildingSelect.classList.add('building_List');
-    let set_inner_html = '<select id="building_List"><option>All Buildings</option>';
+    let set_inner_html = '<select id="building_list"><option>All Buildings</option>';
     // TO-DO: add zone options here
     let bl = await getBuildingList();
     for(var i in bl) {

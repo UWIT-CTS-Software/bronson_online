@@ -145,3 +145,11 @@ pub struct PingRequest {
 mod jack_ping;
 
 pub use crate::jack_ping::jp;
+
+// ----------- Custom structs for CFM Requests
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CFMRequest {
+	pub building: String,
+	pub abbrev: String,
+	pub rm: String
+}
