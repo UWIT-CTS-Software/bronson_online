@@ -80,7 +80,7 @@ _|        _|        _|      _|
   _|_|_|  _|        _|      _|  
 */
 async function cfmGetFiles(building, abbrev, rm) {
-  return await fetch('cfm', {
+  return await fetch('cfm_dir', {
     method: 'POST',
     body: JSON.stringify({
       building: building,
@@ -102,9 +102,9 @@ async function cfmGetFileJson(building, abbrev, rm) {
 function cfmGetBuildingRoom(){
   let bl = document.getElementById('building_list');
   let rl = document.getElementById('room_list');;
-  //return [bl.value, rl.value];
+
   let building = bl.options[bl.selectedIndex].text;
-  let room = rl.options[rl.selectedIndex].text;
+  let room     = rl.options[rl.selectedIndex].text;
 
   return [building, room];
 }
@@ -267,67 +267,134 @@ async function setCamCode() {
 //    MAKE A WEIRD SUDO DIRECTORY BROWSER
 // Note:
 // Console Stuff: rows=10, cols=80
+//   MAY need to use something other than textedit
 function setBrowserConsole(header, files) {
   let conObj = document.querySelector('.innerConsole');
   
   // center header
   let numberOfSpaces = 80 - header.length;
+  let new_rows = 1;
   let newHeader = header.padStart((numberOfSpaces/2), " ");
   let list = "";
 
   for(var i = 0; i < files.length; i++) {
     list += files[i] + '\n';
+    new_rows += 1;
   }
   conObj.value = newHeader + '\n' + list;
+
+  // Resize Here?
+
+  // Add Mouse listeners on the rows
+  // maybe ! MAYBE hyperlinks?
   return;
 }
 
+// May want to pull directory for dropdown
+async function populateDropdown(list) {
+  //let obj = document.querySelector(className)
+  html = ``;
+  for(var i in list) {
+    html += `<option value=${i}>${list[i]}</option>`;
+  };
+
+  return html;
+}
+
+async function getCFMBuildingSelection() {
+  let select = document.getElementById('building_list');
+  return select.value;
+}
+
+// updateRoomList()
 async function updateRoomList() {
   let rl = document.querySelector('.program_board .program_guts .rmSelect');
   let rms = document.createElement("Fieldset");
   rms.classList.add('rmSelect');
 
-  let set_inner_html = `<select id="room_list">`;
-
-  let sel_building = await getBuildingSelection();
-  let new_rl = await getRooms(sel_building);
+  let sel_building = await getCFMBuildingSelection();
   
-  for(var i in new_rl) {
-    set_inner_html += `<option value=${new_rl[i]}>${new_rl[i]}</option>`;
-  };
+  //let new_rl = await getRooms(sel_building);
+
+  let cfmDirList = await getCFMCodeDir();
+  //let cfmRmList  = await getCFMBuildingRooms(cfmDirList[0]);
+  let new_rl = await getCFM_BuildRooms(cfmDirList[sel_building]);
+  console.log(new_rl);
+
+  let set_inner_html = `<select id="room_list">`;
+  set_inner_html += await populateDropdown(new_rl);
   set_inner_html += '</select>';
+
   rms.innerHTML = `<legend>Choose Rooms(s): </legend> ${set_inner_html}`;
   rl.replaceWith(rms);
   return;
 }
 
+async function getCFMBuildingRooms(sel_building) {
+  return await fetch('cfm_build_r', {
+    method: 'POST',
+    body: JSON.stringify({
+      building: sel_building
+    })
+  })
+  .then((response) => response.json())
+  .then((json) => {return json;})
+};
+
+async function getCFM_BuildRooms(sb) {
+  return await getCFMBuildingRooms(sb)
+    .then((value) => {
+      return value.rooms;
+    });
+}
+
+async function getCFMCodeDirs() {
+  return await fetch('cfm_build', {
+    method: 'POST',
+    body: JSON.stringify({
+      message: 'cfm_build'
+    })
+  })
+  .then((response) => response.json())
+  .then((json) => {return json;});
+};
+
+async function getCFMCodeDir(){
+  return await getCFMCodeDirs()
+    .then((value) => {
+      return value.dir_names;
+    });
+}
+
 // Change the DOM for Crestron File Manager
 async function setCrestronFile() {
   console.log('switching to camcode-cfm');
+
+  // Pull List of Directories
+  let cfmDirList = await getCFMCodeDir();
+  let cfmRmList  = await getCFMBuildingRooms(cfmDirList[0]);
+  console.log(cfmDirList);
+
   let progGuts = document.querySelector('.program_board .program_guts');
   let main_container = document.createElement('div');
   main_container.innerHTML = '<p>hello world - CamCode (Crestron File Manager) </p> \n <button id="cam_code" onclick="setCamCode()"> CamCode (Q-SYS) </button> \n <p>\n</p> ';
 
   // Get Building List
   let buildingSelect = document.createElement("Fieldset");
+  buildingSelect.classList.add("bdSelect");
   let set_inner_html = '<select id="building_list" onchange="updateRoomList()">';
-  let bl = await getBuildingList();
-  for(var i in bl) {
-    set_inner_html += `<option value=${i}>${bl[i]}</option>`;
-  };
+  set_inner_html += await populateDropdown(cfmDirList);
   set_inner_html += '</select>';
   buildingSelect.innerHTML = `<legend>Choose Building(s): </legend> ${set_inner_html}`;
 
+
   // Get room list based on selected building
-  // might need to be a seperate function so it updates on new building selections.
   let roomSelect = document.createElement("Fieldset");
   roomSelect.classList.add('rmSelect');
+  //let rl = await getRooms('Agriculture');
+  let rl = await getCFM_BuildRooms(cfmDirList[0]);
   set_inner_html = '<select id="room_list">';
-  //let selected_building = document.getElementById('building_list');
-  let rl = await getRooms('Agriculture');
-  for(var i in rl) {
-    set_inner_html += `<option value=${i}>${rl[i]}</option>`;
-  };
+  set_inner_html += await populateDropdown(rl);
   set_inner_html += '</select>';
   roomSelect.innerHTML = `<legend>Choose Rooms(s): </legend> ${set_inner_html}`;
 
