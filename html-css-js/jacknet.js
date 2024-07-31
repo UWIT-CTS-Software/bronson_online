@@ -132,7 +132,7 @@ function getSelectedDevices() {
 //   - returns the user-selected building/area
 async function getBuildingSelection() {
     let buildingList = await getBuildingList();
-    let select = document.getElementById('building_List');
+    let select = document.getElementById('building_list');
     if (select.value == "All Buildings") {
         return select.value;
     } else {
@@ -165,15 +165,12 @@ $$$$$$$$\ $$  /\$$\ $$$$$$$  |\$$$$$$  |$$ |       \$$$$  |
                     
 TODO:
 runExport()
-    [ ] - Create a file - "timestamp.csv"
-    [ ] - Load CSV Object into object (Properly)
+    [x] - Create a file - "timestamp.csv"
+    [x] - Load CSV Object into object (Properly)
     [x] - Close and save file.
 setCSVExport(hns, ips, rms)
     [x] - Update the CSV Export Object
     [ ] - ? Maybe, Set CSV Button Opacity (If first search)
-
-
-
 */
 
 function runExport() {
