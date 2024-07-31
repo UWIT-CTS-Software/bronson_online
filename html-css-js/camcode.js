@@ -42,9 +42,63 @@ Final CamCode DOM will NOT use the console prompt,
 I am only using that to debug.
 */
 
+/*
+   _|_|_|    _|_|_|  
+ _|        _|        
+ _|        _|        
+ _|        _|        
+   _|_|_|    _|_|_|
+*/
+
+// TODO: findFiles()
+//    Gather page parameters and use post fetch to get required files.
 function findFiles() {
   updateConsole("CamCode Currently Nonfunctional Sorry :(");
   return;
+}
+
+/*
+_|_|_|  _|_|_|_|  _|      _|  
+_|        _|        _|_|  _|_|  
+_|        _|_|_|    _|  _|  _|  
+_|        _|        _|      _|  
+  _|_|_|  _|        _|      _|  
+*/
+
+// TODO: cfmFiles()
+async function cfmFiles() {
+  updateConsole("CFM Currently Nonfunctional Sorry :(");
+  let brm = cfmGetBuildingRoom(); //brm[0] = building, brm[1] = room
+  updateConsole(brm[0] + " " + brm[1]);
+
+  let abbrev = getAbbrev(brm[0]);
+
+  let files = await cfmGetFiles(abbrev, brm[1]);
+
+  updateConsole(files.names);
+  return;
+}
+
+async function cfmGetFiles(abbrev, rm) {
+  return await fetch('cfm', {
+    method: 'POST',
+    body: JSON.stringify({
+      abbrev: abbrev,
+      room_number: rm
+    })
+  })
+  .then((response) => response.json())
+  .then((json) => {return json;});
+};
+
+function cfmGetBuildingRoom(){
+  let bl = document.getElementById('building_list');
+  let rl = document.getElementById('room_list');;
+  //return [bl.value, rl.value];
+  let building = bl.options[bl.selectedIndex].text;
+  let room = rl.options[rl.selectedIndex].text;
+
+  return [building, room];
 }
 
 /*
@@ -56,6 +110,12 @@ $$  __$$ |   $$ |   $$ \$$$  $$ |$$ |
 $$ |  $$ |   $$ |   $$ |\$  /$$ |$$ |      
 $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\ 
 \__|  \__|   \__|   \__|     \__|\________|
+
+   _|_|_|    _|_|_|  
+ _|        _|        
+ _|        _|        
+ _|        _|        
+   _|_|_|    _|_|_|
 */
 
 // return hmtl to start config
@@ -156,20 +216,30 @@ async function setCamCode() {
   }
 
 /*
-CFM STUFF HERE
+   _|_|_|  _|_|_|_|  _|      _|  
+ _|        _|        _|_|  _|_|  
+ _|        _|_|_|    _|  _|  _|  
+ _|        _|        _|      _|  
+   _|_|_|  _|        _|      _|  
 */
 
 // TODO: MAKE THIS WORK IT DOESNT.
 async function updateRoomList() {
-  let rl = document.querySelector('.program_board .program_guts .room_List');
+  let rl = document.querySelector('.program_board .program_guts .rmSelect');
+  let rms = document.createElement("Fieldset");
+  rms.classList.add('rmSelect');
+
+  let set_inner_html = `<select id="room_list">`;
+
   let sel_building = await getBuildingSelection();
   let new_rl = await getRooms(sel_building);
-  for(var i in rl) {
-    set_inner_html += `<option value=${i}>${rl[i]}</option>`;
+  
+  for(var i in new_rl) {
+    set_inner_html += `<option value=${new_rl[i]}>${new_rl[i]}</option>`;
   };
   set_inner_html += '</select>';
-  roomSelect.innerHTML = `<legend>Choose Rooms(s): </legend> ${set_inner_html}`;
-
+  rms.innerHTML = `<legend>Choose Rooms(s): </legend> ${set_inner_html}`;
+  rl.replaceWith(rms);
   return;
 }
 
@@ -183,7 +253,7 @@ async function setCrestronFile() {
 
   // Get Building List
   let buildingSelect = document.createElement("Fieldset");
-  let set_inner_html = '<select id="building_List" onchange="updateRoomList()">';
+  let set_inner_html = '<select id="building_list" onchange="updateRoomList()">';
   let bl = await getBuildingList();
   for(var i in bl) {
     set_inner_html += `<option value=${i}>${bl[i]}</option>`;
@@ -194,8 +264,9 @@ async function setCrestronFile() {
   // Get room list based on selected building
   // might need to be a seperate function so it updates on new building selections.
   let roomSelect = document.createElement("Fieldset");
-  set_inner_html = '<select id="room_List">';
-  let selected_building = document.getElementById('building_list');
+  roomSelect.classList.add('rmSelect');
+  set_inner_html = '<select id="room_list">';
+  //let selected_building = document.getElementById('building_list');
   let rl = await getRooms('Agriculture');
   for(var i in rl) {
     set_inner_html += `<option value=${i}>${rl[i]}</option>`;
@@ -212,7 +283,7 @@ async function setCrestronFile() {
   // html options: menu
   let bottomMenu = document.createElement("fieldset");
   bottomMenu.classList.add('bottomMenu');
-  bottomMenu.innerHTML = '<legend>Options: </legend> \n <menu> \n <button id="run" onclick="findFiles()"> Generate Files </button> \n <button id="clearCon" onclick="clearConsole()"> Clear Console </button> \n <button id="reset" onclick="resetCamCode()"> Reset </button> \n </menu>';
+  bottomMenu.innerHTML = '<legend>Options: </legend> \n <menu> \n <button id="run" onclick="cfmFiles()"> Generate Files </button> \n <button id="clearCon" onclick="clearConsole()"> Clear Console </button> \n <button id="reset" onclick="resetCamCode()"> Reset </button> \n </menu>';
 
   main_container.appendChild(buildingSelect);
   main_container.appendChild(roomSelect);

@@ -22,32 +22,24 @@ ChkrBrd
     - get_lsm(buffer) -> String
     - construct_headers() -> HeaderMap
 
+CamCode
+    - get_cfm(buffer) -> String
+
 Jacks TODO 7/2/2024
-updated 7/17/2024
+updated 7/31/2024
 
  - JackNet 
-        - potential scoping issues
-    [ ]  read doc on lambda_http to handle ping request response.
-    [x]  pull data on body store in struct
-    [x]  reference struct to build hostnames w. campus.json
-    [x]  ping hosts
-         - ping c code doesnt support windows
-         - permission issues w/ unix
-         - looking into writing ping in rust
-    [ ]  return boolean outputs of found or not.
-         - type: string w/ json formatting.
-         - ONCE THIS WORKS PROPOGATE TO USE MULTIPLE WORKS
     [ ]  CLI with JackNet
          - powershell istream doesnt work
-    [ ]  CamCode (see curtis)
-         [ ] Make DOM
-         [ ] prints out info on config _PROTOTYPE ITERATE_
-            - block for proj1 
-            - block for proj2
-         [ ] get compiled Q-SYS files to grep binary patterns
-         [ ] Build an Error Log for server to pull back output,
-            [ ] text file, return error and export it
-            [ ] get logic that logs the buffer for 404 requests
+ - CamCode (see curtis)
+    [ ] Make DOM
+    [ ] prints out info on config _PROTOTYPE ITERATE_
+       - block for proj1 
+       - block for proj2
+    [ ] get compiled Q-SYS files to grep binary patterns
+    [ ] Build an Error Log for server to pull back output,
+       [ ] text file, return error and export it
+       [ ] get logic that logs the buffer for 404 requests
  */
 
 use jn_server::ThreadPool;
@@ -112,18 +104,19 @@ fn handle_connection(mut stream: TcpStream) {
 
     stream.read(&mut buffer).unwrap();
 
-    let get_index = b"GET / HTTP/1.1\r\n";
-    let get_css = b"GET /page.css HTTP/1.1\r\n";
-    let get_cc = b"GET /camcode.js HTTP/1.1\r\n";
-    let get_cb = b"GET /checkerboard.js HTTP/1.1\r\n";
-    let get_jn = b"GET /jacknet.js HTTP/1.1\r\n";
+    let get_index   = b"GET / HTTP/1.1\r\n";
+    let get_css     = b"GET /page.css HTTP/1.1\r\n";
+    let get_cc      = b"GET /camcode.js HTTP/1.1\r\n";
+    let get_cb      = b"GET /checkerboard.js HTTP/1.1\r\n";
+    let get_jn      = b"GET /jacknet.js HTTP/1.1\r\n";
     let get_jn_json = b"GET /campus.json HTTP/1.1\r\n";
     let get_cb_json = b"GET /roomChecks.json HTTP/1.1\r\n";
-    let get_main = b"GET /main.js HTTP/1.1\r\n";
+    let get_main    = b"GET /main.js HTTP/1.1\r\n";
     
-    let ping = b"POST /ping HTTP/1.1\r\n";
-    let schedule = b"POST /schedule HTTP/1.1\r\n";
-    let lsm = b"POST /lsm HTTP/1.1\r\n";
+    let ping        = b"POST /ping HTTP/1.1\r\n";
+    let schedule    = b"POST /schedule HTTP/1.1\r\n";
+    let lsm         = b"POST /lsm HTTP/1.1\r\n";
+    let cfm         = b"POST /cfm HTTP/1.1\r\n";
 
     let (status_line, contents, filename);
     if buffer.starts_with(b"GET") {
@@ -158,6 +151,8 @@ fn handle_connection(mut stream: TcpStream) {
                 ("HTTP/1.1 200 OK", get_room_schedule(&mut buffer))
             } else if buffer.starts_with(lsm) {
                 ("HTTP/1.1 200 OK", get_lsm(&mut buffer))
+            } else if buffer.starts_with(cfm) {
+                ("HTTP/1.1 200 OK", get_cfm(&mut buffer))
             } else {
                 ("HTTP/1.1 404 NOT FOUND", String::from("Empty"))
             };
@@ -414,3 +409,26 @@ fn construct_headers() -> HeaderMap {
     return header_map;
 }
 
+/*
+ $$$$$$\                           $$$$$$\                  $$\           
+$$  __$$\                         $$  __$$\                 $$ |          
+$$ /  \__| $$$$$$\  $$$$$$\$$$$\  $$ /  \__| $$$$$$\   $$$$$$$ | $$$$$$\  
+$$ |       \____$$\ $$  _$$  _$$\ $$ |      $$  __$$\ $$  __$$ |$$  __$$\ 
+$$ |       $$$$$$$ |$$ / $$ / $$ |$$ |      $$ /  $$ |$$ /  $$ |$$$$$$$$ |
+$$ |  $$\ $$  __$$ |$$ | $$ | $$ |$$ |  $$\ $$ |  $$ |$$ |  $$ |$$   ____|
+\$$$$$$  |\$$$$$$$ |$$ | $$ | $$ |\$$$$$$  |\$$$$$$  |\$$$$$$$ |\$$$$$$$\ 
+ \______/  \_______|\__| \__| \__| \______/  \______/  \_______| \_______|
+*/
+
+// get_cfm - return the contents of a folder to the user
+fn get_cfm(buffer: &mut [u8]) -> String {
+    println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
+ 
+    let mut buff_copy: String = String::from_utf8_lossy(&buffer[..])
+        .to_string();
+
+    let (i, j) = find_curls(&buff_copy);
+    let buff_copy = &buff_copy[i..j+1];
+
+    println!("Buffer Output:\n {}", buff_copy);
+}
