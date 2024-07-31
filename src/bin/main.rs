@@ -48,10 +48,11 @@ use jn_server::Building;
 use jn_server::PingRequest;
 
 use jn_server::CFMRequest;
+use jn_server::CFMRoomRequest;
 
 use jn_server::jp::{ping_this};
 
-use lambda_http::Body;
+//use lambda_http::Body;
 
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -120,7 +121,10 @@ fn handle_connection(mut stream: TcpStream) {
     let ping        = b"POST /ping HTTP/1.1\r\n";
     let schedule    = b"POST /schedule HTTP/1.1\r\n";
     let lsm         = b"POST /lsm HTTP/1.1\r\n";
-    let cfm         = b"POST /cfm HTTP/1.1\r\n";
+    let cfm_build   = b"POST /cfm_build HTTP/1.1\r\n";
+    let cfm_build_r = b"POST /cfm_build_r HTTP/1.1\r\n";
+    let cfm_dir     = b"POST /cfm_dir HTTP/1.1\r\n";
+    
 
     let (status_line, contents, filename);
     if buffer.starts_with(b"GET") {
@@ -155,7 +159,11 @@ fn handle_connection(mut stream: TcpStream) {
                 ("HTTP/1.1 200 OK", get_room_schedule(&mut buffer))
             } else if buffer.starts_with(lsm) {
                 ("HTTP/1.1 200 OK", get_lsm(&mut buffer))
-            } else if buffer.starts_with(cfm) {
+            } else if buffer.starts_with(cfm_build) {
+                ("HTTP/1.1 200 OK", cfm_build_dir(&mut buffer))
+            } else if buffer.starts_with(cfm_build_r) {
+                ("HTTP/1.1 200 OK", cfm_build_rm(&mut buffer))
+            } else if buffer.starts_with(cfm_dir) {
                 ("HTTP/1.1 200 OK", get_cfm(&mut buffer))
             } else {
                 ("HTTP/1.1 404 NOT FOUND", String::from("Empty"))
@@ -422,6 +430,82 @@ $$ |  $$\ $$  __$$ |$$ | $$ | $$ |$$ |  $$\ $$ |  $$ |$$ |  $$ |$$   ____|
  \______/  \_______|\__| \__| \__| \______/  \______/  \_______| \_______|
 */
 
+//   cfm_build - get directories for dropdown
+fn cfm_build_dir(buffer: &mut [u8]) -> String {
+    let mut final_dirs: Vec<String> = Vec::new();
+    // Check for CFM_Code Directory
+    if dir_exists(CFM_DIR) {
+        println!("SUCCESS: CFM_Code Directory Found");
+    }
+    let cfm_dirs = get_dir_contents(CFM_DIR);
+    // iterate over cfm_dirs and snip ../CFM_Code/
+    // DO NOT INCLUDE DIRS w/ '_'
+    let cut_index = CFM_DIR.len();
+    for (i, &ref item) in cfm_dirs.iter().enumerate() {
+        if (&item[(cut_index + 1)..]).to_string().starts_with('_') {
+            continue;
+        }
+        else {
+            final_dirs.push((&item[(cut_index + 1)..]).to_string());
+        }
+    };
+    // return file
+    let json_return = json!({
+        "dir_names": final_dirs
+    });
+    println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
+    json_return.to_string()
+}
+
+// cfm_build_rm()
+//   - returns a list of rooms from the selected buildingoption
+fn cfm_build_rm(buffer: &mut [u8]) -> String {
+    let mut final_dirs: Vec<String> = Vec::new();
+
+    // Check for CFM_Code Directory
+    if dir_exists(CFM_DIR) {
+        println!("SUCCESS: CFM_Code Directory Found");
+    }
+
+    println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
+ 
+    // Get User Parameters
+    let mut buff_copy: String = String::from_utf8_lossy(&buffer[..])
+        .to_string();
+
+    let (i, j) = find_curls(&buff_copy);
+    let buff_copy = &buff_copy[i..j+1];
+
+    println!("Buffer Output:\n {}", buff_copy);
+
+    let cfmRms: CFMRoomRequest = serde_json::from_str(buff_copy)
+        .expect("Fatal Error 39: Failed to parse cfm room request.");
+    
+    let mut path = String::from(CFM_DIR.clone());
+    path.push('/');
+    path.push_str(&cfmRms.building);
+
+    let cfm_room_dirs = get_dir_contents(&path);
+
+    let cut_index = CFM_DIR.len() + cfmRms.building.len();
+    for (i, &ref item) in cfm_room_dirs.iter().enumerate() {
+        if (&item[(cut_index + 2)..]).to_string().starts_with('_') {
+            continue;
+        }
+        else {
+            final_dirs.push((&item[(cut_index + 1)..]).to_string());
+        }
+    };
+
+    // return file
+    let json_return = json!({
+        "rooms": final_dirs
+    });
+    println!("----\n------\nEND OF cfm_build_rm() FUNCTION\n------\n-----\n");
+
+    json_return.to_string()
+}
+
 // get_cfm - return the contents of a folder to the user
 fn get_cfm(buffer: &mut [u8]) -> String {
     println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
@@ -481,14 +565,25 @@ fn find_files(building: String, abbrev: String, rm: String) -> Vec<String> {
 
     if dir_exists(&path) {
         println!("SUCCESS 2: ROOM DIRECTORY FOUND");
-        let paths = fs::read_dir(&path).unwrap();
-        for p in paths {
-            println!("{}\n", p.as_ref().unwrap().path().display());
-            strings.push(p.unwrap().path().display().to_string());
-        }
+        // let paths = fs::read_dir(&path).unwrap();
+        // for p in paths {
+        //     println!("{}\n", p.as_ref().unwrap().path().display());
+        //     strings.push(p.unwrap().path().display().to_string());
+        // }
+        strings = get_dir_contents(&path);
         return strings;
     }
     
     println!("Fatal Error 4: ROOM DIRECTORY DOES NOT EXIST");
     return strings;
+}
+
+fn get_dir_contents(path: &str) -> Vec<String> {
+    let mut strings = Vec::new();
+    let paths = fs::read_dir(&path).unwrap();
+    for p in paths {
+        println!("{}\n", p.as_ref().unwrap().path().display());
+        strings.push(p.unwrap().path().display().to_string());
+    }
+    return strings
 }
