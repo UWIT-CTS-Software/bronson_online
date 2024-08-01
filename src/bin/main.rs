@@ -10,11 +10,12 @@
 Backend
     - main()
     - handle_connection(stream: TcpStream)
+    - process_buffer(buffer: mut [u8]) -> String
+    - find_curls(s) -> (usize, usize)
+    - print_type_of<T>(_: &T)
 
 JackNet
     - execute_ping(buffer) -> String
-    - print_type_of<T>(_: &T)
-    - find_curls(s) -> (usize, usize)
     - gen_hostnames(sel_devs, sel_b, bd) -> Vec<String>
 
 ChkrBrd
@@ -23,7 +24,15 @@ ChkrBrd
     - construct_headers() -> HeaderMap
 
 CamCode
+    - cfm_build_dir(buffer) -> String
+    - cfm_build_rm(buffer) -> String
     - get_cfm(buffer) -> String
+    - get_cfm_file(buffer) -> String
+    - dir_exists(path: &str) -> bool
+    - is_this_file(path: &str) -> bool
+    - is_this_dir(path: &str) -> bool
+    - find_files(building: String, rm: String) -> Vec<String>
+    - get_dir_contents(path: &str) -> Vec<String>
 
 Jacks TODO 7/2/2024
 updated 7/31/2024
@@ -118,12 +127,16 @@ fn handle_connection(mut stream: TcpStream) {
     let get_cb_json = b"GET /roomChecks.json HTTP/1.1\r\n";
     let get_main    = b"GET /main.js HTTP/1.1\r\n";
     
+    // Jacknet
     let ping        = b"POST /ping HTTP/1.1\r\n";
+    // Checkerboard
     let schedule    = b"POST /schedule HTTP/1.1\r\n";
     let lsm         = b"POST /lsm HTTP/1.1\r\n";
+    // CamCode - CFM Requests
     let cfm_build   = b"POST /cfm_build HTTP/1.1\r\n";
     let cfm_build_r = b"POST /cfm_build_r HTTP/1.1\r\n";
     let cfm_dir     = b"POST /cfm_dir HTTP/1.1\r\n";
+    let cfm_file    = b"POST /cfm_file HTTP/1.1\r\n";
     
 
     let (status_line, contents, filename);
@@ -159,13 +172,15 @@ fn handle_connection(mut stream: TcpStream) {
                 ("HTTP/1.1 200 OK", get_room_schedule(&mut buffer))
             } else if buffer.starts_with(lsm) {
                 ("HTTP/1.1 200 OK", get_lsm(&mut buffer))
-            } else if buffer.starts_with(cfm_build) {
+            } else if buffer.starts_with(cfm_build) { // CC-CFM
                 ("HTTP/1.1 200 OK", cfm_build_dir(&mut buffer))
             } else if buffer.starts_with(cfm_build_r) {
                 ("HTTP/1.1 200 OK", cfm_build_rm(&mut buffer))
             } else if buffer.starts_with(cfm_dir) {
                 ("HTTP/1.1 200 OK", get_cfm(&mut buffer))
-            } else {
+            } else if buffer.starts_with(cfm_file) {
+                ("HTTP/1.1 200 OK", get_cfm_file(&mut buffer))
+            }else {
                 ("HTTP/1.1 404 NOT FOUND", String::from("Empty"))
             };
     } else {
@@ -189,6 +204,43 @@ fn handle_connection(mut stream: TcpStream) {
     println!("Request: {}", str::from_utf8(&buffer).unwrap());
 }
 
+// Preps the Buffer to be parsed as json string
+fn process_buffer(buffer: &mut [u8]) -> String {
+    println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
+    let mut buff_copy: String = String::from_utf8_lossy(&buffer[..])
+        .to_string();
+
+    // functon that returns first '{' index location and it's '}' location
+    let (i, j) = find_curls(&buff_copy);
+    let buff_copy  = &buff_copy[i..j+1];
+
+    println!("Buffer Output:\n {}", buff_copy);
+    //String::from("Test")
+    buff_copy.to_string()
+}
+
+// used to trim excess info off of the buffer
+fn find_curls(s: &String) -> (usize, usize) {
+    let bytes = s.as_bytes();
+    let mut i_return: usize = 0;
+    
+    for (i, &item) in bytes.iter().enumerate() {
+        if item == b'{' {
+            i_return = i;
+        }
+        if item == b'}' {
+            return (i_return, i);
+        }
+    }
+    (s.len(), s.len())
+}
+
+// Debug function
+//   Prints the type of a variable
+fn print_type_of<T>(_: &T) {
+    println!("{}", std::any::type_name::<T>());
+}
+
 /*
    $$$$$\                     $$\       $$\   $$\            $$\     
    \__$$ |                    $$ |      $$$\  $$ |           $$ |    
@@ -205,23 +257,15 @@ TODO:
 
 // call ping_this executible here
 fn execute_ping(buffer: &mut [u8]) -> String {
-    println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
-
-    let bs: BuildingData = serde_json::from_str(CAMPUS_STR)
-        .expect("Fatal Error: Failed to build building data structs");
-
-    let mut buff_copy: String = String::from_utf8_lossy(&buffer[..])
-        .to_string();
-
-    // functon that returns first '{' index location and it's '}' location
-    let (i, j) = find_curls(&buff_copy);
-    let buff_copy = &buff_copy[i..j+1];
-
-
-    println!("Buffer Output:\n {}", buff_copy);
-    let pr: PingRequest = serde_json::from_str(buff_copy)
+    // Prep Request into Struct
+    let buff_copy = process_buffer(buffer);
+    let pr: PingRequest = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 2: Failed to parse ping request");
     println!("Ping Request: \n {:?}", pr);
+
+    // BuildingData Struct
+    let bs: BuildingData = serde_json::from_str(CAMPUS_STR)
+        .expect("Fatal Error: Failed to build building data structs");
 
     // Generate the hostnames here
     let hostnames: Vec<String> = gen_hostnames(
@@ -233,7 +277,6 @@ fn execute_ping(buffer: &mut [u8]) -> String {
 
     // Write for loop through hostnames
     let mut hn_ips: Vec<String> = Vec::new();
-
     for hn in hostnames.clone() {
         println!("Hostname: {}", hn);
         let hn_ip = ping_this(hn);
@@ -256,27 +299,7 @@ fn execute_ping(buffer: &mut [u8]) -> String {
     json_return.to_string()
 }
 
-// Debug function
-//   Prints the type of a variable
-fn print_type_of<T>(_: &T) {
-    println!("{}", std::any::type_name::<T>());
-}
 
-// used to trim excess info off of the buffer
-fn find_curls(s: &String) -> (usize, usize) {
-    let bytes = s.as_bytes();
-    let mut i_return: usize = 0;
-    
-    for (i, &item) in bytes.iter().enumerate() {
-        if item == b'{' {
-            i_return = i;
-        }
-        if item == b'}' {
-            return (i_return, i);
-        }
-    }
-    (s.len(), s.len())
-}
 
 // this could change alot,
 // we want to implement device counts into the campus.json/csv
@@ -358,7 +381,6 @@ fn gen_hostnames(
             }       
         }
     }
-
     // Return value
     hostnames
 }
@@ -430,8 +452,27 @@ $$ |  $$\ $$  __$$ |$$ | $$ | $$ |$$ |  $$\ $$ |  $$ |$$ |  $$ |$$   ____|
  \______/  \_______|\__| \__| \__| \______/  \______/  \_______| \_______|
 */
 
-//   cfm_build - get directories for dropdown
+
+/*
+   _|_|_|    _|_|_|  
+ _|        _|        
+ _|        _|        
+ _|        _|        
+   _|_|_|    _|_|_|
+*/
+
+
+/*
+_|_|_|  _|_|_|_|  _|      _|  
+_|        _|        _|_|  _|_|  
+_|        _|_|_|    _|  _|  _|  
+_|        _|        _|      _|  
+  _|_|_|  _|        _|      _|  
+*/
+
+//   cfm_build_dir() - post BUILDING dropdown
 fn cfm_build_dir(buffer: &mut [u8]) -> String {
+    // Vars
     let mut final_dirs: Vec<String> = Vec::new();
     // Check for CFM_Code Directory
     if dir_exists(CFM_DIR) {
@@ -443,7 +484,9 @@ fn cfm_build_dir(buffer: &mut [u8]) -> String {
     let cut_index = CFM_DIR.len();
     for (i, &ref item) in cfm_dirs.iter().enumerate() {
         if (&item[(cut_index + 1)..]).to_string().starts_with('_') {
-            continue;
+            continue; // ignore directories starting with '_'
+        } else if (is_this_file(&item)) {
+            continue; // ignore files
         }
         else {
             final_dirs.push((&item[(cut_index + 1)..]).to_string());
@@ -457,8 +500,7 @@ fn cfm_build_dir(buffer: &mut [u8]) -> String {
     json_return.to_string()
 }
 
-// cfm_build_rm()
-//   - returns a list of rooms from the selected buildingoption
+// cfm_build_rm() - post ROOM dropdown
 fn cfm_build_rm(buffer: &mut [u8]) -> String {
     let mut final_dirs: Vec<String> = Vec::new();
 
@@ -467,30 +509,24 @@ fn cfm_build_rm(buffer: &mut [u8]) -> String {
         println!("SUCCESS: CFM_Code Directory Found");
     }
 
-    println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
- 
-    // Get User Parameters
-    let mut buff_copy: String = String::from_utf8_lossy(&buffer[..])
-        .to_string();
-
-    let (i, j) = find_curls(&buff_copy);
-    let buff_copy = &buff_copy[i..j+1];
-
-    println!("Buffer Output:\n {}", buff_copy);
-
-    let cfmRms: CFMRoomRequest = serde_json::from_str(buff_copy)
+    // Prep buffer into Room List Request Struct
+    //     - building
+    let mut buff_copy = process_buffer(buffer);
+    let cfmRms: CFMRoomRequest = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 39: Failed to parse cfm room request.");
     
+    // Build Directory
     let mut path = String::from(CFM_DIR.clone());
     path.push('/');
     path.push_str(&cfmRms.building);
 
     let cfm_room_dirs = get_dir_contents(&path);
-
     let cut_index = CFM_DIR.len() + cfmRms.building.len();
     for (i, &ref item) in cfm_room_dirs.iter().enumerate() {
         if (&item[(cut_index + 2)..]).to_string().starts_with('_') {
-            continue;
+            continue; // ignore folders starting with '_'
+        } else if (is_this_file(&item)) {
+            continue; // ignore files
         }
         else {
             final_dirs.push((&item[(cut_index + 1)..]).to_string());
@@ -502,38 +538,24 @@ fn cfm_build_rm(buffer: &mut [u8]) -> String {
         "rooms": final_dirs
     });
     println!("----\n------\nEND OF cfm_build_rm() FUNCTION\n------\n-----\n");
-
     json_return.to_string()
 }
 
-// get_cfm - return the contents of a folder to the user
+// get_cfm - generate code (Sends list of files to user)
 fn get_cfm(buffer: &mut [u8]) -> String {
-    println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
- 
-    // Get User Parameters
-    let mut buff_copy: String = String::from_utf8_lossy(&buffer[..])
-        .to_string();
-
-    let (i, j) = find_curls(&buff_copy);
-    let buff_copy = &buff_copy[i..j+1];
-
-    println!("Buffer Output:\n {}", buff_copy);
-
-    // crestron file manager request
+    // crestron file manager request (CFMR)
     //   - building
-    //   - abbrev
     //   - rm
-    let cfmr: CFMRequest = serde_json::from_str(buff_copy)
+    let mut buff_copy: String = process_buffer(buffer);
+    let cfmr: CFMRequest = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 3: Failed to parse cfm request");
-    
-    println!("CFM Request:\n {:?}", cfmr);
     
     // Check for CFM_Code Directory
     if dir_exists(CFM_DIR) {
         println!("SUCCESS: CFM_Code Directory Found");
     }
 
-    let cfm_files = find_files(cfmr.building, cfmr.abbrev, cfmr.rm);
+    let cfm_files = find_files(cfmr.building, cfmr.rm);
 
     // return file
     let json_return = json!({
@@ -546,20 +568,42 @@ fn get_cfm(buffer: &mut [u8]) -> String {
     //return String::from("{names: cfm-test}");
 }
 
+// get_cfm_file() - sends the selected file to the client
+// TODO:
+//    [ ] - store selected file as bytes ?
+//    [ ] - send in json as usual ?
+fn get_cfm_file(buffer: &mut [u8]) -> String {
+    // Requst
+    //    - Filename
+    let mut buff_copy: String = process_buffer(buffer);
+    let cfmr_f: CFMRequest = serde_json::from_str(&buff_copy)
+        .expect("Fatal Error 38: failed to parse filename");
+    
+    if dir_exists(CFM_DIR) {
+        println!("SUCCESS: CFM_Code Directory Found");
+    }
+
+    return String::from("THIS SHOULD BE A FILE")
+}
+
 fn dir_exists(path: &str) -> bool {
     fs::metadata(path).is_ok()
 }
 
-fn find_files(building: String, abbrev: String, rm: String) -> Vec<String> {
+fn is_this_file(path: &str) -> bool {
+    fs::metadata(path).unwrap().is_file()
+}
+
+fn is_this_dir(path: &str) -> bool {
+    fs::metadata(path).unwrap().is_dir()
+}
+
+fn find_files(building: String, rm: String) -> Vec<String> {
     let mut strings = Vec::new();
     let mut path = String::from(CFM_DIR.clone());
     path.push_str("/");
     path.push_str(&building);
-    path.push_str("/");
-    path.push_str(&abbrev);
-    path.push_str(" ");
     path.push_str(&rm);
-    //path.push_str("/");
 
     println!("CFM Debug - Looking for path:\n{:?}", path);
 

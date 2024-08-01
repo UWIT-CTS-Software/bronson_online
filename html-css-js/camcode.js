@@ -79,12 +79,11 @@ _|        _|_|_|    _|  _|  _|
 _|        _|        _|      _|  
   _|_|_|  _|        _|      _|  
 */
-async function cfmGetFiles(building, abbrev, rm) {
+async function cfmGetFiles(building, rm) {
   return await fetch('cfm_dir', {
     method: 'POST',
     body: JSON.stringify({
       building: building,
-      abbrev: abbrev,
       rm: rm
     })
   })
@@ -92,8 +91,8 @@ async function cfmGetFiles(building, abbrev, rm) {
   .then((json) => {return json;});
 };
 
-async function cfmGetFileJson(building, abbrev, rm) {
-  return await cfmGetFiles(building, abbrev, rm)
+async function cfmGetFileJson(building, rm) {
+  return await cfmGetFiles(building, rm)
     .then((value) => {
       return value.names;
     });
@@ -115,13 +114,13 @@ async function cfmFiles() {
   let brm = cfmGetBuildingRoom(); //brm[0] = building, brm[1] = room
   updateConsole(brm[0] + " " + brm[1]);
 
-  let abbrev = await getAbbrev(brm[0]);
+  //let abbrev = await getAbbrev(brm[0]);
 
   let files = [];
   let header = "";
 
   // Get Files (Add Error Check: Room Directory Not Found)
-  let received_filenames = await cfmGetFileJson(brm[0], abbrev, brm[1]);
+  let received_filenames = await cfmGetFileJson(brm[0], brm[1]);
   
   for (var i = 0; i < received_filenames.length; i++) {
     let tmp = received_filenames[i].split("CFM_Code")[1];
@@ -214,7 +213,7 @@ async function setCamCode() {
     //    quauntity
     let speakerSection = document.createElement("fieldset");
     speakerSection.classList.add('speak_sel');
-    set_Inner = '<div> \n <select id="speak_model"><option>JBL Speaker</option><option>2</option></select> <select id="speaker_location"><option>Ceiling</option><option>Whiteboard Wall</option></select> <input type="number"> <button id="new_sel" onclick="newSpkrSection()"> New Field</button> \n </div>';
+    set_Inner = '<div> \n <select id="speak_model"><option>JBL 26CT</option><option>2</option></select> <select id="speaker_location"><option>Ceiling</option><option>Whiteboard Wall</option></select> <input type="number"> <button id="new_sel" onclick="newSpkrSection()"> New Field</button> \n </div>';
     speakerSection.innerHTML = `<legend>Speakers(s):</legend> ${set_Inner}`;
 
     // Mics
@@ -386,7 +385,6 @@ async function setCrestronFile() {
   set_inner_html += await populateDropdown(cfmDirList);
   set_inner_html += '</select>';
   buildingSelect.innerHTML = `<legend>Choose Building(s): </legend> ${set_inner_html}`;
-
 
   // Get room list based on selected building
   let roomSelect = document.createElement("Fieldset");

@@ -150,7 +150,6 @@ pub use crate::jack_ping::jp;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CFMRequest {
 	pub building: String,
-	pub abbrev: String,
 	pub rm: String
 }
 
