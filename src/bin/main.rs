@@ -550,11 +550,10 @@ fn get_cfm(buffer: &mut [u8]) -> String {
     let cfmr: CFMRequest = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 3: Failed to parse cfm request");
     
-    // Check for CFM_Code Directory
+    // Check CFM_Code Directory
     if dir_exists(CFM_DIR) {
         println!("SUCCESS: CFM_Code Directory Found");
     }
-
     let cfm_files = find_files(cfmr.building, cfmr.rm);
 
     // return file
