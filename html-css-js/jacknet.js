@@ -132,7 +132,7 @@ function getSelectedDevices() {
 //   - returns the user-selected building/area
 async function getBuildingSelection() {
     let buildingList = await getBuildingList();
-    let select = document.getElementById('building_List');
+    let select = document.getElementById('building_list');
     if (select.value == "All Buildings") {
         return select.value;
     } else {
@@ -165,15 +165,12 @@ $$$$$$$$\ $$  /\$$\ $$$$$$$  |\$$$$$$  |$$ |       \$$$$  |
                     
 TODO:
 runExport()
-    [ ] - Create a file - "timestamp.csv"
-    [ ] - Load CSV Object into object (Properly)
+    [x] - Create a file - "timestamp.csv"
+    [x] - Load CSV Object into object (Properly)
     [x] - Close and save file.
 setCSVExport(hns, ips, rms)
     [x] - Update the CSV Export Object
     [ ] - ? Maybe, Set CSV Button Opacity (If first search)
-
-
-
 */
 
 function runExport() {
@@ -446,7 +443,7 @@ async function setJackNet() {
     console.log('Switching to jacknet');
     let progGuts = document.querySelector('.program_board .program_guts');
     let main_container = document.createElement('div');
-    main_container.innerHTML = '<p>hello world - jacknet</p>';
+    main_container.innerHTML = '<p>JackNet</p>';
 
     // Make a box for list of buildings
     /* 
@@ -460,7 +457,7 @@ async function setJackNet() {
     // UNcomment this if the fieldset supremecy mindset sucks
     let buildingSelect = document.createElement("fieldset");
     buildingSelect.classList.add('building_List');
-    let set_inner_html = '<select id="building_List"><option>All Buildings</option>';
+    let set_inner_html = '<select id="building_list"><option>All Buildings</option>';
     // TO-DO: add zone options here
     let bl = await getBuildingList();
     for(var i in bl) {
