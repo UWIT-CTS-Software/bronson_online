@@ -1,5 +1,4 @@
-/*
-         _                                                
+/*       _                                                
         | |                            |           o      
   __,   | |  _|_   _  _  _     __    __|    _          ,  
  /  |   |/    |   / |/ |/ |   /  \_ /  |   |/      |  / \_
@@ -66,6 +65,44 @@ async function cfmFiles() {
     setBrowserConsole(header, files);
     return;
 }
+
+// TODO: request specific file
+async function getCFMF(filename, classtype) {
+    updateConsole("Attempting to pull " + filename);
+    let brs = cfmGetBuildingRoom();
+
+    if (classtype == "cfm_dir") {
+        updateConsole("ERRORSelected Directory");
+        // It would be sweet to go into room sub-directories
+        // do that
+        getCFMDir(brs[0], brs[1], filename);
+        return;
+    }
+    
+    let cmff = `/${brs[0]}${brs[1]}/${filename}`;
+
+    let value = await getCFMFile(cmff);
+
+    console.log(value.file_contents);
+    downloadFile(value.file_contents, filename);
+    // console.log(value);
+    // downloadFile(value, filename);
+    //let formData = new FormData();
+    
+    return;
+}
+
+function downloadFile(s, fn) {
+    const blob = new Blob(s, { });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    
+    a.href=url;
+
+    a.download = fn;
+    a.click();
+}
   
 /*
 $$\   $$\ $$$$$$$$\ $$\      $$\ $$\       
@@ -83,7 +120,7 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 // Note:
 // Console Stuff: rows=10, cols=80
 //   MAY need to use something other than textedit
-function setBrowserConsole(header, files) {
+async function setBrowserConsole(header, files) {
     let conObj = document.querySelector('.innerConsole');
   
     // center header
@@ -102,9 +139,52 @@ function setBrowserConsole(header, files) {
   
     // Add Mouse listeners on the rows
     // maybe ! MAYBE hyperlinks?
+
+    /// ALT PRMOPT (fileSelection)
+    let fs = document.querySelector('.fileSelection');
+    let new_fs = document.createElement("fieldset");
+    new_fs.classList.add('fileSelection');
+    new_fs.innerHTML =`
+        <legend>
+            File Selection
+        </legend>
+        <p>
+            ${header}
+        </p>
+        <body>
+            <ol>
+                ${await populateFileList(files)}
+            </ol>
+        </body>
+        `;
+    
+    fs.replaceWith(new_fs);
     return;
 }
 
+// Need to figure out a mechanism to differntiate file types
+async function populateFileList(list) {
+    html = ``;
+    let classtype  = "";
+    for(var i in list) {
+        if(list[i].includes(".zip")) {
+            classtype = "cfm_zip";
+        }
+        else if (list[i].slice(-8).includes(".")) {
+            classtype = "cfm_file";
+        }
+        else {
+            classtype = "cfm_dir";
+        }
+        html += `
+        <li class=${classtype} onclick=\"getCFMF(\'${list[i]}\', \'${classtype}\')\">
+            <p><u>${list[i]}</u></p>
+        </li>\n`;
+    };
+    return html;
+}
+
+//   populateDropdown(list)
 // May want to pull directory for dropdown
 async function populateDropdown(list) {
     //let obj = document.querySelector(className)
@@ -180,6 +260,10 @@ async function setCrestronFile() {
             CamCode (Q-SYS) </button>
         <p>\n</p>`;
   
+    // START cfm_paramContainer
+    let cfm_ParamContainer = document.createElement('div');
+    cfm_ParamContainer.classList.add("cfm_ParamContainer");
+
     // BUILDING Directory Dropdown
     let buildingSelect = document.createElement("Fieldset");
     buildingSelect.classList.add("bdSelect");
@@ -206,18 +290,7 @@ async function setCrestronFile() {
             Choose Rooms(s): 
         </legend> 
         ${set_inner_html}`;
-  
-    // Console Output
-    let consoleOutput = document.createElement("fieldset");
-    consoleOutput.classList.add('consoleOutput');
-    consoleOutput.innerHTML = `
-        <legend> e
-            Console Output: 
-        </legend> 
-        <textarea readonly rows="10" cols ="80" class="innerConsole" name="consoleOutput" spellcheck="false">
-            CamCode_altmode
-        </textarea>`;
-  
+
     // Bottom Menu buttons
     // [ Generate Files ] [ Clear Console ] [ Reset ]
     let bottomMenu = document.createElement("fieldset");
@@ -234,11 +307,50 @@ async function setCrestronFile() {
             <button id="reset" onclick="resetCamCode()"> 
                 Reset </button>
         </menu>`;
+
+    // End cfm_paramContainer
+    cfm_ParamContainer.appendChild(buildingSelect);
+    cfm_ParamContainer.appendChild(roomSelect);
+    cfm_ParamContainer.appendChild(bottomMenu);
+
+    // Start cfm_FileContainer
+    let cfm_FileContainer = document.createElement('div');
+    cfm_FileContainer.classList.add("cfm_FileContainer");
+
+    // File Selection Area
+    let fileSelection = document.createElement("fieldset");
+    fileSelection.classList.add('fileSelection');
+    fileSelection.innerHTML = `
+        <legend>
+            File Selection
+        </legend>
+        <p>
+            Header
+        </p>
+        <ul>
+            <p>file exmaple1<p>
+            <p>file example2<p>
+            <p>file example3<p>
+        </ul>`;
+
+    cfm_FileContainer.appendChild(fileSelection);
+
+    // Console Output
+    let consoleOutput = document.createElement("fieldset");
+    consoleOutput.classList.add('consoleOutput');
+    consoleOutput.innerHTML = `
+        <br>
+        <legend>
+            Console Output: 
+        </legend> 
+        <textarea readonly rows="10" cols ="80" class="innerConsole" name="consoleOutput" spellcheck="false">
+            CamCode_altmode
+        </textarea>`;
   
-    main_container.appendChild(buildingSelect);
-    main_container.appendChild(roomSelect);
-    main_container.appendChild(consoleOutput);
-    main_container.appendChild(bottomMenu);
+    cfm_ParamContainer.appendChild(consoleOutput); // DEBUG
+    
+    main_container.appendChild(cfm_ParamContainer);
+    main_container.appendChild(cfm_FileContainer);
     main_container.classList.add('program_guts');
     progGuts.replaceWith(main_container);
     return;
@@ -254,28 +366,27 @@ async function setCrestronFile() {
 TODO:
     [ ] - idk why i have two functions for each one, thats not needed.
 */
-  
-// cfmGetFiles
-//    "cfm_dir"
-async function cfmGetFiles(building, rm) {
-    return await fetch('cfm_dir', {
+
+// getCFMCodeDirs()
+//    "cfm_build"
+async function getCFMCodeDirs() {
+    return await fetch('cfm_build', {
         method: 'POST',
         body: JSON.stringify({
-            building: building,
-            rm: rm
+            message: 'cfm_build'
         })
     })
     .then((response) => response.json())
     .then((json) => {return json;});
 };
   
-async function cfmGetFileJson(building, rm) {
-    return await cfmGetFiles(building, rm)
+async function getCFMCodeDir(){
+    return await getCFMCodeDirs()
         .then((value) => {
-            return value.names;
+            return value.dir_names;
         });
-}
-  
+};
+
 // getCFMBuildingRooms(sel_building)
 //    "cfm_build_r"
 async function getCFMBuildingRooms(sel_building) {
@@ -295,23 +406,52 @@ async function getCFM_BuildRooms(sb) {
             return value.rooms;
         });
 }
-  
-// getCFMCodeDirs()
-//    "cfm_build"
-async function getCFMCodeDirs() {
-    return await fetch('cfm_build', {
+
+// cfmGetFiles
+//    "cfm_cDir" Crestron File Manager Current Directory
+async function cfmGetFiles(building, rm) {
+    return await fetch('cfm_c_dir', {
         method: 'POST',
         body: JSON.stringify({
-            message: 'cfm_build'
+            building: building,
+            rm: rm
         })
     })
     .then((response) => response.json())
     .then((json) => {return json;});
 };
   
-async function getCFMCodeDir(){
-    return await getCFMCodeDirs()
+async function cfmGetFileJson(building, rm) {
+    return await cfmGetFiles(building, rm)
         .then((value) => {
-            return value.dir_names;
+            return value.names;
         });
+}
+
+// getCFMFile()
+//   "cfm_file"
+async function getCFMFile(filename) {
+    return await fetch('cfm_file', {
+        method: 'POST',
+        body: JSON.stringify({
+            filename: filename
+        })
+    })
+    .then((response) => response.json())
+    .then((json) => {return json;});
+};
+
+// getCFMFile()
+//   "cfm_dir"
+async function getCFMDir(building, rm, dirname) {
+    return await fetch('cfm_dir', {
+        method: 'POST',
+        body: JSON.stringify({
+            building: building,
+            rm: rm,
+            dirname: dirname
+        })
+    })
+    .then((response) => response.json())
+    .then((json) => {return json;});
 };
