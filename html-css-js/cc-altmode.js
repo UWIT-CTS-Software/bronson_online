@@ -8,8 +8,6 @@
                                                   \|      
 
 Originally in camcode.js, accesses a database on the server for crestron room files and allows the user to retreive any they may need.
-
-/*
  
  - cfmFiles()
 
@@ -68,7 +66,7 @@ async function cfmFiles() {
     setBrowserConsole(header, files);
     return;
 }
-
+  
 /*
 $$\   $$\ $$$$$$$$\ $$\      $$\ $$\       
 $$ |  $$ |\__$$  __|$$$\    $$$ |$$ |      
@@ -79,7 +77,34 @@ $$ |  $$ |   $$ |   $$ |\$  /$$ |$$ |
 $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\ 
 \__|  \__|   \__|   \__|     \__|\________|
 */
+
+// CONSOLE REVAMP FUNCTIONS HERE
+//    MAKE A WEIRD SUDO DIRECTORY BROWSER
+// Note:
+// Console Stuff: rows=10, cols=80
+//   MAY need to use something other than textedit
+function setBrowserConsole(header, files) {
+    let conObj = document.querySelector('.innerConsole');
   
+    // center header
+    let numberOfSpaces = 80 - header.length;
+    let new_rows = 1;
+    let newHeader = header.padStart((numberOfSpaces/2), " ");
+    let list = "";
+  
+    for(var i = 0; i < files.length; i++) {
+        list += files[i] + '\n';
+        new_rows += 1;
+    }
+    conObj.value = newHeader + '\n' + list;
+  
+    // Resize Here?
+  
+    // Add Mouse listeners on the rows
+    // maybe ! MAYBE hyperlinks?
+    return;
+}
+
 // May want to pull directory for dropdown
 async function populateDropdown(list) {
     //let obj = document.querySelector(className)
@@ -97,7 +122,7 @@ async function getCFMBuildingSelection() {
     let select = document.getElementById('building_list');
     return select.value;
 }
-
+  
 function cfmGetBuildingRoom(){
     let bl = document.getElementById('building_list');
     let rl = document.getElementById('room_list');;
@@ -220,16 +245,16 @@ async function setCrestronFile() {
 }
 
 /*
-  __        _          _     
- / _|  ___ | |_   ___ | |__  
+ __        _          _     
+/ _|  ___ | |_   ___ | |__  
 | |_  / _ \| __| / __|| '_ \ 
 |  _||  __/| |_ | (__ | | | |
 |_|   \___| \__| \___||_| |_|    
-
+  
 TODO:
     [ ] - idk why i have two functions for each one, thats not needed.
 */
-
+  
 // cfmGetFiles
 //    "cfm_dir"
 async function cfmGetFiles(building, rm) {
@@ -250,7 +275,7 @@ async function cfmGetFileJson(building, rm) {
             return value.names;
         });
 }
-
+  
 // getCFMBuildingRooms(sel_building)
 //    "cfm_build_r"
 async function getCFMBuildingRooms(sel_building) {
@@ -270,7 +295,7 @@ async function getCFM_BuildRooms(sb) {
             return value.rooms;
         });
 }
-
+  
 // getCFMCodeDirs()
 //    "cfm_build"
 async function getCFMCodeDirs() {
@@ -283,10 +308,10 @@ async function getCFMCodeDirs() {
     .then((response) => response.json())
     .then((json) => {return json;});
 };
-
+  
 async function getCFMCodeDir(){
     return await getCFMCodeDirs()
         .then((value) => {
             return value.dir_names;
         });
-}
+};

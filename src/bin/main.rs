@@ -1,5 +1,4 @@
-/*
-                  _                  
+/*                _                  
                  (_)                 
   _ __ ___   __ _ _ _ __    _ __ ___ 
  | '_ ` _ \ / _` | | '_ \  | '__/ __|
@@ -121,6 +120,7 @@ fn handle_connection(mut stream: TcpStream) {
     let get_index   = b"GET / HTTP/1.1\r\n";
     let get_css     = b"GET /page.css HTTP/1.1\r\n";
     let get_cc      = b"GET /camcode.js HTTP/1.1\r\n";
+    let get_ccalt   = b"GET /cc-altmode.js HTTP/1.1\r\n";
     let get_cb      = b"GET /checkerboard.js HTTP/1.1\r\n";
     let get_jn      = b"GET /jacknet.js HTTP/1.1\r\n";
     let get_jn_json = b"GET /campus.json HTTP/1.1\r\n";
@@ -148,6 +148,8 @@ fn handle_connection(mut stream: TcpStream) {
                 ("HTTP/1.1 200 OK", "html-css-js/page.css")
             } else if buffer.starts_with(get_cc) {
                 ("HTTP/1.1 200 OK", "html-css-js/camcode.js")
+            } else if buffer.starts_with(get_ccalt) {
+                ("HTTP/1.1 200 OK", "html-css-js/cc-altmode.js")
             } else if buffer.starts_with(get_cb) {
                 ("HTTP/1.1 200 OK", "html-css-js/checkerboard.js")
             } else if buffer.starts_with(get_main) {
