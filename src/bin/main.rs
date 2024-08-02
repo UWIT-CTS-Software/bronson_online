@@ -57,6 +57,7 @@ use jn_server::PingRequest;
 
 use jn_server::CFMRequest;
 use jn_server::CFMRoomRequest;
+use jn_server::CFMRequestFile;
 
 use jn_server::jp::{ping_this};
 
@@ -69,6 +70,9 @@ use std::io::Read;
 use std::net::TcpStream;
 use std::net::TcpListener;
 use std::fs;
+use std::fs::File;
+use std::fs::read;
+use std::path::Path;
 
 use std::str;
 use std::env;
@@ -132,11 +136,14 @@ fn handle_connection(mut stream: TcpStream) {
     // Checkerboard
     let schedule    = b"POST /schedule HTTP/1.1\r\n";
     let lsm         = b"POST /lsm HTTP/1.1\r\n";
+    // CamCode
     // CamCode - CFM Requests
     let cfm_build   = b"POST /cfm_build HTTP/1.1\r\n";
     let cfm_build_r = b"POST /cfm_build_r HTTP/1.1\r\n";
-    let cfm_dir     = b"POST /cfm_dir HTTP/1.1\r\n";
+    let cfm_c_dir   = b"POST /cfm_c_dir HTTP/1.1\r\n";
     let cfm_file    = b"POST /cfm_file HTTP/1.1\r\n";
+    let cfm_dir     = b"POST /cfm_dir HTTP/1.1\r\n";
+
     
 
     let (status_line, contents, filename);
@@ -169,8 +176,8 @@ fn handle_connection(mut stream: TcpStream) {
     } else if buffer.starts_with(b"POST") {
         (status_line, contents) = 
             if buffer.starts_with(ping) {
-                ("HTTP/1.1 200 OK", execute_ping(&mut buffer))
-            } else if buffer.starts_with(schedule) {
+                ("HTTP/1.1 200 OK", execute_ping(&mut buffer)) // JN
+            } else if buffer.starts_with(schedule) { // CB
                 ("HTTP/1.1 200 OK", get_room_schedule(&mut buffer))
             } else if buffer.starts_with(lsm) {
                 ("HTTP/1.1 200 OK", get_lsm(&mut buffer))
@@ -178,11 +185,13 @@ fn handle_connection(mut stream: TcpStream) {
                 ("HTTP/1.1 200 OK", cfm_build_dir(&mut buffer))
             } else if buffer.starts_with(cfm_build_r) {
                 ("HTTP/1.1 200 OK", cfm_build_rm(&mut buffer))
-            } else if buffer.starts_with(cfm_dir) {
+            } else if buffer.starts_with(cfm_c_dir) {
                 ("HTTP/1.1 200 OK", get_cfm(&mut buffer))
             } else if buffer.starts_with(cfm_file) {
                 ("HTTP/1.1 200 OK", get_cfm_file(&mut buffer))
-            }else {
+            } else if buffer.starts_with(cfm_dir) {
+                ("HTTP/1.1 200 OK", get_cfm_dir(&mut buffer))
+            } else {
                 ("HTTP/1.1 404 NOT FOUND", String::from("Empty"))
             };
     } else {
@@ -487,7 +496,7 @@ fn cfm_build_dir(buffer: &mut [u8]) -> String {
     for (i, &ref item) in cfm_dirs.iter().enumerate() {
         if (&item[(cut_index + 1)..]).to_string().starts_with('_') {
             continue; // ignore directories starting with '_'
-        } else if (is_this_file(&item)) {
+        } else if is_this_file(&item) {
             continue; // ignore files
         }
         else {
@@ -514,20 +523,20 @@ fn cfm_build_rm(buffer: &mut [u8]) -> String {
     // Prep buffer into Room List Request Struct
     //     - building
     let mut buff_copy = process_buffer(buffer);
-    let cfmRms: CFMRoomRequest = serde_json::from_str(&buff_copy)
+    let cfm_rms: CFMRoomRequest = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 39: Failed to parse cfm room request.");
     
     // Build Directory
     let mut path = String::from(CFM_DIR.clone());
     path.push('/');
-    path.push_str(&cfmRms.building);
+    path.push_str(&cfm_rms.building);
 
     let cfm_room_dirs = get_dir_contents(&path);
-    let cut_index = CFM_DIR.len() + cfmRms.building.len();
+    let cut_index = CFM_DIR.len() + cfm_rms.building.len();
     for (i, &ref item) in cfm_room_dirs.iter().enumerate() {
         if (&item[(cut_index + 2)..]).to_string().starts_with('_') {
             continue; // ignore folders starting with '_'
-        } else if (is_this_file(&item)) {
+        } else if is_this_file(&item) {
             continue; // ignore files
         }
         else {
@@ -574,18 +583,84 @@ fn get_cfm(buffer: &mut [u8]) -> String {
 //    [ ] - store selected file as bytes ?
 //    [ ] - send in json as usual ?
 fn get_cfm_file(buffer: &mut [u8]) -> String {
-    // Requst
-    //    - Filename
-    let mut buff_copy: String = process_buffer(buffer);
-    let cfmr_f: CFMRequest = serde_json::from_str(&buff_copy)
+    // RequstFile
+    //    - filename
+    let buff_copy: String = process_buffer(buffer);
+    let cfmr_f: CFMRequestFile = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 38: failed to parse filename");
     
     if dir_exists(CFM_DIR) {
         println!("SUCCESS: CFM_Code Directory Found");
     }
 
+    // build_path
+    let mut path_raw = String::from(CFM_DIR.clone());
+    path_raw.push_str(&cfmr_f.filename);
+    println!("Filename Path:\n {:?}", &path_raw);
+
+    // Check for file
+    if dir_exists(&path_raw) {
+        println!("SUCCESS: FILE Found");
+    }
+
+    // idk send it as bytes
+
+    let path = Path::new(&path_raw);
+    let display = path.display();
+
+    let mut file = match File::open(&path) {
+        Err(why) => panic!("couldn't open 1{}: {}", display, why),
+        Ok(file) => file,
+    };
+
+    let mut s: Vec<u8> = read(&path)
+        .expect("couldn't open 1");
+    
+    // match file.read(&mut s) {
+    //     Err(why) => panic!("couldn't read {}: {}", display, why),
+    //     Ok(_)    => print!("{} contains:\n{}", display, s),
+    // };
+
+    let json_return = json!({
+        "file_contents": s
+    });
+
+    //return String::from("THIS SHOULD BE A FILE");
+    json_return.to_string()
+    //return file
+}
+
+// get_cfm_file() - sends the selected file to the client
+// TODO:
+//    [ ] - store selected file as bytes ?
+//    [ ] - send in json as usual ?
+fn get_cfm_dir(buffer: &mut [u8]) -> String {
+    // RequstFile
+    //    - building
+    //    - rm
+    //    - filename
+    let buff_copy: String = process_buffer(buffer);
+    let cfmr_f: CFMRequestFile = serde_json::from_str(&buff_copy)
+        .expect("Fatal Error 38: failed to parse filename");
+    if dir_exists(CFM_DIR) {
+        println!("SUCCESS: CFM_Code Directory Found");
+    }
+
+    // build_path
+    let mut path = String::from(CFM_DIR.clone());
+    // path.push('/');
+    // path.push_str(&cfmr_f.building);
+    // path.push_str(&cfmr_f.rm);
+    // path.push('/');
+    path.push_str(&cfmr_f.filename);
+
+    if dir_exists(&path) {
+        println!("SUCCESS: FILE Found");
+    }
+
     return String::from("THIS SHOULD BE A FILE")
 }
+
 
 fn dir_exists(path: &str) -> bool {
     fs::metadata(path).is_ok()

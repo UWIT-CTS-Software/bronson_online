@@ -157,3 +157,8 @@ pub struct CFMRequest {
 pub struct CFMRoomRequest {
 	pub building: String
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CFMRequestFile {
+	pub filename: String
+}

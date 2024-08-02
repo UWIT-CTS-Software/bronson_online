@@ -22,35 +22,46 @@ class Cookie {
 function setChecker() {
 
   console.log('Switching to checkerboard');
-  let progGuts = document.querySelector('.program_board .program_guts');
-
-  let main_container = document.createElement('div');
-  main_container.innerHTML = '<p>hello world - checkerboard</p>';
+  let prog_guts = document.querySelector('.program_board .program_guts');
 
   var base_time = new Time;
   base_time.setTime("2024-06-01");
 
-  let devSelect = document.createElement("fieldset");
-  devSelect.classList.add('devSelect');
-  devSelect.innerHTML = '<legend>Choose Devices to Search For: </legend> \n <input class="cbDev" type ="checkbox" id="z1" name="dev" value="Zone 1" /> \n <label for="z1"> Zone 1 </label><br> \n <input class="cbDev" type="checkbox" id="z2" name="dev" value="Zone 2" /> \n <label for="z2">Zone 2</label><br> \n <input class="cbDev" type="checkbox" id="z3" name="dev" value="Zone 3" /> \n <label for="z3">Zone 3</label><br> \n <input class="cbDev" type="checkbox" id="z4" name="dev" value="Zone 4" /> \n <label for="z4">Zone 4</label><br>\n';
+  let body_container = document.createElement("div");
+  body_container.classList.add("largeContainer");
 
-  // log progress (use tag progress)
+  let map_select = document.createElement("fieldset");
+  map_select.classList.add('mapSelect');
+  map_select.innerHTML = '<legend>Select Zone: </legend> \n \
+                          <img src ="uw-laramie-campus-zones.jpg" style="width:100%;height:auto" usemap="#zonemap"> \n \
+                          <map name="zonemap"> \n \
+                            <area shape="poly" coords="70,480,620,478,618,535,769,560,769,630,448,641,451,867,230,870,233,960,124,960,127,806,183,809,188,647,68,647" alt="Test" onclick="myFunc()"> \n \
+                          </map>';
 
-  // Console Output
-  let consoleOutput = document.createElement("fieldset");
-  consoleOutput.classList.add('consoleOutput');
-  consoleOutput.innerHTML = '<legend> Console Output: </legend> \n <textarea readonly rows="10" cols ="80" class="innerConsole" name="consoleOutput" spellcheck="false"> Console: Example </textarea>';
+  let control_container = document.createElement("div");
+  control_container.classList.add("mediumContainer");
 
   // Bottom Menu buttons
   // html options: menu
-  let bottomMenu = document.createElement("fieldset");
-  bottomMenu.classList.add('bottomMenu');
-  bottomMenu.innerHTML = `<legend>Options: </legend> \n <menu> \n <button id="test" onclick="getRoomChecks()">Test</button> \n <button id="print" onclick="printToConsole()">Print</button> \n </menu>`;
+  let button_menu = document.createElement("fieldset");
+  button_menu.classList.add('buttonRow');
+  button_menu.innerHTML = '<legend>Options: </legend> \n <menu> \n <button id="roomSchedule" onclick="getRoomSchedule()">Room Schedule</button> \n <button id="roomChecks" onclick="getRoomChecks()">Room Checks</button> \n <button id="print" onclick="printToConsole()">Print</button> \n </menu>';
 
-  main_container.append(devSelect, consoleOutput, bottomMenu);
-  main_container.classList.add('program_guts');
-  progGuts.replaceWith(main_container);
+  // Console Output
+  let console_output = document.createElement("fieldset");
+  console_output.classList.add('console');
+  console_output.innerHTML = '<legend> Console Output: </legend> \n <textarea readonly rows="35" cols ="70" class="innerConsole" name="consoleOutput" spellcheck="false"> Console: Example </textarea>';
+
+  control_container.append(button_menu, console_output);
+  body_container.append(map_select, control_container);
+
+  body_container.classList.add('program_guts');
+  prog_guts.replaceWith(body_container);
   return;
+}
+
+function myFunc() {
+    console.log("Click");
 }
 
 async function getRoomChecks() {
@@ -73,7 +84,7 @@ async function cbSearch(init_time, end_time, cookie) {
     };
     xhr.send(); */
 
-    response = await fetch('lsm', {
+    let response = await fetch('lsm', {
         method: "POST",
         body: JSON.stringify({
             start_time: init_time,
@@ -85,8 +96,29 @@ async function cbSearch(init_time, end_time, cookie) {
     return;
 }
 
+async function getRoomSchedule() {
+    let zones = document.getElementsByName('dev');
+    let zone_array = [];
+
+    for (var i=0; i<zones.length; i++) {
+        if (zones[i].checked) {
+            zone_array.push(zones[i].id);
+        }
+    }
+
+    let response = await fetch('schedule', {
+        method: "POST",
+        body: JSON.stringify({
+            zones: zone_array,
+        })
+    });
+    console.log(response);
+
+    return;
+}
+
 function printToConsole() {
-    let str = 'awginearhoi5nh345980uq3o4hnaerhklq3-40haekbkln   23y09jearhbjn   234t09jq3rhoinq34y09'
+    let str = 'awginearhoi5nh345980uq3o4hnae\nrhklq3-40haekbkln   23y09jearhbjn   234t09jq3rhoinq34y09'
     let console = document.querySelector('.innerConsole');
     let inner = console.value.substring(0, console.value.length);
     for (var i=0; i<20; ++i) {
