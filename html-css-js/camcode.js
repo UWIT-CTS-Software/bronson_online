@@ -33,6 +33,14 @@ Q-SYS has a multitude of modules and we will be retrieving these modules based o
 NOTE:
 Final CamCode DOM will NOT use the console prompt,
 I am only using that to debug.
+
+flavors
+sml med large xl-aud
+
+large
+2 proj or 4 lcd
+
+med
 */
 
 // TODO: findFiles()
@@ -52,6 +60,8 @@ $$ |  $$ |   $$ |   $$ |\$  /$$ |$$ |
 $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\ 
 \__|  \__|   \__|   \__|     \__|\________|
 */
+
+
 
 function hLegend(text) {
   return `
@@ -279,4 +289,4 @@ async function setCamCode() {
     //p.appendChild(select)
     progGuts.replaceWith(main_container);
     return;
-  }
+}
