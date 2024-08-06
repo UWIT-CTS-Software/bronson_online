@@ -224,9 +224,9 @@ fn handle_connection(mut stream: TcpStream) {
         // let f = File::open(contents.clone())
         //     .expect("Reason");
         // let buffer_reader = BufReader::new(f);
-        let buf_content = fs::read_bytes(&contents).unwrap();
+        let buf_content = fs::read(&contents).unwrap();
         let mut contents_inside: String = String::new();
-        contents_inside = unsafe {String::from_utf8_lossy(buf_content)};
+        contents_inside = unsafe { String::from_utf8(buf_content).unwrap() };
         let length = contents.len();
         
         response = format!(
