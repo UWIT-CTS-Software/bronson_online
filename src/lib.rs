@@ -157,3 +157,30 @@ pub struct CFMRequest {
 pub struct CFMRoomRequest {
 	pub building: String
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CFMRequestFile {
+	pub filename: String
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GeneralRequest {
+	pub Request: String,
+	pub Host: String,
+	//pub User-Agent: String, 
+	pub Accept: String,
+	//pub Accept-Language: String,
+	//pub Accept-Encoding: String,
+	pub Referer: String,
+	//pub Content-Type: String,
+	//pub Content-Length: String,
+	pub Origin: String,
+	pub Connection: String,
+	//pub Sec-Fetch-Dest: String,
+	//pub Sec-Fetch-Mode: String,
+	//pub Sec-Fetch-Site: String,
+	pub DNT: String,
+	//pub Sec-GPC: String,
+	pub Priority: String,
+	pub buffer: String
+}
