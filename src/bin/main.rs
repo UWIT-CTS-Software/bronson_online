@@ -50,18 +50,18 @@ updated 7/31/2024
        [ ] get logic that logs the buffer for 404 requests
  */
 
-use jn_server::ThreadPool;
-use jn_server::BuildingData;
-use jn_server::Building;
-use jn_server::PingRequest;
+use server_lib::ThreadPool;
+use server_lib::BuildingData;
+use server_lib::Building;
+use server_lib::PingRequest;
 
-use jn_server::CFMRequest;
-use jn_server::CFMRoomRequest;
-use jn_server::CFMRequestFile;
+use server_lib::CFMRequest;
+use server_lib::CFMRoomRequest;
+use server_lib::CFMRequestFile;
 
-use jn_server::GeneralRequest;
+use server_lib::GeneralRequest;
 
-use jn_server::jp::{ping_this};
+use server_lib::jp::{ping_this};
 
 //use crate::ftp;
 //use suppaftp::FtpStream;
@@ -85,7 +85,7 @@ use std::collections::HashMap;
 
 use std::process::*;
 
-use reqwest::{ Response, header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT, COOKIE }};
+use reqwest::{ Client, Response, header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT, COOKIE }};
 
 //use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -156,56 +156,57 @@ fn handle_connection(mut stream: TcpStream) {
     let cfm_dir     = b"POST /cfm_dir HTTP/1.1\r\n";
 
     
-
-    let (status_line, contents, filename);
-
+    let mut status_line = "HTTP/1.1 200 OK";
+    let (contents, filename);
+    
     if buffer.starts_with(b"GET") {
-        (status_line, filename) = 
-            if buffer.starts_with(get_index) {
-                ("HTTP/1.1 200 OK", "html-css-js/index.html")
-            } else if buffer.starts_with(get_css) {
-                ("HTTP/1.1 200 OK", "html-css-js/page.css")
-            } else if buffer.starts_with(get_cc) {
-                ("HTTP/1.1 200 OK", "html-css-js/camcode.js")
-            } else if buffer.starts_with(get_ccalt) {
-                ("HTTP/1.1 200 OK", "html-css-js/cc-altmode.js")
-            } else if buffer.starts_with(get_cb) {
-                ("HTTP/1.1 200 OK", "html-css-js/checkerboard.js")
-            } else if buffer.starts_with(get_main) {
-                ("HTTP/1.1 200 OK", "html-css-js/main.js")
-            } else if buffer.starts_with(get_jn) {
-                ("HTTP/1.1 200 OK", "html-css-js/jacknet.js")
-            } else if buffer.starts_with(get_jn_json) {
-                ("HTTP/1.1 200 OK", "html-css-js/campus.json")
-            } else if buffer.starts_with(get_cb_json) {
-                ("HTTP/1.1 200 OK", "html-css-js/roomChecks.json")
-            } else {
-                ("HTTP/1.1 404 NOT FOUND", "html-css-js/404.html")
-            };
+        if buffer.starts_with(get_index) {
+            filename = "html-css-js/index.html";
+        } else if buffer.starts_with(get_css) {
+            filename = "html-css-js/page.css";
+        } else if buffer.starts_with(get_cc) {
+            filename = "html-css-js/camcode.js";
+        } else if buffer.starts_with(get_ccalt) {
+            filename = "html-css-js/cc-altmode.js";
+        } else if buffer.starts_with(get_cb) {
+            filename = "html-css-js/checkerboard.js";
+        } else if buffer.starts_with(get_main) {
+            filename = "html-css-js/main.js";
+        } else if buffer.starts_with(get_jn) {
+            filename = "html-css-js/jacknet.js";
+        } else if buffer.starts_with(get_jn_json) {
+            filename = "html-css-js/campus.json";
+        } else if buffer.starts_with(get_cb_json) {
+            filename = "html-css-js/roomChecks.json";
+        } else {
+            status_line =  "HTTP/1.1 404 NOT FOUND";
+            filename = "html-css-js/404.html";
+        };
         contents = fs::read_to_string(filename).unwrap();
     } else if buffer.starts_with(b"POST") {
-        (status_line, contents) = 
-            if buffer.starts_with(ping) {
-                ("HTTP/1.1 200 OK", execute_ping(&mut buffer)) // JN
-            } else if buffer.starts_with(schedule) { // CB
-                ("HTTP/1.1 200 OK", get_room_schedule(&mut buffer))
-            } else if buffer.starts_with(lsm) {
-                ("HTTP/1.1 200 OK", get_lsm(&mut buffer))
-            } else if buffer.starts_with(cfm_build) { // CC-CFM
-                ("HTTP/1.1 200 OK", cfm_build_dir(&mut buffer))
-            } else if buffer.starts_with(cfm_build_r) {
-                ("HTTP/1.1 200 OK", cfm_build_rm(&mut buffer))
-            } else if buffer.starts_with(cfm_c_dir) {
-                ("HTTP/1.1 200 OK", get_cfm(&mut buffer))
-            } else if buffer.starts_with(cfm_dir) {
-                ("HTTP/1.1 200 OK", get_cfm(&mut buffer))
-            } else if buffer.starts_with(cfm_file) {
-                ("HTTP/1.1 200 OK", get_cfm_file(&mut buffer))
-            } else {
-                ("HTTP/1.1 404 NOT FOUND", String::from("Empty"))
-            };
+        if buffer.starts_with(ping) {
+            contents = execute_ping(&mut buffer); // JN
+        } else if buffer.starts_with(schedule) { // CB
+            contents = get_room_schedule(&mut buffer);
+        } else if buffer.starts_with(lsm) {
+            contents = get_lsm(&mut buffer);
+        } else if buffer.starts_with(cfm_build) { // CC-CFM
+            contents = cfm_build_dir(&mut buffer);
+        } else if buffer.starts_with(cfm_build_r) {
+            contents = cfm_build_rm(&mut buffer);
+        } else if buffer.starts_with(cfm_c_dir) {
+            contents = get_cfm(&mut buffer);
+        } else if buffer.starts_with(cfm_dir) {
+            contents = get_cfm(&mut buffer);
+        } else if buffer.starts_with(cfm_file) {
+            contents = get_cfm_file(&mut buffer);
+        } else {
+            status_line = "HTTP/1.1 404 NOT FOUND";
+            contents = String::from("Empty");
+        };
     } else {
-        (status_line, contents) = ("HTTP/1.1 404 NOT FOUND", String::from("Empty"));
+        status_line = "HTTP/1.1 404 NOT FOUND";
+        contents = String::from("Empty");
     }
 
     // NOTE - look at this for error log format
@@ -464,7 +465,7 @@ fn get_room_schedule(buffer: &mut [u8]) -> String {
 
 #[tokio::main]
 async fn get_lsm(buffer: &mut [u8]) -> String {
-    let client = reqwest::Client::new();
+    let client = Client::new();
     /* let resp = client.get("https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D")
         .headers(construct_headers())
         .send().await;
