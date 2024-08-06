@@ -88,20 +88,22 @@ async function getCFMF(filename, classtype) {
     
     // let iframe_html = `
     // <iframe id="my_iframe" style ="display:none;"></iframe>`;
-    //document.getElementById('my_iframe').src = cmff;
+    // document.getElementById('my_iframe').src = cmff;
 
-    await downloadFile(value, filename);
+    // await downloadFile(value, filename);
     console.log(value);
-    //downloadFile(value, filename);
+    //updateConsole(value.blob());
+    //updateConsole(value.bytes());
+    downloadFile(value.bytes(), filename);
     //let formData = new FormData();
     
     return;
 }
 
-async function downloadFile(s, fn) {
-    const blob = new Blob(s, { });
+function downloadFile(s, fn) {
+    //const blob = new Blob(s, { });
 
-    const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(s);
     const a = document.createElement('a');
     
     a.href=url;
@@ -443,7 +445,8 @@ async function getCFMFile(filename) {
             filename: filename
         })
     })
-    .then((response) => {return response});
+    .then((response) => response.blob())
+    .then((blob) => downloadFile(blob, filename));
 };
 
 // getCFMFile()

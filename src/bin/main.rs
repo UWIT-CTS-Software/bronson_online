@@ -221,33 +221,49 @@ fn handle_connection(mut stream: TcpStream) {
     let response;
 
     if buffer.starts_with(cfm_file) {
-        // let f = File::open(contents.clone())
-        //     .expect("Reason");
-        // let buffer_reader = BufReader::new(f);
-        let buf_content = fs::read(&contents).unwrap();
-        let mut contents_inside: String = String::new();
-        contents_inside = unsafe { String::from_utf8(buf_content).unwrap() };
-        let length = contents.len();
+        let mut f = File::open(contents.clone()).unwrap();
+            // .expect("Reason");
         
-        response = format!(
-            "{}\r\nContent-Type: application/zip\r\nContent-length: {}\r\nContent-Disposition: attachment; filename=\"{}\"\r\n\r\n{}",
+        let mut file_buffer = Vec::new();
+        f.read_to_end(&mut file_buffer).unwrap();
+
+        let buf_content = fs::read(&contents).unwrap();
+
+        // let  contents_inside = unsafe { 
+        //     String::from_utf8(buf_content).unwrap() 
+        // };
+
+        let length = buf_content.len();
+        
+        response = format!("\
+        {}\r\n\
+        Content-Type: application/zip\r\n\
+        Content-length: {}\r\n\
+        Content-Disposition: attachment; filename=\"{}\"\r\n\
+        \r\n",
             status_line, 
             length, 
-            contents, 
-            contents_inside
+            contents
         );
+        // Sends to STDOUT
+        stream.write(response.as_bytes()).unwrap();
+        stream.write_all(&file_buffer).unwrap();
+        stream.flush().unwrap();
+
+        println!("Request: {}", str::from_utf8(&buffer).unwrap());
     } else {
         response = format!(
             "{}\r\nContent-Length: {}\r\n\r\n{}",
             status_line, contents.len(), contents
         );
+        // Sends to STDOUT
+        stream.write(response.as_bytes()).unwrap();
+        stream.flush().unwrap();
+
+        println!("Request: {}", str::from_utf8(&buffer).unwrap());
     }
 
-    // Sends to STDOUT
-    stream.write(response.as_bytes()).unwrap();
-    stream.flush().unwrap();
-
-    println!("Request: {}", str::from_utf8(&buffer).unwrap());
+    
 }
 
 // Preps the Buffer to be parsed as json string
@@ -727,10 +743,14 @@ fn get_cfm_file(buffer: &mut [u8]) -> String {
     }
 
     // build_path
-    let mut f_path: String = String::from("/CFM_Code");
+    // Path within repo
+    let mut path_repo: String = String::from("/CFM_Code");
+    path_repo.push_str(&cfmr_f.filename);
+
+    // Full Path
     let mut path_raw: String = String::from(CFM_DIR.clone());
     path_raw.push_str(&cfmr_f.filename);
-    f_path.push_str(&cfmr_f.filename);
+
     println!("Filename Path:\n {:?}", &path_raw);
 
     // Check for file
