@@ -59,8 +59,12 @@ use jn_server::CFMRequest;
 use jn_server::CFMRoomRequest;
 use jn_server::CFMRequestFile;
 
+use jn_server::GeneralRequest;
+
 use jn_server::jp::{ping_this};
 
+//use crate::ftp;
+//use suppaftp::FtpStream;
 //use lambda_http::Body;
 
 use std::io::prelude::*;
@@ -89,6 +93,10 @@ use serde_json::json;
 static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bin/campus.json"));
 
 static CFM_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
+
+static HOST_URL: &str = "127.0.0.1:7878";
+
+// static mut cfm_file_global : String = String::from('');
 
 /*
 $$$$$$$\                      $$\                                 $$\ 
@@ -119,6 +127,8 @@ fn main() {
 fn handle_connection(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
 
+    let mut cfm_file_r: String = String::new();
+
     stream.read(&mut buffer).unwrap();
 
     let get_index   = b"GET / HTTP/1.1\r\n";
@@ -130,6 +140,7 @@ fn handle_connection(mut stream: TcpStream) {
     let get_jn_json = b"GET /campus.json HTTP/1.1\r\n";
     let get_cb_json = b"GET /roomChecks.json HTTP/1.1\r\n";
     let get_main    = b"GET /main.js HTTP/1.1\r\n";
+    //let cfm_file_g  = b"GET /cfm_file HTTP/1.1\r\n";
     
     // Jacknet
     let ping        = b"POST /ping HTTP/1.1\r\n";
@@ -147,6 +158,7 @@ fn handle_connection(mut stream: TcpStream) {
     
 
     let (status_line, contents, filename);
+
     if buffer.starts_with(b"GET") {
         (status_line, filename) = 
             if buffer.starts_with(get_index) {
@@ -170,9 +182,7 @@ fn handle_connection(mut stream: TcpStream) {
             } else {
                 ("HTTP/1.1 404 NOT FOUND", "html-css-js/404.html")
             };
-    
         contents = fs::read_to_string(filename).unwrap();
-
     } else if buffer.starts_with(b"POST") {
         (status_line, contents) = 
             if buffer.starts_with(ping) {
@@ -187,10 +197,10 @@ fn handle_connection(mut stream: TcpStream) {
                 ("HTTP/1.1 200 OK", cfm_build_rm(&mut buffer))
             } else if buffer.starts_with(cfm_c_dir) {
                 ("HTTP/1.1 200 OK", get_cfm(&mut buffer))
+            } else if buffer.starts_with(cfm_dir) {
+                ("HTTP/1.1 200 OK", get_cfm(&mut buffer))
             } else if buffer.starts_with(cfm_file) {
                 ("HTTP/1.1 200 OK", get_cfm_file(&mut buffer))
-            } else if buffer.starts_with(cfm_dir) {
-                ("HTTP/1.1 200 OK", get_cfm_dir(&mut buffer))
             } else {
                 ("HTTP/1.1 404 NOT FOUND", String::from("Empty"))
             };
@@ -203,10 +213,35 @@ fn handle_connection(mut stream: TcpStream) {
     //  if status_line == 404 not found
     //      then put in error file instead.
     //      add timestamp at top of line
-    let response = format!(
-        "{}\r\nContent-Length: {}\r\n\r\n{}",
-        status_line, contents.len(), contents
-    );
+    // let response = format!(
+    //     "{}\r\nContent-Length: {}\r\n\r\n{}",
+    //     status_line, contents.len(), contents
+    // );
+
+    let response;
+
+    if buffer.starts_with(cfm_file) {
+        // let f = File::open(contents.clone())
+        //     .expect("Reason");
+        // let buffer_reader = BufReader::new(f);
+        let buf_content = fs::read_bytes(&contents).unwrap();
+        let mut contents_inside: String = String::new();
+        contents_inside = unsafe {String::from_utf8_lossy(buf_content)};
+        let length = contents.len();
+        
+        response = format!(
+            "{}\r\nContent-Type: application/zip\r\nContent-length: {}\r\nContent-Disposition: attachment; filename=\"{}\"\r\n\r\n{}",
+            status_line, 
+            length, 
+            contents, 
+            contents_inside
+        );
+    } else {
+        response = format!(
+            "{}\r\nContent-Length: {}\r\n\r\n{}",
+            status_line, contents.len(), contents
+        );
+    }
 
     // Sends to STDOUT
     stream.write(response.as_bytes()).unwrap();
@@ -461,26 +496,113 @@ $$ |       $$$$$$$ |$$ / $$ / $$ |$$ |      $$ /  $$ |$$ /  $$ |$$$$$$$$ |
 $$ |  $$\ $$  __$$ |$$ | $$ | $$ |$$ |  $$\ $$ |  $$ |$$ |  $$ |$$   ____|
 \$$$$$$  |\$$$$$$$ |$$ | $$ | $$ |\$$$$$$  |\$$$$$$  |\$$$$$$$ |\$$$$$$$\ 
  \______/  \_______|\__| \__| \__| \______/  \______/  \_______| \_______|
-*/
 
-
-/*
-   _|_|_|    _|_|_|  
- _|        _|        
- _|        _|        
- _|        _|        
-   _|_|_|    _|_|_|
-*/
-
-
-/*
 _|_|_|  _|_|_|_|  _|      _|  
 _|        _|        _|_|  _|_|  
 _|        _|_|_|    _|  _|  _|  
 _|        _|        _|      _|  
   _|_|_|  _|        _|      _|  
+                                       
+,,          ,,                         
+||          ||                         
+||/\\  _-_  || -_-_   _-_  ,._-_  _-_, 
+|| || || \\ || || \\ || \\  ||   ||_.  
+|| || ||/   || || || ||/    ||    ~ || 
+\\ |/ \\,/  \\ ||-'  \\,/   \\,  ,-_-  
+  _/           |/                      
+               '                       
 */
 
+fn dir_exists(path: &str) -> bool {
+    fs::metadata(path).is_ok()
+}
+
+fn is_this_file(path: &str) -> bool {
+    fs::metadata(path).unwrap().is_file()
+}
+
+fn is_this_dir(path: &str) -> bool {
+    fs::metadata(path).unwrap().is_dir()
+}
+
+fn find_files(building: String, rm: String) -> Vec<String> {
+    let mut strings = Vec::new();
+    let mut path = String::from(CFM_DIR.clone());
+    path.push_str("/");
+    path.push_str(&building);
+    path.push_str(&rm);
+
+    println!("CFM Debug - Looking for path:\n{:?}", path);
+
+    if dir_exists(&path) {
+        println!("SUCCESS 2: ROOM DIRECTORY FOUND");
+        // let paths = fs::read_dir(&path).unwrap();
+        // for p in paths {
+        //     println!("{}\n", p.as_ref().unwrap().path().display());
+        //     strings.push(p.unwrap().path().display().to_string());
+        // }
+        strings = get_dir_contents(&path);
+        return strings;
+    }
+    
+    println!("Fatal Error 4: ROOM DIRECTORY DOES NOT EXIST");
+    return strings;
+}
+
+fn get_dir_contents(path: &str) -> Vec<String> {
+    let mut strings = Vec::new();
+    let paths = fs::read_dir(&path).unwrap();
+    for p in paths {
+        println!("{}\n", p.as_ref().unwrap().path().display());
+        strings.push(p.unwrap().path().display().to_string());
+    }
+    return strings
+}
+
+fn get_origin(buffer: &mut [u8]) -> String {
+    let mut buff_copy: String = String::from_utf8_lossy(&buffer[..])
+        .to_string();
+
+    let bytes = buff_copy.as_bytes();
+    let mut ir: usize = 0;
+    let mut ir_end: usize = 0;
+
+    let mut newline:     bool = false;
+    let mut origin_line: bool = false;
+
+    for (i, &item) in bytes.iter().enumerate() {
+        //println!("get_origin() Lookng at\n{}", item as char);
+        if item == b'O'{ // newline isnt real
+            newline = true;
+        }
+        if newline {
+            if item == b'r' {
+                ir = i;
+                origin_line = true;
+            }
+        }
+        if origin_line {
+            if item == b'C' {
+                ir_end = i;
+                return buff_copy[ir+10..ir_end-3].to_string();
+            }
+        }
+    }
+    println!("FINDING ORIGIN FAILED");
+    return buff_copy[ir..ir_end].to_string();
+    //return String::from("127.0.0.1:7878");
+}
+
+/*                             
+,,                 |\   ,,                   
+||      _           \\  ||                   
+||/\\  < \, \\/\\  / \\ ||  _-_  ,._-_  _-_, 
+|| ||  /-|| || || || || || || \\  ||   ||_.  
+|| || (( || || || || || || ||/    ||    ~ || 
+\\ |/  \/\\ \\ \\  \\/  \\ \\,/   \\,  ,-_-  
+  _/                
+*/
+                                             
 //   cfm_build_dir() - post BUILDING dropdown
 fn cfm_build_dir(buffer: &mut [u8]) -> String {
     // Vars
@@ -578,6 +700,7 @@ fn get_cfm(buffer: &mut [u8]) -> String {
     //return String::from("{names: cfm-test}");
 }
 
+
 // get_cfm_file() - sends the selected file to the client
 // TODO:
 //    [ ] - store selected file as bytes ?
@@ -585,6 +708,16 @@ fn get_cfm(buffer: &mut [u8]) -> String {
 fn get_cfm_file(buffer: &mut [u8]) -> String {
     // RequstFile
     //    - filename
+    let mut buff_copy1: String = String::from_utf8_lossy(&buffer[..])
+        .to_string();
+
+    println!("Testing buff_copy1\n{}", buff_copy1);
+    // let gr: GeneralRequest = serde_json::from_str(&buff_copy1)
+    //     .expect("Fatal Error 49: general Request Failed");
+    let mut gr_origin: String = get_origin(buffer);
+
+    println!("Origin IP Address\n{}", gr_origin);
+    
     let buff_copy: String = process_buffer(buffer);
     let cfmr_f: CFMRequestFile = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 38: failed to parse filename");
@@ -594,8 +727,10 @@ fn get_cfm_file(buffer: &mut [u8]) -> String {
     }
 
     // build_path
-    let mut path_raw = String::from(CFM_DIR.clone());
+    let mut f_path: String = String::from("/CFM_Code");
+    let mut path_raw: String = String::from(CFM_DIR.clone());
     path_raw.push_str(&cfmr_f.filename);
+    f_path.push_str(&cfmr_f.filename);
     println!("Filename Path:\n {:?}", &path_raw);
 
     // Check for file
@@ -603,34 +738,53 @@ fn get_cfm_file(buffer: &mut [u8]) -> String {
         println!("SUCCESS: FILE Found");
     }
 
+    // fuck it we ball
+    return path_raw.to_string();
+
+    //let mut return_string = "ContentType = \"application/octet-stream\"\r\n";
+
+
+    //   ftp
+    // gr_origin = gr_origin[7..].to_string();
+    // gr_origin.push_str("21");
+    // //ftp stuff ?
+    // let mut ftp_stream = FtpStream::connect(gr_origin)
+    //     .unwrap_or_else(|err| {
+    //         panic!("{}", err);
+    //     });
+
+    // assert!(ftp_stream.quit().is_ok());
+
     // idk send it as bytes
+    //let file: &[u8] = &fs::read(&path_raw).unwrap();
+    // return file;
 
-    let path = Path::new(&path_raw);
-    let display = path.display();
+    // let path = Path::new(&path_raw);
+    // let display = path.display();
 
-    let mut file = match File::open(&path) {
-        Err(why) => panic!("couldn't open 1{}: {}", display, why),
-        Ok(file) => file,
-    };
+    // let mut file = match File::open(&path) {
+    //     Err(why) => panic!("couldn't open 1{}: {}", display, why),
+    //     Ok(file) => file,
+    // };
 
-    let mut s: Vec<u8> = read(&path)
-        .expect("couldn't open 1");
+    // let mut s: Vec<u8> = read(&path)
+    //     .expect("couldn't open 1");
     
     // match file.read(&mut s) {
     //     Err(why) => panic!("couldn't read {}: {}", display, why),
     //     Ok(_)    => print!("{} contains:\n{}", display, s),
     // };
 
-    let json_return = json!({
-        "file_contents": s
-    });
+    // let json_return = json!({
+    //     "file_contents": String::from_utf8_lossy(&file[..])
+    // });
 
     //return String::from("THIS SHOULD BE A FILE");
-    json_return.to_string()
+    // json_return.to_string()
     //return file
 }
 
-// get_cfm_file() - sends the selected file to the client
+// get_cfm_dir() - sends the selected file to the client
 // TODO:
 //    [ ] - store selected file as bytes ?
 //    [ ] - send in json as usual ?
@@ -642,68 +796,10 @@ fn get_cfm_dir(buffer: &mut [u8]) -> String {
     let buff_copy: String = process_buffer(buffer);
     let cfmr_f: CFMRequestFile = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 38: failed to parse filename");
+
     if dir_exists(CFM_DIR) {
         println!("SUCCESS: CFM_Code Directory Found");
     }
 
-    // build_path
-    let mut path = String::from(CFM_DIR.clone());
-    // path.push('/');
-    // path.push_str(&cfmr_f.building);
-    // path.push_str(&cfmr_f.rm);
-    // path.push('/');
-    path.push_str(&cfmr_f.filename);
-
-    if dir_exists(&path) {
-        println!("SUCCESS: FILE Found");
-    }
-
-    return String::from("THIS SHOULD BE A FILE")
-}
-
-
-fn dir_exists(path: &str) -> bool {
-    fs::metadata(path).is_ok()
-}
-
-fn is_this_file(path: &str) -> bool {
-    fs::metadata(path).unwrap().is_file()
-}
-
-fn is_this_dir(path: &str) -> bool {
-    fs::metadata(path).unwrap().is_dir()
-}
-
-fn find_files(building: String, rm: String) -> Vec<String> {
-    let mut strings = Vec::new();
-    let mut path = String::from(CFM_DIR.clone());
-    path.push_str("/");
-    path.push_str(&building);
-    path.push_str(&rm);
-
-    println!("CFM Debug - Looking for path:\n{:?}", path);
-
-    if dir_exists(&path) {
-        println!("SUCCESS 2: ROOM DIRECTORY FOUND");
-        // let paths = fs::read_dir(&path).unwrap();
-        // for p in paths {
-        //     println!("{}\n", p.as_ref().unwrap().path().display());
-        //     strings.push(p.unwrap().path().display().to_string());
-        // }
-        strings = get_dir_contents(&path);
-        return strings;
-    }
-    
-    println!("Fatal Error 4: ROOM DIRECTORY DOES NOT EXIST");
-    return strings;
-}
-
-fn get_dir_contents(path: &str) -> Vec<String> {
-    let mut strings = Vec::new();
-    let paths = fs::read_dir(&path).unwrap();
-    for p in paths {
-        println!("{}\n", p.as_ref().unwrap().path().display());
-        strings.push(p.unwrap().path().display().to_string());
-    }
-    return strings
+    return String::from("THIS SHOULD BE A DIRECTORY VEC")
 }

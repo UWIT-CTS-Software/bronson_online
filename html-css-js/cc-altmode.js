@@ -83,16 +83,22 @@ async function getCFMF(filename, classtype) {
 
     let value = await getCFMFile(cmff);
 
-    console.log(value.file_contents);
-    downloadFile(value.file_contents, filename);
-    // console.log(value);
-    // downloadFile(value, filename);
+    console.log(value);
+    cmff = `/CFM_Code/${brs[0]}${brs[1]}/${filename}`;
+    
+    // let iframe_html = `
+    // <iframe id="my_iframe" style ="display:none;"></iframe>`;
+    //document.getElementById('my_iframe').src = cmff;
+
+    await downloadFile(value, filename);
+    console.log(value);
+    //downloadFile(value, filename);
     //let formData = new FormData();
     
     return;
 }
 
-function downloadFile(s, fn) {
+async function downloadFile(s, fn) {
     const blob = new Blob(s, { });
 
     const url = URL.createObjectURL(blob);
@@ -437,8 +443,7 @@ async function getCFMFile(filename) {
             filename: filename
         })
     })
-    .then((response) => response.json())
-    .then((json) => {return json;});
+    .then((response) => {return response});
 };
 
 // getCFMFile()
