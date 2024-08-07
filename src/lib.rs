@@ -115,7 +115,7 @@ impl Drop for ThreadPool {
 // campus.json format
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BuildingData {
-    pub buildingData: Vec<Building>,
+    pub building_data: Vec<Building>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -165,22 +165,22 @@ pub struct CFMRequestFile {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GeneralRequest {
-	pub Request: String,
-	pub Host: String,
+	pub request: String,
+	pub host: String,
 	//pub User-Agent: String, 
-	pub Accept: String,
+	pub accept: String,
 	//pub Accept-Language: String,
 	//pub Accept-Encoding: String,
-	pub Referer: String,
+	pub referer: String,
 	//pub Content-Type: String,
 	//pub Content-Length: String,
-	pub Origin: String,
-	pub Connection: String,
+	pub origin: String,
+	pub connection: String,
 	//pub Sec-Fetch-Dest: String,
 	//pub Sec-Fetch-Mode: String,
 	//pub Sec-Fetch-Site: String,
-	pub DNT: String,
+	pub dnt: String,
 	//pub Sec-GPC: String,
-	pub Priority: String,
+	pub priority: String,
 	pub buffer: String
 }
