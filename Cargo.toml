@@ -13,3 +13,4 @@ serde_json = "1.0.48"
 getopts = "0.2"
 
 pinger = "1.2.3"
+local-ip-address = "0.6.1"

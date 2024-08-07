@@ -52,14 +52,14 @@ updated 7/31/2024
 
 use server_lib::ThreadPool;
 use server_lib::BuildingData;
-use server_lib::Building;
+// use server_lib::Building;
 use server_lib::PingRequest;
 
 use server_lib::CFMRequest;
 use server_lib::CFMRoomRequest;
 use server_lib::CFMRequestFile;
 
-use server_lib::GeneralRequest;
+// use server_lib::GeneralRequest;
 
 use server_lib::jp::{ping_this};
 
@@ -71,28 +71,29 @@ extern crate getopts;
 use getopts::Options;
 
 use std::io::prelude::*;
-use std::io::BufReader;
+// use std::io::BufReader;
 use std::io::Read;
 
 use std::net::TcpStream;
 use std::net::TcpListener;
 use std::fs;
 use std::fs::File;
-use std::fs::read;
-use std::path::Path;
+// use std::fs::read;
+// use std::path::Path;
 
 use std::str;
 use std::env;
-use std::env::*;
-use std::collections::HashMap;
+// use std::env::*;
+// use std::collections::HashMap;
 
-use std::process::*;
+// use std::process::*;
 use std::sync::Arc;
-use std::error::Error;
+// use std::error::Error;
 use std::string::String;
 use std::option::Option;
 
-use reqwest::{ Client, Response, header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT, COOKIE }};
+use reqwest::{ header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT }};
+use local_ip_address::local_ip;
 
 //use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -100,8 +101,6 @@ use serde_json::json;
 static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bin/campus.json"));
 
 static CFM_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
-
-static HOST_URL: &str = "127.0.0.1:7878";
 
 // static mut cfm_file_global : String = String::from('');
 
@@ -118,10 +117,35 @@ $$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |  $$ |\$$$$$$$ |
 
 fn main() {
     //debug setting
-    env::set_var("RUST_BACKTRACE", "1");
+    env::set_var("RUST_BACKTRACE", "0");
+
+    let args: Vec<String> = env::args().collect();
+    let mut opts = Options::new();
+    opts.optflag("l", "local", "Run the server using localhost.");
+    opts.optflag("p", "public", "Run the server using the public IP.");
+    opts.optflag("d", "debug", "Enable debug functions.");
+    let matches = match opts.parse(&args[1..]) {
+        Ok(m) => { m }
+        Err(f) => { panic!("{}", f.to_string()) }
+    };
+    if matches.opt_present("d") {
+        println!("Found the d flag!");
+    } 
+    
+    let host_ip: &str;
+    let local_ip_addr = &(local_ip().unwrap().to_string()+":7878");
+    if matches.opt_present("l") {
+        println!("[#] -- You are running using localhost --");
+        host_ip = "127.0.0.1:7878";
+    } else {
+        println!("[#] -- You are running using public IP --");
+        host_ip = local_ip_addr;
+    }
+    println!("[!] host_ip set to {}", host_ip);
+
     env::set_var("API_USER", "api_assess");
     env::set_var("API_PASSWORD", "UofWyo-CTS3945-API");
-    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    let listener = TcpListener::bind(host_ip).unwrap();
     let pool = ThreadPool::new(4);
 
     for stream in listener.incoming() {
@@ -137,7 +161,7 @@ fn handle_connection(mut stream: TcpStream) -> Option<()> {
     let mut buffer = [0; 1024];
     let cookie_jar = Arc::new(reqwest::cookie::Jar::default());
 
-    let mut cfm_file_r: String = String::new();
+    // let mut cfm_file_r: String = String::new();
 
     stream.read(&mut buffer).unwrap();
 
@@ -199,8 +223,8 @@ fn handle_connection(mut stream: TcpStream) -> Option<()> {
         } else if buffer.starts_with(schedule) { // CB
             contents = get_room_schedule(&mut buffer);
         } else if buffer.starts_with(lsm) {
-            let user = env::var("API_USER").expect("[-] Missing environment variabple API_USER.");
-            let pass = env::var("API_PASSWORD").expect("[-] Missing environment variable API_PASSWORD.");
+            // let user = env::var("API_USER").expect("[-] Missing environment variabple API_USER.");
+            // let pass = env::var("API_PASSWORD").expect("[-] Missing environment variable API_PASSWORD.");
 
             let req = reqwest::blocking::Client::builder()
                 .cookie_provider(cookie_jar)
@@ -300,7 +324,7 @@ fn handle_connection(mut stream: TcpStream) -> Option<()> {
 // Preps the Buffer to be parsed as json string
 fn process_buffer(buffer: &mut [u8]) -> String {
     println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
-    let mut buff_copy: String = String::from_utf8_lossy(&buffer[..])
+    let buff_copy: String = String::from_utf8_lossy(&buffer[..])
         .to_string();
 
     // functon that returns first '{' index location and it's '}' location
@@ -330,9 +354,9 @@ fn find_curls(s: &String) -> (usize, usize) {
 
 // Debug function
 //   Prints the type of a variable
-fn print_type_of<T>(_: &T) {
+/* fn print_type_of<T>(_: &T) {
     println!("{}", std::any::type_name::<T>());
-}
+} */
 
 /*
    $$$$$\                     $$\       $$\   $$\            $$\     
@@ -409,7 +433,7 @@ fn gen_hostnames(
     let mut devices: Vec<bool> = [false ,false ,false ,false ,false].to_vec();
     let mut hostnames = Vec::new();
     let mut temp_hostname = String::new();
-    let mut tmp_tmp = String::new();
+    let mut tmp_tmp;
 
     // Set selection flags
     for i in sel_devs {
@@ -426,7 +450,7 @@ fn gen_hostnames(
     // Implement device count here (Probably?)
         
     // Find relavant data in struct AND build
-    for item in bd.buildingData { //  For each building in the data
+    for item in bd.building_data { //  For each building in the data
         if sel_b == item.name { // check selection
             for j in item.rooms { // iterate through rooms
                 // Build and append hostnames
@@ -489,14 +513,14 @@ $$ |  $$\ $$ |  $$ |$$  _$$<  $$ |      $$ |  $$ |$$ |      $$ |  $$ |
  \______/ \__|  \__|\__|  \__|\__|      \_______/ \__|       \_______|
 */
 
-fn get_room_schedule(buffer: &mut [u8]) -> String {
+fn get_room_schedule(_buffer: &mut [u8]) -> String {
     return String::from("Empty");
 }
 
 fn construct_headers() -> HeaderMap {
     let mut header_map = HeaderMap::new();
-    let AUTHORIZATION: &'static str = "Autorization";
-    let LOGIN: &'static str = "Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk=";
+    static AUTHORIZATION: &'static str = "Autorization";
+    static LOGIN: &'static str = "Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk=";
     header_map.insert(ACCEPT, HeaderValue::from_static("application/json"));
     header_map.insert(HeaderName::from_static(AUTHORIZATION), HeaderValue::from_static(LOGIN));
 
@@ -537,13 +561,13 @@ fn is_this_file(path: &str) -> bool {
     fs::metadata(path).unwrap().is_file()
 }
 
-fn is_this_dir(path: &str) -> bool {
+/* fn is_this_dir(path: &str) -> bool {
     fs::metadata(path).unwrap().is_dir()
-}
+} */
 
 fn find_files(building: String, rm: String) -> Vec<String> {
     let mut strings = Vec::new();
-    let mut path = String::from(CFM_DIR.clone());
+    let mut path = String::from(CFM_DIR);
     path.push_str("/");
     path.push_str(&building);
     path.push_str(&rm);
@@ -576,7 +600,7 @@ fn get_dir_contents(path: &str) -> Vec<String> {
 }
 
 fn get_origin(buffer: &mut [u8]) -> String {
-    let mut buff_copy: String = String::from_utf8_lossy(&buffer[..])
+    let buff_copy: String = String::from_utf8_lossy(&buffer[..])
         .to_string();
 
     let bytes = buff_copy.as_bytes();
@@ -620,7 +644,7 @@ fn get_origin(buffer: &mut [u8]) -> String {
 */
                                              
 //   cfm_build_dir() - post BUILDING dropdown
-fn cfm_build_dir(buffer: &mut [u8]) -> String {
+fn cfm_build_dir(_buffer: &mut [u8]) -> String {
     // Vars
     let mut final_dirs: Vec<String> = Vec::new();
     // Check for CFM_Code Directory
@@ -631,7 +655,7 @@ fn cfm_build_dir(buffer: &mut [u8]) -> String {
     // iterate over cfm_dirs and snip ../CFM_Code/
     // DO NOT INCLUDE DIRS w/ '_'
     let cut_index = CFM_DIR.len();
-    for (i, &ref item) in cfm_dirs.iter().enumerate() {
+    for (_, &ref item) in cfm_dirs.iter().enumerate() {
         if (&item[(cut_index + 1)..]).to_string().starts_with('_') {
             continue; // ignore directories starting with '_'
         } else if is_this_file(&item) {
@@ -660,18 +684,18 @@ fn cfm_build_rm(buffer: &mut [u8]) -> String {
 
     // Prep buffer into Room List Request Struct
     //     - building
-    let mut buff_copy = process_buffer(buffer);
+    let buff_copy = process_buffer(buffer);
     let cfm_rms: CFMRoomRequest = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 39: Failed to parse cfm room request.");
     
     // Build Directory
-    let mut path = String::from(CFM_DIR.clone());
+    let mut path = String::from(CFM_DIR);
     path.push('/');
     path.push_str(&cfm_rms.building);
 
     let cfm_room_dirs = get_dir_contents(&path);
     let cut_index = CFM_DIR.len() + cfm_rms.building.len();
-    for (i, &ref item) in cfm_room_dirs.iter().enumerate() {
+    for (_, &ref item) in cfm_room_dirs.iter().enumerate() {
         if (&item[(cut_index + 2)..]).to_string().starts_with('_') {
             continue; // ignore folders starting with '_'
         } else if is_this_file(&item) {
@@ -695,7 +719,7 @@ fn get_cfm(buffer: &mut [u8]) -> String {
     // crestron file manager request (CFMR)
     //   - building
     //   - rm
-    let mut buff_copy: String = process_buffer(buffer);
+    let buff_copy: String = process_buffer(buffer);
     let cfmr: CFMRequest = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 3: Failed to parse cfm request");
     
@@ -724,13 +748,13 @@ fn get_cfm(buffer: &mut [u8]) -> String {
 fn get_cfm_file(buffer: &mut [u8]) -> String {
     // RequstFile
     //    - filename
-    let mut buff_copy1: String = String::from_utf8_lossy(&buffer[..])
+    let buff_copy1: String = String::from_utf8_lossy(&buffer[..])
         .to_string();
 
     println!("Testing buff_copy1\n{}", buff_copy1);
     // let gr: GeneralRequest = serde_json::from_str(&buff_copy1)
     //     .expect("Fatal Error 49: general Request Failed");
-    let mut gr_origin: String = get_origin(buffer);
+    let gr_origin: String = get_origin(buffer);
 
     println!("Origin IP Address\n{}", gr_origin);
     
@@ -748,7 +772,7 @@ fn get_cfm_file(buffer: &mut [u8]) -> String {
     path_repo.push_str(&cfmr_f.filename);
 
     // Full Path
-    let mut path_raw: String = String::from(CFM_DIR.clone());
+    let mut path_raw: String = String::from(CFM_DIR);
     path_raw.push_str(&cfmr_f.filename);
 
     println!("Filename Path:\n {:?}", &path_raw);
@@ -808,13 +832,13 @@ fn get_cfm_file(buffer: &mut [u8]) -> String {
 // TODO:
 //    [ ] - store selected file as bytes ?
 //    [ ] - send in json as usual ?
-fn get_cfm_dir(buffer: &mut [u8]) -> String {
+/* fn get_cfm_dir(buffer: &mut [u8]) -> String {
     // RequstFile
     //    - building
     //    - rm
     //    - filename
     let buff_copy: String = process_buffer(buffer);
-    let cfmr_f: CFMRequestFile = serde_json::from_str(&buff_copy)
+    let _cfmr_f: CFMRequestFile = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 38: failed to parse filename");
 
     if dir_exists(CFM_DIR) {
@@ -822,4 +846,4 @@ fn get_cfm_dir(buffer: &mut [u8]) -> String {
     }
 
     return String::from("THIS SHOULD BE A DIRECTORY VEC")
-}
+} */
