@@ -13,7 +13,7 @@ pub mod jp {
     //   exit code indicates not found or some other issue.
     pub fn ping_this(hostname: String) -> String {
         use pinger::PingResult;
-        let mut response = String::from("x");
+        // let mut response = String::from("x");
 
 
         let ping_response: PingResult;
@@ -22,7 +22,7 @@ pub mod jp {
             Ok(resp) => {
                 ping_response = resp.recv().unwrap(); 
                 },
-            Err(x) => {
+            Err(_) => {
                 println!("Error Pinging {}", hostname);
                 return String::from("x");
                 },
@@ -31,7 +31,7 @@ pub mod jp {
         let mut pong_string = String::from("");
 
         match ping_response {
-            PingResult::Pong(dur, string) => { 
+            PingResult::Pong(_dur, string) => { 
                 //println!("Duration: {:?}\nPong String: \n {}", dur, string);
                 pong_string = string;
             },
@@ -40,7 +40,7 @@ pub mod jp {
                 return String::from("x");
             },
             PingResult::Unknown(string) => println!("Unknown:\n{}",string),
-            PingResult::PingExited(es, string) => {
+            PingResult::PingExited(_es, string) => {
                 println!("Ping Failed Exit:\n{}", string);
                 return String::from("x");
             },
