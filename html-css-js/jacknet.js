@@ -39,7 +39,7 @@ HTML
 
 /* NOTES
 
-building_data is a list of dictionaries containing buildings on campus and the rooms within that are being maintained/monitored by CTS
+buildingData is a list of dictionaries containing buildings on campus and the rooms within that are being maintained/monitored by CTS
 
 there should be an object for the csv export and if a search is ran, it is overwritten. If possible fade the export button until the first search is ran.
 
@@ -82,10 +82,10 @@ async function getData() {
 async function getBuildingList() {
     let data = await getData();
     data = JSON.stringify(data);
-    let building_data = JSON.parse(data).building_data;
+    let buildingData = JSON.parse(data).buildingData;
     let bl = [];
-    for(var i = 0; i < building_data.length; i++) {
-        bl[i] = building_data[i].name;
+    for(var i = 0; i < buildingData.length; i++) {
+        bl[i] = buildingData[i].name;
     };
     return bl;
 };
@@ -94,10 +94,10 @@ async function getBuildingList() {
 async function getRooms(buildingName) {
     let data = await getData();
     data = JSON.stringify(data);
-    let building_data = JSON.parse(data).building_data;
-    for(var i = 0; i < building_data.length; i++) {
-        if(building_data[i].name == buildingName) {
-            return building_data[i].rooms;
+    let buildingData = JSON.parse(data).buildingData;
+    for(var i = 0; i < buildingData.length; i++) {
+        if(buildingData[i].name == buildingName) {
+            return buildingData[i].rooms;
         };
     };
 };
@@ -106,10 +106,10 @@ async function getRooms(buildingName) {
 async function getAbbrev(buildingName) {
     let data = await getData();
     data = JSON.stringify(data);
-    let building_data = JSON.parse(data).building_data;
-    for(var i = 0; i < building_data.length; i++) {
-        if(building_data[i].name == buildingName) {
-            return building_data[i].abbrev;
+    let buildingData = JSON.parse(data).buildingData;
+    for(var i = 0; i < buildingData.length; i++) {
+        if(buildingData[i].name == buildingName) {
+            return buildingData[i].abbrev;
         };
     };
 };
