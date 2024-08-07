@@ -67,6 +67,9 @@ use server_lib::jp::{ping_this};
 //use suppaftp::FtpStream;
 //use lambda_http::Body;
 
+extern crate getopts;
+use getopts::Options;
+
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::io::Read;
@@ -84,6 +87,10 @@ use std::env::*;
 use std::collections::HashMap;
 
 use std::process::*;
+use std::sync::Arc;
+use std::error::Error;
+use std::string::String;
+use std::option::Option;
 
 use reqwest::{ Client, Response, header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT, COOKIE }};
 
@@ -112,6 +119,8 @@ $$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |  $$ |\$$$$$$$ |
 fn main() {
     //debug setting
     env::set_var("RUST_BACKTRACE", "1");
+    env::set_var("API_USER", "api_assess");
+    env::set_var("API_PASSWORD", "UofWyo-CTS3945-API");
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
     let pool = ThreadPool::new(4);
 
@@ -124,8 +133,9 @@ fn main() {
     }
 }
 
-fn handle_connection(mut stream: TcpStream) {
+fn handle_connection(mut stream: TcpStream) -> Option<()> {
     let mut buffer = [0; 1024];
+    let cookie_jar = Arc::new(reqwest::cookie::Jar::default());
 
     let mut cfm_file_r: String = String::new();
 
@@ -189,7 +199,27 @@ fn handle_connection(mut stream: TcpStream) {
         } else if buffer.starts_with(schedule) { // CB
             contents = get_room_schedule(&mut buffer);
         } else if buffer.starts_with(lsm) {
-            contents = get_lsm(&mut buffer);
+            let user = env::var("API_USER").expect("[-] Missing environment variabple API_USER.");
+            let pass = env::var("API_PASSWORD").expect("[-] Missing environment variable API_PASSWORD.");
+
+            let req = reqwest::blocking::Client::builder()
+                .cookie_provider(cookie_jar)
+                // .redirect(reqwest::redirect::Policy::none())
+                .user_agent("server_lib/0.3.1")
+                .default_headers(construct_headers())
+                .build().ok()?
+                .get("https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D")
+                // .basic_auth(&user, Some(&pass))
+            ;
+
+            eprintln!("Fetching url...");
+            let res = req.send().ok()?;
+
+            eprintln!("Response: {:?} {}", res.version(), res.status());
+            eprintln!("Headers: {:#?}\n", res.headers());
+            eprintln!("Body {}\n", res.text().ok()?);
+
+            contents = String::from("Empty");
         } else if buffer.starts_with(cfm_build) { // CC-CFM
             contents = cfm_build_dir(&mut buffer);
         } else if buffer.starts_with(cfm_build_r) {
@@ -264,7 +294,7 @@ fn handle_connection(mut stream: TcpStream) {
         println!("Request: {}", str::from_utf8(&buffer).unwrap());
     }
 
-    
+    Option::Some(())
 }
 
 // Preps the Buffer to be parsed as json string
@@ -463,43 +493,12 @@ fn get_room_schedule(buffer: &mut [u8]) -> String {
     return String::from("Empty");
 }
 
-#[tokio::main]
-async fn get_lsm(buffer: &mut [u8]) -> String {
-    let client = Client::new();
-    /* let resp = client.get("https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D")
-        .headers(construct_headers())
-        .send().await;
-        
-    println!("Response: {:?}", resp); */
-    return String::from("Test");
-}
-
-// NOTE: do something like this when receiving ping info (this doesnt work)
-// THEN reference this in gen_hostnames to compile a list of pingable hostnames.
-
-/* pub struct Headers<'a> {
-    auth: &'a str,
-    cookie: &'a str,
-}
-
-impl Headers<'_> {
-    fn new() {
-        let auth = "Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk=";
-        let cookie = "JSESSIONID=none";
-
-        return Headers {
-            auth,
-            cookie,
-        };
-    }
-} */
-
 fn construct_headers() -> HeaderMap {
     let mut header_map = HeaderMap::new();
-    // let mut headers = Headers::new();
+    let AUTHORIZATION: &'static str = "Autorization";
+    let LOGIN: &'static str = "Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk=";
     header_map.insert(ACCEPT, HeaderValue::from_static("application/json"));
-    header_map.insert(HeaderName::from_static("Authorization"), HeaderValue::from_static("Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk="));
-    header_map.insert(COOKIE, HeaderValue::from_static("JSESSIONID=none"));
+    header_map.insert(HeaderName::from_static(AUTHORIZATION), HeaderValue::from_static(LOGIN));
 
     return header_map;
 }
