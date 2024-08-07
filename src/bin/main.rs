@@ -61,7 +61,7 @@ use server_lib::CFMRequestFile;
 
 // use server_lib::GeneralRequest;
 
-use server_lib::jp::{ping_this};
+use server_lib::jp::ping_this;
 
 //use crate::ftp;
 //use suppaftp::FtpStream;
@@ -92,7 +92,7 @@ use std::sync::Arc;
 use std::string::String;
 use std::option::Option;
 
-use reqwest::{ header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT }};
+use reqwest::header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT };
 use local_ip_address::local_ip;
 
 //use serde::{Deserialize, Serialize};
@@ -277,17 +277,11 @@ fn handle_connection(mut stream: TcpStream) -> Option<()> {
 
     if buffer.starts_with(cfm_file) {
         let mut f = File::open(contents.clone()).unwrap();
-            // .expect("Reason");
         
         let mut file_buffer = Vec::new();
         f.read_to_end(&mut file_buffer).unwrap();
 
         let buf_content = fs::read(&contents).unwrap();
-
-        // let  contents_inside = unsafe { 
-        //     String::from_utf8(buf_content).unwrap() 
-        // };
-
         let length = buf_content.len();
         
         response = format!("\

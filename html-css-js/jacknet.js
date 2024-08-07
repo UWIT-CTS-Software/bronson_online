@@ -26,7 +26,6 @@ Export
     - setCSVExport()
 
 Search
-    - pingThis(devices, building)
     - PingPong(devices, building)
     - printPingResult(pingResult, building)
     - runSearch()
@@ -35,16 +34,14 @@ HTML
     - clearConsole()
     - updateConsole()
     - setJackNet()
-*/
+ 
 
-/* NOTES
+    NOTES
 
 buildingData is a list of dictionaries containing buildings on campus and the rooms within that are being maintained/monitored by CTS
 
 there should be an object for the csv export and if a search is ran, it is overwritten. If possible fade the export button until the first search is ran.
 
-*/
-/*
 $$$$$$$\             $$\               
 $$  __$$\            $$ |              
 $$ |  $$ | $$$$$$\ $$$$$$\    $$$$$$\  
@@ -53,11 +50,6 @@ $$ |  $$ | $$$$$$$ | $$ |     $$$$$$$ |
 $$ |  $$ |$$  __$$ | $$ |$$\ $$  __$$ |
 $$$$$$$  |\$$$$$$$ | \$$$$  |\$$$$$$$ |
 \_______/  \_______|  \____/  \_______|
-
-
-[ ] - Define export class object
-    [ ] - Class / Constructor / Ubdate Functions
-[ ] - ? Maybe, Inititialize it in HTML::setJackNet()
 */
 
 let CSV_EXPORT = {
@@ -164,10 +156,7 @@ $$$$$$$$\ $$  /\$$\ $$$$$$$  |\$$$$$$  |$$ |       \$$$$  |
                     \__|       
                     
 TODO:
-runExport()
-    [x] - Create a file - "timestamp.csv"
-    [x] - Load CSV Object into object (Properly)
-    [x] - Close and save file.
+
 setCSVExport(hns, ips, rms)
     [x] - Update the CSV Export Object
     [ ] - ? Maybe, Set CSV Button Opacity (If first search)
@@ -219,7 +208,7 @@ function runExport() {
         ipBuff = [headers[1]];
         hii = hii;
     }
-    //downloadCsv([headers.join(','), values.join(',')].join('\n'));
+
     downloadCsv(csvRows.join('\n'));
     return;
 };
@@ -269,7 +258,7 @@ runSearch()
 */
 
 // Requests ping with device list and building.
-async function pingThis(devices, building) {
+async function pingpong(devices, building) {
     return await fetch('ping', {
         method: 'POST',
         body: JSON.stringify({
@@ -278,25 +267,18 @@ async function pingThis(devices, building) {
         })
     })
     .then((response) => response.json())
-    .then((json) => {return json;});
+    .then((json) => {return [json.hostnames, json.ips];});
 };
-
-async function pingpong(devices, building) {
-    return await pingThis(devices, building)
-        .then((value) => { 
-            // updateConsole("Ping Response: \n");
-            // updateConsole(value.building);
-            // updateConsole(value.hostnames);
-            // updateConsole(value.ips);
-            return [value.hostnames, value.ips];
-        });
-    
-}
 
 // printPingResult(
 //      - pingResult => [[Hostnames], [IP Addresses]]
 // )
 // Print the result of a ping to the user's console.
+// Display the ping results
+//  room 1055
+//    en-1055-proc1    en-1055-ws1   ...
+//      10.10.10.10              x   ...
+//  ...
 async function printPingResult(pingResult, building) {
     let hns = pingResult[0];
     let ips = pingResult[1];
@@ -308,11 +290,7 @@ async function printPingResult(pingResult, building) {
     let rooms   = await getRooms(building);
     let bAbbrev = await getAbbrev(building);
 
-    // Display the ping results
-    //  room 1055
-    //    en-1055-proc1    en-1055-ws1   ...
-    //      10.10.10.10              x   ...
-    //  ...
+    
     for (var i = 0; i < rooms.length; i++) {
         printHostnames = "";
         printIps       = "";
@@ -357,7 +335,6 @@ async function runSearch() {
     updateConsole("Searching " + building);
     // updateConsole("Total Devices:\n" + totalNumDevices);
 
-
     // Check All Buildings Flag
     if (building == "All Buildings") {
         f_all_buildings = true;
@@ -369,7 +346,7 @@ async function runSearch() {
         for (var i = 0; i < bdl.length; i++) {
             updateConsole("=-+-+-+-=\n Now Searching " + bdl[i] + "\n=-+-+-+-=");
             pingResult = await pingpong(devices, bdl[i]);
-            f_rms = await printPingResult(pingResult, bdl[i]);
+            f_rms      = await printPingResult(pingResult, bdl[i]);
             f_hns += pingResult[0];
             f_ips += pingResult[1];
             //updateConsole("DEBUG 69:\n" + f_hns);
@@ -477,20 +454,51 @@ async function setJackNet() {
     //   - do we need value and name?
     let devSelect = document.createElement("fieldset");
     devSelect.classList.add('devSelect');
-    devSelect.innerHTML = '<legend>Choose Devices to Search For: </legend> \n <input class="cbDev" type ="checkbox" id="proc" name="dev" value="Processors" /> \n <label for="proc"> Processors </label><br> \n <input class="cbDev" type="checkbox" id="pj" name="dev" value="Projectors" /> \n <label for="pj">Projectors</label><br> \n <input class="cbDev" type="checkbox" id="ws" name="dev" value="Wyo Shares" /> \n <label for="ws">Wyo Shares</label><br> \n <input class="cbDev" type="checkbox" id="tp" name="dev" value="Touch Panels" /> \n <label for="tp">Touch Panels</label><br> \n <input class="cbDev" type ="checkbox" id="cmicx" name="dev" value="Ceiling Mics" /> \n <label for="cmicx"> Ceiling Mics </label><br> \n ';
+    devSelect.innerHTML = `
+        <legend>Choose Devices to Search For: </legend>
+        <input class="cbDev" type ="checkbox" id="proc" name="dev" value="Processors"/>
+        <label for="proc"> 
+            Processors</label>
+        <br>
+        <input class="cbDev" type="checkbox" id="pj" name="dev" value="Projectors"/>
+        <label for="pj">
+            Projectors</label>
+        <br>
+        <input class="cbDev" type="checkbox" id="ws" name="dev" value="Wyo Shares"/>
+        <label for="ws">
+            Wyo Shares</label>
+        <br>
+        <input class="cbDev" type="checkbox" id="tp" name="dev" value="Touch Panels"/>
+        <label for="tp">
+            Touch Panels</label>
+        <br>
+        <input class="cbDev" type ="checkbox" id="cmicx" name="dev" value="Ceiling Mics"/>
+        <label for="cmicx">
+            Ceiling Mics </label>
+        <br>`;
 
     // log progress (use tag progress)
 
     // Console Output
     let consoleOutput = document.createElement("fieldset");
     consoleOutput.classList.add('consoleOutput');
-    consoleOutput.innerHTML = '<legend> Console Output: </legend> \n <textarea readonly rows="10" cols ="80" class="innerConsole" name="consoleOutput" spellcheck="false"> Console: Example </textarea>';
+    consoleOutput.innerHTML = `
+        <legend> Console Output: </legend>
+        <textarea readonly rows="10" cols ="80" class="innerConsole" name="consoleOutput" spellcheck="false"> 
+            Console: JackNet Example
+        </textarea>`;
 
     // Bottom Menu buttons
     // html options: menu
     let bottomMenu = document.createElement("fieldset");
     bottomMenu.classList.add('bottomMenu');
-    bottomMenu.innerHTML = '<legend>Options: </legend> \n <menu> \n <button id="run" onclick="runSearch()">Run Search</button> \n <button id="export" onclick="runExport()">Export as .csv </button> \n <button id="clearCon" onclick="clearConsole()"> Clear Console </button> \n </menu>';
+    bottomMenu.innerHTML = `
+        <legend>Options: </legend>
+        <menu>
+            <button id="run" onclick="runSearch()">Run Search</button>
+            <button id="export" onclick="runExport()">Export as .csv </button>
+            <button id="clearCon" onclick="clearConsole()"> Clear Console </button>
+        </menu>`;
 
     // PUT EVERYTHING TOGETHER MAIN_CONTAINER
     main_container.appendChild(buildingSelect);
