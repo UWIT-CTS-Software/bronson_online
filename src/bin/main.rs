@@ -61,7 +61,7 @@ use server_lib::CFMRequestFile;
 
 // use server_lib::GeneralRequest;
 
-use server_lib::jp::{ping_this};
+use server_lib::jp::ping_this;
 
 //use crate::ftp;
 //use suppaftp::FtpStream;
@@ -92,7 +92,7 @@ use std::sync::Arc;
 use std::string::String;
 use std::option::Option;
 
-use reqwest::{ header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT }};
+use reqwest::header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT };
 use local_ip_address::local_ip;
 
 //use serde::{Deserialize, Serialize};
@@ -251,7 +251,7 @@ fn handle_connection(mut stream: TcpStream) -> Option<()> {
         } else if buffer.starts_with(cfm_c_dir) {
             contents = get_cfm(&mut buffer);
         } else if buffer.starts_with(cfm_dir) {
-            contents = get_cfm(&mut buffer);
+            contents = get_cfm_dir(&mut buffer);
         } else if buffer.starts_with(cfm_file) {
             contents = get_cfm_file(&mut buffer);
         } else {
@@ -277,17 +277,11 @@ fn handle_connection(mut stream: TcpStream) -> Option<()> {
 
     if buffer.starts_with(cfm_file) {
         let mut f = File::open(contents.clone()).unwrap();
-            // .expect("Reason");
         
         let mut file_buffer = Vec::new();
         f.read_to_end(&mut file_buffer).unwrap();
 
         let buf_content = fs::read(&contents).unwrap();
-
-        // let  contents_inside = unsafe { 
-        //     String::from_utf8(buf_content).unwrap() 
-        // };
-
         let length = buf_content.len();
         
         response = format!("\
@@ -537,7 +531,7 @@ $$ |  $$\ $$  __$$ |$$ | $$ | $$ |$$ |  $$\ $$ |  $$ |$$ |  $$ |$$   ____|
 \$$$$$$  |\$$$$$$$ |$$ | $$ | $$ |\$$$$$$  |\$$$$$$  |\$$$$$$$ |\$$$$$$$\ 
  \______/  \_______|\__| \__| \__| \______/  \______/  \_______| \_______|
 
-_|_|_|  _|_|_|_|  _|      _|  
+  _|_|_|  _|_|_|_|  _|      _|  
 _|        _|        _|_|  _|_|  
 _|        _|_|_|    _|  _|  _|  
 _|        _|        _|      _|  
@@ -782,57 +776,14 @@ fn get_cfm_file(buffer: &mut [u8]) -> String {
         println!("SUCCESS: FILE Found");
     }
 
-    // fuck it we ball
     return path_raw.to_string();
-
-    //let mut return_string = "ContentType = \"application/octet-stream\"\r\n";
-
-
-    //   ftp
-    // gr_origin = gr_origin[7..].to_string();
-    // gr_origin.push_str("21");
-    // //ftp stuff ?
-    // let mut ftp_stream = FtpStream::connect(gr_origin)
-    //     .unwrap_or_else(|err| {
-    //         panic!("{}", err);
-    //     });
-
-    // assert!(ftp_stream.quit().is_ok());
-
-    // idk send it as bytes
-    //let file: &[u8] = &fs::read(&path_raw).unwrap();
-    // return file;
-
-    // let path = Path::new(&path_raw);
-    // let display = path.display();
-
-    // let mut file = match File::open(&path) {
-    //     Err(why) => panic!("couldn't open 1{}: {}", display, why),
-    //     Ok(file) => file,
-    // };
-
-    // let mut s: Vec<u8> = read(&path)
-    //     .expect("couldn't open 1");
-    
-    // match file.read(&mut s) {
-    //     Err(why) => panic!("couldn't read {}: {}", display, why),
-    //     Ok(_)    => print!("{} contains:\n{}", display, s),
-    // };
-
-    // let json_return = json!({
-    //     "file_contents": String::from_utf8_lossy(&file[..])
-    // });
-
-    //return String::from("THIS SHOULD BE A FILE");
-    // json_return.to_string()
-    //return file
 }
 
 // get_cfm_dir() - sends the selected file to the client
 // TODO:
 //    [ ] - store selected file as bytes ?
 //    [ ] - send in json as usual ?
-/* fn get_cfm_dir(buffer: &mut [u8]) -> String {
+fn get_cfm_dir(buffer: &mut [u8]) -> String {
     // RequstFile
     //    - building
     //    - rm
@@ -846,4 +797,4 @@ fn get_cfm_file(buffer: &mut [u8]) -> String {
     }
 
     return String::from("THIS SHOULD BE A DIRECTORY VEC")
-} */
+}
