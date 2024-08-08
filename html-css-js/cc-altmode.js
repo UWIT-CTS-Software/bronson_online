@@ -55,16 +55,19 @@ async function cfmFiles() {
 // This is a onclick function tied to entries in "File Selection"
 async function getCFMF(filename, classtype) {
     let brs = cfmGetBuildingRoom();
+    let cmff = `/${brs[0]}${brs[1]}/${filename}`;
 
     if (classtype == "cfm_dir") {
         //updateConsole("ERRORSelected Directory");
         // It would be sweet to go into room sub-directories
         // do that
-        let value = getCFM_Dir(brs[0], brs[1], filename);
+        let files = getCFM_Dir(cmff);
+        //update filebrowser
+        await setFileBrowser(filename, files);
         return;
     }
     
-    let cmff = `/${brs[0]}${brs[1]}/${filename}`;
+    
     let value = await getCFM_File(cmff);
 
     console.log(value);
@@ -357,15 +360,13 @@ async function getCFM_File(filename) {
 // getCFM_Dir()
 //   "cfm_dir"
 //    TODO
-async function getCFM_Dir(building, rm, dirname) {
+async function getCFM_Dir(dirname) {
     return await fetch('cfm_dir', {
         method: 'POST',
         body: JSON.stringify({
-            building: building,
-            rm: rm,
-            dirname: dirname
+            filename: dirname
         })
     })
     .then((response) => response.json())
-    .then((json) => {return json;});
+    .then((json) => {return json.names;});
 };
