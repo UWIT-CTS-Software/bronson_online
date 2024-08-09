@@ -14,7 +14,7 @@ Utilizes LSM RoomCheck history through their API and looks at C.T.S. Technician 
 
 #### TODO's:
 
-    [ ] - LSM API talking to Rust Backend
+   - [ ] - LSM API talking to Rust Backend
 
 ---
 
@@ -26,8 +26,8 @@ This can be used to find rooms that are not online that we did not know about. W
 
 #### TODO's:
 
-    [ ] - Server-Side CLI Debug Functionality
-    [ ] - EC: Cool Visualizations w/ Building Floor Layouts.
+   - [ ] - Server-Side CLI Debug Functionality
+   - [ ] - EC: Cool Visualizations w/ Building Floor Layouts.
 
 ---
 
@@ -45,18 +45,18 @@ NOTE: Due to the size of this database it is not included in this github and nee
 
 #### TODO's:
 
-    [ ] - Setting a DOM
-        [ ] - add an 'x' button to remove additional fieldsß
-    [ ] - Defining the classroom parameters
-    [ ] - Assemble Pre-built programs for these parameters
+   - [ ] - Setting a DOM
+       - [ ] - add an 'x' button to remove additional fieldsß
+   - [ ] - Defining the classroom parameters
+   - [ ] - Assemble Pre-built programs for these parameters
 
 #### CFM TODO's:
-    [ ] - Create a handler for when CFM_Code is not found
-    [ ] - (?) Include a text log file open to edit.
+   - [ ] - Create a handler for when CFM_Code is not found
+   - [ ] - (?) Include a text log file open to edit.
 
 ---
 
 GENERAL TODO's:
 
-    [ ] - Refactor Code Base
-    [ ] - Replace campus.json with a more versitile structure
+   - [ ] - Refactor Code Base
+   - [ ] - Replace campus.json with a more versitile structure
