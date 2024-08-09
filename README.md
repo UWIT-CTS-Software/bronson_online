@@ -26,7 +26,6 @@ This can be used to find rooms that are not online that we did not know about. W
 
 #### TODO's:
 
-    [ ] - "hostname.uwyo.edu (ip-address)" return needs formatted
     [ ] - Server-Side CLI Debug Functionality
     [ ] - EC: Cool Visualizations w/ Building Floor Layouts.
 
