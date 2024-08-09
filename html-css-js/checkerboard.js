@@ -32,11 +32,19 @@ function setChecker() {
 
   let map_select = document.createElement("fieldset");
   map_select.classList.add('mapSelect');
-  map_select.innerHTML = '<legend>Select Zone: </legend> \n \
-                          <img src ="uw-laramie-campus-zones.jpg" style="width:100%;height:auto" usemap="#zonemap"> \n \
+  /* map_select.innerHTML = '<legend>Select Zone: </legend> \n \
+                          <img src="img.jpg" style="width:100%;height:auto" usemap="#zonemap"> \n \
                           <map name="zonemap"> \n \
                             <area shape="poly" coords="70,480,620,478,618,535,769,560,769,630,448,641,451,867,230,870,233,960,124,960,127,806,183,809,188,647,68,647" alt="Test" onclick="myFunc()"> \n \
-                          </map>';
+                          </map>'; */
+  map_select.innerHTML = '<legend>Select Zone: </legend> \n \
+                          <select id="zone_list"> \n \
+                          <option value=0>All Zones</option> \n \
+                          <option value=1>Zone 1</option> \n \
+                          <option value=2>Zone 2</option> \n \
+                          <option value=3>Zone 3</option> \n \
+                          <option value=4>Zone 4</option> \n \
+                          </select>'
 
   let control_container = document.createElement("div");
   control_container.classList.add("mediumContainer");
@@ -65,8 +73,7 @@ function myFunc() {
 }
 
 async function getRoomChecks() {
-    let cookie = new Cookie;
-    let response = await cbSearch("2024-06-01", "2024-06-28", cookie);
+    let response = await cbSearch("2024-06-01", "2024-06-28");
 
     return response;
 }
@@ -91,7 +98,7 @@ async function cbSearch(init_time, end_time, cookie) {
             end_time, end_time,
         })
     });
-    console.log(response);
+    console.log(response.json());
 
     return;
 }
