@@ -353,8 +353,7 @@ async function runSearch() {
         f_ips = f_ips.concat(pingResult[1]);
     }
 
-    // set the csv export data
-    setCSVExport(f_hns, f_ips, f_rms);
+    
     
     updateConsole("====--------------------========--------------------====");
 
@@ -370,21 +369,28 @@ async function runSearch() {
     for (var i = 0; i < f_ips.length; i++) {
         if(f_ips[i] == "x") {
             not_found_count += 1;
+        } else { // filter "hostname.uwyo.dns (ip-address)"
+            f_ips[i] = filterIp(f_ips[i]);
         }
     }
-
-    // Tell user how good the search went :)
-    console.log(f_hns.length);
     totalNumDevices = f_hns.length;
 
+    // set the csv export data
+    setCSVExport(f_hns, f_ips, f_rms);
+    
+    // Tell user how good the search went :)
     updateConsole("Search Complete");
     updateConsole("Found " + (totalNumDevices - not_found_count) + "/" + totalNumDevices + " devices.");
-
-    
     updateConsole("CSV Export Available");
 
     return;
 };
+
+function filterIp(ip) {
+    let buff = ip.split("(")[1];
+    buff = buff.split(")")[0];
+    return buff;
+}
 
 /*
 $$\   $$\ $$$$$$$$\ $$\      $$\ $$\       
@@ -422,15 +428,6 @@ async function setJackNet() {
     main_container.innerHTML = '<p>JackNet</p>';
 
     // Make a box for list of buildings
-    /* 
-    POSSIBLE HTML TAGS
-        select
-        optgroup (Zone 1...)
-        option
-        label
-        dt      
-    */
-    // UNcomment this if the fieldset supremecy mindset sucks
     let buildingSelect = document.createElement("fieldset");
     buildingSelect.classList.add('building_List');
     let set_inner_html = '<select id="building_list"><option>All Buildings</option>';
@@ -441,13 +438,6 @@ async function setJackNet() {
     };
     set_inner_html += '</select>';
     buildingSelect.innerHTML = `<legend>Choose Building(s): </legend> ${set_inner_html}`;
-
-    // make options for touch panel, proc, etc
-    /*
-    POSSIBLE HTML TAGS
-        label
-        legend
-    */
 
     // REDO: what flags for checkbox are neccessary?
     //   - do we need value and name?
@@ -476,7 +466,7 @@ async function setJackNet() {
             Ceiling Mics </label>
         <br>`;
 
-    // log progress (use tag progress)
+    // log progress here ? (use tag progress)
 
     // Console Output
     let consoleOutput = document.createElement("fieldset");
