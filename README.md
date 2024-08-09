@@ -26,13 +26,10 @@ This can be used to find rooms that are not online that we did not know about. W
 
 #### TODO's:
 
-    [ ] - CSV Exports ("All Buildings") HINT (?): hashmap
     [ ] - "hostname.uwyo.edu (ip-address)" return needs formatted
-    [ ] - Color code print out (Span attribute ?)
     [ ] - Server-Side CLI Debug Functionality
     [ ] - EC: Cool Visualizations w/ Building Floor Layouts.
 
- 
 ---
 
 ### CamCode
@@ -55,10 +52,7 @@ NOTE: Due to the size of this database it is not included in this github and nee
     [ ] - Assemble Pre-built programs for these parameters
 
 #### CFM TODO's:
-    [ ] - Access the CFM_Code files and return the contents of a requested folder.
     [ ] - Create a handler for when CFM_Code is not found
-    [ ] - Make a variant of the console to select lines on click
-        [ ] - Expand by using a double click to download a specific file in the returned list.
     [ ] - (?) Include a text log file open to edit.
 
 ---
@@ -66,7 +60,4 @@ NOTE: Due to the size of this database it is not included in this github and nee
 GENERAL TODO's:
 
     [ ] - Refactor Code Base
-        [ ] - Process Buffer Function in Rust
-        [ ] - break jacknet.js into another file
-            [ ] - Replace campus.json with a more versitile structure
-            [ ] - break the campus.json functions out of jacknet.js
+    [ ] - Replace campus.json with a more versitile structure
