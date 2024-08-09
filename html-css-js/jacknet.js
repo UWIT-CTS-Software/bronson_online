@@ -442,13 +442,6 @@ async function setJackNet() {
     set_inner_html += '</select>';
     buildingSelect.innerHTML = `<legend>Choose Building(s): </legend> ${set_inner_html}`;
 
-    // make options for touch panel, proc, etc
-    /*
-    POSSIBLE HTML TAGS
-        label
-        legend
-    */
-
     // REDO: what flags for checkbox are neccessary?
     //   - do we need value and name?
     let devSelect = document.createElement("fieldset");
