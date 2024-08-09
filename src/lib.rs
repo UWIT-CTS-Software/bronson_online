@@ -115,8 +115,8 @@ impl Drop for ThreadPool {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Room {
 	pub room_name: String,
-	pub checked: Bool,
-	pub gp: Bool,
+	pub checked: bool,
+	pub gp: bool,
 	pub schedule: Vec<u8>
 }
 
