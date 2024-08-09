@@ -141,6 +141,9 @@ async function getSelectedBuilding() {
 }
 
 async function filterIp(ip) {
+    if (!ip.includes("(")) {
+        return ip;
+    }
     let buff = ip.split("(")[1];
     buff = buff.split(")")[0];
     return buff;
@@ -309,7 +312,7 @@ async function printPingResult(pingResult, building) {
             //   add corresponding ip
             if(hns[j].includes(pad(rooms[i], 4))){
                 printHostnames += pad(hns[j], 15, " ") + "|";
-                printIps       += pad(ips[j], 15, " ") + "|";
+                printIps       += pad(await filterIp(ips[j]), 15, " ") + "|";
             }
         }
         updateConsole("Hostnames: " + printHostnames);
@@ -359,8 +362,6 @@ async function runSearch() {
         f_ips = f_ips.concat(pingResult[1]);
     }
 
-    
-    
     updateConsole("====--------------------========--------------------====");
 
     // Double check operation
