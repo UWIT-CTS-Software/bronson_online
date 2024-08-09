@@ -51,44 +51,34 @@ updated 7/31/2024
  */
 
 use server_lib::{
-    ThreadPool, BuildingData, PingRequest, CFMRequest, CFMRoomRequest, CFMRequestFile, /* Building, GeneralRequest */
+    ThreadPool, BuildingData, PingRequest, CFMRequest, CFMRoomRequest, CFMRequestFile,
     jp::{ ping_this, },
 };
-
-//use crate::ftp;
-//use suppaftp::FtpStream;
 //use lambda_http::Body;
-
-extern crate getopts;
 use getopts::Options;
-
 use std::{
     str, env,
-    io::{ prelude::*, Read, /* BufReader */ },
+    io::{ prelude::*, Read, },
     net::{ TcpStream, TcpListener, },
     fs::{
-        read, read_to_string, read_dir, metadata, /* Path, collections::HashMap, process::*, error::Error */
+        read, read_to_string, read_dir, metadata,
         File,
     },
     sync::{ Arc, },
+    error::{ Error, },
     string::{ String, },
     option::{ Option, },
 };
-
 use reqwest::{ 
     header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT }
 };
-
-use local_ip_address::local_ip;
-
-//use serde::{Deserialize, Serialize};
+use csv::{ Reader, };
+use local_ip_address::{ local_ip };
 use serde_json::json;
 
 static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bin/campus.json"));
-
+static ROOM_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomConfig.csv");
 static CFM_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
-
-// static mut cfm_file_global : String = String::from('');
 
 /*
 $$$$$$$\                      $$\                                 $$\ 
@@ -161,7 +151,6 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
     let get_jn_json = b"GET /campus.json HTTP/1.1\r\n";
     let get_cb_json = b"GET /roomChecks.json HTTP/1.1\r\n";
     let get_main    = b"GET /main.js HTTP/1.1\r\n";
-    //let cfm_file_g  = b"GET /cfm_file HTTP/1.1\r\n";
     
     // Jacknet
     let ping        = b"POST /ping HTTP/1.1\r\n";
@@ -208,11 +197,9 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
         if buffer.starts_with(ping) {
             contents = execute_ping(&mut buffer); // JN
         } else if buffer.starts_with(schedule) { // CB
-            contents = get_room_schedule(&mut buffer);
+            let _ = get_room_schedule(&mut buffer);
+            contents = String::from("Empty");
         } else if buffer.starts_with(lsm) {
-
-            println!("Got here!");
-            
             let req = reqwest::blocking::Client::builder()
                 .cookie_provider(cookie_jar)
                 .user_agent("server_lib/0.3.1")
@@ -493,8 +480,15 @@ $$ |  $$\ $$ |  $$ |$$  _$$<  $$ |      $$ |  $$ |$$ |      $$ |  $$ |
  \______/ \__|  \__|\__|  \__|\__|      \_______/ \__|       \_______|
 */
 
-fn get_room_schedule(_buffer: &mut [u8]) -> String {
-    return String::from("Empty");
+fn get_room_schedule(_buffer: &mut [u8]) -> Result<(), Box<dyn Error>> {
+    let data = File::open(ROOM_CSV)?;
+    let mut rdr = Reader::from_reader(data);
+    for result in rdr.records() {
+        let record = result?;
+        println!("{:?}", record.get(0));
+    }
+
+    return Ok(());
 }
 
 fn construct_headers() -> HeaderMap {
