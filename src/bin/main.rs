@@ -92,7 +92,7 @@ use std::sync::Arc;
 use std::string::String;
 use std::option::Option;
 
-use reqwest::{ header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT }};
+use reqwest::{ header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT }};
 use local_ip_address::local_ip;
 
 //use serde::{Deserialize, Serialize};
@@ -117,7 +117,7 @@ $$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |  $$ |\$$$$$$$ |
 
 fn main() {
     //debug setting
-    env::set_var("RUST_BACKTRACE", "0");
+    env::set_var("RUST_BACKTRACE", "1");
 
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
@@ -147,19 +147,20 @@ fn main() {
     env::set_var("API_PASSWORD", "UofWyo-CTS3945-API");
     let listener = TcpListener::bind(host_ip).unwrap();
     let pool = ThreadPool::new(4);
+    let cookie_jar = Arc::new(reqwest::cookie::Jar::default());
 
     for stream in listener.incoming() {
+        let cookie_jar = Arc::clone(&cookie_jar);
         let stream = stream.unwrap();
 
-        pool.execute(|| {
-            handle_connection(stream);
+        pool.execute(move || {
+            handle_connection(stream, Arc::clone(&cookie_jar));
         });
     }
 }
 
-fn handle_connection(mut stream: TcpStream) -> Option<()> {
+fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar>) -> Option<()> {
     let mut buffer = [0; 1024];
-    let cookie_jar = Arc::new(reqwest::cookie::Jar::default());
 
     // let mut cfm_file_r: String = String::new();
 
@@ -223,27 +224,26 @@ fn handle_connection(mut stream: TcpStream) -> Option<()> {
         } else if buffer.starts_with(schedule) { // CB
             contents = get_room_schedule(&mut buffer);
         } else if buffer.starts_with(lsm) {
-            // let user = env::var("API_USER").expect("[-] Missing environment variabple API_USER.");
-            // let pass = env::var("API_PASSWORD").expect("[-] Missing environment variable API_PASSWORD.");
 
+            println!("Got here!");
+            
             let req = reqwest::blocking::Client::builder()
                 .cookie_provider(cookie_jar)
-                // .redirect(reqwest::redirect::Policy::none())
                 .user_agent("server_lib/0.3.1")
                 .default_headers(construct_headers())
                 .build().ok()?
                 .get("https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D")
-                // .basic_auth(&user, Some(&pass))
             ;
 
-            eprintln!("Fetching url...");
+            println!("{:?}", req);
+
+            println!("Fetching url...");
             let res = req.send().ok()?;
 
-            eprintln!("Response: {:?} {}", res.version(), res.status());
-            eprintln!("Headers: {:#?}\n", res.headers());
-            eprintln!("Body {}\n", res.text().ok()?);
+            println!("Response: {:?} {}", res.version(), res.status());
+            println!("Headers: {:#?}\n", res.headers());
 
-            contents = String::from("Empty");
+            contents = String::from(res.text().ok()?);
         } else if buffer.starts_with(cfm_build) { // CC-CFM
             contents = cfm_build_dir(&mut buffer);
         } else if buffer.starts_with(cfm_build_r) {
@@ -519,10 +519,10 @@ fn get_room_schedule(_buffer: &mut [u8]) -> String {
 
 fn construct_headers() -> HeaderMap {
     let mut header_map = HeaderMap::new();
-    static AUTHORIZATION: &'static str = "Autorization";
     static LOGIN: &'static str = "Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk=";
     header_map.insert(ACCEPT, HeaderValue::from_static("application/json"));
-    header_map.insert(HeaderName::from_static(AUTHORIZATION), HeaderValue::from_static(LOGIN));
+    header_map.insert(AUTHORIZATION, HeaderValue::from_static(LOGIN));
+    println!("Here I am!");
 
     return header_map;
 }
