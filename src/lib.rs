@@ -111,7 +111,15 @@ impl Drop for ThreadPool {
     }
 }
 
-// 
+// ----------- Custom struct for checkerboard - jn <3
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Room {
+	pub room_name: String,
+	pub checked: Bool,
+	pub gp: Bool,
+	pub schedule: Vec<u8>
+}
+
 
 // ----------- Custom structs for JackNet Requests
 // campus.json format
