@@ -68,12 +68,12 @@ use std::{
     net::{ TcpStream, TcpListener, },
     fs::{
         read, read_to_string, read_dir, metadata, /* Path, collections::HashMap, process::*, error::Error */
-        File::{ open, }
+        File,
     },
     sync::{ Arc, },
     string::{ String, },
     option::{ Option, },
-}
+};
 
 use reqwest::{ 
     header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT }
@@ -203,7 +203,7 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
             status_line =  "HTTP/1.1 404 NOT FOUND";
             filename = "html-css-js/404.html";
         };
-        contents = fs::read_to_string(filename).unwrap();
+        contents = read_to_string(filename).unwrap();
     } else if buffer.starts_with(b"POST") {
         if buffer.starts_with(ping) {
             contents = execute_ping(&mut buffer); // JN
@@ -267,7 +267,7 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
         let mut file_buffer = Vec::new();
         f.read_to_end(&mut file_buffer).unwrap();
 
-        let buf_content = fs::read(&contents).unwrap();
+        let buf_content = read(&contents).unwrap();
         let length = buf_content.len();
         
         response = format!("\
@@ -534,11 +534,11 @@ _|        _|        _|      _|
 */
 
 fn dir_exists(path: &str) -> bool {
-    fs::metadata(path).is_ok()
+    metadata(path).is_ok()
 }
 
 fn is_this_file(path: &str) -> bool {
-    fs::metadata(path).unwrap().is_file()
+    metadata(path).unwrap().is_file()
 }
 
 /* fn is_this_dir(path: &str) -> bool {
@@ -571,7 +571,7 @@ fn find_files(building: String, rm: String) -> Vec<String> {
 
 fn get_dir_contents(path: &str) -> Vec<String> {
     let mut strings = Vec::new();
-    let paths = fs::read_dir(&path).unwrap();
+    let paths = read_dir(&path).unwrap();
     for p in paths {
         println!("{}\n", p.as_ref().unwrap().path().display());
         strings.push(p.unwrap().path().display().to_string());
