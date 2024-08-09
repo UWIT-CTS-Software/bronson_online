@@ -50,18 +50,10 @@ updated 7/31/2024
        [ ] get logic that logs the buffer for 404 requests
  */
 
-use server_lib::ThreadPool;
-use server_lib::BuildingData;
-// use server_lib::Building;
-use server_lib::PingRequest;
-
-use server_lib::CFMRequest;
-use server_lib::CFMRoomRequest;
-use server_lib::CFMRequestFile;
-
-// use server_lib::GeneralRequest;
-
-use server_lib::jp::ping_this;
+use server_lib::{
+    ThreadPool, BuildingData, PingRequest, CFMRequest, CFMRoomRequest, CFMRequestFile, /* Building, GeneralRequest */
+    jp::{ ping_this, },
+};
 
 //use crate::ftp;
 //use suppaftp::FtpStream;
@@ -70,29 +62,23 @@ use server_lib::jp::ping_this;
 extern crate getopts;
 use getopts::Options;
 
-use std::io::prelude::*;
-// use std::io::BufReader;
-use std::io::Read;
+use std::{
+    str, env,
+    io::{ prelude::*, Read, /* BufReader */ },
+    net::{ TcpStream, TcpListener, },
+    fs::{
+        read, read_to_string, read_dir, metadata, /* Path, collections::HashMap, process::*, error::Error */
+        File::{ open, }
+    },
+    sync::{ Arc, },
+    string::{ String, },
+    option::{ Option, },
+}
 
-use std::net::TcpStream;
-use std::net::TcpListener;
-use std::fs;
-use std::fs::File;
-// use std::fs::read;
-// use std::path::Path;
+use reqwest::{ 
+    header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT }
+};
 
-use std::str;
-use std::env;
-// use std::env::*;
-// use std::collections::HashMap;
-
-// use std::process::*;
-use std::sync::Arc;
-// use std::error::Error;
-use std::string::String;
-use std::option::Option;
-
-use reqwest::{ header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT }};
 use local_ip_address::local_ip;
 
 //use serde::{Deserialize, Serialize};
