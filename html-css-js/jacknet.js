@@ -140,6 +140,12 @@ async function getSelectedBuilding() {
     }
 }
 
+async function filterIp(ip) {
+    let buff = ip.split("(")[1];
+    buff = buff.split(")")[0];
+    return buff;
+}
+
 // pad()
 //  n     - what you are padding
 //  width - number of space
@@ -353,8 +359,7 @@ async function runSearch() {
         f_ips = f_ips.concat(pingResult[1]);
     }
 
-    // set the csv export data
-    setCSVExport(f_hns, f_ips, f_rms);
+    
     
     updateConsole("====--------------------========--------------------====");
 
@@ -370,8 +375,13 @@ async function runSearch() {
     for (var i = 0; i < f_ips.length; i++) {
         if(f_ips[i] == "x") {
             not_found_count += 1;
+        } else { // filter "hostname.uwyo.dns (ip-address)"
+            f_ips[i] = await filterIp(f_ips[i]);
         }
     }
+
+    // set the csv export data
+    setCSVExport(f_hns, f_ips, f_rms);
 
     // Tell user how good the search went :)
     console.log(f_hns.length);
