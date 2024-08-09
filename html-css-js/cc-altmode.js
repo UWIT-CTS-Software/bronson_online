@@ -61,20 +61,23 @@ async function getCFMF(filename, classtype) {
         //updateConsole("ERRORSelected Directory");
         // It would be sweet to go into room sub-directories
         // do that
-        let files = getCFM_Dir(cmff);
+        let files = await getCFM_Dir(cmff);
         //update filebrowser
+
+        console.log(files);
         await setFileBrowser(filename, files);
         return;
     }
     
     
-    let value = await getCFM_File(cmff);
+    // let value = 
+    await getCFM_File(cmff);
 
-    console.log(value);
-    cmff = `/CFM_Code/${brs[0]}${brs[1]}/${filename}`;
+    // console.log(value);
+    // cmff = `/CFM_Code/${brs[0]}${brs[1]}/${filename}`;
     
-    console.log(value);
-    downloadFile(value.bytes(), filename);
+    // console.log(value);
+    // downloadFile(value.bytes(), filename);
     return;
 }
 

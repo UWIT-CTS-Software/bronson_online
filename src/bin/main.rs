@@ -535,9 +535,9 @@ fn is_this_file(path: &str) -> bool {
     metadata(path).unwrap().is_file()
 }
 
-/* fn is_this_dir(path: &str) -> bool {
-    fs::metadata(path).unwrap().is_dir()
-} */
+fn is_this_dir(path: &str) -> bool {
+    metadata(path).unwrap().is_dir()
+}
 
 fn find_files(building: String, rm: String) -> Vec<String> {
     let mut strings = Vec::new();
@@ -701,6 +701,7 @@ fn get_cfm(buffer: &mut [u8]) -> String {
     if dir_exists(CFM_DIR) {
         println!("SUCCESS: CFM_Code Directory Found");
     }
+    
     let cfm_files = find_files(cfmr.building, cfmr.rm);
 
     // return file
@@ -765,16 +766,40 @@ fn get_cfm_file(buffer: &mut [u8]) -> String {
 //    [ ] - send in json as usual ?
 fn get_cfm_dir(buffer: &mut [u8]) -> String {
     // RequstFile
-    //    - building
-    //    - rm
     //    - filename
+    let mut strings = Vec::new();
     let buff_copy: String = process_buffer(buffer);
-    let _cfmr_f: CFMRequestFile = serde_json::from_str(&buff_copy)
+    let cfmr_d: CFMRequestFile = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 38: failed to parse filename");
 
     if dir_exists(CFM_DIR) {
         println!("SUCCESS: CFM_Code Directory Found");
     }
 
-    return String::from("THIS SHOULD BE A DIRECTORY VEC")
+    //let cfm_files = find_files(cfmr.building, cfmr.rm);
+    let mut path = String::from(CFM_DIR);
+    path.push_str(&cfmr_d.filename);
+    
+    if dir_exists(&path) {
+        println!("SUCCESS 2: ROOM DIRECTORY FOUND");
+        if is_this_dir(&path) {
+            println!("SUCCESS 3: ROOM DIRECTORY IS A DIR");
+            strings = get_dir_contents(&path);
+        } else {
+            println!("Failure Not really a directory!");
+            strings.push("FAILED, directory is a file".to_string());
+            let json_return = json!({"names": strings});
+            return json_return.to_string();
+        }
+    }
+
+    // return file
+    let json_return = json!({
+        "names": strings
+    });
+
+    println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
+
+    return json_return.to_string();
+    //return String::from("THIS SHOULD BE A DIRECTORY VEC")
 }
