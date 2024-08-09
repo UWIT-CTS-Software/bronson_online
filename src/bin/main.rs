@@ -50,18 +50,10 @@ updated 7/31/2024
        [ ] get logic that logs the buffer for 404 requests
  */
 
-use server_lib::ThreadPool;
-use server_lib::BuildingData;
-// use server_lib::Building;
-use server_lib::PingRequest;
-
-use server_lib::CFMRequest;
-use server_lib::CFMRoomRequest;
-use server_lib::CFMRequestFile;
-
-// use server_lib::GeneralRequest;
-
-use server_lib::jp::ping_this;
+use server_lib::{
+    ThreadPool, BuildingData, PingRequest, CFMRequest, CFMRoomRequest, CFMRequestFile, /* Building, GeneralRequest */
+    jp::{ ping_this, },
+};
 
 //use crate::ftp;
 //use suppaftp::FtpStream;
@@ -70,29 +62,23 @@ use server_lib::jp::ping_this;
 extern crate getopts;
 use getopts::Options;
 
-use std::io::prelude::*;
-// use std::io::BufReader;
-use std::io::Read;
+use std::{
+    str, env,
+    io::{ prelude::*, Read, /* BufReader */ },
+    net::{ TcpStream, TcpListener, },
+    fs::{
+        read, read_to_string, read_dir, metadata, /* Path, collections::HashMap, process::*, error::Error */
+        File,
+    },
+    sync::{ Arc, },
+    string::{ String, },
+    option::{ Option, },
+};
 
-use std::net::TcpStream;
-use std::net::TcpListener;
-use std::fs;
-use std::fs::File;
-// use std::fs::read;
-// use std::path::Path;
+use reqwest::{ 
+    header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT }
+};
 
-use std::str;
-use std::env;
-// use std::env::*;
-// use std::collections::HashMap;
-
-// use std::process::*;
-use std::sync::Arc;
-// use std::error::Error;
-use std::string::String;
-use std::option::Option;
-
-use reqwest::header::{ HeaderMap, HeaderName, HeaderValue, ACCEPT };
 use local_ip_address::local_ip;
 
 //use serde::{Deserialize, Serialize};
@@ -117,7 +103,7 @@ $$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |  $$ |\$$$$$$$ |
 
 fn main() {
     //debug setting
-    env::set_var("RUST_BACKTRACE", "0");
+    env::set_var("RUST_BACKTRACE", "1");
 
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
@@ -147,19 +133,20 @@ fn main() {
     env::set_var("API_PASSWORD", "UofWyo-CTS3945-API");
     let listener = TcpListener::bind(host_ip).unwrap();
     let pool = ThreadPool::new(4);
+    let cookie_jar = Arc::new(reqwest::cookie::Jar::default());
 
     for stream in listener.incoming() {
+        let cookie_jar = Arc::clone(&cookie_jar);
         let stream = stream.unwrap();
 
-        pool.execute(|| {
-            handle_connection(stream);
+        pool.execute(move || {
+            handle_connection(stream, Arc::clone(&cookie_jar));
         });
     }
 }
 
-fn handle_connection(mut stream: TcpStream) -> Option<()> {
+fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar>) -> Option<()> {
     let mut buffer = [0; 1024];
-    let cookie_jar = Arc::new(reqwest::cookie::Jar::default());
 
     // let mut cfm_file_r: String = String::new();
 
@@ -216,34 +203,33 @@ fn handle_connection(mut stream: TcpStream) -> Option<()> {
             status_line =  "HTTP/1.1 404 NOT FOUND";
             filename = "html-css-js/404.html";
         };
-        contents = fs::read_to_string(filename).unwrap();
+        contents = read_to_string(filename).unwrap();
     } else if buffer.starts_with(b"POST") {
         if buffer.starts_with(ping) {
             contents = execute_ping(&mut buffer); // JN
         } else if buffer.starts_with(schedule) { // CB
             contents = get_room_schedule(&mut buffer);
         } else if buffer.starts_with(lsm) {
-            // let user = env::var("API_USER").expect("[-] Missing environment variabple API_USER.");
-            // let pass = env::var("API_PASSWORD").expect("[-] Missing environment variable API_PASSWORD.");
 
+            println!("Got here!");
+            
             let req = reqwest::blocking::Client::builder()
                 .cookie_provider(cookie_jar)
-                // .redirect(reqwest::redirect::Policy::none())
                 .user_agent("server_lib/0.3.1")
                 .default_headers(construct_headers())
                 .build().ok()?
                 .get("https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D")
-                // .basic_auth(&user, Some(&pass))
             ;
 
-            eprintln!("Fetching url...");
+            println!("{:?}", req);
+
+            println!("Fetching url...");
             let res = req.send().ok()?;
 
-            eprintln!("Response: {:?} {}", res.version(), res.status());
-            eprintln!("Headers: {:#?}\n", res.headers());
-            eprintln!("Body {}\n", res.text().ok()?);
+            println!("Response: {:?} {}", res.version(), res.status());
+            println!("Headers: {:#?}\n", res.headers());
 
-            contents = String::from("Empty");
+            contents = String::from(res.text().ok()?);
         } else if buffer.starts_with(cfm_build) { // CC-CFM
             contents = cfm_build_dir(&mut buffer);
         } else if buffer.starts_with(cfm_build_r) {
@@ -281,7 +267,7 @@ fn handle_connection(mut stream: TcpStream) -> Option<()> {
         let mut file_buffer = Vec::new();
         f.read_to_end(&mut file_buffer).unwrap();
 
-        let buf_content = fs::read(&contents).unwrap();
+        let buf_content = read(&contents).unwrap();
         let length = buf_content.len();
         
         response = format!("\
@@ -513,10 +499,10 @@ fn get_room_schedule(_buffer: &mut [u8]) -> String {
 
 fn construct_headers() -> HeaderMap {
     let mut header_map = HeaderMap::new();
-    static AUTHORIZATION: &'static str = "Autorization";
     static LOGIN: &'static str = "Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk=";
     header_map.insert(ACCEPT, HeaderValue::from_static("application/json"));
-    header_map.insert(HeaderName::from_static(AUTHORIZATION), HeaderValue::from_static(LOGIN));
+    header_map.insert(AUTHORIZATION, HeaderValue::from_static(LOGIN));
+    println!("Here I am!");
 
     return header_map;
 }
@@ -548,15 +534,15 @@ _|        _|        _|      _|
 */
 
 fn dir_exists(path: &str) -> bool {
-    fs::metadata(path).is_ok()
+    metadata(path).is_ok()
 }
 
 fn is_this_file(path: &str) -> bool {
-    fs::metadata(path).unwrap().is_file()
+    metadata(path).unwrap().is_file()
 }
 
 fn is_this_dir(path: &str) -> bool {
-    fs::metadata(path).unwrap().is_dir()
+    metadata(path).unwrap().is_dir()
 }
 
 fn find_files(building: String, rm: String) -> Vec<String> {
@@ -585,7 +571,7 @@ fn find_files(building: String, rm: String) -> Vec<String> {
 
 fn get_dir_contents(path: &str) -> Vec<String> {
     let mut strings = Vec::new();
-    let paths = fs::read_dir(&path).unwrap();
+    let paths = read_dir(&path).unwrap();
     for p in paths {
         println!("{}\n", p.as_ref().unwrap().path().display());
         strings.push(p.unwrap().path().display().to_string());

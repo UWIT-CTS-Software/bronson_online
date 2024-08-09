@@ -140,6 +140,15 @@ async function getSelectedBuilding() {
     }
 }
 
+async function filterIp(ip) {
+    if (!ip.includes("(")) {
+        return ip;
+    }
+    let buff = ip.split("(")[1];
+    buff = buff.split(")")[0];
+    return buff;
+}
+
 // pad()
 //  n     - what you are padding
 //  width - number of space
@@ -303,7 +312,7 @@ async function printPingResult(pingResult, building) {
             //   add corresponding ip
             if(hns[j].includes(pad(rooms[i], 4))){
                 printHostnames += pad(hns[j], 15, " ") + "|";
-                printIps       += pad(ips[j], 15, " ") + "|";
+                printIps       += pad(await filterIp(ips[j]), 15, " ") + "|";
             }
         }
         updateConsole("Hostnames: " + printHostnames);
@@ -373,11 +382,10 @@ async function runSearch() {
             f_ips[i] = filterIp(f_ips[i]);
         }
     }
-    totalNumDevices = f_hns.length;
 
     // set the csv export data
     setCSVExport(f_hns, f_ips, f_rms);
-    
+
     // Tell user how good the search went :)
     updateConsole("Search Complete");
     updateConsole("Found " + (totalNumDevices - not_found_count) + "/" + totalNumDevices + " devices.");
