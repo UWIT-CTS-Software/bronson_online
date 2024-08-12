@@ -50,8 +50,11 @@ updated 7/31/2024
        [ ] get logic that logs the buffer for 404 requests
  */
 
+// dependencies
+// ----------------------------------------------------------------------------
 use server_lib::{
-    ThreadPool, BuildingData, PingRequest, CFMRequest, CFMRoomRequest, CFMRequestFile,
+    ThreadPool, BuildingData, PingRequest, Room, 
+    CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
 };
 //use lambda_http::Body;
@@ -65,7 +68,7 @@ use std::{
         File,
     },
     sync::{ Arc, },
-    error::{ Error, },
+    /* error::{ Error, }, */
     string::{ String, },
     option::{ Option, },
 };
@@ -75,10 +78,18 @@ use reqwest::{
 use csv::{ Reader, };
 use local_ip_address::{ local_ip };
 use serde_json::json;
+use regex::Regex;
+// ----------------------------------------------------------------------------
 
+// load up the ROM
+// ----------------------------------------------------------------------------
 static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bin/campus.json"));
-static ROOM_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomConfig.csv");
 static CFM_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
+static ROOM_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomConfig.csv");
+static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/campus.csv");
+
+static LOGIN: &'static str = "Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk=";
+// ----------------------------------------------------------------------------
 
 /*
 $$$$$$$\                      $$\                                 $$\ 
@@ -95,6 +106,11 @@ fn main() {
     //debug setting
     env::set_var("RUST_BACKTRACE", "1");
 
+    // define flags
+    //   -l -- run on localhost:7878
+    //   -p -- run with public ip on port 7878
+    //   -d -- run in debug mode : NOTE: this is not yet implemented
+    // ------------------------------------------------------------------------
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
     opts.optflag("l", "local", "Run the server using localhost.");
@@ -106,8 +122,11 @@ fn main() {
     };
     if matches.opt_present("d") {
         println!("Found the d flag!");
-    } 
+    }
+    // ------------------------------------------------------------------------
     
+    // set TcpListener and initalize
+    // ------------------------------------------------------------------------
     let host_ip: &str;
     let local_ip_addr = &(local_ip().unwrap().to_string()+":7878");
     if matches.opt_present("l") {
@@ -124,6 +143,7 @@ fn main() {
     let listener = TcpListener::bind(host_ip).unwrap();
     let pool = ThreadPool::new(4);
     let cookie_jar = Arc::new(reqwest::cookie::Jar::default());
+    // ------------------------------------------------------------------------
 
     for stream in listener.incoming() {
         let cookie_jar = Arc::clone(&cookie_jar);
@@ -138,10 +158,17 @@ fn main() {
 fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar>) -> Option<()> {
     let mut buffer = [0; 1024];
 
-    // let mut cfm_file_r: String = String::new();
-
     stream.read(&mut buffer).unwrap();
 
+    // define variables
+    // ------------------------------------------------------------------------
+    let room_filter = Regex::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
+    let time_filter = Regex::new(r"^[0-9:]+ [AP].M. - [0-9:]+ [AP].M.$").unwrap();
+    let day_filter  = Regex::new(r"[MTWRF]+ [0-9]{4}-[0-9]{4}").unwrap();
+    // ------------------------------------------------------------------------
+
+    // HTML-oriented files
+    // ------------------------------------------------------------------------
     let get_index   = b"GET / HTTP/1.1\r\n";
     let get_css     = b"GET /page.css HTTP/1.1\r\n";
     let get_cc      = b"GET /camcode.js HTTP/1.1\r\n";
@@ -151,7 +178,10 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
     let get_jn_json = b"GET /campus.json HTTP/1.1\r\n";
     let get_cb_json = b"GET /roomChecks.json HTTP/1.1\r\n";
     let get_main    = b"GET /main.js HTTP/1.1\r\n";
+    // ------------------------------------------------------------------------
     
+    // Fetch data from the backend
+    // ------------------------------------------------------------------------
     // Jacknet
     let ping        = b"POST /ping HTTP/1.1\r\n";
     // Checkerboard
@@ -164,8 +194,10 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
     let cfm_c_dir   = b"POST /cfm_c_dir HTTP/1.1\r\n";
     let cfm_file    = b"POST /cfm_file HTTP/1.1\r\n";
     let cfm_dir     = b"POST /cfm_dir HTTP/1.1\r\n";
+    // ------------------------------------------------------------------------
 
-    
+    // Handle requests
+    // ------------------------------------------------------------------------
     let mut status_line = "HTTP/1.1 200 OK";
     let (contents, filename);
     
@@ -196,8 +228,15 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
     } else if buffer.starts_with(b"POST") {
         if buffer.starts_with(ping) {
             contents = execute_ping(&mut buffer); // JN
-        } else if buffer.starts_with(schedule) { // CB
-            let _ = get_room_schedule(&mut buffer);
+        } else if buffer.starts_with(schedule) {
+            let data = File::open(ROOM_CSV).ok()?;
+            let mut rdr = Reader::from_reader(data);
+            for result in rdr.records() {
+                let record = result.ok()?;
+                if room_filter.is_match(record.get(0)?) {
+                    println!("{:?}", record.get(0)?);
+                }
+            }
             contents = String::from("Empty");
         } else if buffer.starts_with(lsm) {
             let req = reqwest::blocking::Client::builder()
@@ -284,6 +323,7 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
 
         println!("Request: {}", str::from_utf8(&buffer).unwrap());
     }
+    // ------------------------------------------------------------------------
 
     Option::Some(())
 }
@@ -480,23 +520,10 @@ $$ |  $$\ $$ |  $$ |$$  _$$<  $$ |      $$ |  $$ |$$ |      $$ |  $$ |
  \______/ \__|  \__|\__|  \__|\__|      \_______/ \__|       \_______|
 */
 
-fn get_room_schedule(_buffer: &mut [u8]) -> Result<(), Box<dyn Error>> {
-    let data = File::open(ROOM_CSV)?;
-    let mut rdr = Reader::from_reader(data);
-    for result in rdr.records() {
-        let record = result?;
-        println!("{:?}", record.get(0));
-    }
-
-    return Ok(());
-}
-
 fn construct_headers() -> HeaderMap {
     let mut header_map = HeaderMap::new();
-    static LOGIN: &'static str = "Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk=";
     header_map.insert(ACCEPT, HeaderValue::from_static("application/json"));
     header_map.insert(AUTHORIZATION, HeaderValue::from_static(LOGIN));
-    println!("Here I am!");
 
     return header_map;
 }
