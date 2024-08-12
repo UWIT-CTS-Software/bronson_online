@@ -46,8 +46,7 @@ legend {
     margin: auto;
     float: left
 }
-/* JackNet Definitions */
-
+/* JackNet Definitions */  
 
 
 /* checkerboard Defifnitions */
@@ -98,6 +97,7 @@ legend {
     background-color: rgb(36, 35, 35);
     width: 60.0%;
     float: right;
+    box-shadow: 5px 10px 10px;
 }
 
 .cfm_file {
@@ -107,6 +107,7 @@ legend {
 
 .cfm_zip {
     background-color: rgb(142, 234, 145);
+    box-shadow: 5px 10px 10px;
     /* float: left; */
 
 }
@@ -115,4 +116,44 @@ legend {
     background-color: rgb(205, 150, 105);
     /* float: left; */
 
+}
+
+/* Wiki Defifnitions */
+textarea:invalid {
+    border: 2px dashed red;
+  }
+  
+textarea:valid {
+    border: 2px solid lime;
+}
+
+/* Container for input and preview */
+.w_editor{
+    position: relative;
+    background-color: rgb(74, 71, 71);
+    display: block;
+    width: 1080px;
+    height: 512px;
+}
+
+.w_input {
+    background-color: rgb(36, 35, 35);
+    float: left;
+    display: block;
+    width: 500px;
+    height: 250px;
+}
+
+.w_preview {
+    background-color: rgb(36, 35, 35);
+    float: right;
+    display: block;
+    width: 500px;
+    height: 250px;
+    /* box-shadow: 5px 10px 10px; */
+}
+
+.w_bottomMenu {
+    float: center;
+    display: block;
 }
