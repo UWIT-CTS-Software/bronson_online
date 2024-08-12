@@ -2,12 +2,14 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <iframe id="my_iframe" style ="display:none;"></iframe>
+    <iframe id="content" style ="display:none;"></iframe>
     <link rel="stylesheet" type="text/css" href="page.css">
     <script src="camcode.js" type="text/javascript" charset="utf-8"></script>
     <script src="cc-altmode.js" type="text/javascript" charset="utf-8"></script>
     <script src="checkerboard.js" type="text/javascript" charset="utf-8"></script>
     <script src="jacknet.js" type="text/javascript" charset="utf-8"></script>
+    <script src="wiki.js" type="text/javascript" charset="utf-8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   </head>
 <!--  -->
   <body>
@@ -18,6 +20,7 @@
       <button id="CBButton" onclick="setChecker()" type="button"> Checkerboard </button>
       <button id="JNButton" onclick="setJackNet()" type="button"> JackNet </button>
       <button id="CCButton" onclick="setCamCode()" type="button"> CamCode </button>
+      <button id="wiki" onclick="setWiki()" type="button"> Wiki </button>
     </div>
     <br>
     <div class="program_board">

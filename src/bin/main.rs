@@ -160,6 +160,7 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
     let get_jn      = b"GET /jacknet.js HTTP/1.1\r\n";
     let get_jn_json = b"GET /campus.json HTTP/1.1\r\n";
     let get_cb_json = b"GET /roomChecks.json HTTP/1.1\r\n";
+    let get_wiki    = b"GET /wiki.js HTTP/1.1\r\n";
     let get_main    = b"GET /main.js HTTP/1.1\r\n";
     //let cfm_file_g  = b"GET /cfm_file HTTP/1.1\r\n";
     
@@ -199,6 +200,8 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
             filename = "html-css-js/campus.json";
         } else if buffer.starts_with(get_cb_json) {
             filename = "html-css-js/roomChecks.json";
+        } else if buffer.starts_with(get_wiki) {
+            filename = "html-css-js/wiki.js";
         } else {
             status_line =  "HTTP/1.1 404 NOT FOUND";
             filename = "html-css-js/404.html";
