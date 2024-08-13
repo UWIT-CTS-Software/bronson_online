@@ -312,7 +312,7 @@ async function printPingResult(pingResult, building) {
             //   add corresponding ip
             if(hns[j].includes(pad(rooms[i], 4))){
                 printHostnames += pad(hns[j], 15, " ") + "|";
-                printIps       += pad(await filterIp(ips[j]), 15, " ") + "|";
+                printIps       += pad(filterIp(ips[j]), 15, " ") + "|";
             }
         }
         updateConsole("Hostnames: " + printHostnames);
@@ -375,6 +375,7 @@ async function runSearch() {
     }
 
     // Find number of devices not found
+    totalNumDevices = f_hns.length;
     for (var i = 0; i < f_ips.length; i++) {
         if(f_ips[i] == "x") {
             not_found_count += 1;
@@ -395,9 +396,12 @@ async function runSearch() {
 };
 
 function filterIp(ip) {
-    let buff = ip.split("(")[1];
-    buff = buff.split(")")[0];
-    return buff;
+    if (ip.includes("uwyo.dns")) {
+        let buff = ip.split("(")[1];
+        buff = buff.split(")")[0];
+        return buff;
+    }
+    return ip;
 }
 
 /*
@@ -433,7 +437,9 @@ async function setJackNet() {
     console.log('Switching to jacknet');
     let progGuts = document.querySelector('.program_board .program_guts');
     let main_container = document.createElement('div');
-    main_container.innerHTML = '<p>JackNet</p>';
+    // Update tool_header
+    let tool_header = document.querySelector('.tool_header');
+    tool_header.innerHTML = 'JackNet';
 
     // Make a box for list of buildings
     let buildingSelect = document.createElement("fieldset");
