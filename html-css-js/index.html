@@ -12,9 +12,10 @@
     <script src="wiki.js" type="text/javascript" charset="utf-8"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   </head>
-<!--  -->
+  <!-- body -->
   <body>
     <div class="program_board">
+      <!-- Website Header (Doesn't Change) -->
       <div class="program_header">
         <h1 class='site_header'>
           Bronson</h1>
@@ -27,13 +28,13 @@
             <legend>
               Tools:
             </legend>
-            <button id="CBButton" onclick="setChecker()" type="button">
+            <button id="CBButton" onclick="setChecker()" type="button" class="headButton">
               Checkerboard </button>
-            <button id="JNButton" onclick="setJackNet()" type="button">
+            <button id="JNButton" onclick="setJackNet()" type="button" class="headButton">
               JackNet </button>
-            <button id="CCButton" onclick="setCrestronFile()" type="button">
+            <button id="CCButton" onclick="setCrestronFile()" type="button" class="headButton">
               CamCode </button>
-            <button id="wiki" onclick="setWiki()" type="button">
+            <button id="wiki" onclick="setWiki()" type="button" class="headButton">
               Wiki </button>
           </fieldset>
         </div>
@@ -41,13 +42,13 @@
           <fieldset>
             <legend>
               Sites:</legend>
-            <button id="TimeClockURL" onclick="window.open('https://shibboleth.uwyo.edu/idp/profile/SAML2/Unsolicited/SSO?providerId=https://9922.tcplusondemand.com&shire=https://9922.tcplusondemand.com/api/v0000/saml2Sessions/0/Saml2SingleSignOnEmployeePost&target=CompanyNamespace%3d9922%3bCompanyId%3d1%3bRedirectPat');" type="button">
+            <button id="TimeClockURL" onclick="window.open('https://shibboleth.uwyo.edu/idp/profile/SAML2/Unsolicited/SSO?providerId=https://9922.tcplusondemand.com&shire=https://9922.tcplusondemand.com/api/v0000/saml2Sessions/0/Saml2SingleSignOnEmployeePost&target=CompanyNamespace%3d9922%3bCompanyId%3d1%3bRedirectPat');" type="button" class="headButton">
               TimeClock </button>
-            <button id="lsmURL" onclick="window.open('https://uwyo.talem3.com/lsm/login/auth');" type="button">
+            <button id="lsmURL" onclick="window.open('https://uwyo.talem3.com/lsm/login/auth');" type="button" class="headButton">
               LSM </button>
-            <button id="tdURL" onclick="window.open('https://www.uwyo.teamdynamix.com');" type="button">
+            <button id="tdURL" onclick="window.open('https://www.uwyo.teamdynamix.com');" type="button" class="headButton">
               TeamDynamix </button>
-            <button id="25lURL" onclick="window.open('https://25live.collegenet.com/pro/uwyo#!/home/dash');" type="button">
+            <button id="25lURL" onclick="window.open('https://25live.collegenet.com/pro/uwyo#!/home/dash');" type="button" class="headButton">
               25Live </button>
           </fieldset>
         </div>
