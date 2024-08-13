@@ -204,6 +204,8 @@ async function updateRoomList() {
 //      setCrestronFile()
 // Change the DOM for Crestron File Manager
 async function setCrestronFile() {
+    let tool_header = document.querySelector('.tool_header');
+    tool_header.innerHTML = 'CamCode';
     console.log('switching to camcode-cfm');
   
     // Pull List of Directories
@@ -213,9 +215,6 @@ async function setCrestronFile() {
     let progGuts = document.querySelector('.program_board .program_guts');
     let main_container = document.createElement('div');
     main_container.innerHTML = `
-        <p>
-            hello world - CamCode (Crestron File Manager)
-        </p>
         <button id="cam_code" onclick="setCamCode()">
             CamCode (Q-SYS) </button>
         <p>\n</p>`;
@@ -264,7 +263,7 @@ async function setCrestronFile() {
                 Generate Files </button>
             <button id="clearCon" onclick="clearConsole()">
                 Clear Console </button>
-            <button id="reset" onclick="resetCamCode()"> 
+            <button id="reset" onclick="setCrestronFile()"> 
                 Reset </button>
         </menu>`;
 

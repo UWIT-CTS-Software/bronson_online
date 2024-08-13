@@ -20,6 +20,8 @@ class Cookie {
 }
 
 function setChecker() {
+  let tool_header = document.querySelector('.tool_header');
+  tool_header.innerHTML = 'Checkerboard';
 
   console.log('Switching to checkerboard');
   let prog_guts = document.querySelector('.program_board .program_guts');

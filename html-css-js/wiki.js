@@ -26,26 +26,22 @@ function wiki_button() {
 // update the realtime guy
 async function updatePreview() {
     console.log("Typing...");
-    let text = document.querySelector('.w_input');
+    let text = document.querySelector('.inputWindow');
     let wp   = document.querySelector('.w_preview');
     console.log(text);
-    wp.innerHTML = marked.parse(text);
+    wp.innerHTML = marked.parse(text.value);
     return;
 }
 
 // setWiki()
 function setWiki() {
     console.log('switching to wiki');
+    let tool_header = document.querySelector('.tool_header');
+    tool_header.innerHTML = 'Wiki';
 
     let progGuts = document.querySelector('.program_board .program_guts');
     let main_container = document.createElement('div');
     main_container.classList.add('program_guts');
-    main_container.innerHTML = `
-        <p>
-            hello world - Wiki
-        </p>
-        <p>\n</p>`;
-
     
     // Wiki editor container
     let w_editor = document.createElement('div');
@@ -55,7 +51,7 @@ function setWiki() {
     let w_input = document.createElement('div');
     w_input.classList.add("w_input");
     w_input.innerHTML = `
-        <textarea id="input" class="inputWindow" placeholder="# MMm markdown" cols=50 rows=25 onkeyup="updatePreview()"></textarea>`;
+        <textarea id="input" class="inputWindow" placeholder="# MMm markdown" onkeyup="updatePreview()"></textarea>`;
 
     // Wiki preview/output Page
     let w_preview = document.createElement('div');
@@ -65,11 +61,11 @@ function setWiki() {
             This is text
         </p><br>`;
 
-    // Bottom Menu buttons
+    // Option Menu buttons
     // [ Generate Files ] [ Clear Console ] [ Reset ]
-    let bottomMenu = document.createElement("div");
-    bottomMenu.classList.add('w_bottomMenu');
-    bottomMenu.innerHTML = `
+    let optionMenu = document.createElement("div");
+    optionMenu.classList.add('w_optionMenu');
+    optionMenu.innerHTML = `
         <fieldset>
             <legend>
                 Options: 
@@ -82,11 +78,29 @@ function setWiki() {
             </menu>
         </fieldset>`;
 
+    // Option Menu buttons
+    // [ Generate Files ] [ Clear Console ] [ Reset ]
+    let w_toc = document.createElement("div");
+    w_toc.classList.add('w_toc');
+    w_toc.innerHTML = `
+        <fieldset>
+            <legend>
+                Table of Contents: 
+            </legend>
+            <ul>
+                <li> Item 1 </li>
+                <li> Item 2 </li>
+                <li> Item tmp </li>
+                <li> Item 3 </li>
+            </ul>
+        </fieldset>`;
+
     w_editor.appendChild(w_input);
     w_editor.appendChild(w_preview);
-
+    w_editor.appendChild(optionMenu);
+    w_editor.appendChild(w_toc)
     main_container.appendChild(w_editor);
-    main_container.appendChild(bottomMenu);
+    // main_container.appendChild(bottomMenu);
     progGuts.replaceWith(main_container);
     return;
 }
