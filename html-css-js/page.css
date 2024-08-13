@@ -3,10 +3,26 @@ body {
     background-color: rgb(50, 50, 50);
 }
 
+/* Other */
+label {
+    color: rgb(236, 200, 101);
+    text-align: center;
+    font-family:'Courier New', Courier, monospace;
+}
+
+legend {
+    color: rgb(236, 200, 101);
+    text-align: left;
+    font-family:'Courier New', Courier, monospace;
+}
+
 /* Program Header        .program_header
     Site (Dashboard Button) - .site_header
     text                    - .p_header
     Selected Tool           - .tool_header
+
+    Tool Buttons            - .tool_buttons
+    Site Buttons            - .site_buttons
 */
 .program_header {
     position: relative;
@@ -61,42 +77,128 @@ body {
     margin: 5px;
 }
 
-/* Other */
-label {
-    color: rgb(236, 200, 101);
-    text-align: center;
-    font-family:'Courier New', Courier, monospace;
-}
-
-legend {
-    color: rgb(236, 200, 101);
-    text-align: left;
-    font-family:'Courier New', Courier, monospace;
-}
-
-.button {
+/*  HEADER BUTTON STYLE */
+/* .headButton {
     border: none;
-    color: white;
-    padding: 15px 32px;
+    color: rgb(69, 69, 69);
+    padding: 8px 16px;
     text-align: center;
     text-decoration: none;
     display: inline-block;
-    font-size: 16px;
+    font-size: 12px;
     margin: 4px 2px;
     cursor: pointer;
+} */
+.headButton {
+  appearance: none;
+  background-color: #fafbfcb6;
+  border: 1px solid rgba(27, 31, 35, 0.15);
+  border-radius: 6px;
+  box-shadow: rgba(27, 31, 35, 0.04) 0 1px 0, rgba(255, 255, 255, 0.25) 0 1px 0 inset;
+  box-sizing: border-box;
+  color: #24292E;
+  cursor: pointer;
+  display: inline-block;
+  font-family: -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  list-style: none;
+  padding: 2px 8px;
+  position: relative;
+  transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  vertical-align: middle;
+  white-space: nowrap;
+  word-wrap: break-word;
 }
 
-.button1 {background-color: #04AA6D;} /* Green */
-.button2 {background-color: #008CBA;} /* Blue */
+.headButton:hover {
+  background-color: #F3F4F6;
+  text-decoration: none;
+  transition-duration: 0.1s;
+}
+
+.headButton:disabled {
+  background-color: #FAFBFC;
+  border-color: rgba(27, 31, 35, 0.15);
+  color: #959DA5;
+  cursor: default;
+}
+
+.headButton:active {
+  background-color: #EDEFF2;
+  box-shadow: rgba(225, 228, 232, 0.2) 0 1px 0 inset;
+  transition: none 0s;
+}
+
+.headButton:focus {
+  outline: 1px transparent;
+}
+
+.headButton:before {
+  display: none;
+}
+
+.headButton:-webkit-details-marker {
+  display: none;
+}
+
+/* JackNet Definitions 
+       _            _    _   _      _   
+      | |          | |  | \ | |    | |  
+      | | __ _  ___| | _|  \| | ___| |_ 
+  _   | |/ _` |/ __| |/ / . ` |/ _ \ __|
+ | |__| | (_| | (__|   <| |\  |  __/ |_ 
+  \____/ \__,_|\___|_|\_\_| \_|\___|\__|
+*/
 
 .innerConsole {
     margin: auto;
     float: left
 }
-/* JackNet Definitions */  
+
+.jn_container {
+    position: relative;
+    background-color: rgb(50, 50, 50);
+    display: grid;
+    grid-template-columns: repeat(7,1fr);
+    gap: 10px;
+    grid-auto-rows: minmax(20px, auto);
+}
+
+.jn_buildSelect {
+    grid-column: 2 / 4;
+    grid-row: 1;
+}
+
+.jn_bottomMenu {
+    grid-column: 4 / 7;
+    grid-row: 1;
+}
+
+.jn_devSelect {
+    grid-column: 2 / 7;
+    grid-row: 2;
+}
+
+.jn_console {
+    grid-column: 2 / 7;
+    grid-row: 3;
+}
 
 
-/* checkerboard Defifnitions */
+
+/* checkerboard Defifnitions 
+   _____ _     _         _             _ 
+  / ____| |   | |       | |           | |
+ | |    | |__ | | ___ __| |__  _ __ __| |
+ | |    | '_ \| |/ / '__| '_ \| '__/ _` |
+ | |____| | | |   <| |  | |_) | | | (_| |
+  \_____|_| |_|_|\_\_|  |_.__/|_|  \__,_|
+*/
 
 .largeContainer {
     background-color: rgb(36, 35, 35);
@@ -132,39 +234,69 @@ legend {
 
 
 
-/* CamCode Defifnitions */
+/* CamCode Defifnitions 
+   _____                 _____          _      
+  / ____|               / ____|        | |     
+ | |     __ _ _ __ ___ | |     ___   __| | ___ 
+ | |    / _` | '_ ` _ \| |    / _ \ / _` |/ _ \
+ | |___| (_| | | | | | | |___| (_) | (_| |  __/
+  \_____\__,_|_| |_| |_|\_____\___/ \__,_|\___|
+*/
+.cfm_container {
+    position: relative;
+    background-color: rgb(50, 50, 50);
+    display: grid;
+    grid-template-columns: repeat(7,1fr);
+    gap: 10px;
+    grid-auto-rows: minmax(100px, auto);
+}
 
 .cfm_ParamContainer {
-    background-color: rgb(36, 35, 35);
-    width: 33.3%;
+    background-color: rgb(50, 50, 50);
+    grid-column: 2 / 3;
     float: left;
+    display: block;
 }
 
 .cfm_FileContainer {
-    background-color: rgb(36, 35, 35);
-    width: 60.0%;
+    background-color: rgb(50, 50, 40);
+    grid-column: 3 / 7;
     float: right;
+    display: block;
     box-shadow: 5px 10px 10px;
+}
+
+.cfm_list {
+    color: rgb(236, 200, 101);
 }
 
 .cfm_file {
-    background-color: rgb(172, 160, 127);
-    /* float: left; */
+    background-color: rgb(87, 106, 119);
+    border-radius: 4px;
+    text-align: left;
 }
 
 .cfm_zip {
-    background-color: rgb(142, 234, 145);
-    box-shadow: 5px 10px 10px;
-    /* float: left; */
-
+    background-color: rgb(79, 127, 80);
+    box-shadow: 4px 6px 6px;
+    border-radius: 4px;
+    text-align: center;
 }
 
 .cfm_dir {
-    background-color: rgb(205, 150, 105);
-    /* float: left; */
+    background-color: rgb(138, 101, 71);
+    border-radius: 4px;
+    text-align: right;
 }
 
-/* Wiki Defifnitions */
+/* Wiki Defifnitions 
+ __          ___ _    _ 
+ \ \        / (_) |  (_)
+  \ \  /\  / / _| | ___ 
+   \ \/  \/ / | | |/ / |
+    \  /\  /  | |   <| |
+     \/  \/   |_|_|\_\_|
+*/
 textarea:invalid {
     border: 2px dashed red;
   }
