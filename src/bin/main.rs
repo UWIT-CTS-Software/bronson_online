@@ -68,9 +68,12 @@ use std::{
         File,
     },
     sync::{ Arc, },
-    /* error::{ Error, }, */
+    error::{ Error, },
     string::{ String, },
     option::{ Option, },
+    /* ops::{ FromResidual },
+    convert::{ Infallible }, */
+    collections::{ HashMap },
 };
 use reqwest::{ 
     header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT }
@@ -124,6 +127,18 @@ fn main() {
         println!("Found the d flag!");
     }
     // ------------------------------------------------------------------------
+
+    // define variables
+    // ------------------------------------------------------------------------
+
+    let room_filter = Regex::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
+    let time_filter = Regex::new(r"^[0-9:]+ [AP].M. - [0-9:]+ [AP].M.$").unwrap();
+    let day_filter  = Regex::new(r"[MTWRF]+ [0-9]{4}-[0-9]{4}").unwrap();
+    let mut rooms = gen_room_map(&room_filter, &time_filter, &day_filter);
+    println!("{:?}", rooms);
+    
+    // ------------------------------------------------------------------------
+    
     
     // set TcpListener and initalize
     // ------------------------------------------------------------------------
@@ -162,9 +177,6 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
 
     // define variables
     // ------------------------------------------------------------------------
-    let room_filter = Regex::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
-    let time_filter = Regex::new(r"^[0-9:]+ [AP].M. - [0-9:]+ [AP].M.$").unwrap();
-    let day_filter  = Regex::new(r"[MTWRF]+ [0-9]{4}-[0-9]{4}").unwrap();
     // ------------------------------------------------------------------------
 
     // HTML-oriented files
@@ -180,7 +192,7 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
     let get_main    = b"GET /main.js HTTP/1.1\r\n";
     // ------------------------------------------------------------------------
     
-    // Fetch data from the backend
+    // fetch data from the backend
     // ------------------------------------------------------------------------
     // Jacknet
     let ping        = b"POST /ping HTTP/1.1\r\n";
@@ -229,14 +241,14 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
         if buffer.starts_with(ping) {
             contents = execute_ping(&mut buffer); // JN
         } else if buffer.starts_with(schedule) {
-            let data = File::open(ROOM_CSV).ok()?;
-            let mut rdr = Reader::from_reader(data);
-            for result in rdr.records() {
+            /* let room_data = File::open(ROOM_CSV).ok()?;
+            let mut room_rdr = Reader::from_reader(room_data);
+            for result in room_rdr.records() {
                 let record = result.ok()?;
                 if room_filter.is_match(record.get(0)?) {
                     println!("{:?}", record.get(0)?);
                 }
-            }
+            } */
             contents = String::from("Empty");
         } else if buffer.starts_with(lsm) {
             let req = reqwest::blocking::Client::builder()
@@ -357,6 +369,39 @@ fn find_curls(s: &String) -> (usize, usize) {
         }
     }
     (s.len(), s.len())
+}
+
+// generate room HashMap
+// ----------------------------------------------------------------------------
+fn gen_room_map(room_filter: &Regex, time_filter: &Regex, day_filter: &Regex) -> Result<HashMap<String, Room>, Box<dyn Error>> {
+
+    let mut rooms: HashMap<String, Room> = HashMap::new();
+    let data = File::open(CAMPUS_CSV)?;
+    let mut rdr = Reader::from_reader(data);
+    for result in rdr.records() {
+        let record = result?;
+        if room_filter.is_match(record.get(0).expect("Empty")) {
+            println!("{:?}", String::from(record.get(0).expect("Empty")));
+            let mut item_vec: Vec<i32> = Vec::new();
+            for i in 1..6 {
+                item_vec.push(record.get(i).expect("-1").parse().unwrap());
+            }
+
+            let room = Room {
+                name: String::from(record.get(0).expect("Empty")),
+                items: item_vec,
+                gp: record.get(6).expect("-1").parse().unwrap(),
+                checked: 0,
+                schedule: Vec::new(),
+            };
+
+            rooms.insert(String::from(&room.name), room);
+        }
+    }
+
+    println!("{:?}", rooms);
+
+    Ok(rooms)
 }
 
 // Debug function
@@ -685,7 +730,7 @@ fn cfm_build_rm(buffer: &mut [u8]) -> String {
 
     // Prep buffer into Room List Request Struct
     //     - building
-    let buff_copy = process_buffer(buffer);
+    let buff_copy: String = process_buffer(buffer);
     let cfm_rms: CFMRoomRequest = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 39: Failed to parse cfm room request.");
     
