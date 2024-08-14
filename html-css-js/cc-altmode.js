@@ -121,9 +121,9 @@ function cfmGetBuildingRoom(){
 // CONSOLE REVAMP FUNCTIONS HERE
 //    MAKE A WEIRD SUDO DIRECTORY BROWSER
 async function setFileBrowser(header, files) {
-    let fs = document.querySelector('.fileSelection');
+    let fs = document.querySelector('.cfm_fileSelection');
     let new_fs = document.createElement("fieldset");
-    new_fs.classList.add('fileSelection');
+    new_fs.classList.add('cfm_fileSelection');
     new_fs.innerHTML =`
         <legend>
             File Selection
@@ -273,7 +273,7 @@ async function setCrestronFile() {
 
     // File Selection Area
     let fileSelection = document.createElement("fieldset");
-    fileSelection.classList.add('fileSelection');
+    fileSelection.classList.add('cfm_fileSelection');
     fileSelection.innerHTML = `
         <legend>
             File Selection
@@ -289,10 +289,10 @@ async function setCrestronFile() {
 
     // main_container
     let main_container = document.createElement('div');
-    main_container.innerHTML = `
-        <button id="cam_code" onclick="setCamCode()">
-            CamCode (Q-SYS) </button>
-        <p>\n</p>`;
+    // main_container.innerHTML = `
+    //     <button id="cam_code" onclick="setCamCode()">
+    //         CamCode (Q-SYS) </button>
+    //     <p>\n</p>`;
 
     main_container.appendChild(cfm_container);
     main_container.classList.add('program_guts');
