@@ -115,10 +115,27 @@ impl Drop for ThreadPool {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Room {
 	pub name: String,
-	pub checked: bool,
-	pub gp: bool,
-	pub items: Vec<u8>,
+	pub items: Vec<i32>,
+	pub gp: i32,
+	pub checked: i32,
 	pub schedule: Vec<u8>
+}
+
+// this is very rag-tag - error handling needs to be built-in
+impl Room {
+	pub fn update(key, val) {
+		if (key == "name") {
+			Room.name = val;
+		} else if (key == "items") {
+			Room.items = val;
+		} else if (key == "gp") {
+			Room.gp = val;
+		} else if (key == "checked") {
+			Room.checked = val;
+		} else if (key == "schedule") {
+			Room.schedule = val;
+		}
+	}
 }
 
 // ----------- Custom structs for JackNet Requests
