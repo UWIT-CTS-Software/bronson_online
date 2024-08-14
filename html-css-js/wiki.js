@@ -68,14 +68,11 @@ function setWiki() {
     optionMenu.innerHTML = `
         <fieldset>
             <legend>
-                Options: 
-            </legend>
-            <menu>
-                <button id="run" onclick="wiki_button()"> 
-                    Wiki Button </button>
-                <button id="reset" onclick="setWiki()"> 
-                    Reset </button>
-            </menu>
+                Options: </legend>
+            <button id="run" onclick="wiki_button()"> 
+                Wiki Button </button>
+            <button id="reset" onclick="setWiki()"> 
+                Reset </button>
         </fieldset>`;
 
     // Option Menu buttons
