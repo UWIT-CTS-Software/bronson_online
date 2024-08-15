@@ -128,7 +128,7 @@ async function setFileBrowser(header, files) {
         <legend>
             File Selection
         </legend>
-        <h2 class='tool_header'>
+        <h2 class='cfm_text'>
             ${header}
         </h2>
         <body>
@@ -253,7 +253,7 @@ async function setCrestronFile() {
     let optionMenu = document.createElement("div");
     optionMenu.classList.add('cfm_optionMenu');
     optionMenu.innerHTML = `
-        <fieldset>
+        <fieldset class="cfm_fieldset">
             <legend>
                 Options: </legend>
             <button id="run" onclick="cfmFiles()" class='headButton'> 
@@ -278,7 +278,7 @@ async function setCrestronFile() {
         <legend>
             File Selection
         </legend>
-        <p class='tool_header'>
+        <p class='cfm_text'>
             Please Select Room and Generate Files
         </p>`;
 

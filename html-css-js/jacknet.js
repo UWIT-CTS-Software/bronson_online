@@ -460,7 +460,7 @@ async function setJackNet() {
     };
     set_inner_html += '</select>';
     buildingSelect.innerHTML = `
-        <fieldset>
+        <fieldset class="jn_fieldset">
         <legend>
             Choose Building(s):
         </legend>
@@ -472,7 +472,7 @@ async function setJackNet() {
     let devSelect = document.createElement("div");
     devSelect.classList.add('jn_devSelect');
     devSelect.innerHTML = `
-        <fieldset>
+        <fieldset class="jn_fieldset">
             <legend>
                 Choose Devices to Search For: </legend>
             <input class="cbDev" type ="checkbox" id="proc" name="dev" value="Processors"/>
@@ -503,7 +503,7 @@ async function setJackNet() {
     let consoleOutput = document.createElement("div");
     consoleOutput.classList.add('jn_console');
     consoleOutput.innerHTML = `
-        <fieldset>
+        <fieldset class="jn_fieldset">
             <legend> 
                 Console Output: </legend>
             <textarea readonly rows="30" cols ="75" class="innerConsole" name="consoleOutput" spellcheck="false"> 
@@ -516,7 +516,7 @@ async function setJackNet() {
     let bottomMenu = document.createElement("div");
     bottomMenu.classList.add('jn_bottomMenu');
     bottomMenu.innerHTML = `
-        <fieldset>
+        <fieldset class="jn_fieldset">
             <legend>
                 Options: </legend>
             <button id="run" onclick="runSearch()" class="headButton">
