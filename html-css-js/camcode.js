@@ -141,11 +141,13 @@ function deleteMicSection() {
 
 // Change the DOM for CamCode (Q-SYS Module Manager)
 async function setCamCode() {
-    console.log('Switching to camcode')
+    console.log('Switching to camcode');
+    let tool_header = document.querySelector('.tool_header');
+    tool_header.innerHTML = 'CamCode';
+
     let progGuts = document.querySelector('.program_board .program_guts');
     let main_container = document.createElement('div');
     main_container.innerHTML = `
-      <p>hello world - CamCode</p>
       <button id="crestron_files" onclick="setCrestronFile()"> 
         Crestron File Manager </button>
       <p>\n</p>`;

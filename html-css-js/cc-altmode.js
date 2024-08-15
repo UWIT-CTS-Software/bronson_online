@@ -121,18 +121,18 @@ function cfmGetBuildingRoom(){
 // CONSOLE REVAMP FUNCTIONS HERE
 //    MAKE A WEIRD SUDO DIRECTORY BROWSER
 async function setFileBrowser(header, files) {
-    let fs = document.querySelector('.fileSelection');
+    let fs = document.querySelector('.cfm_fileSelection');
     let new_fs = document.createElement("fieldset");
-    new_fs.classList.add('fileSelection');
+    new_fs.classList.add('cfm_fileSelection');
     new_fs.innerHTML =`
         <legend>
             File Selection
         </legend>
-        <p>
+        <h2 class='cfm_text'>
             ${header}
-        </p>
+        </h2>
         <body>
-            <ol>
+            <ol class='cfm_list'>
                 ${await populateFileList(files)}
             </ol>
         </body>`;
@@ -194,7 +194,7 @@ async function updateRoomList() {
   
     rms.innerHTML = `
         <legend>
-            Choose Rooms(s): 
+            Rooms(s): 
         </legend> 
         ${set_inner_html}`;
     rl.replaceWith(rms);
@@ -204,6 +204,8 @@ async function updateRoomList() {
 //      setCrestronFile()
 // Change the DOM for Crestron File Manager
 async function setCrestronFile() {
+    let tool_header = document.querySelector('.tool_header');
+    tool_header.innerHTML = 'CamCode';
     console.log('switching to camcode-cfm');
   
     // Pull List of Directories
@@ -211,14 +213,9 @@ async function setCrestronFile() {
     console.log(cfmDirList);
   
     let progGuts = document.querySelector('.program_board .program_guts');
-    let main_container = document.createElement('div');
-    main_container.innerHTML = `
-        <p>
-            hello world - CamCode (Crestron File Manager)
-        </p>
-        <button id="cam_code" onclick="setCamCode()">
-            CamCode (Q-SYS) </button>
-        <p>\n</p>`;
+
+    let cfm_container = document.createElement('div');
+    cfm_container.classList.add('cfm_container');
   
     // START cfm_paramContainer
     let cfm_ParamContainer = document.createElement('div');
@@ -233,7 +230,7 @@ async function setCrestronFile() {
         </select>`;
     buildingSelect.innerHTML = `
         <legend>
-            Choose Building(s):
+            Building(s):
         </legend> 
         ${set_inner_html}`;
   
@@ -247,31 +244,28 @@ async function setCrestronFile() {
         </select>`;
     roomSelect.innerHTML = `
         <legend>
-            Choose Rooms(s): 
+            Rooms(s): 
         </legend> 
         ${set_inner_html}`;
 
-    // Bottom Menu buttons
+    // option buttons
     // [ Generate Files ] [ Clear Console ] [ Reset ]
-    let bottomMenu = document.createElement("fieldset");
-    bottomMenu.classList.add('bottomMenu');
-    bottomMenu.innerHTML = `
-        <legend>
-            Options: 
-        </legend>
-        <menu>
-            <button id="run" onclick="cfmFiles()"> 
+    let optionMenu = document.createElement("div");
+    optionMenu.classList.add('cfm_optionMenu');
+    optionMenu.innerHTML = `
+        <fieldset class="cfm_fieldset">
+            <legend>
+                Options: </legend>
+            <button id="run" onclick="cfmFiles()" class='headButton'> 
                 Generate Files </button>
-            <button id="clearCon" onclick="clearConsole()">
-                Clear Console </button>
-            <button id="reset" onclick="resetCamCode()"> 
+            <button id="reset" onclick="setCrestronFile()" class='headButton'> 
                 Reset </button>
-        </menu>`;
+        </fieldset>`;
 
     // End cfm_paramContainer
     cfm_ParamContainer.appendChild(buildingSelect);
     cfm_ParamContainer.appendChild(roomSelect);
-    cfm_ParamContainer.appendChild(bottomMenu);
+    cfm_ParamContainer.appendChild(optionMenu);
 
     // Start cfm_FileContainer
     let cfm_FileContainer = document.createElement('div');
@@ -279,20 +273,30 @@ async function setCrestronFile() {
 
     // File Selection Area
     let fileSelection = document.createElement("fieldset");
-    fileSelection.classList.add('fileSelection');
+    fileSelection.classList.add('cfm_fileSelection');
     fileSelection.innerHTML = `
         <legend>
             File Selection
         </legend>
-        <p>
+        <p class='cfm_text'>
             Please Select Room and Generate Files
         </p>`;
 
     cfm_FileContainer.appendChild(fileSelection);
     
-    main_container.appendChild(cfm_ParamContainer);
-    main_container.appendChild(cfm_FileContainer);
+    cfm_container.appendChild(cfm_ParamContainer);
+    cfm_container.appendChild(cfm_FileContainer);
+
+    // main_container
+    let main_container = document.createElement('div');
+    // main_container.innerHTML = `
+    //     <button id="cam_code" onclick="setCamCode()">
+    //         CamCode (Q-SYS) </button>
+    //     <p>\n</p>`;
+
+    main_container.appendChild(cfm_container);
     main_container.classList.add('program_guts');
+    
     progGuts.replaceWith(main_container);
     return;
 }
