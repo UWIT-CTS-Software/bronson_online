@@ -19,55 +19,6 @@ class Cookie {
     getCookie() { return this.value; }
 }
 
-function setChecker() {
-
-  console.log('Switching to checkerboard');
-  let prog_guts = document.querySelector('.program_board .program_guts');
-
-  var base_time = new Time;
-  base_time.setTime("2024-06-01");
-
-  let body_container = document.createElement("div");
-  body_container.classList.add("largeContainer");
-
-  let map_select = document.createElement("fieldset");
-  map_select.classList.add('mapSelect');
-  /* map_select.innerHTML = '<legend>Select Zone: </legend> \n \
-                          <img src="img.jpg" style="width:100%;height:auto" usemap="#zonemap"> \n \
-                          <map name="zonemap"> \n \
-                            <area shape="poly" coords="70,480,620,478,618,535,769,560,769,630,448,641,451,867,230,870,233,960,124,960,127,806,183,809,188,647,68,647" alt="Test" onclick="myFunc()"> \n \
-                          </map>'; */
-  map_select.innerHTML = '<legend>Select Zone: </legend> \n \
-                          <select id="zone_list"> \n \
-                          <option value=0>All Zones</option> \n \
-                          <option value=1>Zone 1</option> \n \
-                          <option value=2>Zone 2</option> \n \
-                          <option value=3>Zone 3</option> \n \
-                          <option value=4>Zone 4</option> \n \
-                          </select>'
-
-  let control_container = document.createElement("div");
-  control_container.classList.add("mediumContainer");
-
-  // Bottom Menu buttons
-  // html options: menu
-  let button_menu = document.createElement("fieldset");
-  button_menu.classList.add('buttonRow');
-  button_menu.innerHTML = '<legend>Options: </legend> \n <menu> \n <button id="roomSchedule" onclick="getRoomSchedule()">Room Schedule</button> \n <button id="roomChecks" onclick="getRoomChecks()">Room Checks</button> \n <button id="print" onclick="printToConsole()">Print</button> \n </menu>';
-
-  // Console Output
-  let console_output = document.createElement("fieldset");
-  console_output.classList.add('console');
-  console_output.innerHTML = '<legend> Console Output: </legend> \n <textarea readonly rows="35" cols ="70" class="innerConsole" name="consoleOutput" spellcheck="false"> Console: Example </textarea>';
-
-  control_container.append(button_menu, console_output);
-  body_container.append(map_select, control_container);
-
-  body_container.classList.add('program_guts');
-  prog_guts.replaceWith(body_container);
-  return;
-}
-
 function myFunc() {
     console.log("Click");
 }
@@ -103,6 +54,17 @@ async function cbSearch(init_time, end_time, cookie) {
     return;
 }
 
+/*
+$$\   $$\ $$$$$$$$\ $$\      $$\ $$\       
+$$ |  $$ |\__$$  __|$$$\    $$$ |$$ |      
+$$ |  $$ |   $$ |   $$$$\  $$$$ |$$ |      
+$$$$$$$$ |   $$ |   $$\$$\$$ $$ |$$ |      
+$$  __$$ |   $$ |   $$ \$$$  $$ |$$ |      
+$$ |  $$ |   $$ |   $$ |\$  /$$ |$$ |      
+$$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\ 
+\__|  \__|   \__|   \__|     \__|\________|
+*/
+
 async function getRoomSchedule() {
     let zones = document.getElementsByName('dev');
     let zone_array = [];
@@ -119,6 +81,7 @@ async function getRoomSchedule() {
             zones: zone_array,
         })
     });
+
     console.log(response);
 
     return;
@@ -133,4 +96,69 @@ function printToConsole() {
     }
     console.value = inner;
     console.scrollTop = console.scrollHeight;
+}
+
+function setChecker() {
+    let tool_header = document.querySelector('.tool_header');
+    tool_header.innerHTML = 'Checkerboard';
+
+    console.log('Switching to checkerboard');
+    let prog_guts = document.querySelector('.program_board .program_guts');
+
+    var base_time = new Time;
+    base_time.setTime("2024-06-01");
+
+    let main_container = document.createElement("div");
+    main_container.classList.add("cb_container");
+
+    // map_select Section
+    let map_select = document.createElement("div");
+    map_select.classList.add('cb_mapSelect');
+    map_select.innerHTML = `
+        <fieldset>
+            <legend>
+                Select Zone: </legend>
+            <select id="zone_list">
+                <option value=0>All Zones</option>
+                <option value=1>Zone 1</option>
+                <option value=2>Zone 2</option>
+                <option value=3>Zone 3</option>
+                <option value=4>Zone 4</option>
+            </select>
+        </fieldset>`;
+
+    // Bottom Menu buttons
+    // html options: menu
+    let button_menu = document.createElement("div");
+    button_menu.classList.add('cb_buttonRow');
+    button_menu.innerHTML = `
+        <fieldset>
+            <legend>
+                Options: </legend>
+            <button id="roomSchedule" onclick="getRoomSchedule()">
+                Room Schedule</button>
+            <button id="roomChecks" onclick="getRoomChecks()">
+                Room Checks</button>
+            <button id="print" onclick="printToConsole()">
+                Print</button>
+        </fieldset>`;
+
+    // Console Output
+    let console_output = document.createElement("div");
+    console_output.classList.add('cb_console');
+    console_output.innerHTML = `
+        <fieldset>
+            <legend>
+                Console Output: </legend>
+            <textarea readonly rows="35" cols ="70" class="innerConsole" name="consoleOutput" spellcheck="false">
+                Console: Example </textarea>
+        </fieldset>`;
+
+    main_container.append(map_select);
+    main_container.append(button_menu);
+    main_container.append(console_output);
+
+    main_container.classList.add('program_guts');
+    prog_guts.replaceWith(main_container);
+    return;
 }

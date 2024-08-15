@@ -312,7 +312,7 @@ async function printPingResult(pingResult, building) {
             //   add corresponding ip
             if(hns[j].includes(pad(rooms[i], 4))){
                 printHostnames += pad(hns[j], 15, " ") + "|";
-                printIps       += pad(await filterIp(ips[j]), 15, " ") + "|";
+                printIps       += pad(filterIp(ips[j]), 15, " ") + "|";
             }
         }
         updateConsole("Hostnames: " + printHostnames);
@@ -375,6 +375,7 @@ async function runSearch() {
     }
 
     // Find number of devices not found
+    totalNumDevices = f_hns.length;
     for (var i = 0; i < f_ips.length; i++) {
         if(f_ips[i] == "x") {
             not_found_count += 1;
@@ -395,9 +396,12 @@ async function runSearch() {
 };
 
 function filterIp(ip) {
-    let buff = ip.split("(")[1];
-    buff = buff.split(")")[0];
-    return buff;
+    if (ip.includes("uwyo.dns")) {
+        let buff = ip.split("(")[1];
+        buff = buff.split(")")[0];
+        return buff;
+    }
+    return ip;
 }
 
 /*
@@ -430,80 +434,109 @@ function updateConsole(text) {
 
 // SETTING THE HTML DOM
 async function setJackNet() {
+    // Update tool_header
+    let tool_header = document.querySelector('.tool_header');
+    tool_header.innerHTML = 'JackNet';
     console.log('Switching to jacknet');
+
     let progGuts = document.querySelector('.program_board .program_guts');
-    let main_container = document.createElement('div');
-    main_container.innerHTML = '<p>JackNet</p>';
+    let jn_container = document.createElement('div');
+    jn_container.classList.add('jn_container')
 
     // Make a box for list of buildings
-    let buildingSelect = document.createElement("fieldset");
-    buildingSelect.classList.add('building_List');
-    let set_inner_html = '<select id="building_list"><option>All Buildings</option>';
-    // TO-DO: add zone options here
+    let buildingSelect = document.createElement("div");
+    buildingSelect.classList.add('jn_buildSelect');
+    let set_inner_html = `
+        <select id="building_list">
+        <option>
+            All Buildings
+        </option>`;
     let bl = await getBuildingList();
     for(var i in bl) {
-        set_inner_html += `<option value=${i}>${bl[i]}</option>`;
+        set_inner_html += `
+            <option value=${i}>
+                ${bl[i]}
+            </option>`;
     };
     set_inner_html += '</select>';
-    buildingSelect.innerHTML = `<legend>Choose Building(s): </legend> ${set_inner_html}`;
+    buildingSelect.innerHTML = `
+        <fieldset class="jn_fieldset">
+        <legend>
+            Choose Building(s):
+        </legend>
+        ${set_inner_html}
+        </fieldset>`;
 
     // REDO: what flags for checkbox are neccessary?
     //   - do we need value and name?
-    let devSelect = document.createElement("fieldset");
-    devSelect.classList.add('devSelect');
+    let devSelect = document.createElement("div");
+    devSelect.classList.add('jn_devSelect');
     devSelect.innerHTML = `
-        <legend>Choose Devices to Search For: </legend>
-        <input class="cbDev" type ="checkbox" id="proc" name="dev" value="Processors"/>
-        <label for="proc"> 
-            Processors</label>
-        <br>
-        <input class="cbDev" type="checkbox" id="pj" name="dev" value="Projectors"/>
-        <label for="pj">
-            Projectors</label>
-        <br>
-        <input class="cbDev" type="checkbox" id="ws" name="dev" value="Wyo Shares"/>
-        <label for="ws">
-            Wyo Shares</label>
-        <br>
-        <input class="cbDev" type="checkbox" id="tp" name="dev" value="Touch Panels"/>
-        <label for="tp">
-            Touch Panels</label>
-        <br>
-        <input class="cbDev" type ="checkbox" id="cmicx" name="dev" value="Ceiling Mics"/>
-        <label for="cmicx">
-            Ceiling Mics </label>
-        <br>`;
+        <fieldset class="jn_fieldset">
+            <legend>
+                Choose Devices to Search For: </legend>
+            <input class="cbDev" type ="checkbox" id="proc" name="dev" value="Processors"/>
+            <label for="proc"> 
+                Processors</label>
+            <br>
+            <input class="cbDev" type="checkbox" id="pj" name="dev" value="Projectors"/>
+            <label for="pj">
+                Projectors</label>
+            <br>
+            <input class="cbDev" type="checkbox" id="ws" name="dev" value="Wyo Shares"/>
+            <label for="ws">
+                Wyo Shares</label>
+            <br>
+            <input class="cbDev" type="checkbox" id="tp" name="dev" value="Touch Panels"/>
+            <label for="tp">
+                Touch Panels</label>
+            <br>
+            <input class="cbDev" type ="checkbox" id="cmicx" name="dev" value="Ceiling Mics"/>
+            <label for="cmicx">
+                Ceiling Mics </label>
+            <br>
+        </fieldset>`;
 
     // log progress here ? (use tag progress)
 
     // Console Output
-    let consoleOutput = document.createElement("fieldset");
-    consoleOutput.classList.add('consoleOutput');
+    let consoleOutput = document.createElement("div");
+    consoleOutput.classList.add('jn_console');
     consoleOutput.innerHTML = `
-        <legend> Console Output: </legend>
-        <textarea readonly rows="10" cols ="80" class="innerConsole" name="consoleOutput" spellcheck="false"> 
-            Console: JackNet Example
-        </textarea>`;
+        <fieldset class="jn_fieldset">
+            <legend> 
+                Console Output: </legend>
+            <textarea readonly rows="30" cols ="75" class="innerConsole" name="consoleOutput" spellcheck="false"> 
+                Console: JackNet Example
+            </textarea>
+        </fieldset>`;
 
     // Bottom Menu buttons
     // html options: menu
-    let bottomMenu = document.createElement("fieldset");
-    bottomMenu.classList.add('bottomMenu');
+    let bottomMenu = document.createElement("div");
+    bottomMenu.classList.add('jn_bottomMenu');
     bottomMenu.innerHTML = `
-        <legend>Options: </legend>
-        <menu>
-            <button id="run" onclick="runSearch()">Run Search</button>
-            <button id="export" onclick="runExport()">Export as .csv </button>
-            <button id="clearCon" onclick="clearConsole()"> Clear Console </button>
-        </menu>`;
+        <fieldset class="jn_fieldset">
+            <legend>
+                Options: </legend>
+            <button id="run" onclick="runSearch()" class="headButton">
+                Run Search</button>
+            <button id="export" onclick="runExport()" class="headButton">
+                Export as .csv </button>
+            <button id="clearCon" onclick="clearConsole()" class="headButton"> 
+                Clear Console </button>
+        </fieldset>`;
 
     // PUT EVERYTHING TOGETHER MAIN_CONTAINER
-    main_container.appendChild(buildingSelect);
-    main_container.appendChild(devSelect);
-    main_container.appendChild(consoleOutput);
-    main_container.appendChild(bottomMenu);
+    jn_container.appendChild(buildingSelect);
+    jn_container.appendChild(bottomMenu);
+    jn_container.appendChild(devSelect);
+    jn_container.appendChild(consoleOutput);
+
+    let main_container = document.createElement('div');
+    main_container.appendChild(jn_container);
     main_container.classList.add('program_guts');
-    //p.appendChild(select)
+
     progGuts.replaceWith(main_container);
     return;
   };
