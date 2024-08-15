@@ -93,48 +93,48 @@ impl ThreadPool {
 
 impl Drop for ThreadPool {
     fn drop(&mut self) {
-	println!("Sending terminate message to all workers.");
+		println!("Sending terminate message to all workers.");
 
-	for _ in &mut self.workers {
-	    self.sender.send(Message::Terminate).unwrap();
-	}
+		for _ in &mut self.workers {
+			self.sender.send(Message::Terminate).unwrap();
+		}
 
-	println!("Shutting down all workers"); 
+		println!("Shutting down all workers"); 
 
-	for worker in &mut self.workers {
-	    println!("Shutting down worker {}", worker.id);
+		for worker in &mut self.workers {
+			println!("Shutting down worker {}", worker.id);
 
-	    if let Some(thread) = worker.thread.take() {
-		thread.join().unwrap();
-	    }
-	}
+			if let Some(thread) = worker.thread.take() {
+			thread.join().unwrap();
+			}
+		}
     }
 }
 
 // ----------- Custom struct for checkerboard - jn <3
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Room {
+#[derive(Serialize, Debug)]
+pub struct Room<'a> {
 	pub name: String,
 	pub items: Vec<i32>,
 	pub gp: i32,
 	pub checked: i32,
-	pub schedule: Vec<u8>
+	pub schedule: Vec<&'a str>
 }
 
 // this is very rag-tag - error handling needs to be built-in
-impl Room {
-	pub fn update(key, val) {
-		if (key == "name") {
-			Room.name = val;
-		} else if (key == "items") {
-			Room.items = val;
-		} else if (key == "gp") {
-			Room.gp = val;
-		} else if (key == "checked") {
-			Room.checked = val;
-		} else if (key == "schedule") {
-			Room.schedule = val;
-		}
+impl Room<'_> {
+	pub fn update(&mut self, key: &str, val: &str) {
+		/* if key == "name" {
+			self.name = val;
+		} else if key == "items" {
+			self.items = val;
+		} else if key == "gp" {
+			self.gp = val;
+		} else if key == "checked" {
+			self.checked = val;
+		} else if key == "schedule" {
+			self.schedule = val;
+		} */
 	}
 }
 
