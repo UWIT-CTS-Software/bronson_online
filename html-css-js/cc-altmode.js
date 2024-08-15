@@ -154,7 +154,7 @@ async function populateFileList(list) {
         }
         html += `
             <li class=${classtype} onclick=\"getCFMF(\'${list[i]}\', \'${classtype}\')\">
-                <p><u>${list[i]}</u></p>
+                ${list[i]}
             </li>`; 
     };
     return html;
