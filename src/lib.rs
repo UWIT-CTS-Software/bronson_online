@@ -1,3 +1,33 @@
+/*
+ _ _ _               
+| (_) |              
+| |_| |__   _ __ ___ 
+| | | '_ \ | '__/ __|
+| | | |_) || |  \__ \
+|_|_|_.__(_)_|  |___/
+                    
+thread
+serde
+fnBox
+	call_box
+job
+	message
+	worker
+threadpool
+	new
+	execute
+	drop
+		drop
+buildingData
+Building
+PingRequest
+jack_ping
+CFMRequest
+CFMRoomRequest
+CFMRequestFile
+GeneralRequest
+*/
+
 use std::{
 	thread,
 	sync::{
