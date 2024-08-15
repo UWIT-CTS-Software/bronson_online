@@ -16,66 +16,17 @@ legend {
     font-family:'Courier New', Courier, monospace;
 }
 
-/* Program Header        .program_header
-    Site (Dashboard Button) - .site_header
-    text                    - .p_header
-    Selected Tool           - .tool_header
-
-    Tool Buttons            - .tool_buttons
-    Site Buttons            - .site_buttons
-*/
-.program_header {
-    position: relative;
-    display: grid;
-    grid-template-columns: repeat(5,1fr);
-    gap: 10px;
-    grid-auto-rows: minmax(20px, auto);
+.racing-sans-one-regular {
+    font-family: "Racing Sans One", sans-serif;
+    font-weight: 400;
+    font-style: normal;
 }
 
-.site_header {
-    color: rgb(236, 200, 101);
-    text-align: center;
-    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
-    grid-column: 1 / 2;
-    grid-row: 1;
-    margin: 5px;
-}
-
-.tool_header {
-    color: rgb(236, 200, 101);
-    text-align: center;
-    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
-    grid-column: 5;
-    grid-row: 1;
-    margin: 5px;
-}
-
-.p_header {
-    color: rgb(236, 200, 101);
-    text-align: left;
-    font-family:'Courier New', Courier, monospace;
-    grid-column: 2 / 4;
-    grid-row: 1;
-    margin: 5px;
-}
-
-.tool_buttons {
-    color: rgb(236, 200, 101);
-    text-align: center;
-    font-family:'Courier New', Courier, monospace;
-    grid-column: 1 / 4;
-    grid-row: 2;
-    margin: 5px;
-}
- 
-.site_buttons {
-    color: rgb(236, 200, 101);
-    text-align: center;
-    font-family:'Courier New', Courier, monospace;
-    grid-column: 4 / 6;
-    grid-row: 2;
-    margin: 5px;
-}
+.contrail-one-regular {
+    font-family: "Contrail One", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+  }
 
 /*  HEADER BUTTON STYLE */
 /* .headButton {
@@ -90,60 +41,179 @@ legend {
     cursor: pointer;
 } */
 .headButton {
-  appearance: none;
-  background-color: #fafbfcb6;
-  border: 1px solid rgba(27, 31, 35, 0.15);
-  border-radius: 6px;
-  box-shadow: rgba(27, 31, 35, 0.04) 0 1px 0, rgba(255, 255, 255, 0.25) 0 1px 0 inset;
-  box-sizing: border-box;
-  color: #24292E;
-  cursor: pointer;
-  display: inline-block;
-  font-family: -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 20px;
-  list-style: none;
-  padding: 2px 8px;
-  position: relative;
-  transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1);
-  user-select: none;
-  -webkit-user-select: none;
-  touch-action: manipulation;
-  vertical-align: middle;
-  white-space: nowrap;
-  word-wrap: break-word;
+    appearance: none;
+    background-color: #e9d27eb6;
+    border: 1px inset rgba(27, 31, 35, 0.15);
+    box-shadow: rgba(27, 31, 35, 0.04) 0 1px 0, rgba(255, 255, 255, 0.25) 0 1px 0 inset;
+    box-sizing: border-box;
+    color: #24292E;
+    cursor: pointer;
+    display: inline-block;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 20px;
+    list-style: none;
+    padding: 2px 8px;
+    position: relative;
+    transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1);
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    vertical-align: middle;
+    white-space: nowrap;
+    word-wrap: break-word;
+  }
+  
+  .headButton:hover {
+    background-color: #F3F4F6;
+    text-decoration: none;
+    transition-duration: 0.1s;
+  }
+  
+  .headButton:disabled {
+    background-color: #FAFBFC;
+    border-color: rgba(27, 31, 35, 0.15);
+    color: #959DA5;
+    cursor: default;
+  }
+  
+  .headButton:active {
+    background-color: #EDEFF2;
+    box-shadow: rgba(225, 228, 232, 0.2) 0 1px 0 inset;
+    transition: none 0s;
+  }
+  
+  .headButton:focus {
+    outline: 1px transparent;
+  }
+  
+  .headButton:before {
+    display: none;
+  }
+  
+  .headButton:-webkit-details-marker {
+    display: none;
+  }
+
+/* Program Header        .program_header
+    Site (Dashboard Button) - .site_header
+    text                    - .p_header
+    Selected Tool           - .tool_header
+
+    Tool Buttons            - .tool_buttons
+    Site Buttons            - .site_buttons
+*/
+.program_header {
+    color: rgb(118, 66, 28);
+    background-color: rgb(224, 193, 108);
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(10,1fr);
+    gap: 10px;
+    grid-auto-rows: minmax(10px, auto);
+    border:4px none rgb(133, 118, 60);
+    border-style: none double inset double;
 }
 
-.headButton:hover {
-  background-color: #F3F4F6;
-  text-decoration: none;
-  transition-duration: 0.1s;
+.site_header {
+    color: rgb(118, 66, 28);
+    background-color: rgb(205, 177, 99);
+    text-align: center;
+    font-family: "Racing Sans One", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+    grid-column: 2 / 3;
+    grid-row: 1;
+    margin: 5px;
+    border:4px outset rgb(133, 118, 60);
 }
 
-.headButton:disabled {
-  background-color: #FAFBFC;
-  border-color: rgba(27, 31, 35, 0.15);
-  color: #959DA5;
-  cursor: default;
+.site_header:hover {
+    background-color: rgb(179, 154, 85);
+    text-decoration: none;
+    transition-duration: 0.1s;
+  }
+
+.tool_header {
+    color: rgb(118, 66, 28);
+    background-color: rgb(176, 154, 91);
+    text-align: center;
+    font-family: "Racing Sans One", sans-serif;
+    font-weight: 400;
+    vertical-align: middle;
+    grid-column: 9 / 10;
+    grid-row: 1;
+    margin: 10px;
+    border:4px inset rgb(207, 184, 94);
 }
 
-.headButton:active {
-  background-color: #EDEFF2;
-  box-shadow: rgba(225, 228, 232, 0.2) 0 1px 0 inset;
-  transition: none 0s;
+.p_header {
+    color: rgb(118, 66, 28);
+    background-color: rgb(224, 193, 108);
+    text-align: left;
+    font-family: "Contrail One", sans-serif;
+    font-size: large;
+    font-weight: 400;
+    font-style: normal;
+    grid-column: 3 / 7;
+    grid-row: 1;
+    margin: 20px;
 }
 
-.headButton:focus {
-  outline: 1px transparent;
+.ph_legend {
+    color: rgb(118, 66, 28);
+    background-color: rgb(190, 164, 92);
+    border:2px outset rgb(144, 118, 26);
 }
 
-.headButton:before {
-  display: none;
+.ph_fieldset {
+    color: rgb(118, 66, 28);
+    background-color: rgb(190, 164, 92);
+    border:2px inset rgb(144, 118, 26)
 }
 
-.headButton:-webkit-details-marker {
-  display: none;
+.tool_buttons {
+    color: rgb(118, 66, 28);
+    background-color: rgb(224, 193, 108);
+    text-align: center;
+    font-family:'Courier New', Courier, monospace;
+    grid-column: 2 / 6;
+    grid-row: 2;
+    margin: 5px;
+}
+ 
+.site_buttons {
+    color: rgb(118, 66, 28);
+    background-color: rgb(224, 193, 108);
+    text-align: center;
+    font-family:'Courier New', Courier, monospace;
+    grid-column: 6 / 10;
+    grid-row: 2;
+    margin: 5px;
+}
+
+/*
+  _____            _     _             _ 
+ |  __ \          | |   | |           | |
+ | |  | | __ _ ___| |__ | |__  _ __ __| |
+ | |  | |/ _` / __| '_ \| '_ \| '__/ _` |
+ | |__| | (_| \__ \ | | | |_) | | | (_| |
+ |_____/ \__,_|___/_| |_|_.__/|_|  \__,_|
+*/
+
+.db_container {
+    position: relative;
+    background-color: rgb(50, 50, 50);
+    display: grid;
+    grid-template-columns: repeat(7,1fr);
+    gap: 10px;
+    grid-auto-rows: minmax(20px, auto);
+}
+
+.db_console {
+    grid-column: 2 / 7;
+    grid-row: 1 / 2;
 }
 
 /* JackNet Definitions 
@@ -194,7 +264,9 @@ legend {
     grid-row: 3;
 }
 
-
+.jn_fieldset {
+    border:4px outset rgb(144, 118, 26)
+}
 
 /* checkerboard Defifnitions 
    _____ _     _         _             _ 
@@ -273,12 +345,10 @@ legend {
 .cfm_fileSelection {
     background-color: rgb(50, 50, 40);
     box-shadow: 5px 10px 10px;
+    border:4px outset rgb(144, 118, 26);    
 }
 
-.cfm_list {
-    color: rgb(236, 200, 101);
-}
-
+/*  Types of Data Entries */
 .cfm_file {
     background-color: rgb(87, 106, 119);
     border-radius: 4px;
@@ -296,6 +366,31 @@ legend {
     background-color: rgb(138, 101, 71);
     border-radius: 4px;
     text-align: right;
+}
+
+.cfm_list {
+    color: rgb(236, 200, 101);
+}
+
+.cfm_text {
+    color: rgb(205, 177, 99);
+    text-align: center;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    grid-column: 1 / 2;
+    grid-row: 1;
+    margin: 5px;
+}
+
+.cfm_fieldset {
+    border:4px outset rgb(144, 118, 26);
+}
+
+.rmSelect {
+    border:4px outset rgb(144, 118, 26);
+}
+
+.bdSelect {
+    border:4px outset rgb(144, 118, 26);
 }
 
 /* Wiki Defifnitions 
