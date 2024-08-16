@@ -127,10 +127,11 @@ legend {
     grid-row: 1;
     margin: 5px;
     border:4px outset rgb(133, 118, 60);
+    cursor: pointer;
 }
 
 .site_header:hover {
-    background-color: rgb(179, 154, 85);
+    background-color: rgb(211, 181, 98);
     text-decoration: none;
     transition-duration: 0.1s;
   }
@@ -142,7 +143,7 @@ legend {
     font-family: "Racing Sans One", sans-serif;
     font-weight: 400;
     vertical-align: middle;
-    grid-column: 9 / 10;
+    grid-column: 8 / 10;
     grid-row: 1;
     margin: 10px;
     border:4px inset rgb(207, 184, 94);
@@ -164,13 +165,13 @@ legend {
 .ph_legend {
     color: rgb(118, 66, 28);
     background-color: rgb(190, 164, 92);
-    border:2px outset rgb(144, 118, 26);
+    border: 2px outset rgb(144, 118, 26);
 }
 
 .ph_fieldset {
     color: rgb(118, 66, 28);
     background-color: rgb(190, 164, 92);
-    border:2px inset rgb(144, 118, 26)
+    border: 2px inset rgb(144, 118, 26)
 }
 
 .tool_buttons {
@@ -341,42 +342,6 @@ legend {
     display: block;
 }
 
-.cfm_FileContainer {
-    grid-column: 3 / 7;
-    float: right;
-    display: block;
-}
-
-.cfm_fileSelection {
-    background-color: rgb(50, 50, 40);
-    box-shadow: 5px 10px 10px;
-    border:4px outset rgb(144, 118, 26);    
-}
-
-/*  Types of Data Entries */
-.cfm_file {
-    background-color: rgb(87, 106, 119);
-    border-radius: 4px;
-    text-align: left;
-}
-
-.cfm_zip {
-    background-color: rgb(79, 127, 80);
-    box-shadow: 4px 6px 6px;
-    border-radius: 4px;
-    text-align: center;
-}
-
-.cfm_dir {
-    background-color: rgb(138, 101, 71);
-    border-radius: 4px;
-    text-align: right;
-}
-
-.cfm_list {
-    color: rgb(236, 200, 101);
-}
-
 .cfm_text {
     color: rgb(205, 177, 99);
     text-align: center;
@@ -396,6 +361,65 @@ legend {
 
 .bdSelect {
     border:4px outset rgb(144, 118, 26);
+}
+
+.cfm_FileContainer {
+    grid-column: 3 / 7;
+    float: right;
+    display: block;
+}
+
+.cfm_fileSelection {
+    background-color: rgb(50, 50, 40);
+    box-shadow: 5px 10px 10px;
+    border:4px outset rgb(144, 118, 26);    
+}
+
+.cfm_list {
+    color: rgb(170, 170, 170);
+    opacity: 75%;
+    padding: 10px;
+    margin: 10px;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+}
+
+/*  Types of Data Entries in cfm_list*/
+.cfm_file {
+    background-color: rgb(87, 106, 119);
+    color: rgb(236, 200, 101);
+    border-radius: 4px;
+    border: 2px inset rgb(144, 118, 26);
+    text-align: left;
+    padding: 5px;
+    margin: 0px 0;
+    cursor: pointer;
+}
+
+.cfm_zip {
+    background-color: rgb(79, 127, 80);
+    color: rgb(236, 200, 101);
+    border-radius: 4px;
+    border: 2px outset rgb(144, 118, 26);
+    text-align: center;
+    padding: 5px;
+    margin: 0px 0;
+    cursor: pointer;
+}
+
+.cfm_dir {
+    background-color: rgb(138, 101, 71);
+    color: rgb(236, 200, 101);
+    border-radius: 4px;
+    border: 2px outset rgb(144, 118, 26);
+    text-align: right;
+    padding: 5px;
+    margin: 0px 0;
+    cursor: pointer;
+}
+
+ol li::marker {
+    color: rgb(170, 170, 170);
+    opacity: 40%;
 }
 
 /* Wiki Defifnitions 
