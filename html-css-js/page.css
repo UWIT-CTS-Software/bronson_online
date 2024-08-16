@@ -241,6 +241,7 @@ legend {
     background-color: rgb(50, 50, 50);
     color: rgb(236, 200, 101);
     accent-color:  rgb(236, 200, 101);
+    /* color: rgb(50, 50, 50); */
 }
 
 .jn_select {
@@ -308,30 +309,27 @@ legend {
 }
 
 .cb_mapSelect {
-    background-color: rgb(36, 35, 35);
-    grid-column: 2;
+    background-color: rgb(50, 50, 50);
+    grid-column: 2 / 4;
     grid-row: 1;
+    float: center;
 }
 
 .cb_buttonRow {
-    background-color: rgb(36, 35, 35);
-    grid-column: 3 / 7;
+    background-color: rgb(50, 50, 50);
+    grid-column: 4 / 7;
     grid-row: 1;
 }
 
 .cb_console {
-    background-color: rgb(36, 35, 35);
+    background-color: rgb(50, 50, 50);
     grid-column: 2 / 7;
     grid-row: 2;
 }
 
 .cb_fieldset {
-    border:4px outset rgb(144, 118, 26)
-}
-
-
-.poly_button {
-    background-color: rgb(36, 35, 35);
+    border:4px outset rgb(144, 118, 26);
+    float: center;
 }
 
 /* CamCode Defifnitions 
