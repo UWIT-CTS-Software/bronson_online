@@ -86,6 +86,8 @@ async function run() {
         return json.rooms;
     });
 
+    clearConsole();
+
     updateConsole(response);
 
     return;
@@ -96,6 +98,12 @@ function updateConsole(text) {
     const beforeText = consoleObj.value.substring(0, consoleObj.value.length);
     consoleObj.value = beforeText + '\n' + text;
     consoleObj.scrollTop = consoleObj.scrollHeight;
+    return;
+};
+
+function clearConsole() {
+    let consoleObj = document.querySelector('.innerConsole');
+    consoleObj.value = '';
     return;
 };
 
