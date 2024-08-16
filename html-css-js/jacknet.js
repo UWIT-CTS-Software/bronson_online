@@ -362,8 +362,6 @@ async function runSearch() {
         f_ips = f_ips.concat(pingResult[1]);
     }
 
-    
-    
     updateConsole("====--------------------========--------------------====");
 
     // Double check operation
@@ -447,7 +445,7 @@ async function setJackNet() {
     let buildingSelect = document.createElement("div");
     buildingSelect.classList.add('jn_buildSelect');
     let set_inner_html = `
-        <select id="building_list">
+        <select id="building_list" class="jn_select">
         <option>
             All Buildings
         </option>`;
