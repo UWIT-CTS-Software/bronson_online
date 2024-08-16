@@ -265,7 +265,6 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
             let json_return = json!({
                 "rooms": return_str,
             });
-            println!("{:?}", return_str);
             
             contents = json_return.to_string();
         } /* else if buffer.starts_with(lsm) {
