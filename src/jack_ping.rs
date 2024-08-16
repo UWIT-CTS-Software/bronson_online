@@ -13,7 +13,9 @@ pub mod jp {
     //   exit code indicates not found or some other issue.
     pub fn ping_this(hostname: String) -> String {
         use pinger::PingResult;
+        use regex::Regex;
         // let mut response = String::from("x");
+        let ip_filter = Regex::new(r"[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}").unwrap();
 
 
         let ping_response: PingResult;
@@ -33,7 +35,7 @@ pub mod jp {
         match ping_response {
             PingResult::Pong(_dur, string) => { 
                 //println!("Duration: {:?}\nPong String: \n {}", dur, string);
-                pong_string = string;
+                pong_string = String::from(ip_filter.find(&string).unwrap().as_str());
             },
             PingResult::Timeout(string) => {
                 println!("Timeout:\n{}", string);
@@ -46,22 +48,7 @@ pub mod jp {
             },
         }
 
-        //filter pong 
-        //   drop first 14 characters, find the first colon ':' and drop it and everything that follows it
-        let ci = filter_pong(&pong_string);
-
-        pong_string = pong_string[14..ci].to_string();
-        pong_string
-    }
-
-    fn filter_pong(s: &String) -> usize {
-        let bytes = s.as_bytes();
-        for (i, &item) in bytes.iter().enumerate() {
-            if item == b':' {
-                return i;
-            }
-        }
-        s.len()
+        return pong_string;
     }
 }
 
