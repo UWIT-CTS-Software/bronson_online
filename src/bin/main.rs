@@ -70,10 +70,12 @@ use std::{
     sync::{ Arc, },
     error::{ Error, },
     string::{ String, },
+    borrow::{ Borrow, },
+    clone::{ Clone, },
     option::{ Option, },
-    /* ops::{ FromResidual },
-    convert::{ Infallible }, */
     collections::{ HashMap },
+    hash::{ Hash },
+    fmt::{ Debug },
 };
 use reqwest::{ 
     header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT }
@@ -136,9 +138,7 @@ fn main() {
     let time_filter = Regex::new(r"^[0-9:]+ [AP].M. - [0-9:]+ [AP].M.$").unwrap();
     let day_filter  = Regex::new(r"[MTWRF]+ [0-9]{4}-[0-9]{4}").unwrap();
 
-    unsafe {
-        let rooms = gen_room_map(&room_filter, &time_filter, &day_filter);
-    }
+    let rooms = gen_room_map(room_filter.clone(), time_filter.clone(), day_filter.clone()).ok().unwrap();
     println!("{:?}", Local::now().date_naive().weekday());
     
     // ------------------------------------------------------------------------
@@ -167,14 +167,23 @@ fn main() {
     for stream in listener.incoming() {
         let cookie_jar = Arc::clone(&cookie_jar);
         let stream = stream.unwrap();
+        let clone_rooms = clone_map(&rooms);
 
         pool.execute(move || {
-            handle_connection(stream, Arc::clone(&cookie_jar));
+            handle_connection(stream, cookie_jar, clone_rooms);
         });
     }
 }
 
-fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar>) -> Option<()> {
+fn clone_map<'a, String: Eq + Hash + Debug + Clone, Room: Clone + Debug>(source: &'a HashMap<String, Room>) -> HashMap<String, Room> where String: Borrow<String> {
+    let mut target: HashMap<String, Room> = HashMap::new();
+    for (k, v) in source.iter() {
+        target.insert(String::from(k.clone()), v.clone());
+    }
+    return target;
+}
+
+fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar>, rooms: HashMap<String, Room>) -> Option<()> {
     let mut buffer = [0; 1024];
 
     stream.read(&mut buffer).unwrap();
@@ -194,7 +203,6 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
     let get_jn_json = b"GET /campus.json HTTP/1.1\r\n";
     let get_cb_json = b"GET /roomChecks.json HTTP/1.1\r\n";
     let get_wiki    = b"GET /wiki.js HTTP/1.1\r\n";
-    let get_main    = b"GET /main.js HTTP/1.1\r\n";
     // ------------------------------------------------------------------------
     
     // fetch data from the backend
@@ -202,8 +210,7 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
     // Jacknet
     let ping        = b"POST /ping HTTP/1.1\r\n";
     // Checkerboard
-    let schedule    = b"POST /schedule HTTP/1.1\r\n";
-    let lsm         = b"POST /lsm HTTP/1.1\r\n";
+    let run_cb         = b"POST /run_cb HTTP/1.1\r\n";
     // CamCode
     // CamCode - CFM Requests
     let cfm_build   = b"POST /cfm_build HTTP/1.1\r\n";
@@ -229,8 +236,6 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
             filename = "html-css-js/cc-altmode.js";
         } else if buffer.starts_with(get_cb) {
             filename = "html-css-js/checkerboard.js";
-        } else if buffer.starts_with(get_main) {
-            filename = "html-css-js/main.js";
         } else if buffer.starts_with(get_jn) {
             filename = "html-css-js/jacknet.js";
         } else if buffer.starts_with(get_jn_json) {
@@ -247,17 +252,23 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
     } else if buffer.starts_with(b"POST") {
         if buffer.starts_with(ping) {
             contents = execute_ping(&mut buffer); // JN
-        } else if buffer.starts_with(schedule) {
-            /* let room_data = File::open(ROOM_CSV).ok()?;
-            let mut room_rdr = Reader::from_reader(room_data);
-            for result in room_rdr.records() {
-                let record = result.ok()?;
-                if room_filter.is_match(record.get(0)?) {
-                    println!("{:?}", record.get(0)?);
-                }
-            } */
-            contents = String::from("Empty");
-        } else if buffer.starts_with(lsm) {
+        } else if buffer.starts_with(run_cb) {
+            let mut return_str: String = String::new();
+            for (name, room) in rooms.into_iter() {
+                return_str.push_str(&pad(name, 10));
+                return_str.push_str(" | [-] NEEDS CHECKED");
+                return_str.push_str(" | LAST CHECKED 01/01/2000");
+                return_str.push_str(" | [+] AVAILABLE");
+                return_str.push_str(" | UNTIL 00:00");
+                return_str.push_str("\n");
+            }
+            let json_return = json!({
+                "rooms": return_str,
+            });
+            println!("{:?}", return_str);
+            
+            contents = json_return.to_string();
+        } /* else if buffer.starts_with(lsm) {
             let req = reqwest::blocking::Client::builder()
                 .cookie_provider(cookie_jar)
                 .user_agent("server_lib/0.3.1")
@@ -275,7 +286,7 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
             println!("Headers: {:#?}\n", res.headers());
 
             contents = String::from(res.text().ok()?);
-        } else if buffer.starts_with(cfm_build) { // CC-CFM
+        } */ else if buffer.starts_with(cfm_build) { // CC-CFM
             contents = cfm_build_dir(&mut buffer);
         } else if buffer.starts_with(cfm_build_r) {
             contents = cfm_build_rm(&mut buffer);
@@ -380,7 +391,7 @@ fn find_curls(s: &String) -> (usize, usize) {
 
 // generate room HashMap
 // ----------------------------------------------------------------------------
-unsafe fn gen_room_map<'a>(room_filter: &'a Regex, time_filter: &'a Regex, day_filter: &'a Regex) -> Result<HashMap<String, Room<'a>>, Box<dyn Error>> {
+fn gen_room_map<'a>(room_filter: Regex, time_filter: Regex, day_filter: Regex) -> Result<HashMap<String, Room<'a>>, Box<dyn Error>> {
 
     /* let mut schedules: HashMap<String, Vec<&str>> = HashMap::new();
     let schedule_data = File::open(ROOM_CSV)?;
@@ -431,6 +442,19 @@ unsafe fn gen_room_map<'a>(room_filter: &'a Regex, time_filter: &'a Regex, day_f
     }
 
     Ok(rooms)
+}
+
+fn pad(raw_in: String, length: usize) -> String {
+    if raw_in.len() < length {
+        let mut out_string: String = String::new();
+        for _ in 0..(length-raw_in.len()) {
+            out_string.push(' ');
+        }
+        out_string.push_str(&raw_in);
+        return out_string;
+    } else {
+        return String::from(raw_in);
+    }
 }
 
 
