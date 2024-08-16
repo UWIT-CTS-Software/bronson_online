@@ -140,15 +140,6 @@ async function getSelectedBuilding() {
     }
 }
 
-async function filterIp(ip) {
-    if (!ip.includes("(")) {
-        return ip;
-    }
-    let buff = ip.split("(")[1];
-    buff = buff.split(")")[0];
-    return buff;
-}
-
 // pad()
 //  n     - what you are padding
 //  width - number of space
@@ -312,7 +303,7 @@ async function printPingResult(pingResult, building) {
             //   add corresponding ip
             if(hns[j].includes(pad(rooms[i], 4))){
                 printHostnames += pad(hns[j], 15, " ") + "|";
-                printIps       += pad(filterIp(ips[j]), 15, " ") + "|";
+                printIps       += pad(ips[j], 15, " ") + "|";
             }
         }
         updateConsole("Hostnames: " + printHostnames);
@@ -377,8 +368,6 @@ async function runSearch() {
     for (var i = 0; i < f_ips.length; i++) {
         if(f_ips[i] == "x") {
             not_found_count += 1;
-        } else { // filter "hostname.uwyo.dns (ip-address)"
-            f_ips[i] = filterIp(f_ips[i]);
         }
     }
 
@@ -392,15 +381,6 @@ async function runSearch() {
 
     return;
 };
-
-function filterIp(ip) {
-    if (ip.includes("uwyo.dns")) {
-        let buff = ip.split("(")[1];
-        buff = buff.split(")")[0];
-        return buff;
-    }
-    return ip;
-}
 
 /*
 $$\   $$\ $$$$$$$$\ $$\      $$\ $$\       
