@@ -118,7 +118,7 @@ async function getAbbrev(buildingName) {
 // getSelectedDevices()
 //   - returns a list of user-selected devices to search for.
 function getSelectedDevices() {
-    let devices = document.getElementsByName('dev');
+    let devices = document.getElementsByName('jn_dev');
     let devList = [];
     for (var i = 0; i < devices.length; ++i) {
         if(devices[i].checked) {
@@ -475,23 +475,23 @@ async function setJackNet() {
         <fieldset class="jn_fieldset">
             <legend>
                 Choose Devices to Search For: </legend>
-            <input class="cbDev" type ="checkbox" id="proc" name="dev" value="Processors"/>
+            <input class="cbDev" type ="checkbox" id="proc" name="jn_dev" value="Processors"/>
             <label for="proc"> 
                 Processors</label>
             <br>
-            <input class="cbDev" type="checkbox" id="pj" name="dev" value="Projectors"/>
+            <input class="cbDev" type="checkbox" id="pj" name="jn_dev" value="Projectors"/>
             <label for="pj">
                 Projectors</label>
             <br>
-            <input class="cbDev" type="checkbox" id="ws" name="dev" value="Wyo Shares"/>
+            <input class="cbDev" type="checkbox" id="ws" name="jn_dev" value="Wyo Shares"/>
             <label for="ws">
                 Wyo Shares</label>
             <br>
-            <input class="cbDev" type="checkbox" id="tp" name="dev" value="Touch Panels"/>
+            <input class="cbDev" type="checkbox" id="tp" name="jn_dev" value="Touch Panels"/>
             <label for="tp">
                 Touch Panels</label>
             <br>
-            <input class="cbDev" type ="checkbox" id="cmicx" name="dev" value="Ceiling Mics"/>
+            <input class="cbDev" type ="checkbox" id="cmicx" name="jn_dev" value="Ceiling Mics"/>
             <label for="cmicx">
                 Ceiling Mics </label>
             <br>

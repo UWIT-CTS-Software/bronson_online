@@ -308,6 +308,11 @@ legend {
     grid-row: 2;
 }
 
+.cb_fieldset {
+    border:4px outset rgb(144, 118, 26)
+}
+
+
 .poly_button {
     background-color: rgb(36, 35, 35);
 }

@@ -65,8 +65,8 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 \__|  \__|   \__|   \__|     \__|\________|
 */
 
-async function getRoomSchedule() {
-    let zones = document.getElementsByName('dev');
+async function run() {
+    let zones = document.getElementsByName('cb_dev');
     let zone_array = [];
 
     for (var i=0; i<zones.length; i++) {
@@ -75,28 +75,29 @@ async function getRoomSchedule() {
         }
     }
 
-    let response = await fetch('schedule', {
+    let response = await fetch('run_cb', {
         method: "POST",
         body: JSON.stringify({
             zones: zone_array,
         })
+    })
+    .then((response) => response.json())
+    .then((json) => {
+        return json.rooms;
     });
 
-    console.log(response);
+    updateConsole(response);
 
     return;
 }
 
-function printToConsole() {
-    let str = 'awginearhoi5nh345980uq3o4hnae\nrhklq3-40haekbkln   23y09jearhbjn   234t09jq3rhoinq34y09'
-    let console = document.querySelector('.innerConsole');
-    let inner = console.value.substring(0, console.value.length);
-    for (var i=0; i<20; ++i) {
-        inner += `\n-- ${str.slice((i*4), ((i*4)+5))} ${i}   |`;
-    }
-    console.value = inner;
-    console.scrollTop = console.scrollHeight;
-}
+function updateConsole(text) {
+    let consoleObj = document.querySelector('.innerConsole');
+    const beforeText = consoleObj.value.substring(0, consoleObj.value.length);
+    consoleObj.value = beforeText + '\n' + text;
+    consoleObj.scrollTop = consoleObj.scrollHeight;
+    return;
+};
 
 function setChecker() {
     let tool_header = document.querySelector('.tool_header');
@@ -118,13 +119,22 @@ function setChecker() {
         <fieldset>
             <legend>
                 Select Zone: </legend>
-            <select id="zone_list">
-                <option value=0>All Zones</option>
-                <option value=1>Zone 1</option>
-                <option value=2>Zone 2</option>
-                <option value=3>Zone 3</option>
-                <option value=4>Zone 4</option>
-            </select>
+            <input class="cbDev" type ="checkbox" id="1" name="cb_dev" value="Processors"/>
+            <label for="1"> 
+                Zone 1</label>
+            <br>
+            <input class="cbDev" type="checkbox" id="2" name="cb_dev" value="Projectors"/>
+            <label for="2">
+                Zone 2</label>
+            <br>
+            <input class="cbDev" type="checkbox" id="3" name="cb_dev" value="Wyo Shares"/>
+            <label for="3">
+                Zone 3</label>
+            <br>
+            <input class="cbDev" type="checkbox" id="4" name="cb_dev" value="Touch Panels"/>
+            <label for="4">
+                Zone 4</label>
+            <br>
         </fieldset>`;
 
     // Bottom Menu buttons
@@ -132,15 +142,11 @@ function setChecker() {
     let button_menu = document.createElement("div");
     button_menu.classList.add('cb_buttonRow');
     button_menu.innerHTML = `
-        <fieldset>
+        <fieldset class="cb_fieldset">
             <legend>
                 Options: </legend>
-            <button id="roomSchedule" onclick="getRoomSchedule()">
-                Room Schedule</button>
-            <button id="roomChecks" onclick="getRoomChecks()">
-                Room Checks</button>
-            <button id="print" onclick="printToConsole()">
-                Print</button>
+            <button id="cb_run" onclick="run()">
+                Run!</button>
         </fieldset>`;
 
     // Console Output
