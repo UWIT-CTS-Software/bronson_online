@@ -124,13 +124,13 @@ function setChecker() {
     let map_select = document.createElement("div");
     map_select.classList.add('cb_mapSelect');
     map_select.innerHTML = `
-        <fieldset>
+        <fieldset class="cb_fieldset">
             <legend>
                 Select Zone: </legend>
             <input class="cbDev" type ="checkbox" id="1" name="cb_dev" value="Processors"/>
             <label for="1"> 
                 Zone 1</label>
-            <br>
+            
             <input class="cbDev" type="checkbox" id="2" name="cb_dev" value="Projectors"/>
             <label for="2">
                 Zone 2</label>
@@ -138,7 +138,7 @@ function setChecker() {
             <input class="cbDev" type="checkbox" id="3" name="cb_dev" value="Wyo Shares"/>
             <label for="3">
                 Zone 3</label>
-            <br>
+            
             <input class="cbDev" type="checkbox" id="4" name="cb_dev" value="Touch Panels"/>
             <label for="4">
                 Zone 4</label>
@@ -153,7 +153,7 @@ function setChecker() {
         <fieldset class="cb_fieldset">
             <legend>
                 Options: </legend>
-            <button id="cb_run" onclick="run()">
+            <button id="cb_run" onclick="run()" class="headButton">
                 Run!</button>
         </fieldset>`;
 
@@ -161,7 +161,7 @@ function setChecker() {
     let console_output = document.createElement("div");
     console_output.classList.add('cb_console');
     console_output.innerHTML = `
-        <fieldset>
+        <fieldset class="cb_fieldset">
             <legend>
                 Console Output: </legend>
             <textarea readonly rows="35" cols ="70" class="innerConsole" name="consoleOutput" spellcheck="false">
