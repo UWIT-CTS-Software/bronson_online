@@ -32,7 +32,10 @@ use std::{
 	thread,
 	sync::{
 		mpsc, Arc, Mutex,
-	}
+	},
+	collections::HashMap,
+	hash::Hash,
+	fmt::Debug,
 };
 
 use serde::{Deserialize, Serialize};
@@ -43,7 +46,7 @@ trait FnBox {
 
 impl<F: FnOnce()> FnBox for F {
     fn call_box(self: Box<F>) {
-	(*self)()
+		(*self)()
     }
 }
 
@@ -61,29 +64,29 @@ struct Worker {
 
 impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
-	let thread = thread::spawn(move || {
-	    loop {
-		let message = receiver.lock().unwrap().recv().unwrap();
+		let thread = thread::spawn(move || {
+			loop {
+				let message = receiver.lock().unwrap().recv().unwrap();
 
-		match message {
-		    Message::NewJob(job) => {
-			println!("Worker {} got a job. Executing...", id);
+				match message {
+					Message::NewJob(job) => {
+						println!("Worker {} got a job. Executing...", id);
 
-			job.call_box();
-		    },
-		    Message::Terminate => {
-			println!("Worker {} was told to terminate.", id);
+						job.call_box();
+					},
+					Message::Terminate => {
+						println!("Worker {} was told to terminate.", id);
 
-			break;
-		    },
+						break;
+					},
+				}
+			}
+		});
+
+		Worker {
+			id,
+			thread: Some(thread),
 		}
-	    }
-	});
-
-	Worker {
-	    id,
-	    thread: Some(thread),
-	}
     }
 }
 
@@ -94,54 +97,91 @@ pub struct ThreadPool {
 
 impl ThreadPool {
     pub fn new(size: usize) -> ThreadPool {
-	assert!(size > 0);
+		assert!(size > 0);
 
-	let (sender, receiver) = mpsc::channel();
-	let receiver = Arc::new(Mutex::new(receiver));
+		let (sender, receiver) = mpsc::channel();
+		let receiver = Arc::new(Mutex::new(receiver));
 
-	let mut workers = Vec::with_capacity(size);
+		let mut workers = Vec::with_capacity(size);
 
-	for id in 0..size {
-	    workers.push(Worker::new(id, Arc::clone(&receiver)));
-	}
+		for id in 0..size {
+			workers.push(Worker::new(id, Arc::clone(&receiver)));
+		}
 
-	ThreadPool { 
-	    workers,
-	    sender,
-	}
+		ThreadPool { 
+			workers,
+			sender,
+		}
     }
 
     pub fn execute<F>(&self, f: F)
-	where
-	    F: FnOnce() + Send + 'static
-    {
-	let job = Box::new(f);
-
-	self.sender.send(Message::NewJob(job)).unwrap();
+	where F: FnOnce() + Send + 'static {
+		let job = Box::new(f);
+		self.sender.send(Message::NewJob(job)).unwrap();
     }
 }
 
 impl Drop for ThreadPool {
     fn drop(&mut self) {
-	println!("Sending terminate message to all workers.");
+		println!("Sending terminate message to all workers.");
 
-	for _ in &mut self.workers {
-	    self.sender.send(Message::Terminate).unwrap();
-	}
+		for _ in &mut self.workers {
+			self.sender.send(Message::Terminate).unwrap();
+		}
 
-	println!("Shutting down all workers"); 
+		println!("Shutting down all workers"); 
 
-	for worker in &mut self.workers {
-	    println!("Shutting down worker {}", worker.id);
+		for worker in &mut self.workers {
+			println!("Shutting down worker {}", worker.id);
 
-	    if let Some(thread) = worker.thread.take() {
-		thread.join().unwrap();
-	    }
-	}
+			if let Some(thread) = worker.thread.take() {
+				thread.join().unwrap();
+			}
+		}
     }
 }
 
-// 
+// ----------- Custom struct for checkerboard - jn <3
+#[derive(Serialize, Debug)]
+pub struct Room<'a> {
+	pub name: String,
+	pub items: Vec<i32>,
+	pub gp: i32,
+	pub checked: i32,
+	pub schedule: Vec<&'a str>
+}
+
+// this is very rag-tag - error handling needs to be built-in
+impl Room<'_> {
+	pub fn update(&mut self, _key: &str, _val: &str) {
+		/* if key == "name" {
+			self.name = val;
+		} else if key == "items" {
+			self.items = val;
+		} else if key == "gp" {
+			self.gp = val;
+		} else if key == "checked" {
+			self.checked = val;
+		} else if key == "schedule" {
+			self.schedule = val;
+		} */
+	}
+}
+
+impl<'a> Clone for Room<'a> {
+	fn clone(&self) -> Room<'a> {
+		let new_name: Box<str> = <String as Clone>::clone(&self.name).into_boxed_str();
+		let new_items = &self.items;
+		let new_schedule = &self.schedule;
+		Room {
+			name: String::from(new_name),
+			items: (&new_items).to_vec(),
+			gp: self.gp,
+			checked: self.checked,
+			schedule:(&new_schedule).to_vec(),
+		}
+	}
+}
 
 // ----------- Custom structs for JackNet Requests
 // campus.json format

@@ -50,45 +50,52 @@ updated 7/31/2024
        [ ] get logic that logs the buffer for 404 requests
  */
 
+// dependencies
+// ----------------------------------------------------------------------------
 use server_lib::{
-    ThreadPool, BuildingData, PingRequest, CFMRequest, CFMRoomRequest, CFMRequestFile, /* Building, GeneralRequest */
+    ThreadPool, BuildingData, PingRequest, Room, 
+    CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
 };
-
-//use crate::ftp;
-//use suppaftp::FtpStream;
 //use lambda_http::Body;
-
-extern crate getopts;
 use getopts::Options;
-
 use std::{
     str, env,
-    io::{ prelude::*, Read, /* BufReader */ },
+    io::{ prelude::*, Read, },
     net::{ TcpStream, TcpListener, },
     fs::{
-        read, read_to_string, read_dir, metadata, /* Path, collections::HashMap, process::*, error::Error */
+        read, read_to_string, read_dir, metadata,
         File,
     },
     sync::{ Arc, },
+    error::{ Error, },
     string::{ String, },
+    borrow::{ Borrow, },
+    clone::{ Clone, },
     option::{ Option, },
+    collections::{ HashMap },
+    hash::{ Hash },
+    fmt::{ Debug },
 };
-
 use reqwest::{ 
     header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT }
 };
-
-use local_ip_address::local_ip;
-
-//use serde::{Deserialize, Serialize};
+use csv::{ Reader, StringRecord};
+use local_ip_address::{ local_ip };
 use serde_json::json;
+use regex::Regex;
+use chrono::{ Datelike, offset::Local };
+// ----------------------------------------------------------------------------
 
+// load up the ROM
+// ----------------------------------------------------------------------------
 static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bin/campus.json"));
-
 static CFM_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
+static ROOM_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomConfig.csv");
+static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/campus.csv");
 
-// static mut cfm_file_global : String = String::from('');
+static LOGIN: &'static str = "Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk=";
+// ----------------------------------------------------------------------------
 
 /*
 $$$$$$$\                      $$\                                 $$\ 
@@ -105,6 +112,11 @@ fn main() {
     //debug setting
     env::set_var("RUST_BACKTRACE", "1");
 
+    // define flags
+    //   -l -- run on localhost:7878
+    //   -p -- run with public ip on port 7878
+    //   -d -- run in debug mode : NOTE: this is not yet implemented
+    // ------------------------------------------------------------------------
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
     opts.optflag("l", "local", "Run the server using localhost.");
@@ -116,8 +128,24 @@ fn main() {
     };
     if matches.opt_present("d") {
         println!("Found the d flag!");
-    } 
+    }
+    // ------------------------------------------------------------------------
+
+    // define variables
+    // ------------------------------------------------------------------------
+
+    let room_filter = Regex::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
+    let time_filter = Regex::new(r"^[0-9:]+ [AP].M. - [0-9:]+ [AP].M.$").unwrap();
+    let day_filter  = Regex::new(r"[MTWRF]+ [0-9]{4}-[0-9]{4}").unwrap();
+
+    let rooms = gen_room_map(room_filter.clone(), time_filter.clone(), day_filter.clone()).ok().unwrap();
+    println!("{:?}", Local::now().date_naive().weekday());
     
+    // ------------------------------------------------------------------------
+    
+    
+    // set TcpListener and initalize
+    // ------------------------------------------------------------------------
     let host_ip: &str;
     let local_ip_addr = &(local_ip().unwrap().to_string()+":7878");
     if matches.opt_present("l") {
@@ -134,24 +162,38 @@ fn main() {
     let listener = TcpListener::bind(host_ip).unwrap();
     let pool = ThreadPool::new(4);
     let cookie_jar = Arc::new(reqwest::cookie::Jar::default());
+    // ------------------------------------------------------------------------
 
     for stream in listener.incoming() {
         let cookie_jar = Arc::clone(&cookie_jar);
         let stream = stream.unwrap();
+        let clone_rooms = clone_map(&rooms);
 
         pool.execute(move || {
-            handle_connection(stream, Arc::clone(&cookie_jar));
+            handle_connection(stream, cookie_jar, clone_rooms);
         });
     }
 }
 
-fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar>) -> Option<()> {
-    let mut buffer = [0; 1024];
+fn clone_map<'a, String: Eq + Hash + Debug + Clone, Room: Clone + Debug>(source: &'a HashMap<String, Room>) -> HashMap<String, Room> where String: Borrow<String> {
+    let mut target: HashMap<String, Room> = HashMap::new();
+    for (k, v) in source.iter() {
+        target.insert(String::from(k.clone()), v.clone());
+    }
+    return target;
+}
 
-    // let mut cfm_file_r: String = String::new();
+fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar>, rooms: HashMap<String, Room>) -> Option<()> {
+    let mut buffer = [0; 1024];
 
     stream.read(&mut buffer).unwrap();
 
+    // define variables
+    // ------------------------------------------------------------------------
+    // ------------------------------------------------------------------------
+
+    // HTML-oriented files
+    // ------------------------------------------------------------------------
     let get_index   = b"GET / HTTP/1.1\r\n";
     let get_css     = b"GET /page.css HTTP/1.1\r\n";
     let get_cc      = b"GET /camcode.js HTTP/1.1\r\n";
@@ -161,14 +203,14 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
     let get_jn_json = b"GET /campus.json HTTP/1.1\r\n";
     let get_cb_json = b"GET /roomChecks.json HTTP/1.1\r\n";
     let get_wiki    = b"GET /wiki.js HTTP/1.1\r\n";
-    let get_main    = b"GET /main.js HTTP/1.1\r\n";
-    //let cfm_file_g  = b"GET /cfm_file HTTP/1.1\r\n";
+    // ------------------------------------------------------------------------
     
+    // fetch data from the backend
+    // ------------------------------------------------------------------------
     // Jacknet
     let ping        = b"POST /ping HTTP/1.1\r\n";
     // Checkerboard
-    let schedule    = b"POST /schedule HTTP/1.1\r\n";
-    let lsm         = b"POST /lsm HTTP/1.1\r\n";
+    let run_cb         = b"POST /run_cb HTTP/1.1\r\n";
     // CamCode
     // CamCode - CFM Requests
     let cfm_build   = b"POST /cfm_build HTTP/1.1\r\n";
@@ -176,8 +218,10 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
     let cfm_c_dir   = b"POST /cfm_c_dir HTTP/1.1\r\n";
     let cfm_file    = b"POST /cfm_file HTTP/1.1\r\n";
     let cfm_dir     = b"POST /cfm_dir HTTP/1.1\r\n";
+    // ------------------------------------------------------------------------
 
-    
+    // Handle requests
+    // ------------------------------------------------------------------------
     let mut status_line = "HTTP/1.1 200 OK";
     let (contents, filename);
     
@@ -192,8 +236,6 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
             filename = "html-css-js/cc-altmode.js";
         } else if buffer.starts_with(get_cb) {
             filename = "html-css-js/checkerboard.js";
-        } else if buffer.starts_with(get_main) {
-            filename = "html-css-js/main.js";
         } else if buffer.starts_with(get_jn) {
             filename = "html-css-js/jacknet.js";
         } else if buffer.starts_with(get_jn_json) {
@@ -210,12 +252,22 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
     } else if buffer.starts_with(b"POST") {
         if buffer.starts_with(ping) {
             contents = execute_ping(&mut buffer); // JN
-        } else if buffer.starts_with(schedule) { // CB
-            contents = get_room_schedule(&mut buffer);
-        } else if buffer.starts_with(lsm) {
-
-            println!("Got here!");
+        } else if buffer.starts_with(run_cb) {
+            let mut return_str: String = String::new();
+            for (name, room) in rooms.into_iter() {
+                return_str.push_str(&pad(name, 10));
+                return_str.push_str(" | [-] NEEDS CHECKED");
+                return_str.push_str(" | LAST CHECKED 01/01/2000");
+                return_str.push_str(" | [+] AVAILABLE");
+                return_str.push_str(" | UNTIL 00:00");
+                return_str.push_str("\n");
+            }
+            let json_return = json!({
+                "rooms": return_str,
+            });
             
+            contents = json_return.to_string();
+        } /* else if buffer.starts_with(lsm) {
             let req = reqwest::blocking::Client::builder()
                 .cookie_provider(cookie_jar)
                 .user_agent("server_lib/0.3.1")
@@ -233,7 +285,7 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
             println!("Headers: {:#?}\n", res.headers());
 
             contents = String::from(res.text().ok()?);
-        } else if buffer.starts_with(cfm_build) { // CC-CFM
+        } */ else if buffer.starts_with(cfm_build) { // CC-CFM
             contents = cfm_build_dir(&mut buffer);
         } else if buffer.starts_with(cfm_build_r) {
             contents = cfm_build_rm(&mut buffer);
@@ -300,6 +352,7 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
 
         println!("Request: {}", str::from_utf8(&buffer).unwrap());
     }
+    // ------------------------------------------------------------------------
 
     Option::Some(())
 }
@@ -334,6 +387,75 @@ fn find_curls(s: &String) -> (usize, usize) {
     }
     (s.len(), s.len())
 }
+
+// generate room HashMap
+// ----------------------------------------------------------------------------
+fn gen_room_map<'a>(room_filter: Regex, time_filter: Regex, day_filter: Regex) -> Result<HashMap<String, Room<'a>>, Box<dyn Error>> {
+
+    /* let mut schedules: HashMap<String, Vec<&str>> = HashMap::new();
+    let schedule_data = File::open(ROOM_CSV)?;
+    let mut schedule_rdr = Reader::from_reader(schedule_data);
+    let mut current_room: String = String::from("Init");
+    let mut room_array: Vec<&str> = vec![];
+    for result in schedule_rdr.records() {
+        let record = result?;
+        if room_filter.is_match(record.get(0).expect("Empty")) {
+            schedules.insert(current_room, room_array);
+            current_room = String::from(record.get(0).expect("Empty"));
+            room_array = vec![];
+        } else if time_filter.is_match(record.get(0).expect("Empty")) {
+            let find = if day_filter.find(record.get(1).expect("Empty")).is_some() {
+                day_filter.find(record.get(1).expect("Empty")).expect("Empty").as_str()
+            } else {
+                ""
+            };
+            println!("{:?}", find);
+            room_array.push(&find);
+        }
+    } */
+
+
+    let mut rooms: HashMap<String, Room> = HashMap::new();
+    let room_data = File::open(CAMPUS_CSV)?;
+    let mut room_rdr = Reader::from_reader(room_data);
+    for result in room_rdr.records() {
+        let record = result?;
+        if room_filter.is_match(record.get(0).expect("Empty")) {
+            let mut item_vec: Vec<i32> = Vec::new();
+            for i in 1..6 {
+                item_vec.push(record.get(i).expect("-1").parse().unwrap());
+            }
+
+            /* let schedule = (&schedules.get(&String::from(record.get(0).expect("Empty"))).unwrap()).to_vec(); */
+
+            let room = Room {
+                name: String::from(record.get(0).expect("Empty")),
+                items: item_vec,
+                gp: record.get(6).expect("-1").parse().unwrap(),
+                checked: 0,
+                schedule: vec![],
+            };
+
+            rooms.insert(String::from(&room.name), room);
+        }
+    }
+
+    Ok(rooms)
+}
+
+fn pad(raw_in: String, length: usize) -> String {
+    if raw_in.len() < length {
+        let mut out_string: String = String::new();
+        for _ in 0..(length-raw_in.len()) {
+            out_string.push(' ');
+        }
+        out_string.push_str(&raw_in);
+        return out_string;
+    } else {
+        return String::from(raw_in);
+    }
+}
+
 
 // Debug function
 //   Prints the type of a variable
@@ -496,16 +618,10 @@ $$ |  $$\ $$ |  $$ |$$  _$$<  $$ |      $$ |  $$ |$$ |      $$ |  $$ |
  \______/ \__|  \__|\__|  \__|\__|      \_______/ \__|       \_______|
 */
 
-fn get_room_schedule(_buffer: &mut [u8]) -> String {
-    return String::from("Empty");
-}
-
 fn construct_headers() -> HeaderMap {
     let mut header_map = HeaderMap::new();
-    static LOGIN: &'static str = "Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk=";
     header_map.insert(ACCEPT, HeaderValue::from_static("application/json"));
     header_map.insert(AUTHORIZATION, HeaderValue::from_static(LOGIN));
-    println!("Here I am!");
 
     return header_map;
 }
@@ -667,7 +783,7 @@ fn cfm_build_rm(buffer: &mut [u8]) -> String {
 
     // Prep buffer into Room List Request Struct
     //     - building
-    let buff_copy = process_buffer(buffer);
+    let buff_copy: String = process_buffer(buffer);
     let cfm_rms: CFMRoomRequest = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 39: Failed to parse cfm room request.");
     
