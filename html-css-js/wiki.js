@@ -66,8 +66,8 @@ function setWiki() {
     let optionMenu = document.createElement("div");
     optionMenu.classList.add('w_optionMenu');
     optionMenu.innerHTML = `
-        <fieldset>
-            <legend>
+        <fieldset class='w_fieldset'>
+            <legend class='w_legend'>
                 Options: </legend>
             <button id="run" onclick="wiki_button()"> 
                 Wiki Button </button>
@@ -80,8 +80,8 @@ function setWiki() {
     let w_toc = document.createElement("div");
     w_toc.classList.add('w_toc');
     w_toc.innerHTML = `
-        <fieldset>
-            <legend>
+        <fieldset class='w_fieldset'>
+            <legend class='w_legend'>
                 Table of Contents: 
             </legend>
             <ul>
