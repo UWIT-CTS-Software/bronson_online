@@ -91,6 +91,7 @@ use chrono::{ Datelike, offset::Local };
 // ----------------------------------------------------------------------------
 static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bin/campus.json"));
 static CFM_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
+static WIKI_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
 static ROOM_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomConfig.csv");
 static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/campus.csv");
 
@@ -218,6 +219,8 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
     let cfm_c_dir   = b"POST /cfm_c_dir HTTP/1.1\r\n";
     let cfm_file    = b"POST /cfm_file HTTP/1.1\r\n";
     let cfm_dir     = b"POST /cfm_dir HTTP/1.1\r\n";
+    // Wiki
+    let w_build     = b"POST /w_build HTTP/1.1\r\n";
     // ------------------------------------------------------------------------
 
     // Handle requests
@@ -295,6 +298,8 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
             contents = get_cfm_dir(&mut buffer);
         } else if buffer.starts_with(cfm_file) {
             contents = get_cfm_file(&mut buffer);
+        } else if buffer.starts_with(w_build) {
+            contents = w_build_articles(&mut buffer);
         } else {
             status_line = "HTTP/1.1 404 NOT FOUND";
             contents = String::from("Empty");
@@ -927,4 +932,41 @@ fn get_cfm_dir(buffer: &mut [u8]) -> String {
 
     return json_return.to_string();
     //return String::from("THIS SHOULD BE A DIRECTORY VEC")
+}
+
+/*
+$$\      $$\ $$\ $$\       $$\ 
+$$ | $\  $$ |\__|$$ |      \__|
+$$ |$$$\ $$ |$$\ $$ |  $$\ $$\ 
+$$ $$ $$\$$ |$$ |$$ | $$  |$$ |
+$$$$  _$$$$ |$$ |$$$$$$  / $$ |
+$$$  / \$$$ |$$ |$$  _$$<  $$ |
+$$  /   \$$ |$$ |$$ | \$$\ $$ |
+\__/     \__|\__|\__|  \__|\__|
+*/
+
+fn w_build_articles(buffer: &mut [u8]) -> String {
+    // Vars
+    let mut article_vec: Vec<String> = Vec::new();
+
+    // Check for CFM_Code Directory
+    if dir_exists(WIKI_DIR) {
+        println!("SUCCESS: WIKI Directory Found");
+    }
+    let cfm_dirs = get_dir_contents(WIKI_DIR);
+    // iterate over cfm_dirs and snip ../CFM_Code/
+    // DO NOT INCLUDE DIRS w/ '_'
+    let cut_index = WIKI_DIR.len();
+    for (_, &ref item) in cfm_dirs.iter().enumerate() {
+        article_vec.push((&item[(cut_index + 1)..]).to_string());
+    };
+
+    // strings = ;
+    
+    let json_return = json!({
+        "names": article_vec
+    });
+
+    return json_return.to_string();
+    // return "TEST STRING"
 }
