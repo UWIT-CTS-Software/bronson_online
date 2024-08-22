@@ -152,7 +152,7 @@ pub struct Room<'a> {
 }
 
 // this is very rag-tag - error handling needs to be built-in
-impl Room<'_> {
+impl<'a> Room<'a> {
 	pub fn update(&mut self, _key: &str, _val: &str) {
 		/* if key == "name" {
 			self.name = val;
@@ -166,8 +166,12 @@ impl Room<'_> {
 			self.schedule = val;
 		} */
 	}
-}
 
+	pub fn set_schedule(&mut self, new_vec: Vec<&'a str>) {
+		self.schedule = new_vec;
+	}
+	
+}
 impl<'a> Clone for Room<'a> {
 	fn clone(&self) -> Room<'a> {
 		let new_name: Box<str> = <String as Clone>::clone(&self.name).into_boxed_str();
