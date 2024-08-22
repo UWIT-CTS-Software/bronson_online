@@ -95,6 +95,28 @@ static ROOM_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomCo
 static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/campus.csv");
 
 static LOGIN: &'static str = "Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk=";
+
+static ZONE_1: Vec<&str> = vec![
+    "Science+Initiative+Building+(SI)", "Geology+(GE)", "Health+Sciences+(HS)", 
+    "STEM+1st+Floor", "STEM+2nd+Floor", "STEM+3rd+Floor", "Berry+Center+(BC)",
+    "Engineering+Education+and+Research+Building+(EERB)", "Anthropology+(AN)", 
+    "Earth+Sciences+Building+(ESB)", "Energy+Innovation+Center+(EIC)", 
+]
+static ZONE_2: Vec<&str> = vec![
+    "Engineering+(EN)", "Agriculture+(AG)", "Education+(ED)", "History+(HI)", 
+    "Half+Acre+(HA)", "Business+(BU)", "Coe+Library+(CL)", "Education+Annex+(EA)", 
+]
+static ZONE_3: Vec<&str> = vec![
+    "Physical+Sciences+(PS)", "Classroom+Building+(CR)", 
+    "Arts+&+Sciences+(AS)", "Aven+Nelson+(AV)", "Biological+Sciences+(BS)", 
+    "Native+American+Ed+Research+&+Culteral+Center+(NA)", "Ross+Hall+(RH)", 
+    "Hoyt+Hall+(HO)", "Guthrie+House+(GH)", 
+]
+static ZONE_4: Vec<&str> = vec![
+    "IT+Center+(ITC)", "Corbett+(CB)", "Law+School+(LS)", "Beta+House+(BH)", 
+    "Buchanan+Center+for+Performing+Arts+(PA)", "Visual+Arts+(VA)", 
+    "Animal+Science/Molecular+Biology+(AB)", "American+Heritage+Center+(AC)", 
+]
 // ----------------------------------------------------------------------------
 
 /*
@@ -138,9 +160,67 @@ fn main() {
     let time_filter = Regex::new(r"^[0-9:]+ [AP].M. - [0-9:]+ [AP].M.$").unwrap();
     let day_filter  = Regex::new(r"[MTWRF]+ [0-9]{4}-[0-9]{4}").unwrap();
 
-    let rooms = gen_room_map(room_filter.clone(), time_filter.clone(), day_filter.clone()).ok().unwrap();
-    println!("{:?}", Local::now().date_naive().weekday());
     
+    // generate rooms HashMap
+    // ------------------------------------------------------------------------
+
+    /*
+    New order of ops:
+    1. Make rooms hashmap
+    2. Make schedule hashmap
+    3. Merge the two into a new csv
+    4. Dealloc memory
+    5. Read in new csv to map
+    */
+    let mut rooms: HashMap<String, Room> = HashMap::new();
+    let room_data = File::open(CAMPUS_CSV).unwrap();
+    let mut room_rdr = Reader::from_reader(room_data);
+    for result in room_rdr.records() {
+        let record = result.unwrap();
+        if room_filter.is_match(record.get(0).expect("Empty")) {
+            let mut item_vec: Vec<i32> = Vec::new();
+            for i in 1..6 {
+                item_vec.push(record.get(i).expect("-1").parse().unwrap());
+            }
+
+            let schedule = vec![];
+
+            let room = Room {
+                name: String::from(record.get(0).expect("Empty")),
+                items: item_vec,
+                gp: record.get(6).expect("-1").parse().unwrap(),
+                checked: 0,
+                schedule: schedule,
+            };
+
+            rooms.insert(String::from(&room.name), room);
+        }
+    }
+
+    let mut schedules: HashMap<String, Vec<&str>> = HashMap::new();
+    let schedule_data = File::open(ROOM_CSV).unwrap();
+    let mut schedule_rdr = Reader::from_reader(schedule_data);
+    let mut current_room: String = String::from("Init");
+    let mut room_array: Vec<&str> = Vec::new();
+    for result in schedule_rdr.records() {
+        let record = result.unwrap();
+        if room_filter.is_match(record.get(0).expect("Empty")) {
+            schedules.insert(current_room, (&room_array).to_vec());
+            current_room = String::from(record.get(0).expect("Empty"));
+            room_array = Vec::new();
+        } else if time_filter.is_match(record.get(0).expect("Empty")) {
+            let clone_record = record.get(1).expect("Empty");
+            let filter_result = day_filter.find(record.get(1).expect("Empty"));
+            let find = if !filter_result.unwrap().is_empty() {
+                day_filter.find(clone_record).expect("Emptier").as_str()
+            } else {
+                ""
+            };
+            room_array.push(&find);
+        }
+    }
+
+    println!("{:?}", Local::now().date_naive().weekday());
     // ------------------------------------------------------------------------
     
     
@@ -254,7 +334,7 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
             contents = execute_ping(&mut buffer); // JN
         } else if buffer.starts_with(run_cb) {
             let mut return_str: String = String::new();
-            for (name, room) in rooms.into_iter() {
+            for (name, _room) in rooms.into_iter() {
                 return_str.push_str(&pad(name, 10));
                 return_str.push_str(" | [-] NEEDS CHECKED");
                 return_str.push_str(" | LAST CHECKED 01/01/2000");
@@ -386,61 +466,6 @@ fn find_curls(s: &String) -> (usize, usize) {
         }
     }
     (s.len(), s.len())
-}
-
-// generate room HashMap
-// ----------------------------------------------------------------------------
-fn gen_room_map<'a>(room_filter: Regex, time_filter: Regex, day_filter: Regex) -> Result<HashMap<String, Room<'a>>, Box<dyn Error>> {
-
-    /* let mut schedules: HashMap<String, Vec<&str>> = HashMap::new();
-    let schedule_data = File::open(ROOM_CSV)?;
-    let mut schedule_rdr = Reader::from_reader(schedule_data);
-    let mut current_room: String = String::from("Init");
-    let mut room_array: Vec<&str> = vec![];
-    for result in schedule_rdr.records() {
-        let record = result?;
-        if room_filter.is_match(record.get(0).expect("Empty")) {
-            schedules.insert(current_room, room_array);
-            current_room = String::from(record.get(0).expect("Empty"));
-            room_array = vec![];
-        } else if time_filter.is_match(record.get(0).expect("Empty")) {
-            let find = if day_filter.find(record.get(1).expect("Empty")).is_some() {
-                day_filter.find(record.get(1).expect("Empty")).expect("Empty").as_str()
-            } else {
-                ""
-            };
-            println!("{:?}", find);
-            room_array.push(&find);
-        }
-    } */
-
-
-    let mut rooms: HashMap<String, Room> = HashMap::new();
-    let room_data = File::open(CAMPUS_CSV)?;
-    let mut room_rdr = Reader::from_reader(room_data);
-    for result in room_rdr.records() {
-        let record = result?;
-        if room_filter.is_match(record.get(0).expect("Empty")) {
-            let mut item_vec: Vec<i32> = Vec::new();
-            for i in 1..6 {
-                item_vec.push(record.get(i).expect("-1").parse().unwrap());
-            }
-
-            /* let schedule = (&schedules.get(&String::from(record.get(0).expect("Empty"))).unwrap()).to_vec(); */
-
-            let room = Room {
-                name: String::from(record.get(0).expect("Empty")),
-                items: item_vec,
-                gp: record.get(6).expect("-1").parse().unwrap(),
-                checked: 0,
-                schedule: vec![],
-            };
-
-            rooms.insert(String::from(&room.name), room);
-        }
-    }
-
-    Ok(rooms)
 }
 
 fn pad(raw_in: String, length: usize) -> String {
