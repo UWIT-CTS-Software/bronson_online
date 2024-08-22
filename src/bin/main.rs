@@ -96,27 +96,27 @@ static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/camp
 
 static LOGIN: &'static str = "Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk=";
 
-static ZONE_1: Vec<&str> = vec![
+const ZONE_1: [&'static str; 11] = [
     "Science+Initiative+Building+(SI)", "Geology+(GE)", "Health+Sciences+(HS)", 
     "STEM+1st+Floor", "STEM+2nd+Floor", "STEM+3rd+Floor", "Berry+Center+(BC)",
     "Engineering+Education+and+Research+Building+(EERB)", "Anthropology+(AN)", 
     "Earth+Sciences+Building+(ESB)", "Energy+Innovation+Center+(EIC)", 
-]
-static ZONE_2: Vec<&str> = vec![
+];
+const ZONE_2: [&'static str; 8] = [
     "Engineering+(EN)", "Agriculture+(AG)", "Education+(ED)", "History+(HI)", 
     "Half+Acre+(HA)", "Business+(BU)", "Coe+Library+(CL)", "Education+Annex+(EA)", 
-]
-static ZONE_3: Vec<&str> = vec![
+];
+const ZONE_3: [&'static str; 9] = [
     "Physical+Sciences+(PS)", "Classroom+Building+(CR)", 
     "Arts+&+Sciences+(AS)", "Aven+Nelson+(AV)", "Biological+Sciences+(BS)", 
     "Native+American+Ed+Research+&+Culteral+Center+(NA)", "Ross+Hall+(RH)", 
     "Hoyt+Hall+(HO)", "Guthrie+House+(GH)", 
-]
-static ZONE_4: Vec<&str> = vec![
+];
+const ZONE_4: [&'static str; 8] = [
     "IT+Center+(ITC)", "Corbett+(CB)", "Law+School+(LS)", "Beta+House+(BH)", 
     "Buchanan+Center+for+Performing+Arts+(PA)", "Visual+Arts+(VA)", 
     "Animal+Science/Molecular+Biology+(AB)", "American+Heritage+Center+(AC)", 
-]
+];
 // ----------------------------------------------------------------------------
 
 /*
@@ -189,7 +189,7 @@ fn main() {
                 name: String::from(record.get(0).expect("Empty")),
                 items: item_vec,
                 gp: record.get(6).expect("-1").parse().unwrap(),
-                checked: 0,
+                checked: String::from("2000-01-01T00:00:00Z"),
                 schedule: schedule,
             };
 

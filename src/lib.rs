@@ -147,7 +147,7 @@ pub struct Room<'a> {
 	pub name: String,
 	pub items: Vec<i32>,
 	pub gp: i32,
-	pub checked: i32,
+	pub checked: String,
 	pub schedule: Vec<&'a str>
 }
 
@@ -175,13 +175,14 @@ impl<'a> Room<'a> {
 impl<'a> Clone for Room<'a> {
 	fn clone(&self) -> Room<'a> {
 		let new_name: Box<str> = <String as Clone>::clone(&self.name).into_boxed_str();
+		let new_checked: Box<str> = <String as Clone>::clone(&self.checked).into_boxed_str();
 		let new_items = &self.items;
 		let new_schedule = &self.schedule;
 		Room {
 			name: String::from(new_name),
 			items: (&new_items).to_vec(),
 			gp: self.gp,
-			checked: self.checked,
+			checked: String::from(new_checked),
 			schedule:(&new_schedule).to_vec(),
 		}
 	}
