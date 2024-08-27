@@ -61,7 +61,7 @@ use server_lib::{
 use getopts::Options;
 use std::{
     str, env,
-    io::{ prelude::*, Read, },
+    io::{ prelude::*, Read, stdout, },
     net::{ TcpStream, TcpListener, },
     fs::{
         read, read_to_string, read_dir, metadata,
@@ -127,7 +127,7 @@ fn main() {
         Err(f) => { panic!("{}", f.to_string()) }
     };
     if matches.opt_present("d") {
-        println!("Found the d flag!");
+        println!("\rTest\n> ");
     }
     // ------------------------------------------------------------------------
 
@@ -139,7 +139,7 @@ fn main() {
     let day_filter  = Regex::new(r"[MTWRF]+ [0-9]{4}-[0-9]{4}").unwrap();
 
     let rooms = gen_room_map(room_filter.clone(), time_filter.clone(), day_filter.clone()).ok().unwrap();
-    println!("{:?}", Local::now().date_naive().weekday());
+    // println!("{:?}", Local::now().date_naive().weekday());
     
     // ------------------------------------------------------------------------
     
@@ -155,7 +155,7 @@ fn main() {
         println!("[#] -- You are running using public IP --");
         host_ip = local_ip_addr;
     }
-    println!("[!] host_ip set to {}", host_ip);
+    println!("[!] ... {} ...", host_ip);
 
     env::set_var("API_USER", "api_assess");
     env::set_var("API_PASSWORD", "UofWyo-CTS3945-API");
@@ -163,6 +163,8 @@ fn main() {
     let pool = ThreadPool::new(4);
     let cookie_jar = Arc::new(reqwest::cookie::Jar::default());
     // ------------------------------------------------------------------------
+    print!("> ");
+    stdout().flush().unwrap();
 
     for stream in listener.incoming() {
         let cookie_jar = Arc::clone(&cookie_jar);
@@ -172,6 +174,8 @@ fn main() {
         pool.execute(move || {
             handle_connection(stream, cookie_jar, clone_rooms);
         });
+
+        println!("Made it here!");
     }
 }
 
@@ -340,7 +344,7 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
         stream.write_all(&file_buffer).unwrap();
         stream.flush().unwrap();
 
-        println!("Request: {}", str::from_utf8(&buffer).unwrap());
+        println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
     } else {
         response = format!(
             "{}\r\nContent-Length: {}\r\n\r\n{}",
@@ -350,10 +354,12 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
         stream.write(response.as_bytes()).unwrap();
         stream.flush().unwrap();
 
-        println!("Request: {}", str::from_utf8(&buffer).unwrap());
+        println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
     }
     // ------------------------------------------------------------------------
 
+    print!("> ");
+    stdout().flush().unwrap();
     Option::Some(())
 }
 
@@ -514,7 +520,7 @@ fn execute_ping(buffer: &mut [u8]) -> String {
     });
 
     // convert to string and return it
-    println!("Pulled IP's:\n{:?}",hn_ips);
+    println!("\rPulled IP's:\n{:?}",hn_ips);
     println!("----\n------\nEND OF execute_ping() FUNCTION\n------\n-----\n");
 
     // Return JSON with ping results
