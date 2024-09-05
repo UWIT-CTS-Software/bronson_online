@@ -55,8 +55,13 @@ async function cfmFiles() {
 // This is a onclick function tied to entries in "File Selection"
 async function getCFMF(filename, classtype) {
     let brs = cfmGetBuildingRoom();
-    let cmff = `/${brs[0]}${brs[1]}/${filename}`;
+    // Get the header value instead
+    let current_header = getCurrentHeader();
+    // current_header = current_header + '/';
 
+    let cmff = `${current_header}/${filename}`;
+
+    // User Selects a Directory
     if (classtype == "cfm_dir") {
         //updateConsole("ERRORSelected Directory");
         // It would be sweet to go into room sub-directories
@@ -65,19 +70,16 @@ async function getCFMF(filename, classtype) {
         //update filebrowser
 
         console.log(files);
-        await setFileBrowser(filename, files);
+        // Need a variant function for populating 
+        for (var i in files) {
+            files[i] = files[i].split(cmff + '/')[1];
+        }
+        await setFileBrowser(cmff, files);
         return;
     }
     
-    
-    // let value = 
     await getCFM_File(cmff);
 
-    // console.log(value);
-    // cmff = `/CFM_Code/${brs[0]}${brs[1]}/${filename}`;
-    
-    // console.log(value);
-    // downloadFile(value.bytes(), filename);
     return;
 }
 
@@ -118,6 +120,12 @@ function cfmGetBuildingRoom(){
     return [building, room];
 }
 
+function getCurrentHeader() {
+    let fs = document.querySelector('.cfm_text');
+    console.log(fs.innerText);
+    return fs.innerText;
+}
+
 // CONSOLE REVAMP FUNCTIONS HERE
 //    MAKE A WEIRD SUDO DIRECTORY BROWSER
 async function setFileBrowser(header, files) {
@@ -128,9 +136,7 @@ async function setFileBrowser(header, files) {
         <legend>
             File Selection
         </legend>
-        <h2 class='cfm_text'>
-            ${header}
-        </h2>
+        <h2 class='cfm_text'>${header}</h2>
         <body>
             <ol class='cfm_list'>
                 ${await populateFileList(files)}
