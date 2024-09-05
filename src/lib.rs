@@ -33,8 +33,6 @@ use std::{
 	sync::{
 		mpsc, Arc, Mutex,
 	},
-	collections::HashMap,
-	hash::Hash,
 	fmt::Debug,
 };
 
@@ -143,37 +141,22 @@ impl Drop for ThreadPool {
 
 // ----------- Custom struct for checkerboard - jn <3
 #[derive(Serialize, Debug)]
-pub struct Room<'a> {
+pub struct Room {
 	pub name: String,
-	pub items: Vec<i32>,
-	pub gp: i32,
+	pub items: Vec<u8>,
+	pub gp: u8,
 	pub checked: String,
-	pub schedule: Vec<&'a str>
+	pub schedule: Vec<String>
 }
 
 // this is very rag-tag - error handling needs to be built-in
-impl<'a> Room<'a> {
-	pub fn update(&mut self, _key: &str, _val: &str) {
-		/* if key == "name" {
-			self.name = val;
-		} else if key == "items" {
-			self.items = val;
-		} else if key == "gp" {
-			self.gp = val;
-		} else if key == "checked" {
-			self.checked = val;
-		} else if key == "schedule" {
-			self.schedule = val;
-		} */
+impl Room {
+	pub fn update_checked(&mut self, val: String) {
+		self.checked = val;
 	}
-
-	pub fn set_schedule(&mut self, new_vec: Vec<&'a str>) {
-		self.schedule = new_vec;
-	}
-	
 }
-impl<'a> Clone for Room<'a> {
-	fn clone(&self) -> Room<'a> {
+impl<'a> Clone for Room {
+	fn clone(&self) -> Room {
 		let new_name: Box<str> = <String as Clone>::clone(&self.name).into_boxed_str();
 		let new_checked: Box<str> = <String as Clone>::clone(&self.checked).into_boxed_str();
 		let new_items = &self.items;
@@ -186,6 +169,11 @@ impl<'a> Clone for Room<'a> {
 			schedule:(&new_schedule).to_vec(),
 		}
 	}
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ZoneRequest {
+	pub zones: Vec<String>,
 }
 
 // ----------- Custom structs for JackNet Requests
