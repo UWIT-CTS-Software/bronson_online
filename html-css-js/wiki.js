@@ -34,7 +34,7 @@ async function updatePreview() {
 }
 
 // setWiki()
-function setWiki() {
+async function setWiki() {
     console.log('switching to wiki');
     let tool_header = document.querySelector('.tool_header');
     tool_header.innerHTML = 'Wiki';
@@ -79,18 +79,20 @@ function setWiki() {
     // [ Generate Files ] [ Clear Console ] [ Reset ]
     let w_toc = document.createElement("div");
     w_toc.classList.add('w_toc');
-    w_toc.innerHTML = `
-        <fieldset class='w_fieldset'>
-            <legend class='w_legend'>
-                Table of Contents: 
-            </legend>
-            <ul>
-                <li> Item 1 </li>
-                <li> Item 2 </li>
-                <li> Item tmp </li>
-                <li> Item 3 </li>
-            </ul>
-        </fieldset>`;
+    // replace <ul> with something else
+    let article_list_html = await getTocHTML();
+    w_toc.innerHTML = article_list_html;
+    //     <fieldset class='w_fieldset'>
+    //         <legend class='w_legend'>
+    //             Articles: 
+    //         </legend>
+    //         <ul>
+    //             <li> Item 1 </li>
+    //             <li> Item 2 </li>
+    //             <li> Item tmp </li>
+    //             <li> Item 3 </li>
+    //         </ul>
+    //     </fieldset>`;
 
     w_editor.appendChild(w_input);
     w_editor.appendChild(w_preview);
@@ -101,3 +103,56 @@ function setWiki() {
     progGuts.replaceWith(main_container);
     return;
 }
+
+async function getTocHTML() {
+    let default_html = `
+        <fieldset class='w_fieldset'>
+            <legend class='w_legend'>
+                Articles: 
+            </legend>
+            <ul>
+                <li> Item 1 </li>
+                <li> Item 2 </li>
+                <li> Item tmp </li>
+                <li> Item 3 </li>
+            </ul>
+        </fieldset>`;
+
+    let articles = await getW_BuildArticles();
+    console.log(articles);
+
+    let html = `
+        <fieldset class='w_fieldset'>
+            <legend class='w_legend'>
+                Articles:
+            </legend>
+            <p> Test File </p>
+            <p> Test File 2 </p>
+            <p> ${articles[0]} </p>
+        </fieldset>`;
+    
+    return html;
+}
+
+/*
+ __        _          _     
+/ _|  ___ | |_   ___ | |__  
+| |_  / _ \| __| / __|| '_ \ 
+|  _||  __/| |_ | (__ | | | |
+|_|   \___| \__| \___||_| |_|    
+*/
+
+// getW_BuildArticles()
+//    "w_build"
+async function getW_BuildArticles() {
+    return await fetch('w_build', {
+        method: 'POST',
+        body: JSON.stringify({
+            message: 'w_build'
+        })
+    })
+    .then((response) => response.json())
+    .then((json) => {
+        return json.names;
+    });
+};
