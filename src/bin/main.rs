@@ -552,6 +552,19 @@ fn pad(raw_in: String, length: usize) -> String {
     }
 }
 
+fn pad_zero(raw_in: String, length: usize) -> String {
+    if raw_in.len() < length {
+        let mut out_string: String = String::new();
+        for _ in 0..(length-raw_in.len()) {
+            out_string.push('0');
+        }
+        out_string.push_str(&raw_in);
+        return out_string;
+    } else {
+        return String::from(raw_in);
+    }
+}
+
 
 // Debug function
 //   Prints the type of a variable
@@ -748,10 +761,10 @@ fn check_schedule(room: Room) -> String {
         if block_vec[0].contains(day_of_week) {
             let mut f = Vec::new();
             if adjusted_time < adjusted_start {
-                write!(&mut f, " | [+] AVAILABLE   | UNTIL {}:{}", adjusted_start / 100, pad((adjusted_start % 100).to_string(), 2));
+                write!(&mut f, " | [+] AVAILABLE   | UNTIL {}:{}", adjusted_start / 100, pad_zero((adjusted_start % 100).to_string(), 2));
                 return String::from_utf8(f).expect("EMPTY");
             } else if (adjusted_start <= adjusted_time) && (adjusted_time <= adjusted_end) {
-                write!(&mut f, " | [-] UNAVAILABLE | UNTIL {}:{}", adjusted_end / 100, pad((adjusted_end % 100).to_string(), 2));
+                write!(&mut f, " | [-] UNAVAILABLE | UNTIL {}:{}", adjusted_end / 100, pad_zero((adjusted_end % 100).to_string(), 2));
                 return String::from_utf8(f).expect("EMPTY");
             }
         }
