@@ -128,6 +128,8 @@ legend {
     margin: 5px;
     border:4px outset rgb(133, 118, 60);
     cursor: pointer;
+    padding-left: 2px;
+    padding-right: 2px;
 }
 
 .site_header:hover {
