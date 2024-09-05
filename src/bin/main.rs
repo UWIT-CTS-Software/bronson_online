@@ -53,7 +53,8 @@ updated 7/31/2024
 // dependencies
 // ----------------------------------------------------------------------------
 use server_lib::{
-    ThreadPool, BuildingData, PingRequest, Room, 
+    ThreadPool, BuildingData, PingRequest, 
+    Room, ZoneRequest,  
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
 };
@@ -61,30 +62,31 @@ use server_lib::{
 use getopts::Options;
 use std::{
     str, env,
-    io::{ prelude::*, Read, },
+    io::{ prelude::*, Read, stdout, },
     net::{ TcpStream, TcpListener, },
     fs::{
         read, read_to_string, read_dir, metadata,
         File,
     },
     sync::{ Arc, },
-    error::{ Error, },
+    /* error::{ Error, }, */
     string::{ String, },
     borrow::{ Borrow, },
     clone::{ Clone, },
     option::{ Option, },
-    collections::{ HashMap },
-    hash::{ Hash },
-    fmt::{ Debug },
+    collections::{ HashMap, },
+    hash::{ Hash, },
+    fmt::{ Debug, },
+    convert::{ TryFrom, },
 };
 use reqwest::{ 
     header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT }
 };
-use csv::{ Reader, StringRecord};
+use csv::{ Reader, };
 use local_ip_address::{ local_ip };
-use serde_json::json;
+use serde_json::{ json, Value, };
 use regex::Regex;
-use chrono::{ Datelike, offset::Local };
+use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta, };
 // ----------------------------------------------------------------------------
 
 // load up the ROM
@@ -96,6 +98,41 @@ static ROOM_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomCo
 static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/campus.csv");
 
 static LOGIN: &'static str = "Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk=";
+
+const ZONE_1: [&'static str; 11] = [
+    "Science%20Initiative%20Building%20(SI)", "Geology%20(GE)", "Health%20Sciences%20(HS)", 
+    "STEM%201st%20Floor", "STEM%202nd%20Floor", "STEM%203rd%20Floor", "Berry%20Center%20(BC)",
+    "Engineering%20Education%20and%20Research%20Building%20(EERB)", "Anthropology%20(AN)", 
+    "Earth%20Sciences%20Building%20(ESB)", "Energy%20Innovation%20Center%20(EIC)", 
+];
+const ZONE_2: [&'static str; 8] = [
+    "Engineering%20(EN)", "Agriculture%20(AG)", "Education%20(ED)", "History%20(HI)", 
+    "Half%20Acre%20(HA)", "Business%20(BU)", "Coe%20Library%20(CL)", "Education%20Annex%20(EA)", 
+];
+const ZONE_3: [&'static str; 9] = [
+    "Physical%20Sciences%20(PS)", "Classroom%20Building%20(CR)", 
+    "Arts%20%26%20Sciences%20(AS)", "Aven%20Nelson%20(AV)", "Biological%20Sciences%20(BS)", 
+    "Native%20American%20Ed%20Research%20%26%20Culteral%20Center%20(NA)", "Ross%20Hall%20(RH)", 
+    "Hoyt%20Hall%20(HO)", "Guthrie%20House%20(GH)", 
+];
+const ZONE_4: [&'static str; 8] = [
+    "IT%20Center%20(ITC)", "Corbett%20(CB)", "Law%20School%20(LS)", "Beta%20House%20(BH)", 
+    "Buchanan%20Center%20for%20Performing%20Arts%20(PA)", "Visual%20Arts%20(VA)", 
+    "Animal%20Science/Molecular%20Biology%20(AB)", "American%20Heritage%20Center%20(AC)", 
+];
+
+const ZONE_1_SHORT: [&'static str; 9] = [
+    "SI", "GE", "HS", "STEM", "BC", "EERB", "AN", "ESB", "EIC",
+];
+const ZONE_2_SHORT: [&'static str; 8] = [
+    "EN", "AG", "ED", "HI", "HA", "BU", "CL", "EA",
+];
+const ZONE_3_SHORT: [&'static str; 9] = [
+    "PS", "CR", "AS", "AV", "BS", "NAC", "RH", "HO", "GH",
+];
+const ZONE_4_SHORT: [&'static str; 8] = [
+    "ITC", "CB", "LS", "BH", "PA", "VA", "AB", "AC",
+];
 // ----------------------------------------------------------------------------
 
 /*
@@ -128,20 +165,64 @@ fn main() {
         Err(f) => { panic!("{}", f.to_string()) }
     };
     if matches.opt_present("d") {
-        println!("Found the d flag!");
+        println!("\rTest\n> ");
     }
     // ------------------------------------------------------------------------
 
     // define variables
     // ------------------------------------------------------------------------
-
     let room_filter = Regex::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
-    let time_filter = Regex::new(r"^[0-9:]+ [AP].M. - [0-9:]+ [AP].M.$").unwrap();
-    let day_filter  = Regex::new(r"[MTWRF]+ [0-9]{4}-[0-9]{4}").unwrap();
+    // ------------------------------------------------------------------------
 
-    let rooms = gen_room_map(room_filter.clone(), time_filter.clone(), day_filter.clone()).ok().unwrap();
-    println!("{:?}", Local::now().date_naive().weekday());
-    
+    // generate rooms HashMap
+    // ------------------------------------------------------------------------
+    let mut schedules: HashMap<String, Vec<String>> = HashMap::new();
+    let schedule_data = File::open(ROOM_CSV).unwrap();
+    let mut schedule_rdr = Reader::from_reader(schedule_data);
+    for result in schedule_rdr.records() {
+        let record = result.unwrap();
+        if room_filter.is_match(record.get(0).expect("Empty")) {
+            let room = String::from(record.get(0).expect("Empty"));
+            let mut schedule = Vec::new();
+            for block in 1..8 {
+                if record.get(block).expect("Empty") == "" {
+                    break;
+                }
+
+                schedule.push(String::from(record.get(block).expect("Empty")));
+            }
+
+            schedules.insert(room, schedule);
+        }
+    }
+    let mut rooms: HashMap<String, Room> = HashMap::new();
+    let room_data = File::open(CAMPUS_CSV).unwrap();
+    let mut room_rdr = Reader::from_reader(room_data);
+    for result in room_rdr.records() {
+        let record = result.unwrap();
+        if room_filter.is_match(record.get(0).expect("Empty")) {
+            let mut item_vec: Vec<u8> = Vec::new();
+            for i in 1..6 {
+                item_vec.push(record.get(i).expect("-1").parse().unwrap());
+            }
+
+            let schedule = if schedules.get(&String::from(record.get(0).expect("Empty"))) == None {
+                Vec::new()
+            } else {
+                schedules.get(&String::from(record.get(0).expect("Empty"))).unwrap().to_vec()
+            };
+
+            let room = Room {
+                name: String::from(record.get(0).expect("Empty")),
+                items: item_vec,
+                gp: record.get(6).expect("-1").parse().unwrap(),
+                checked: String::from("2000-01-01T00:00:00Z"),
+                schedule: schedule,
+            };
+
+            rooms.insert(String::from(&room.name), room);
+        }
+    }
     // ------------------------------------------------------------------------
     
     
@@ -156,14 +237,14 @@ fn main() {
         println!("[#] -- You are running using public IP --");
         host_ip = local_ip_addr;
     }
-    println!("[!] host_ip set to {}", host_ip);
+    println!("[!] ... {} ...", host_ip);
 
-    env::set_var("API_USER", "api_assess");
-    env::set_var("API_PASSWORD", "UofWyo-CTS3945-API");
     let listener = TcpListener::bind(host_ip).unwrap();
     let pool = ThreadPool::new(4);
     let cookie_jar = Arc::new(reqwest::cookie::Jar::default());
     // ------------------------------------------------------------------------
+    print!("> ");
+    stdout().flush().unwrap();
 
     for stream in listener.incoming() {
         let cookie_jar = Arc::clone(&cookie_jar);
@@ -184,7 +265,8 @@ fn clone_map<'a, String: Eq + Hash + Debug + Clone, Room: Clone + Debug>(source:
     return target;
 }
 
-fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar>, rooms: HashMap<String, Room>) -> Option<()> {
+#[tokio::main]
+async fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar>, mut rooms: HashMap<String, Room>) -> Option<()> {
     let mut buffer = [0; 1024];
 
     stream.read(&mut buffer).unwrap();
@@ -211,7 +293,8 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
     // Jacknet
     let ping        = b"POST /ping HTTP/1.1\r\n";
     // Checkerboard
-    let run_cb         = b"POST /run_cb HTTP/1.1\r\n";
+    let run_cb      = b"POST /run_cb HTTP/1.1\r\n";
+    let run_lsm     = b"POST /run_lsm HTTP/1.1\r\n";
     // CamCode
     // CamCode - CFM Requests
     let cfm_build   = b"POST /cfm_build HTTP/1.1\r\n";
@@ -256,22 +339,86 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
         if buffer.starts_with(ping) {
             contents = execute_ping(&mut buffer); // JN
         } else if buffer.starts_with(run_cb) {
-            let mut return_str: String = String::new();
-            for (name, room) in rooms.into_iter() {
-                return_str.push_str(&pad(name, 10));
-                return_str.push_str(" | [-] NEEDS CHECKED");
-                return_str.push_str(" | LAST CHECKED 01/01/2000");
-                return_str.push_str(" | [+] AVAILABLE");
-                return_str.push_str(" | UNTIL 00:00");
-                return_str.push_str("\n");
+            let buff_copy = process_buffer(&mut buffer);
+            let zone_selection: ZoneRequest = serde_json::from_str(&buff_copy)
+                .expect("Fatal Error 2: Failed to parse ping request");
+
+            let mut buildings: Vec<&str> = Vec::new();
+            let mut parent_locations: Vec<&str> = Vec::new();
+            if zone_selection.zones.clone().into_iter().find(|x| x == "1") == Some("1".to_string()) {
+                buildings.extend(&ZONE_1_SHORT);
+                parent_locations.extend(&ZONE_1);
             }
+            if zone_selection.zones.clone().into_iter().find(|x| x == "2") == Some("2".to_string()) {
+                buildings.extend(&ZONE_2_SHORT);
+                parent_locations.extend(&ZONE_2);
+            }
+            if zone_selection.zones.clone().into_iter().find(|x| x == "3") == Some("3".to_string()) {
+                buildings.extend(&ZONE_3_SHORT);
+                parent_locations.extend(&ZONE_3);
+            }
+            if zone_selection.zones.clone().into_iter().find(|x| x == "4") == Some("4".to_string()) {
+                buildings.extend(&ZONE_4_SHORT);
+                parent_locations.extend(&ZONE_4);
+            }
+
+            for parent_location in parent_locations.into_iter() {
+                let url = format!(
+                    r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last7days%22%2CParentLocation%3A%22{}%22%7D", 
+                    parent_location
+                );
+                let req = reqwest::Client::builder()
+                    .cookie_provider(Arc::clone(&cookie_jar))
+                    .user_agent("server_lib/0.3.1")
+                    .default_headers(construct_headers())
+                    .build().ok()?
+                    .get(url)
+                ;
+    
+                let body = req.send()
+                              .await
+                              .expect("[-] RESPONSE ERROR")
+                              .text()
+                              .await
+                              .expect("[-] PAYLOAD ERROR");
+
+                /* println!("{}: {}", parent_location, body); */
+
+                let v: Value = serde_json::from_str(&body).expect("Empty");
+                if v["count"].as_i64() > Some(0) {
+                    for i in 0..v["count"].as_i64().unwrap() {
+                        let check = v["data"].as_array().unwrap()[usize::try_from(i).unwrap()].as_object().unwrap();
+                        if rooms.contains_key(check["LocationName"].as_str().unwrap()) {
+                            let room = rooms.get_mut(&String::from(check["LocationName"].as_str().unwrap()));
+                            room.expect("Empty")
+                                .update_checked(String::from(check["CompletedOn"].as_str().unwrap()));
+                        }
+                    }
+                }
+            }
+
+            let mut return_str: String = String::new();
+            let mut return_vec = Vec::new();
+            for (name, room) in rooms.into_iter() {
+                if buildings.iter().any(|e| name.contains(e)) {
+                    let available = check_schedule(room.clone());
+                    let checked   = check_lsm(room.clone());
+                    return_str.clear();
+                    return_str.push_str(&pad(name, 10));
+                    return_str.push_str(&checked);
+                    return_str.push_str(&available);
+                    return_vec.push(return_str.clone());
+
+                }
+            }
+
             let json_return = json!({
-                "rooms": return_str,
+                "rooms": return_vec,
             });
             
             contents = json_return.to_string();
-        } /* else if buffer.starts_with(lsm) {
-            let req = reqwest::blocking::Client::builder()
+        } else if buffer.starts_with(run_lsm) {
+            let req = reqwest::Client::builder()
                 .cookie_provider(cookie_jar)
                 .user_agent("server_lib/0.3.1")
                 .default_headers(construct_headers())
@@ -282,13 +429,17 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
             println!("{:?}", req);
 
             println!("Fetching url...");
-            let res = req.send().ok()?;
+            let body = req.send()
+                          .await
+                          .expect("[-] RESPONSE ERROR")
+                          .text()
+                          .await
+                          .expect("[-] PAYLOAD ERROR");
+            
+            println!("{}", body);
 
-            println!("Response: {:?} {}", res.version(), res.status());
-            println!("Headers: {:#?}\n", res.headers());
-
-            contents = String::from(res.text().ok()?);
-        } */ else if buffer.starts_with(cfm_build) { // CC-CFM
+            contents = String::from(body);
+        } else if buffer.starts_with(cfm_build) { // CC-CFM
             contents = cfm_build_dir(&mut buffer);
         } else if buffer.starts_with(cfm_build_r) {
             contents = cfm_build_rm(&mut buffer);
@@ -345,7 +496,7 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
         stream.write_all(&file_buffer).unwrap();
         stream.flush().unwrap();
 
-        println!("Request: {}", str::from_utf8(&buffer).unwrap());
+        println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
     } else {
         response = format!(
             "{}\r\nContent-Length: {}\r\n\r\n{}",
@@ -355,10 +506,12 @@ fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar
         stream.write(response.as_bytes()).unwrap();
         stream.flush().unwrap();
 
-        println!("Request: {}", str::from_utf8(&buffer).unwrap());
+        println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
     }
     // ------------------------------------------------------------------------
 
+    print!("> ");
+    stdout().flush().unwrap();
     Option::Some(())
 }
 
@@ -371,9 +524,7 @@ fn process_buffer(buffer: &mut [u8]) -> String {
     // functon that returns first '{' index location and it's '}' location
     let (i, j) = find_curls(&buff_copy);
     let buff_copy  = &buff_copy[i..j+1];
-
-    println!("Buffer Output:\n {}", buff_copy);
-    //String::from("Test")
+    
     buff_copy.to_string()
 }
 
@@ -393,66 +544,24 @@ fn find_curls(s: &String) -> (usize, usize) {
     (s.len(), s.len())
 }
 
-// generate room HashMap
-// ----------------------------------------------------------------------------
-fn gen_room_map<'a>(room_filter: Regex, time_filter: Regex, day_filter: Regex) -> Result<HashMap<String, Room<'a>>, Box<dyn Error>> {
-
-    /* let mut schedules: HashMap<String, Vec<&str>> = HashMap::new();
-    let schedule_data = File::open(ROOM_CSV)?;
-    let mut schedule_rdr = Reader::from_reader(schedule_data);
-    let mut current_room: String = String::from("Init");
-    let mut room_array: Vec<&str> = vec![];
-    for result in schedule_rdr.records() {
-        let record = result?;
-        if room_filter.is_match(record.get(0).expect("Empty")) {
-            schedules.insert(current_room, room_array);
-            current_room = String::from(record.get(0).expect("Empty"));
-            room_array = vec![];
-        } else if time_filter.is_match(record.get(0).expect("Empty")) {
-            let find = if day_filter.find(record.get(1).expect("Empty")).is_some() {
-                day_filter.find(record.get(1).expect("Empty")).expect("Empty").as_str()
-            } else {
-                ""
-            };
-            println!("{:?}", find);
-            room_array.push(&find);
-        }
-    } */
-
-
-    let mut rooms: HashMap<String, Room> = HashMap::new();
-    let room_data = File::open(CAMPUS_CSV)?;
-    let mut room_rdr = Reader::from_reader(room_data);
-    for result in room_rdr.records() {
-        let record = result?;
-        if room_filter.is_match(record.get(0).expect("Empty")) {
-            let mut item_vec: Vec<i32> = Vec::new();
-            for i in 1..6 {
-                item_vec.push(record.get(i).expect("-1").parse().unwrap());
-            }
-
-            /* let schedule = (&schedules.get(&String::from(record.get(0).expect("Empty"))).unwrap()).to_vec(); */
-
-            let room = Room {
-                name: String::from(record.get(0).expect("Empty")),
-                items: item_vec,
-                gp: record.get(6).expect("-1").parse().unwrap(),
-                checked: 0,
-                schedule: vec![],
-            };
-
-            rooms.insert(String::from(&room.name), room);
-        }
-    }
-
-    Ok(rooms)
-}
-
 fn pad(raw_in: String, length: usize) -> String {
     if raw_in.len() < length {
         let mut out_string: String = String::new();
         for _ in 0..(length-raw_in.len()) {
             out_string.push(' ');
+        }
+        out_string.push_str(&raw_in);
+        return out_string;
+    } else {
+        return String::from(raw_in);
+    }
+}
+
+fn pad_zero(raw_in: String, length: usize) -> String {
+    if raw_in.len() < length {
+        let mut out_string: String = String::new();
+        for _ in 0..(length-raw_in.len()) {
+            out_string.push('0');
         }
         out_string.push_str(&raw_in);
         return out_string;
@@ -519,7 +628,7 @@ fn execute_ping(buffer: &mut [u8]) -> String {
     });
 
     // convert to string and return it
-    println!("Pulled IP's:\n{:?}",hn_ips);
+    println!("\rPulled IP's:\n{:?}",hn_ips);
     println!("----\n------\nEND OF execute_ping() FUNCTION\n------\n-----\n");
 
     // Return JSON with ping results
@@ -629,6 +738,61 @@ fn construct_headers() -> HeaderMap {
     header_map.insert(AUTHORIZATION, HeaderValue::from_static(LOGIN));
 
     return header_map;
+}
+
+fn check_schedule(room: Room) -> String {
+    let now = Local::now();
+    let day_of_week = match now.date_naive().weekday() {
+        Weekday::Mon => "M",
+        Weekday::Tue => "T",
+        Weekday::Wed => "W",
+        Weekday::Thu => "R",
+        Weekday::Fri => "F",
+        _            => "?",
+    };
+    let return_string = String::from(" | [+] AVAILABLE   | UNTIL TOMORROW");
+    let now_str = now.to_string();
+    let time_filter = Regex::new(r"(?<hours>[0-9]{2}):(?<minutes>[0-9]{2})").unwrap();
+    let time = time_filter.captures(&now_str).unwrap();
+
+    let hours: u16 = time["hours"].parse().unwrap();
+    let minutes: u16 = time["minutes"].parse().unwrap();
+    let adjusted_time: u16 = (hours * 100) + minutes;
+    
+    for block in &room.schedule {
+        let block_vec: Vec<&str> = block.split(&[' ', '-']).collect();
+        let adjusted_start: u16 = block_vec[1].parse().unwrap();
+        let adjusted_end: u16 = block_vec[2].parse().unwrap();
+        if block_vec[0].contains(day_of_week) {
+            let mut f = Vec::new();
+            if adjusted_time < adjusted_start {
+                write!(&mut f, " | [+] AVAILABLE   | UNTIL {}:{}", adjusted_start / 100, pad_zero((adjusted_start % 100).to_string(), 2));
+                return String::from_utf8(f).expect("EMPTY");
+            } else if (adjusted_start <= adjusted_time) && (adjusted_time <= adjusted_end) {
+                write!(&mut f, " | [-] UNAVAILABLE | UNTIL {}:{}", adjusted_end / 100, pad_zero((adjusted_end % 100).to_string(), 2));
+                return String::from_utf8(f).expect("EMPTY");
+            }
+        }
+    }
+
+    return_string
+}
+
+fn check_lsm(room: Room) -> String {
+    let parsed_checked: DateTime<Local> = room.checked.parse().unwrap();
+    let chopped_checked: Vec<&str> = room.checked.split('T').collect();
+    let time_diff: TimeDelta = Local::now() - parsed_checked;
+    let mut d = Vec::new();
+    if room.gp == 1 {
+        if time_diff.num_seconds() >= 604800 {
+            write!(&mut d, " | [-] NEEDS CHECKED | LAST CHECKED {}", chopped_checked[0]);
+        } else {
+            write!(&mut d, " | [+] CHECKED       | LAST CHECKED {}", chopped_checked[0]);
+        }
+    } else {
+        write!(&mut d, "--- UNDER CONSTRUCTION ---");
+    }
+    return String::from_utf8(d).expect("Empty");
 }
 
 /*
@@ -931,6 +1095,7 @@ fn get_cfm_dir(buffer: &mut [u8]) -> String {
     println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
 
     return json_return.to_string();
+
     //return String::from("THIS SHOULD BE A DIRECTORY VEC")
 }
 
@@ -970,4 +1135,3 @@ fn w_build_articles(buffer: &mut [u8]) -> String {
     return json_return.to_string();
     // return "TEST STRING"
 }
-
