@@ -30,17 +30,6 @@ async function getRoomChecks() {
 }
 
 async function cbSearch(init_time, end_time, cookie) {
-    /* let url = `https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%5B${init_time}%2C${end_time}%5D%7D`;
-    let xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.setRequestHeader('Accept', 'application/json');
-    xhr.setRequestHeader('Authorization', 'Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk=');
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-          console.log(xhr.responseText);
-        }
-    };
-    xhr.send(); */
 
     let response = await fetch('lsm', {
         method: "POST",
@@ -69,6 +58,9 @@ async function run() {
     let zones = document.getElementsByName('cb_dev');
     let zone_array = [];
 
+    clearConsole();
+    updateConsole("Fetching rooms...");
+
     for (var i=0; i<zones.length; i++) {
         if (zones[i].checked) {
             zone_array.push(zones[i].id);
@@ -83,12 +75,13 @@ async function run() {
     })
     .then((response) => response.json())
     .then((json) => {
-        return json.rooms;
+        return json.rooms.sort();
     });
 
     clearConsole();
-
-    updateConsole(response);
+    for (room in response) {
+        updateConsole(response[room]);
+    }
 
     return;
 }
