@@ -122,16 +122,16 @@ const ZONE_4: [&'static str; 8] = [
 ];
 
 const ZONE_1_SHORT: [&'static str; 9] = [
-    "SI", "GE", "HS", "STEM", "BC", "EERB", "AN", "ESB", "EIC",
+    "SI", "GE", "HS", "STEM", "BC", "EERB", "AN", "ES", "EIC",
 ];
 const ZONE_2_SHORT: [&'static str; 8] = [
     "EN", "AG", "ED", "HI", "HA", "BU", "CL", "EA",
 ];
-const ZONE_3_SHORT: [&'static str; 9] = [
-    "PS", "CR", "AS", "AV", "BS", "NAC", "RH", "HO", "GH",
+const ZONE_3_SHORT: [&'static str; 10] = [
+    "PS", "CR", "AS", "AV", "BS", "NAC", "RH", "HO", "GH", "CI" // Add to ZONE_3
 ];
 const ZONE_4_SHORT: [&'static str; 8] = [
-    "ITC", "CB", "LS", "BH", "PA", "VA", "AB", "AC",
+    "IT", "CB", "LS", "BH", "PA", "VA", "AB", "AC",
 ];
 // ----------------------------------------------------------------------------
 
