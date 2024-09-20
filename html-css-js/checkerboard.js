@@ -19,30 +19,6 @@ class Cookie {
     getCookie() { return this.value; }
 }
 
-function myFunc() {
-    console.log("Click");
-}
-
-async function getRoomChecks() {
-    let response = await cbSearch("2024-06-01", "2024-06-28");
-
-    return response;
-}
-
-async function cbSearch(init_time, end_time, cookie) {
-
-    let response = await fetch('lsm', {
-        method: "POST",
-        body: JSON.stringify({
-            start_time: init_time,
-            end_time, end_time,
-        })
-    });
-    console.log(response.json());
-
-    return;
-}
-
 /*
 $$\   $$\ $$$$$$$$\ $$\      $$\ $$\       
 $$ |  $$ |\__$$  __|$$$\    $$$ |$$ |      
@@ -58,8 +34,7 @@ async function run() {
     let zones = document.getElementsByName('cb_dev');
     let zone_array = [];
 
-    clearConsole();
-    updateConsole("Fetching rooms...");
+    cb_fetchAlertConsole();
 
     for (var i=0; i<zones.length; i++) {
         if (zones[i].checked) {
@@ -78,27 +53,89 @@ async function run() {
         return json.rooms.sort();
     });
 
-    clearConsole();
-    for (room in response) {
-        updateConsole(response[room]);
-    }
+    cb_updateConsole(response);
 
     return;
 }
 
-function updateConsole(text) {
-    let consoleObj = document.querySelector('.innerConsole');
-    const beforeText = consoleObj.value.substring(0, consoleObj.value.length);
-    consoleObj.value = beforeText + '\n' + text;
-    consoleObj.scrollTop = consoleObj.scrollHeight;
-    return;
-};
+function cb_updateConsole(array) {
+    let consoleObj = document.querySelector('.cb_console');
+    let html_str = `
+        <fieldset class="cb_fieldset">
+            <legend>
+                Console Output: </legend>
+            <ul>`;
 
-function clearConsole() {
-    let consoleObj = document.querySelector('.innerConsole');
-    consoleObj.value = '';
+    for (row in array) {
+        let split_str = array[row].split(' | ');
+        let span_str = '';
+        switch (split_str[0].length) {
+            case 7:
+                span_str = `<li>&nbsp;&nbsp;&nbsp;&nbsp;${split_str[0]} | `;
+                break;
+            case 8:
+                span_str = `<li>&nbsp;&nbsp;${split_str[0]} | `;
+                break;
+            default:
+                span_str = `<li>${split_str[0]} | `;
+                break;
+
+        }
+
+        if (split_str[1].includes("[+]")) {
+            span_str += `<span class="cb_green">${split_str[1]}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> | ${split_str[2]} | `;
+        } else if (split_str[1].includes("[-]")) {
+            span_str += `<span class="cb_red">${split_str[1]}&nbsp;&nbsp;</span> | ${split_str[2]} | `;
+        }
+
+        if (split_str[3].includes("[+]")) {
+            span_str += `<span class="cb_green">${split_str[3]}&nbsp;&nbsp;&nbsp;&nbsp;</span>&nbsp;| ${split_str[4]}`;
+        } else if (split_str[3].includes("[-]")) {
+            span_str += `<span class="cb_red"">${split_str[3]}&nbsp;&nbsp;</span>&nbsp;| ${split_str[4]}`;
+        }
+        span_str += `</li>`;
+        html_str += span_str;
+    }
+    html_str += `</ul></fieldset>`;
+    consoleObj.innerHTML = html_str;
+    
     return;
-};
+}
+
+function cb_fetchAlertConsole() {
+    let consoleObj = document.querySelector('.cb_console');
+    consoleObj.innerHTML = `
+        <fieldset class="cb_fieldset" name="innerConsole">
+            <legend>
+                Console Output: </legend>
+            <p class="cfm_text">Fetching rooms...</p>
+        </fieldset>`;
+
+    return;
+}
+
+function cb_clearConsole() {
+    let consoleObj = document.querySelector('.cb_console');
+    consoleObj.innerHTML = `
+        <fieldset class="cb_fieldset" name="innerConsole">
+            <legend>
+                Console Output: </legend>
+            <p class="cfm_text">Select Zone(s) and click Run to run search.</p>
+        </fieldset>`;
+
+    return;
+}
+
+function pad_html_space(text, len) {
+    let add_spaces = ""
+    if (text.length < len) {
+        for (i in (len-text.length)) {
+            add_spaces += "nbsp;"
+        }
+    }
+    
+    return text+add_spaces;
+}
 
 function setChecker() {
     let tool_header = document.querySelector('.tool_header');
@@ -154,11 +191,10 @@ function setChecker() {
     let console_output = document.createElement("div");
     console_output.classList.add('cb_console');
     console_output.innerHTML = `
-        <fieldset class="cb_fieldset">
+        <fieldset class="cb_fieldset" >
             <legend>
                 Console Output: </legend>
-            <textarea readonly rows="35" cols ="70" class="innerConsole" name="consoleOutput" spellcheck="false">
-                Console: Example </textarea>
+            <p class="cfm_text">Select Zone(s) and click Run to run search.</p>
         </fieldset>`;
 
     main_container.append(map_select);
@@ -167,5 +203,6 @@ function setChecker() {
 
     main_container.classList.add('program_guts');
     prog_guts.replaceWith(main_container);
+
     return;
 }

@@ -8,47 +8,39 @@
 
 Backend
     - main()
-    - handle_connection(stream: TcpStream)
+    - clone_map(source: HashMap) -> HashMap
+    - handle_connection(stream: TcpStream, cookie_jar: Arc<Jar>, rooms: HashMap) -> Option
     - process_buffer(buffer: mut [u8]) -> String
-    - find_curls(s) -> (usize, usize)
+    - find_curls(s: String) -> (usize, usize)
     - print_type_of<T>(_: &T)
 
 JackNet
-    - execute_ping(buffer) -> String
-    - gen_hostnames(sel_devs, sel_b, bd) -> Vec<String>
+    - execute_ping(buffer: mut [u8]) -> String
+    - gen_hostnames(sel_devs: Vec<String?, sel_b: String, bd: BuildingData) -> Vec<String>
 
 ChkrBrd
-    - get_room_schedule(buffer) -> String
-    - get_lsm(buffer) -> String
     - construct_headers() -> HeaderMap
+    - check_schedule(room: Room) -> String
+    - check_lsm(room: Room) -> String
 
 CamCode
-    - cfm_build_dir(buffer) -> String
-    - cfm_build_rm(buffer) -> String
-    - get_cfm(buffer) -> String
-    - get_cfm_file(buffer) -> String
+-- Helpers ------------------------------
     - dir_exists(path: &str) -> bool
     - is_this_file(path: &str) -> bool
     - is_this_dir(path: &str) -> bool
     - find_files(building: String, rm: String) -> Vec<String>
     - get_dir_contents(path: &str) -> Vec<String>
+    - get_origin(buffer: mut [u8]) -> String
+-- Handlers -----------------------------
+    - cfm_build_dir(buffer: mut [u8]) -> String
+    - cfm_build_rm(buffer: mut [u8]) -> String
+    - get_cfm(buffer: mut [u8]) -> String
+    - get_cfm_file(buffer: mut [u8]) -> String
+    - get_cfm_dir(buffer: mut [u8]) -> String
 
-Jacks TODO 7/2/2024
-updated 7/31/2024
-
- - JackNet 
-    [ ]  CLI with JackNet
-         - powershell istream doesnt work
- - CamCode (see curtis)
-    [ ] Make DOM
-    [ ] prints out info on config _PROTOTYPE ITERATE_
-       - block for proj1 
-       - block for proj2
-    [ ] get compiled Q-SYS files to grep binary patterns
-    [ ] Build an Error Log for server to pull back output,
-       [ ] text file, return error and export it
-       [ ] get logic that logs the buffer for 404 requests
- */
+Wiki
+    - w_build_articles(buffer: mut [u8]) -> String
+*/
 
 // dependencies
 // ----------------------------------------------------------------------------
@@ -58,7 +50,6 @@ use server_lib::{
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
 };
-//use lambda_http::Body;
 use getopts::Options;
 use std::{
     str, env,
@@ -69,7 +60,6 @@ use std::{
         File,
     },
     sync::{ Arc, },
-    /* error::{ Error, }, */
     string::{ String, },
     borrow::{ Borrow, },
     clone::{ Clone, },
@@ -89,7 +79,7 @@ use regex::Regex;
 use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta, };
 // ----------------------------------------------------------------------------
 
-// load up the ROM
+// define static and const variables
 // ----------------------------------------------------------------------------
 static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bin/campus.json"));
 static CFM_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
@@ -122,16 +112,16 @@ const ZONE_4: [&'static str; 8] = [
 ];
 
 const ZONE_1_SHORT: [&'static str; 9] = [
-    "SI", "GE", "HS", "STEM", "BC", "EERB", "AN", "ESB", "EIC",
+    "SI", "GE", "HS", "STEM", "BC", "EERB", "AN", "ES", "EIC",
 ];
 const ZONE_2_SHORT: [&'static str; 8] = [
     "EN", "AG", "ED", "HI", "HA", "BU", "CL", "EA",
 ];
-const ZONE_3_SHORT: [&'static str; 9] = [
-    "PS", "CR", "AS", "AV", "BS", "NAC", "RH", "HO", "GH",
+const ZONE_3_SHORT: [&'static str; 10] = [
+    "PS", "CR", "AS", "AV", "BS", "NAC", "RH", "HO", "GH", "CI" // Add to ZONE_3
 ];
 const ZONE_4_SHORT: [&'static str; 8] = [
-    "ITC", "CB", "LS", "BH", "PA", "VA", "AB", "AC",
+    "IT", "CB", "LS", "BH", "PA", "VA", "AB", "AC",
 ];
 // ----------------------------------------------------------------------------
 
@@ -150,11 +140,6 @@ fn main() {
     //debug setting
     env::set_var("RUST_BACKTRACE", "1");
 
-    // define flags
-    //   -l -- run on localhost:7878
-    //   -p -- run with public ip on port 7878
-    //   -d -- run in debug mode : NOTE: this is not yet implemented
-    // ------------------------------------------------------------------------
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
     opts.optflag("l", "local", "Run the server using localhost.");
@@ -167,12 +152,8 @@ fn main() {
     if matches.opt_present("d") {
         println!("\rTest\n> ");
     }
-    // ------------------------------------------------------------------------
 
-    // define variables
-    // ------------------------------------------------------------------------
     let room_filter = Regex::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
-    // ------------------------------------------------------------------------
 
     // generate rooms HashMap
     // ------------------------------------------------------------------------
@@ -225,7 +206,6 @@ fn main() {
     }
     // ------------------------------------------------------------------------
     
-    
     // set TcpListener and initalize
     // ------------------------------------------------------------------------
     let host_ip: &str;
@@ -257,7 +237,12 @@ fn main() {
     }
 }
 
-fn clone_map<'a, String: Eq + Hash + Debug + Clone, Room: Clone + Debug>(source: &'a HashMap<String, Room>) -> HashMap<String, Room> where String: Borrow<String> {
+fn clone_map<
+    'a, String: Eq + Hash + Debug + Clone, 
+    Room: Clone + Debug
+> (
+    source: &'a HashMap<String, Room>
+) -> HashMap<String, Room> where String: Borrow<String> {
     let mut target: HashMap<String, Room> = HashMap::new();
     for (k, v) in source.iter() {
         target.insert(String::from(k.clone()), v.clone());
@@ -266,14 +251,14 @@ fn clone_map<'a, String: Eq + Hash + Debug + Clone, Room: Clone + Debug>(source:
 }
 
 #[tokio::main]
-async fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cookie::Jar>, mut rooms: HashMap<String, Room>) -> Option<()> {
+async fn handle_connection(
+    mut stream: TcpStream, 
+    cookie_jar: Arc<reqwest::cookie::Jar>, 
+    mut rooms: HashMap<String, Room>
+) -> Option<()> {
     let mut buffer = [0; 1024];
 
     stream.read(&mut buffer).unwrap();
-
-    // define variables
-    // ------------------------------------------------------------------------
-    // ------------------------------------------------------------------------
 
     // HTML-oriented files
     // ------------------------------------------------------------------------
@@ -288,15 +273,14 @@ async fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cooki
     let get_wiki    = b"GET /wiki.js HTTP/1.1\r\n";
     // ------------------------------------------------------------------------
     
-    // fetch data from the backend
+    // make calls to backend functionality
     // ------------------------------------------------------------------------
     // Jacknet
     let ping        = b"POST /ping HTTP/1.1\r\n";
     // Checkerboard
     let run_cb      = b"POST /run_cb HTTP/1.1\r\n";
-    let run_lsm     = b"POST /run_lsm HTTP/1.1\r\n";
     // CamCode
-    // CamCode - CFM Requests
+    //  - CamCode - CFM Requests
     let cfm_build   = b"POST /cfm_build HTTP/1.1\r\n";
     let cfm_build_r = b"POST /cfm_build_r HTTP/1.1\r\n";
     let cfm_c_dir   = b"POST /cfm_c_dir HTTP/1.1\r\n";
@@ -340,6 +324,8 @@ async fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cooki
             contents = execute_ping(&mut buffer); // JN
         } else if buffer.starts_with(run_cb) {
             let buff_copy = process_buffer(&mut buffer);
+            // get zone selection from request and store
+            // ----------------------------------------------------------------
             let zone_selection: ZoneRequest = serde_json::from_str(&buff_copy)
                 .expect("Fatal Error 2: Failed to parse ping request");
 
@@ -361,7 +347,10 @@ async fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cooki
                 buildings.extend(&ZONE_4_SHORT);
                 parent_locations.extend(&ZONE_4);
             }
+            // ----------------------------------------------------------------
 
+            // call for roomchecks in LSM and store
+            // ----------------------------------------------------------------
             for parent_location in parent_locations.into_iter() {
                 let url = format!(
                     r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last7days%22%2CParentLocation%3A%22{}%22%7D", 
@@ -382,8 +371,6 @@ async fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cooki
                               .await
                               .expect("[-] PAYLOAD ERROR");
 
-                /* println!("{}: {}", parent_location, body); */
-
                 let v: Value = serde_json::from_str(&body).expect("Empty");
                 if v["count"].as_i64() > Some(0) {
                     for i in 0..v["count"].as_i64().unwrap() {
@@ -396,15 +383,18 @@ async fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cooki
                     }
                 }
             }
+            // ----------------------------------------------------------------
 
+            // parse rooms map to load statuses for return
+            // ----------------------------------------------------------------
             let mut return_str: String = String::new();
             let mut return_vec = Vec::new();
             for (name, room) in rooms.into_iter() {
-                if buildings.iter().any(|e| name.contains(e)) {
+                if buildings.iter().any(|e| name.starts_with(e)) {
                     let available = check_schedule(room.clone());
                     let checked   = check_lsm(room.clone());
                     return_str.clear();
-                    return_str.push_str(&pad(name, 10));
+                    return_str.push_str(&name);
                     return_str.push_str(&checked);
                     return_str.push_str(&available);
                     return_vec.push(return_str.clone());
@@ -417,28 +407,7 @@ async fn handle_connection(mut stream: TcpStream, cookie_jar: Arc<reqwest::cooki
             });
             
             contents = json_return.to_string();
-        } else if buffer.starts_with(run_lsm) {
-            let req = reqwest::Client::builder()
-                .cookie_provider(cookie_jar)
-                .user_agent("server_lib/0.3.1")
-                .default_headers(construct_headers())
-                .build().ok()?
-                .get("https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D")
-            ;
-
-            println!("{:?}", req);
-
-            println!("Fetching url...");
-            let body = req.send()
-                          .await
-                          .expect("[-] RESPONSE ERROR")
-                          .text()
-                          .await
-                          .expect("[-] PAYLOAD ERROR");
-            
-            println!("{}", body);
-
-            contents = String::from(body);
+            // ----------------------------------------------------------------
         } else if buffer.starts_with(cfm_build) { // CC-CFM
             contents = cfm_build_dir(&mut buffer);
         } else if buffer.starts_with(cfm_build_r) {
@@ -775,7 +744,7 @@ fn check_schedule(room: Room) -> String {
         }
     }
 
-    return_string
+    return return_string;
 }
 
 fn check_lsm(room: Room) -> String {
@@ -792,6 +761,7 @@ fn check_lsm(room: Room) -> String {
     } else {
         write!(&mut d, "--- UNDER CONSTRUCTION ---");
     }
+
     return String::from_utf8(d).expect("Empty");
 }
 
@@ -864,7 +834,8 @@ fn get_dir_contents(path: &str) -> Vec<String> {
         println!("{}\n", p.as_ref().unwrap().path().display());
         strings.push(p.unwrap().path().display().to_string());
     }
-    return strings
+
+    return strings;
 }
 
 fn get_origin(buffer: &mut [u8]) -> String {
@@ -898,7 +869,6 @@ fn get_origin(buffer: &mut [u8]) -> String {
     }
     println!("FINDING ORIGIN FAILED");
     return buff_copy[ir..ir_end].to_string();
-    //return String::from("127.0.0.1:7878");
 }
 
 /*                             
@@ -938,7 +908,7 @@ fn cfm_build_dir(_buffer: &mut [u8]) -> String {
         "dir_names": final_dirs
     });
     println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
-    json_return.to_string()
+    return json_return.to_string();
 }
 
 // cfm_build_rm() - post ROOM dropdown
@@ -979,7 +949,7 @@ fn cfm_build_rm(buffer: &mut [u8]) -> String {
         "rooms": final_dirs
     });
     println!("----\n------\nEND OF cfm_build_rm() FUNCTION\n------\n-----\n");
-    json_return.to_string()
+    return json_return.to_string();
 }
 
 // get_cfm - generate code (Sends list of files to user)
@@ -1005,8 +975,7 @@ fn get_cfm(buffer: &mut [u8]) -> String {
 
     println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
 
-    json_return.to_string()
-    //return String::from("{names: cfm-test}");
+    return json_return.to_string();
 }
 
 
@@ -1070,7 +1039,6 @@ fn get_cfm_dir(buffer: &mut [u8]) -> String {
         println!("SUCCESS: CFM_Code Directory Found");
     }
 
-    //let cfm_files = find_files(cfmr.building, cfmr.rm);
     let mut path = String::from(CFM_DIR);
     path.push_str(&cfmr_d.filename);
     
@@ -1095,8 +1063,6 @@ fn get_cfm_dir(buffer: &mut [u8]) -> String {
     println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
 
     return json_return.to_string();
-
-    //return String::from("THIS SHOULD BE A DIRECTORY VEC")
 }
 
 /*
@@ -1125,13 +1091,10 @@ fn w_build_articles(buffer: &mut [u8]) -> String {
     for (_, &ref item) in cfm_dirs.iter().enumerate() {
         article_vec.push((&item[(cut_index + 1)..]).to_string());
     };
-
-    // strings = ;
     
     let json_return = json!({
         "names": article_vec
     });
 
     return json_return.to_string();
-    // return "TEST STRING"
 }
