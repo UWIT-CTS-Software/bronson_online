@@ -49,6 +49,7 @@ async function cfmFiles() {
     }
   
     setFileBrowser(header, files);
+
     return;
 }
 
@@ -75,6 +76,7 @@ async function getCFMF(filename, classtype) {
             files[i] = files[i].split(cmff + '/')[1];
         }
         await setFileBrowser(cmff, files);
+
         return;
     }
     
@@ -92,6 +94,8 @@ function downloadFile(s, fn) {
 
     a.download = fn;
     a.click();
+
+    return;
 }
   
 /*
@@ -143,6 +147,7 @@ async function setFileBrowser(header, files) {
             </ol>
         </body>`;
     fs.replaceWith(new_fs);
+
     return;
 }
 
@@ -162,7 +167,8 @@ async function populateFileList(list) {
             <li class=${classtype} onclick=\"getCFMF(\'${list[i]}\', \'${classtype}\')\">
                 ${list[i]}
             </li>`; 
-    };
+    }
+
     return html;
 }
 
@@ -176,7 +182,8 @@ async function populateDropdown(list) {
         <option value=${i}>
             ${list[i]}
         </option>`;
-    };
+    }
+
     return html;
 }
   
@@ -204,6 +211,7 @@ async function updateRoomList() {
         </legend> 
         ${set_inner_html}`;
     rl.replaceWith(rms);
+
     return;
 }
 
@@ -304,6 +312,7 @@ async function setCrestronFile() {
     main_container.classList.add('program_guts');
     
     progGuts.replaceWith(main_container);
+
     return;
 }
 
@@ -328,7 +337,7 @@ async function getCFM_BuildDirs() {
     .then((json) => {
         return json.dir_names;
     });
-};
+}
 
 // getCFM_BuildRooms(sel_building)
 //    "cfm_build_r"
@@ -341,7 +350,7 @@ async function getCFM_BuildRooms(sel_building) {
     })
     .then((response) => response.json())
     .then((json) => {return json.rooms;})
-};
+}
 
 // getCFM_FileDirectory
 //    "cfm_cDir" Crestron File Manager Current Directory
@@ -355,7 +364,7 @@ async function getCFM_FileDirectory(building, rm) {
     })
     .then((response) => response.json())
     .then((json) => {return json.names;});
-};
+}
 
 // getCFM_File()
 //   "cfm_file"
@@ -368,7 +377,7 @@ async function getCFM_File(filename) {
     })
     .then((response) => response.blob())
     .then((blob) => downloadFile(blob, filename));
-};
+}
 
 // getCFM_Dir()
 //   "cfm_dir"
@@ -382,4 +391,4 @@ async function getCFM_Dir(dirname) {
     })
     .then((response) => response.json())
     .then((json) => {return json.names;});
-};
+}

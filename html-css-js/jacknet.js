@@ -63,8 +63,9 @@ function setCSVExport(hns, ips, rms) {
     CSV_EXPORT.hostnames = hns;
     CSV_EXPORT.ip_addrs  = ips;
     CSV_EXPORT.rooms     = rms;
+
     return;
-};
+}
 
 // - - -- --- - - CMAPUS.JSON GET INFO FUNCTIONS
 // copy this to extract info from ping response
@@ -76,7 +77,7 @@ async function getData() {
             }
             return response.json();
     });
-};
+}
 
 // Returns a list of buildings
 async function getBuildingList() {
@@ -86,9 +87,10 @@ async function getBuildingList() {
     let bl = [];
     for(var i = 0; i < buildingData.length; i++) {
         bl[i] = buildingData[i].name;
-    };
+    }
+
     return bl;
-};
+}
 
 // Returns a list of rooms given a building name
 async function getRooms(buildingName) {
@@ -98,9 +100,9 @@ async function getRooms(buildingName) {
     for(var i = 0; i < buildingData.length; i++) {
         if(buildingData[i].name == buildingName) {
             return buildingData[i].rooms;
-        };
-    };
-};
+        }
+    }
+}
 
 // Returns a building abbreviation given a building name
 async function getAbbrev(buildingName) {
@@ -110,9 +112,9 @@ async function getAbbrev(buildingName) {
     for(var i = 0; i < buildingData.length; i++) {
         if(buildingData[i].name == buildingName) {
             return buildingData[i].abbrev;
-        };
-    };
-};
+        }
+    }
+}
 
 // ---- ---- -- -- -  GET USER CONFIG FUNCTIONS
 // getSelectedDevices()
@@ -218,8 +220,9 @@ function runExport() {
     }
 
     downloadCsv(csvRows.join('\n'));
+
     return;
-};
+}
 
 function downloadCsv(data) {
     const blob = new Blob([data], { type: 'text/csv' });
@@ -234,6 +237,8 @@ function downloadCsv(data) {
     a.click();
 
     updateConsole("Downloaded " + filename + '.csv');
+
+    return;
 }
 
 
@@ -268,7 +273,7 @@ async function pingpong(devices, building) {
     })
     .then((response) => response.json())
     .then((json) => {return [json.hostnames, json.ips];});
-};
+}
 
 // printPingResult(
 //      - pingResult => [[Hostnames], [IP Addresses]]
@@ -289,7 +294,6 @@ async function printPingResult(pingResult, building) {
 
     let rooms   = await getRooms(building);
     let bAbbrev = await getAbbrev(building);
-
     
     for (var i = 0; i < rooms.length; i++) {
         printHostnames = "";
@@ -309,6 +313,7 @@ async function printPingResult(pingResult, building) {
         updateConsole("Hostnames: " + printHostnames);
         updateConsole("IP's     : " + printIps);
     }
+
     return rms;
 }
 
@@ -398,6 +403,7 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 function clearConsole() {
     let consoleObj = document.querySelector('.innerConsole');
     consoleObj.value = '';
+
     return;
 };
 
@@ -407,6 +413,7 @@ function updateConsole(text) {
     const beforeText = consoleObj.value.substring(0, consoleObj.value.length);
     consoleObj.value = beforeText + '\n' + text;
     consoleObj.scrollTop = consoleObj.scrollHeight;
+
     return;
 };
 
@@ -419,7 +426,7 @@ async function setJackNet() {
 
     let progGuts = document.querySelector('.program_board .program_guts');
     let jn_container = document.createElement('div');
-    jn_container.classList.add('jn_container')
+    jn_container.classList.add('jn_container');
 
     // Make a box for list of buildings
     let buildingSelect = document.createElement("div");
@@ -435,7 +442,7 @@ async function setJackNet() {
             <option value=${i}>
                 ${bl[i]}
             </option>`;
-    };
+    }
     set_inner_html += '</select>';
     buildingSelect.innerHTML = `
         <fieldset class="jn_fieldset">
@@ -516,5 +523,6 @@ async function setJackNet() {
     main_container.classList.add('program_guts');
 
     progGuts.replaceWith(main_container);
+
     return;
-  };
+  }
