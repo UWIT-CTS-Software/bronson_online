@@ -15,6 +15,53 @@
     <script src="wiki.js" type="text/javascript" charset="utf-8"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script type="text/javascript">
+      function setSignIn() {
+        let tool_header = document.querySelector('.tool_header');
+        tool_header.innerHTML = 'Dashboard';
+        console.log('Switching to dashboard');
+
+        let prog_guts = document.querySelector('.program_board .program_guts');
+
+        let db_container = document.createElement("div");
+        db_container.classList.add("db_container");
+        // db_container.innerHTML = `
+        //   <p class='tool_header'>
+        //     Dashboard </p>`;
+
+        // Console Output
+        let consoleOutput = document.createElement("div");
+        consoleOutput.classList.add('db_console');
+        consoleOutput.innerHTML = `
+          <fieldset>
+              <legend> 
+                  Username: </legend>
+              <textarea readonly rows="1" cols ="20" class="userSignIn" name="userSignInn" spellcheck="false"> 
+                  tech
+              </textarea>
+          </fieldset>
+          <fieldset>
+              <legend> 
+                  Password: </legend>
+              <textarea readonly rows="1" cols ="20" class="userPassword" name="userPassword" spellcheck="false"> 
+                  psswd
+              </textarea>
+          </fieldset>
+          <button class=signButton onClick=chkPasswd()>
+            Sign In</button>`;
+    
+        db_container.appendChild(consoleOutput);
+
+        let main_container = document.createElement('div');
+        main_container.appendChild(db_container);
+        main_container.classList.add('program_guts');
+        prog_guts.replaceWith(main_container);
+        return;
+      }
+
+      function chkPasswd() {
+        setDashboard();
+        return;
+      }
       // setDashboard()
       function setDashboard() {
         let tool_header = document.querySelector('.tool_header');
@@ -52,11 +99,11 @@
     </script>
   </head>
   <!-- body -->
-  <body onload="setDashboard()">
+  <body onload="setSignIn()">
     <div class="program_board">
       <!-- Website Header (Doesn't Change) -->
       <div class="program_header">
-        <h1 class='site_header' onclick='setDashboard()'>
+        <h1 class='site_header' onclick='setSignIn()'>
           Bronson</h1>
         <p class='p_header'>
           <i>The swiss army knife for the U.W.I.T. department</i></p>
