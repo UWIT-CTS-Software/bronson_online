@@ -53,7 +53,7 @@ use server_lib::{
 use getopts::Options;
 use std::{
     str, env,
-    io::{ prelude::*, Read, stdout, },
+    io::{ prelude::*, Read, stdout, stdin},
     net::{ TcpStream, TcpListener, },
     fs::{
         read, read_to_string, read_dir, metadata,
@@ -154,6 +154,16 @@ fn main() {
     }
 
     let room_filter = Regex::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
+
+    // terminal input stuff
+    // ------------------------------------------------------------------------
+
+    let mut terminal_input = String::new();
+
+    stdin().read_line(&mut terminal_input)
+        .expect("Failed to Read Line in Terminal Console");
+    
+    handle_terminal_in(terminal_input);
 
     // generate rooms HashMap
     // ------------------------------------------------------------------------
@@ -539,6 +549,13 @@ fn pad_zero(raw_in: String, length: usize) -> String {
     }
 }
 
+// NEW
+// handle_terminal_in() - takes io::stdin
+async fn handle_terminal_in(t_in: String) {
+    println!("SUCCESS: handle_terminal_in Successfully Called");
+    println!("{}",t_in);
+    return;
+}
 
 // Debug function
 //   Prints the type of a variable
