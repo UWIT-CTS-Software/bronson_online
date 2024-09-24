@@ -12,6 +12,7 @@
     <script src="cc-altmode.js" type="text/javascript" charset="utf-8"></script>
     <script src="checkerboard.js" type="text/javascript" charset="utf-8"></script>
     <script src="jacknet.js" type="text/javascript" charset="utf-8"></script>
+    <script src="signing.js" type="text/javascript" charset="utf-8"></script>
     <script src="wiki.js" type="text/javascript" charset="utf-8"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script type="text/javascript">
@@ -28,28 +29,26 @@
         //   <p class='tool_header'>
         //     Dashboard </p>`;
 
-        // Console Output
-        let consoleOutput = document.createElement("div");
-        consoleOutput.classList.add('db_console');
-        consoleOutput.innerHTML = `
+        // signin
+        let signinDiv = document.createElement("div");
+        signinDiv.classList.add('db_console');
+        signinDiv.innerHTML = `
           <fieldset>
               <legend> 
                   Username: </legend>
-              <textarea readonly rows="1" cols ="20" class="userSignIn" name="userSignInn" spellcheck="false"> 
-                  tech
-              </textarea>
+              <textarea rows="1" cols ="20" class="userSignIn" name="userSignInn" spellcheck="false">tech</textarea>
           </fieldset>
           <fieldset>
               <legend> 
                   Password: </legend>
-              <textarea readonly rows="1" cols ="20" class="userPassword" name="userPassword" spellcheck="false"> 
+              <textarea rows="1" cols ="20" class="userPassword" name="userPassword" spellcheck="false"> 
                   psswd
               </textarea>
           </fieldset>
           <button class=signButton onClick=chkPasswd()>
             Sign In</button>`;
     
-        db_container.appendChild(consoleOutput);
+        db_container.appendChild(signinDiv);
 
         let main_container = document.createElement('div');
         main_container.appendChild(db_container);
@@ -59,7 +58,10 @@
       }
 
       function chkPasswd() {
-        setDashboard();
+        let text = document.querySelector('.userSignIn');
+        if(text.value == "admin") {
+          setDashboard();
+        }
         return;
       }
       // setDashboard()
