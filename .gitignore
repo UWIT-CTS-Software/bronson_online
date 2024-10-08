@@ -4,3 +4,4 @@ Cargo.lock
 /CFM_Code
 /.vscode
 /html-css-js/raw_roomConfig.csv
+/src/keys.json
