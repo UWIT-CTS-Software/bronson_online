@@ -158,7 +158,7 @@ async function populateFileList(list) {
     for(var i in list) {
         if(list[i].includes(".zip")) {
             classtype = "cfm_zip";
-        } else if (list[i].slice(-8).includes(".")) {
+        } else if (list[i].includes(".") || (list[i] == "makefile")) {
             classtype = "cfm_file";
         } else {
             classtype = "cfm_dir";
