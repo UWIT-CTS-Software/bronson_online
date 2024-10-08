@@ -8,13 +8,12 @@ def pad(in_string, buff_char, out_len):
     else:
         return in_string
 
-with open('F24_raw.csv') as file:
+with open('schedule_F.csv') as file:
     reader = csv.reader(file, delimiter=',')
     push_vec = []
     for row in reader:
         if re.search("^[A-Z]+\s[0-9]+", row[0]):
-            print(row[0])
-            with open('roomConfig_F24.csv', 'a', newline='\n') as write:
+            with open('roomConfig_F.csv', 'a', newline='\n') as write:
                 writer = csv.writer(write, delimiter=',')
                 for _ in range(12-len(push_vec)):
                     push_vec.append('')
@@ -33,7 +32,7 @@ with open('F24_raw.csv') as file:
             if push_vec.count(search) == 0:
                 push_vec.append(search)
 
-    with open('roomConfig_F24.csv', 'a', newline='\n') as write:
+    with open('roomConfig_F.csv', 'a', newline='\n') as write:
         writer = csv.writer(write, delimiter=',')
         for _ in range(12-len(push_vec)):
             push_vec.append('')
