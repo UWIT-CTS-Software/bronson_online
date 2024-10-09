@@ -42,6 +42,11 @@ buildingData is a list of dictionaries containing buildings on campus and the ro
 
 there should be an object for the csv export and if a search is ran, it is overwritten. If possible fade the export button until the first search is ran.
 
+TODO:
+    - All Buildings PopUp, "Are You Sure?"
+    - Individual Room Option (checkbox ?)
+    - Visualizer + Caching
+
 $$$$$$$\             $$\               
 $$  __$$\            $$ |              
 $$ |  $$ | $$$$$$\ $$$$$$\    $$$$$$\  
@@ -63,8 +68,9 @@ function setCSVExport(hns, ips, rms) {
     CSV_EXPORT.hostnames = hns;
     CSV_EXPORT.ip_addrs  = ips;
     CSV_EXPORT.rooms     = rms;
+
     return;
-};
+}
 
 // - - -- --- - - CMAPUS.JSON GET INFO FUNCTIONS
 // copy this to extract info from ping response
@@ -76,7 +82,7 @@ async function getData() {
             }
             return response.json();
     });
-};
+}
 
 // Returns a list of buildings
 async function getBuildingList() {
@@ -86,9 +92,10 @@ async function getBuildingList() {
     let bl = [];
     for(var i = 0; i < buildingData.length; i++) {
         bl[i] = buildingData[i].name;
-    };
+    }
+
     return bl;
-};
+}
 
 // Returns a list of rooms given a building name
 async function getRooms(buildingName) {
@@ -98,9 +105,9 @@ async function getRooms(buildingName) {
     for(var i = 0; i < buildingData.length; i++) {
         if(buildingData[i].name == buildingName) {
             return buildingData[i].rooms;
-        };
-    };
-};
+        }
+    }
+}
 
 // Returns a building abbreviation given a building name
 async function getAbbrev(buildingName) {
@@ -110,9 +117,9 @@ async function getAbbrev(buildingName) {
     for(var i = 0; i < buildingData.length; i++) {
         if(buildingData[i].name == buildingName) {
             return buildingData[i].abbrev;
-        };
-    };
-};
+        }
+    }
+}
 
 // ---- ---- -- -- -  GET USER CONFIG FUNCTIONS
 // getSelectedDevices()
@@ -218,8 +225,9 @@ function runExport() {
     }
 
     downloadCsv(csvRows.join('\n'));
+
     return;
-};
+}
 
 function downloadCsv(data) {
     const blob = new Blob([data], { type: 'text/csv' });
@@ -234,6 +242,8 @@ function downloadCsv(data) {
     a.click();
 
     updateConsole("Downloaded " + filename + '.csv');
+
+    return;
 }
 
 
@@ -268,7 +278,7 @@ async function pingpong(devices, building) {
     })
     .then((response) => response.json())
     .then((json) => {return [json.hostnames, json.ips];});
-};
+}
 
 // printPingResult(
 //      - pingResult => [[Hostnames], [IP Addresses]]
@@ -284,20 +294,15 @@ async function printPingResult(pingResult, building) {
     let ips = pingResult[1];
     let rms = [];
 
-    let graphBool = [];
-    let tmpBool = [];
-
     let printHostnames = "";
     let printIps       = "";
 
     let rooms   = await getRooms(building);
     let bAbbrev = await getAbbrev(building);
-
     
     for (var i = 0; i < rooms.length; i++) {
         printHostnames = "";
         printIps       = "";
-        tmpBool = [];
         updateConsole("---------")
         updateConsole(bAbbrev + " " + rooms[i]);
         rms.push(bAbbrev + " " + rooms[i]);
@@ -308,36 +313,11 @@ async function printPingResult(pingResult, building) {
             if(hns[j].includes(pad(rooms[i], 4))){
                 printHostnames += pad(hns[j], 15, " ") + "|";
                 printIps       += pad(ips[j], 15, " ") + "|";
-                if (ips[j] == 'x') {
-                    tmpBool.push('0');
-                } else {
-                    tmpBool.push('1');
-                }
             }
         }
         updateConsole("Hostnames: " + printHostnames);
         updateConsole("IP's     : " + printIps);
-        graphBool.push(tmpBool)
     }
-    // This is where we post some visualizations
-    // Put together visualizer information
-    /*      GOAL:
-        ROOOOM |#1|#2|#3|... #9999
-        --------------------------
-            pj |x |o |o |
-          proc |o |o |o |
-            ws |x |o |x |
-            tp |o |o |o |
-        --------------------------
-        Need some booleans array for each room
-        ie: [[0,1,0,1],[1,1,1,1],[1,1,0,1]]
-
-        
-
-    */
-    // we got it 
-    //console.log(graphBool);
-    postJNVis(graphBool, building);
 
     return rms;
 }
@@ -428,6 +408,7 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 function clearConsole() {
     let consoleObj = document.querySelector('.innerConsole');
     consoleObj.value = '';
+
     return;
 };
 
@@ -437,32 +418,9 @@ function updateConsole(text) {
     const beforeText = consoleObj.value.substring(0, consoleObj.value.length);
     consoleObj.value = beforeText + '\n' + text;
     consoleObj.scrollTop = consoleObj.scrollHeight;
+
     return;
 };
-
-// add a building tile
-function postJNVis(graphBool, building) {
-    let vis_container = document.createElement('div');
-    vis_container.classList.add('vis_container');
-
-    vis_container.innerHTML = `<p class=visHeader> ${building} </p>`;
-    for (var i = 0; i < graphBool.length; i++) { // iterating room
-        vis_container.innerHTML += `<ol class=rmCollumn> ${i}`;
-        for (var j = 0; j < graphBool[i].length; j++){ // iterating devices
-            console.log(graphBool[i][j]);
-            if (graphBool[i][j] == 0) {
-                vis_container.innerHTML += `<li class=devVisFalse> ${graphBool[i][j]} </li>`;
-            } else{
-                vis_container.innerHTML += `<li class=devVisTrue> ${graphBool[i][j]} </li>`;
-            }
-        }
-        vis_container.innerHTML += `</ol>`;
-    }
-
-    let progGuts = document.querySelector('.program_board .program_guts');
-    progGuts.append(vis_container);
-    return;
-}
 
 // SETTING THE HTML DOM
 async function setJackNet() {
@@ -473,7 +431,7 @@ async function setJackNet() {
 
     let progGuts = document.querySelector('.program_board .program_guts');
     let jn_container = document.createElement('div');
-    jn_container.classList.add('jn_container')
+    jn_container.classList.add('jn_container');
 
     // Make a box for list of buildings
     let buildingSelect = document.createElement("div");
@@ -489,7 +447,7 @@ async function setJackNet() {
             <option value=${i}>
                 ${bl[i]}
             </option>`;
-    };
+    }
     set_inner_html += '</select>';
     buildingSelect.innerHTML = `
         <fieldset class="jn_fieldset">
@@ -570,5 +528,6 @@ async function setJackNet() {
     main_container.classList.add('program_guts');
 
     progGuts.replaceWith(main_container);
+
     return;
-  };
+  }
