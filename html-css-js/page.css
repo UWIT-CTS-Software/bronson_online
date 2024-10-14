@@ -292,6 +292,55 @@ legend {
     border:4px outset rgb(144, 118, 26)
 }
 
+.vis_container{
+    position: relative;
+    background-color: rgb(50, 50, 50);
+    display: grid;
+    grid-template-columns: repeat(30,1fr);
+    gap: 10px;
+    grid-auto-rows: minmax(20px, auto);
+}
+
+.visHeader{
+    color: rgb(205, 177, 99);
+    text-align: center;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    grid-column: 1 / 2;
+    grid-row: 1;
+    margin: 5px;
+}
+
+.rmCollumn {
+    color: rgb(205, 177, 99);
+    text-align: center;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    grid-auto-columns: auto;
+    -ms-grid-column-span: 30;
+    grid-row-start: auto;
+    margin: 5px;
+}
+
+.devVisFalse {
+    background-color: rgb(184, 92, 101);
+    color: rgb(236, 200, 101);
+    border-radius: 4px;
+    border: 2px inset rgb(144, 118, 26);
+    text-align: left;
+    padding: 5px;
+    margin: 0px 0;
+}
+
+.devVisTrue {
+    background-color: rgb(120, 184, 92);
+    color: rgb(236, 200, 101);
+    border-radius: 4px;
+    border: 2px inset rgb(144, 118, 26);
+    text-align: left;
+    padding: 5px;
+    margin: 0px 0;
+}
+
+
 /* checkerboard Defifnitions 
    _____ _     _         _             _ 
   / ____| |   | |       | |           | |
