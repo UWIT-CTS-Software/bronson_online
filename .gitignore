@@ -5,3 +5,4 @@ Cargo.lock
 /.vscode
 /html-css-js/raw_roomConfig.csv
 /src/keys.json
+*.DS_Store
