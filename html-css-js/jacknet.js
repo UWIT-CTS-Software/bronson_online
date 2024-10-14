@@ -294,6 +294,9 @@ async function printPingResult(pingResult, building) {
     let ips = pingResult[1];
     let rms = [];
 
+    let graphBool = [];
+    let tmpBool = [];
+
     let printHostnames = "";
     let printIps       = "";
 
@@ -303,6 +306,7 @@ async function printPingResult(pingResult, building) {
     for (var i = 0; i < rooms.length; i++) {
         printHostnames = "";
         printIps       = "";
+        tmpBool = [];
         updateConsole("---------")
         updateConsole(bAbbrev + " " + rooms[i]);
         rms.push(bAbbrev + " " + rooms[i]);
@@ -313,11 +317,36 @@ async function printPingResult(pingResult, building) {
             if(hns[j].includes(pad(rooms[i], 4))){
                 printHostnames += pad(hns[j], 15, " ") + "|";
                 printIps       += pad(ips[j], 15, " ") + "|";
+                if (ips[j] == 'x') {
+                    tmpBool.push('0');
+                } else {
+                    tmpBool.push('1');
+                }
             }
         }
         updateConsole("Hostnames: " + printHostnames);
         updateConsole("IP's     : " + printIps);
+        graphBool.push(tmpBool)
     }
+    // This is where we post some visualizations
+    // Put together visualizer information
+    /*      GOAL:
+        ROOOOM |#1|#2|#3|... #9999
+        --------------------------
+            pj |x |o |o |
+          proc |o |o |o |
+            ws |x |o |x |
+            tp |o |o |o |
+        --------------------------
+        Need some booleans array for each room
+        ie: [[0,1,0,1],[1,1,1,1],[1,1,0,1]]
+
+        
+
+    */
+    // we got it 
+    //console.log(graphBool);
+    postJNVis(graphBool, building);
 
     return rms;
 }
@@ -421,6 +450,30 @@ function updateConsole(text) {
 
     return;
 };
+
+// add a building tile
+function postJNVis(graphBool, building) {
+    let vis_container = document.createElement('div');
+    vis_container.classList.add('vis_container');
+
+    vis_container.innerHTML = `<p class=visHeader> ${building} </p>`;
+    for (var i = 0; i < graphBool.length; i++) { // iterating room
+        vis_container.innerHTML += `<ol class=rmCollumn> ${i}`;
+        for (var j = 0; j < graphBool[i].length; j++){ // iterating devices
+            console.log(graphBool[i][j]);
+            if (graphBool[i][j] == 0) {
+                vis_container.innerHTML += `<li class=devVisFalse> ${graphBool[i][j]} </li>`;
+            } else{
+                vis_container.innerHTML += `<li class=devVisTrue> ${graphBool[i][j]} </li>`;
+            }
+        }
+        vis_container.innerHTML += `</ol>`;
+    }
+
+    let progGuts = document.querySelector('.program_board .program_guts');
+    progGuts.append(vis_container);
+    return;
+}
 
 // SETTING THE HTML DOM
 async function setJackNet() {
