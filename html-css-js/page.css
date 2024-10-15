@@ -315,9 +315,11 @@ legend {
     text-align: center;
     font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
     grid-auto-columns: auto;
-    -ms-grid-column-span: 30;
+    -ms-grid-column-span: 10;
     grid-row-start: auto;
-    margin: 5px;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
 }
 
 .devVisFalse {

@@ -452,23 +452,40 @@ function updateConsole(text) {
 };
 
 // add a building tile
-function postJNVis(graphBool, building) {
+async function postJNVis(graphBool, building) {
     let vis_container = document.createElement('div');
     vis_container.classList.add('vis_container');
 
-    vis_container.innerHTML = `<p class=visHeader> ${building} </p>`;
+    //vis_container.innerHTML = `<p class=visHeader> ${building} </p>`;
+    // !! get list of rooms in the building 
+    let rooms   = await getRooms(building);
+
+    const devices  = await getSelectedDevices();
+    let numDevices = devices.length; // NEEDS TO BE CORRECT AND DYNAMIC
+
+    let HTML_visList = `<p class=visHeader> ${building} </p> <p class=visList>`;
+
+    let HTML_tmp_visTile = `<div class=visTile>`;
+
     for (var i = 0; i < graphBool.length; i++) { // iterating room
-        vis_container.innerHTML += `<ol class=rmCollumn> ${i}`;
-        for (var j = 0; j < graphBool[i].length; j++){ // iterating devices
+        HTML_tmp_visTile += `<ul class=rmCollumn> ${rooms[i]}`;
+        for (var j = 0; (j < graphBool[i].length) && (j < numDevices); j++){ // iterating devices
             console.log(graphBool[i][j]);
             if (graphBool[i][j] == 0) {
-                vis_container.innerHTML += `<li class=devVisFalse> ${graphBool[i][j]} </li>`;
+                HTML_tmp_visTile += `<li class=devVisFalse> ${graphBool[i][j]} </li>`;
             } else{
-                vis_container.innerHTML += `<li class=devVisTrue> ${graphBool[i][j]} </li>`;
+                HTML_tmp_visTile += `<li class=devVisTrue> ${graphBool[i][j]} </li>`;
             }
         }
-        vis_container.innerHTML += `</ol>`;
+        HTML_tmp_visTile += `</ul></div>`;
+        HTML_visList += HTML_tmp_visTile;
+        HTML_tmp_visTile = `<div class=visTile>`;
     }
+
+    HTML_visList += `</p>`;
+    
+    vis_container.innerHTML = HTML_visList;
+    //vis_container.innerHTML += `</p>`;
 
     let progGuts = document.querySelector('.program_board .program_guts');
     progGuts.append(vis_container);
