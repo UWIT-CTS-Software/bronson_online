@@ -297,17 +297,22 @@ legend {
     background-color: rgb(50, 50, 50);
     display: grid;
     grid-template-columns: repeat(30,1fr);
-    gap: 10px;
+    gap: 0px;
     grid-auto-rows: minmax(20px, auto);
+    border: 4px outset rgb(144, 118, 26);
 }
 
 .visHeader{
     color: rgb(205, 177, 99);
     text-align: center;
     font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
-    grid-column: 1 / 2;
-    grid-row: 1;
-    margin: 5px;
+    grid-column: 1 / 7;
+    grid-row: 1 / 5;
+}
+
+.visTile{
+    margin: 0px;
+    border: 4px inset rgb(144, 118, 26);
 }
 
 .rmCollumn {

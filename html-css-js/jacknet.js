@@ -463,7 +463,7 @@ async function postJNVis(graphBool, building) {
     const devices  = await getSelectedDevices();
     let numDevices = devices.length; // NEEDS TO BE CORRECT AND DYNAMIC
 
-    let HTML_visList = `<p class=visHeader> ${building} </p> <p class=visList>`;
+    let HTML_visList = `<p class=visHeader> ${building} </p>`;
 
     let HTML_tmp_visTile = `<div class=visTile>`;
 
