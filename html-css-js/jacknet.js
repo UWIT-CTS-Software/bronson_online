@@ -42,6 +42,11 @@ buildingData is a list of dictionaries containing buildings on campus and the ro
 
 there should be an object for the csv export and if a search is ran, it is overwritten. If possible fade the export button until the first search is ran.
 
+TODO:
+    - All Buildings PopUp, "Are You Sure?"
+    - Individual Room Option (checkbox ?)
+    - Visualizer + Caching
+
 $$$$$$$\             $$\               
 $$  __$$\            $$ |              
 $$ |  $$ | $$$$$$\ $$$$$$\    $$$$$$\  
@@ -289,6 +294,9 @@ async function printPingResult(pingResult, building) {
     let ips = pingResult[1];
     let rms = [];
 
+    let graphBool = [];
+    let tmpBool = [];
+
     let printHostnames = "";
     let printIps       = "";
 
@@ -298,6 +306,7 @@ async function printPingResult(pingResult, building) {
     for (var i = 0; i < rooms.length; i++) {
         printHostnames = "";
         printIps       = "";
+        tmpBool = [];
         updateConsole("---------")
         updateConsole(bAbbrev + " " + rooms[i]);
         rms.push(bAbbrev + " " + rooms[i]);
@@ -308,11 +317,36 @@ async function printPingResult(pingResult, building) {
             if(hns[j].includes(pad(rooms[i], 4))){
                 printHostnames += pad(hns[j], 15, " ") + "|";
                 printIps       += pad(ips[j], 15, " ") + "|";
+                if (ips[j] == 'x') {
+                    tmpBool.push('0');
+                } else {
+                    tmpBool.push('1');
+                }
             }
         }
         updateConsole("Hostnames: " + printHostnames);
         updateConsole("IP's     : " + printIps);
+        graphBool.push(tmpBool)
     }
+    // This is where we post some visualizations
+    // Put together visualizer information
+    /*      GOAL:
+        ROOOOM |#1|#2|#3|... #9999
+        --------------------------
+            pj |x |o |o |
+          proc |o |o |o |
+            ws |x |o |x |
+            tp |o |o |o |
+        --------------------------
+        Need some booleans array for each room
+        ie: [[0,1,0,1],[1,1,1,1],[1,1,0,1]]
+
+        
+
+    */
+    // we got it 
+    //console.log(graphBool);
+    postJNVis(graphBool, building);
 
     return rms;
 }
@@ -416,6 +450,47 @@ function updateConsole(text) {
 
     return;
 };
+
+// add a building tile
+async function postJNVis(graphBool, building) {
+    let vis_container = document.createElement('div');
+    vis_container.classList.add('vis_container');
+
+    //vis_container.innerHTML = `<p class=visHeader> ${building} </p>`;
+    // !! get list of rooms in the building 
+    let rooms   = await getRooms(building);
+
+    const devices  = await getSelectedDevices();
+    let numDevices = devices.length; // NEEDS TO BE CORRECT AND DYNAMIC
+
+    let HTML_visList = `<p class=visHeader> ${building} </p>`;
+
+    let HTML_tmp_visTile = `<div class=visTile>`;
+
+    for (var i = 0; i < graphBool.length; i++) { // iterating room
+        HTML_tmp_visTile += `<ul class=rmCollumn> ${rooms[i]}`;
+        for (var j = 0; (j < graphBool[i].length) && (j < numDevices); j++){ // iterating devices
+            console.log(graphBool[i][j]);
+            if (graphBool[i][j] == 0) {
+                HTML_tmp_visTile += `<li class=devVisFalse> ${graphBool[i][j]} </li>`;
+            } else{
+                HTML_tmp_visTile += `<li class=devVisTrue> ${graphBool[i][j]} </li>`;
+            }
+        }
+        HTML_tmp_visTile += `</ul></div>`;
+        HTML_visList += HTML_tmp_visTile;
+        HTML_tmp_visTile = `<div class=visTile>`;
+    }
+
+    HTML_visList += `</p>`;
+    
+    vis_container.innerHTML = HTML_visList;
+    //vis_container.innerHTML += `</p>`;
+
+    let progGuts = document.querySelector('.program_board .program_guts');
+    progGuts.append(vis_container);
+    return;
+}
 
 // SETTING THE HTML DOM
 async function setJackNet() {
