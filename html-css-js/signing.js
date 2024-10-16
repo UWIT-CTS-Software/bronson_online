@@ -91,3 +91,4 @@ function setDashboard() {
     main_container.classList.add('program_guts');
     prog_guts.replaceWith(main_container);
     return;
+}
