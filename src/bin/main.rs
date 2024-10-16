@@ -45,6 +45,7 @@ Wiki
 // dependencies
 // ----------------------------------------------------------------------------
 use server_lib::{
+    Keys,
     ThreadPool, BuildingData, PingRequest, 
     Room, ZoneRequest,  
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
@@ -81,13 +82,12 @@ use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta, };
 
 // define static and const variables
 // ----------------------------------------------------------------------------
-static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bin/campus.json"));
-static CFM_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
-static WIKI_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
-static ROOM_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomConfig.csv");
+static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/campus.json"));
+static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
+static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
+static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomConfig_agg.csv");
 static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/campus.csv");
-
-static LOGIN: &'static str = "Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk=";
+static KEYS      : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/keys.json");
 
 const ZONE_1: [&'static str; 11] = [
     "Science%20Initiative%20Building%20(SI)", "Geology%20(GE)", "Health%20Sciences%20(HS)", 
@@ -137,8 +137,14 @@ $$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |  $$ |\$$$$$$$ |
 */
 
 fn main() {
-    //debug setting
+    // debug setting
     env::set_var("RUST_BACKTRACE", "1");
+
+    // get keys
+    let key_file = File::open(KEYS)
+        .expect("[-] FILE_ERR: Could not open.");
+    let keys: Keys = serde_json::from_reader(key_file)
+        .expect("[-] PARSE_ERR: Could not parse into struct.");
 
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
@@ -230,9 +236,10 @@ fn main() {
         let cookie_jar = Arc::clone(&cookie_jar);
         let stream = stream.unwrap();
         let clone_rooms = clone_map(&rooms);
+        let clone_keys = keys.clone();
 
         pool.execute(move || {
-            handle_connection(stream, cookie_jar, clone_rooms);
+            handle_connection(stream, cookie_jar, clone_rooms, clone_keys);
         });
     }
 }
@@ -254,7 +261,8 @@ fn clone_map<
 async fn handle_connection(
     mut stream: TcpStream, 
     cookie_jar: Arc<reqwest::cookie::Jar>, 
-    mut rooms: HashMap<String, Room>
+    mut rooms: HashMap<String, Room>,
+    keys: Keys,
 ) -> Option<()> {
     let mut buffer = [0; 1024];
 
@@ -352,6 +360,7 @@ async fn handle_connection(
             // call for roomchecks in LSM and store
             // ----------------------------------------------------------------
             for parent_location in parent_locations.into_iter() {
+                let clone_keys = keys.clone();
                 let url = format!(
                     r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last7days%22%2CParentLocation%3A%22{}%22%7D", 
                     parent_location
@@ -359,7 +368,7 @@ async fn handle_connection(
                 let req = reqwest::Client::builder()
                     .cookie_provider(Arc::clone(&cookie_jar))
                     .user_agent("server_lib/0.3.1")
-                    .default_headers(construct_headers())
+                    .default_headers(construct_headers(clone_keys))
                     .build().ok()?
                     .get(url)
                 ;
@@ -557,7 +566,7 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
  \______/  \_______| \_______|\__|  \__|\__|  \__| \_______|  \____/ 
         
 TODO:
-   [ ] - Rewrite find_curls() for '(' instead to handle "hn.uwyo.edu (ip-addr)"
+   [ ] - Rewrite find_curls() for '(' insteaget("api")d to handle "hn.uwyo.edu (ip-addr)"
 */
 
 // call ping_this executible here
@@ -589,7 +598,7 @@ fn execute_ping(buffer: &mut [u8]) -> String {
         hn_ips.push(hn_ip);
     }
 
-    // format data into json using Serde
+    // format data into json using SerdeLOGIN
     let json_return = json!({
         "building": pr.building,
         "hostnames": hostnames,
@@ -701,10 +710,10 @@ $$ |  $$\ $$ |  $$ |$$  _$$<  $$ |      $$ |  $$ |$$ |      $$ |  $$ |
  \______/ \__|  \__|\__|  \__|\__|      \_______/ \__|       \_______|
 */
 
-fn construct_headers() -> HeaderMap {
+fn construct_headers(keys: Keys) -> HeaderMap {
     let mut header_map = HeaderMap::new();
     header_map.insert(ACCEPT, HeaderValue::from_static("application/json"));
-    header_map.insert(AUTHORIZATION, HeaderValue::from_static(LOGIN));
+    header_map.insert(AUTHORIZATION, HeaderValue::from_str(&keys.api).expect("[-] KEY_ERR: Not found."));
 
     return header_map;
 }
@@ -792,15 +801,15 @@ _|        _|        _|      _|
 */
 
 fn dir_exists(path: &str) -> bool {
-    metadata(path).is_ok()
+    return metadata(path).is_ok();
 }
 
 fn is_this_file(path: &str) -> bool {
-    metadata(path).unwrap().is_file()
+    return metadata(path).unwrap().is_file();
 }
 
 fn is_this_dir(path: &str) -> bool {
-    metadata(path).unwrap().is_dir()
+    return metadata(path).unwrap().is_dir();
 }
 
 fn find_files(building: String, rm: String) -> Vec<String> {
