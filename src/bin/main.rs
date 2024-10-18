@@ -11,7 +11,7 @@ Backend
     - clone_map(source: HashMap) -> HashMap
     - handle_connection(stream: TcpStream, cookie_jar: Arc<Jar>, rooms: HashMap) -> Option
     - process_buffer(buffer: mut [u8]) -> String
-    - find_curls(s: String) -> (usize, usize)
+    - find_curls(s: String) -> String
     - print_type_of<T>(_: &T)
 
 JackNet
@@ -490,7 +490,7 @@ async fn handle_connection(
 
     print!("> ");
     stdout().flush().unwrap();
-    Option::Some(())
+    return Option::Some(());
 }
 
 // Preps the Buffer to be parsed as json string
@@ -500,26 +500,16 @@ fn process_buffer(buffer: &mut [u8]) -> String {
         .to_string();
 
     // functon that returns first '{' index location and it's '}' location
-    let (i, j) = find_curls(&buff_copy);
-    let buff_copy  = &buff_copy[i..j+1];
-    
-    buff_copy.to_string()
+    let in_curls = find_curls(&buff_copy);
+    return in_curls;
 }
 
 // used to trim excess info off of the buffer
-fn find_curls(s: &String) -> (usize, usize) {
-    let bytes = s.as_bytes();
-    let mut i_return: usize = 0;
-    
-    for (i, &item) in bytes.iter().enumerate() {
-        if item == b'{' {
-            i_return = i;
-        }
-        if item == b'}' {
-            return (i_return, i);
-        }
-    }
-    (s.len(), s.len())
+fn find_curls(s: &String) -> String {
+    let curl_find = Regex::new(r"(?<in_curls>\{.*})").unwrap();
+    let Some(in_curls) = curl_find.captures(s) else { return "{}".to_string() };
+
+    return in_curls["in_curls"].to_string();
 }
 
 fn pad(raw_in: String, length: usize) -> String {
@@ -610,7 +600,7 @@ fn execute_ping(buffer: &mut [u8]) -> String {
     println!("----\n------\nEND OF execute_ping() FUNCTION\n------\n-----\n");
 
     // Return JSON with ping results
-    json_return.to_string()
+    return json_return.to_string();
 }
 
 
@@ -696,7 +686,7 @@ fn gen_hostnames(
         }
     }
     // Return value
-    hostnames
+    return hostnames;
 }
 
 /*
@@ -876,6 +866,7 @@ fn get_origin(buffer: &mut [u8]) -> String {
             }
         }
     }
+
     println!("FINDING ORIGIN FAILED");
     return buff_copy[ir..ir_end].to_string();
 }
@@ -916,6 +907,7 @@ fn cfm_build_dir(_buffer: &mut [u8]) -> String {
     let json_return = json!({
         "dir_names": final_dirs
     });
+
     println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
     return json_return.to_string();
 }
@@ -957,6 +949,7 @@ fn cfm_build_rm(buffer: &mut [u8]) -> String {
     let json_return = json!({
         "rooms": final_dirs
     });
+
     println!("----\n------\nEND OF cfm_build_rm() FUNCTION\n------\n-----\n");
     return json_return.to_string();
 }
@@ -983,7 +976,6 @@ fn get_cfm(buffer: &mut [u8]) -> String {
     });
 
     println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
-
     return json_return.to_string();
 }
 
@@ -1070,7 +1062,6 @@ fn get_cfm_dir(buffer: &mut [u8]) -> String {
     });
 
     println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
-
     return json_return.to_string();
 }
 
