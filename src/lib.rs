@@ -81,10 +81,10 @@ impl Worker {
 			}
 		});
 
-		Worker {
+		return Worker {
 			id,
 			thread: Some(thread),
-		}
+		};
     }
 }
 
@@ -106,10 +106,10 @@ impl ThreadPool {
 			workers.push(Worker::new(id, Arc::clone(&receiver)));
 		}
 
-		ThreadPool { 
+		return ThreadPool { 
 			workers,
 			sender,
-		}
+		};
     }
 
     pub fn execute<F>(&self, f: F)
@@ -148,9 +148,7 @@ impl<'a> Clone for Keys {
 	fn clone(&self) -> Keys {
 		let new_api: Box<str> = <String as Clone>::clone(&self.api).into_boxed_str();
 	
-		return Keys {
-			api: String::from(new_api),
-		};
+		return Keys { api: String::from(new_api) };
 	}
 }
 
