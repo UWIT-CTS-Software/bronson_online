@@ -36,7 +36,7 @@ use std::{
 	fmt::Debug,
 };
 
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{Deserialize, Serialize, };
 
 trait FnBox {
     fn call_box(self: Box<Self>);

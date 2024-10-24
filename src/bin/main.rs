@@ -11,7 +11,7 @@ Backend
     - clone_map(source: HashMap) -> HashMap
     - handle_connection(stream: TcpStream, cookie_jar: Arc<Jar>, rooms: HashMap) -> Option
     - process_buffer(buffer: mut [u8]) -> String
-    - find_curls(s: String) -> String
+    - find_enclosed(s: String, delimeters: (char,char), include_delim: bool) -> String
     - print_type_of<T>(_: &T)
 
 JackNet
@@ -500,12 +500,22 @@ fn process_buffer(buffer: &mut [u8]) -> String {
         .to_string();
 
     // functon that returns first '{' index location and it's '}' location
-    let in_curls = find_curls(&buff_copy);
+    let in_curls = find_enclosed(&buff_copy, ('{', '}'), true);
     return in_curls;
 }
 
 // used to trim excess info off of the buffer
-fn find_curls(s: &String) -> String {
+fn find_enclosed(s: &String, delimiters: (char,char), include_delim: bool) -> String {
+    let search_rule;
+    if include_delim {
+        search_rule = Regex::new(format!("(?<search_return>\\{}.*{})", delimiters.0, delimiters.1).as_str()).unwrap();
+    } else {
+        search_rule = Regex::new(format!("\\{}(?<search_return>.*){}", delimiters.0, delimiters.1).as_str()).unwrap();
+    }
+
+    let Some(returned_text) = search_rule.captures(s) else { return "Empty".to_string() };
+    println!("\r\nSearch results are {:?}", returned_text["search_return"].to_string());
+
     let curl_find = Regex::new(r"(?<in_curls>\{.*})").unwrap();
     let Some(in_curls) = curl_find.captures(s) else { return "{}".to_string() };
 
@@ -554,9 +564,6 @@ $$\   $$ | $$$$$$$ |$$ /      $$$$$$  / $$ \$$$$ |$$$$$$$$ | $$ |
 $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\ 
 \$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ $$ | \$$ |\$$$$$$$\  \$$$$  |
  \______/  \_______| \_______|\__|  \__|\__|  \__| \_______|  \____/ 
-        
-TODO:
-   [ ] - Rewrite find_curls() for '(' insteaget("api")d to handle "hn.uwyo.edu (ip-addr)"
 */
 
 // call ping_this executible here
