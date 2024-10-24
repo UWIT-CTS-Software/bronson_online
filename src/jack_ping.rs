@@ -48,7 +48,7 @@ pub mod jp {
             },
         }
 
-        pong_string
+        return pong_string;
     }
 }
 
