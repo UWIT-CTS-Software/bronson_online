@@ -60,6 +60,7 @@ use std::{
         read, read_to_string, read_dir, metadata,
         File,
     },
+    time::{ Duration, },
     sync::{ Arc, },
     string::{ String, },
     borrow::{ Borrow, },
@@ -71,10 +72,11 @@ use std::{
     convert::{ TryFrom, },
 };
 use reqwest::{ 
-    header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT }
+    header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
+/* use tokio::sync::{ Semaphore, }; */
 use csv::{ Reader, };
-use local_ip_address::{ local_ip };
+use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
 use regex::Regex;
 use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta, };
@@ -88,6 +90,9 @@ static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
 static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomConfig_agg.csv");
 static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/campus.csv");
 static KEYS      : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/keys.json");
+
+/* static PERMIT    : Semaphore = Semaphore::const_new(1);
+static ROOMS     : Database = Database::setup(); */
 
 const ZONE_1: [&'static str; 11] = [
     "Science%20Initiative%20Building%20(SI)", "Geology%20(GE)", "Health%20Sciences%20(HS)", 
@@ -329,7 +334,7 @@ async fn handle_connection(
         contents = read_to_string(filename).unwrap();
     } else if buffer.starts_with(b"POST") {
         if buffer.starts_with(ping) {
-            contents = execute_ping(&mut buffer); // JN
+            contents = execute_ping(&mut buffer, rooms); // JN
         } else if buffer.starts_with(run_cb) {
             let buff_copy = process_buffer(&mut buffer);
             // get zone selection from request and store
@@ -369,11 +374,14 @@ async fn handle_connection(
                     .cookie_provider(Arc::clone(&cookie_jar))
                     .user_agent("server_lib/0.3.1")
                     .default_headers(construct_headers(clone_keys))
-                    .build().ok()?
-                    .get(url)
+                    .timeout(Duration::from_secs(15))
+                    .build()
+                    .ok()?
                 ;
     
-                let body = req.send()
+                let body = req.get(url)
+                              .timeout(Duration::from_secs(15))
+                              .send()
                               .await
                               .expect("[-] RESPONSE ERROR")
                               .text()
@@ -567,7 +575,7 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 */
 
 // call ping_this executible here
-fn execute_ping(buffer: &mut [u8]) -> String {
+fn execute_ping(buffer: &mut [u8], rooms: HashMap<String, Room>) -> String {
     // Prep Request into Struct
     let buff_copy = process_buffer(buffer);
     let pr: PingRequest = serde_json::from_str(&buff_copy)
@@ -582,7 +590,8 @@ fn execute_ping(buffer: &mut [u8]) -> String {
     let hostnames: Vec<String> = gen_hostnames(
         pr.devices,
         pr.building.clone(),
-        bs);
+        bs,
+        rooms);
 
     println!("{:?}", hostnames);
 
@@ -622,7 +631,8 @@ fn execute_ping(buffer: &mut [u8]) -> String {
 fn gen_hostnames(
     sel_devs: Vec<String>, 
     sel_b: String,
-    bd: BuildingData) -> Vec<String> {
+    bd: BuildingData,
+    rooms: HashMap<String, Room>) -> Vec<String> {
     // init
     let mut devices: Vec<bool> = [false ,false ,false ,false ,false].to_vec();
     let mut hostnames = Vec::new();
@@ -648,44 +658,51 @@ fn gen_hostnames(
         if sel_b == item.name { // check selection
             for j in item.rooms { // iterate through rooms
                 // Build and append hostnames
-                temp_hostname.push_str(&item.abbrev);
+                temp_hostname.push_str(&item.abbrev.clone());
                 temp_hostname.push('-');
                 temp_hostname.push_str(&format!("{:0>4}", j).to_string());
                 temp_hostname.push('-');
+                println!("{} {}: {:?}", &item.abbrev.clone(), j.clone(), rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())));
                 if devices[0] {
-                    tmp_tmp = temp_hostname.clone();
-                    tmp_tmp.push_str("proc1");
-                    //println!("generated hostname: \n {}", tmp_tmp);
-                    hostnames.push(tmp_tmp);
+                    for n in 0..rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())).unwrap().items[0] {
+                        tmp_tmp = temp_hostname.clone();
+                        tmp_tmp.push_str(format!("proc{}", n+1).as_str());
+                        //println!("generated hostname: \n {}", tmp_tmp);
+                        hostnames.push(tmp_tmp);
+                    }
                 }
                 if devices [1] {
-                    tmp_tmp = temp_hostname.clone();
-                    tmp_tmp.push_str("pj1");
-                    //println!("generated hostname: \n {}", tmp_tmp);
-                    hostnames.push(tmp_tmp);
+                    for n in 0..rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())).unwrap().items[1] {
+                        tmp_tmp = temp_hostname.clone();
+                        tmp_tmp.push_str(format!("pj{}", n+1).as_str());
+                        //println!("generated hostname: \n {}", tmp_tmp);
+                        hostnames.push(tmp_tmp);
+                    }
                 }
                 if devices [2] {
-                    tmp_tmp = temp_hostname.clone();
-                    tmp_tmp.push_str("ws1");
-                    //println!("generated hostname: \n {}", tmp_tmp);
-                    hostnames.push(tmp_tmp);
+                    for n in 0..rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())).unwrap().items[2] {
+                        tmp_tmp = temp_hostname.clone();
+                        tmp_tmp.push_str(format!("ws{}", n+1).as_str());
+                        //println!("generated hostname: \n {}", tmp_tmp);
+                        hostnames.push(tmp_tmp);
+                    }
                 }
                 if devices [3] {
-                    tmp_tmp = temp_hostname.clone();
-                    tmp_tmp.push_str("tp1");
-                    //println!("generated hostname: \n {}", tmp_tmp);
-                    hostnames.push(tmp_tmp);
+                    for n in 0..rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())).unwrap().items[3] {
+                        tmp_tmp = temp_hostname.clone();
+                        tmp_tmp.push_str(format!("tp{}", n+1).as_str());
+                        //println!("generated hostname: \n {}", tmp_tmp);
+                        hostnames.push(tmp_tmp);
+                    }
                 }
                 if devices [4] {
-                    tmp_tmp = temp_hostname.clone();
-                    tmp_tmp.push_str("cmicx1");
-                    //println!("generated hostname: \n {}", tmp_tmp);
-                    hostnames.push(tmp_tmp);
+                    for n in 0..rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())).unwrap().items[4] {
+                        tmp_tmp = temp_hostname.clone();
+                        tmp_tmp.push_str(format!("cmic{}", n+1).as_str());
+                        //println!("generated hostname: \n {}", tmp_tmp);
+                        hostnames.push(tmp_tmp);
+                    }
                 }
-                /* TODO (?): FORMAT WHEN QUANTITY IS KNOWN
-                for q in procCount {
-                    hostnames.push(temp_hostname.push("proc{}", q))
-                } */
                 
                 //hostnames.push(temp_hostname.clone());
                 temp_hostname = String::new();
