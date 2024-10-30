@@ -37,6 +37,7 @@ async function updatePreview() {
 async function setWiki() {
     console.log('switching to wiki');
     let tool_header = document.querySelector('.tool_header');
+    history.pushState("test", "Wiki", "/wiki");
     tool_header.innerHTML = 'Wiki';
 
     let progGuts = document.querySelector('.program_board .program_guts');

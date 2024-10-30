@@ -220,6 +220,7 @@ async function updateRoomList() {
 async function setCrestronFile() {
     let tool_header = document.querySelector('.tool_header');
     tool_header.innerHTML = 'CamCode';
+    history.pushState("test", "CamCode-CFM", "/cc-altmode");
     console.log('switching to camcode-cfm');
   
     // Pull List of Directories

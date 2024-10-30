@@ -281,13 +281,15 @@ async fn handle_connection(
     let get_ccalt   = b"GET /cc-altmode.js HTTP/1.1\r\n";
     let get_cb      = b"GET /checkerboard.js HTTP/1.1\r\n";
     let get_jn      = b"GET /jacknet.js HTTP/1.1\r\n";
+    let get_wiki    = b"GET /wiki.js HTTP/1.1\r\n";
     let get_jn_json = b"GET /campus.json HTTP/1.1\r\n";
     let get_cb_json = b"GET /roomChecks.json HTTP/1.1\r\n";
-    let get_wiki    = b"GET /wiki.js HTTP/1.1\r\n";
     // ------------------------------------------------------------------------
     
     // make calls to backend functionality
     // ------------------------------------------------------------------------
+    // login
+    let login       = b"POST /login HTTP/1.1\r\n";
     // Jacknet
     let ping        = b"POST /ping HTTP/1.1\r\n";
     // Checkerboard
@@ -306,11 +308,12 @@ async fn handle_connection(
     // Handle requests
     // ------------------------------------------------------------------------
     let mut status_line = "HTTP/1.1 200 OK";
-    let (contents, filename);
+    let mut contents = String::new();
+    let filename;
     
     if buffer.starts_with(b"GET") {
         if buffer.starts_with(get_index) {
-            filename = "html-css-js/index.html";
+            filename = "html-css-js/login.html";
         } else if buffer.starts_with(get_css) {
             filename = "html-css-js/page.css";
         } else if buffer.starts_with(get_cc) {
@@ -333,7 +336,20 @@ async fn handle_connection(
         };
         contents = read_to_string(filename).unwrap();
     } else if buffer.starts_with(b"POST") {
-        if buffer.starts_with(ping) {
+        if buffer.starts_with(login) {
+            let buff_copy = str::from_utf8(&buffer[..]).unwrap();
+            let credential_search = Regex::new(r"uname=(?<user>.*)&psw=(?<pass>[\d\w]*)").unwrap();
+            let Some(credentials) = credential_search.captures(buff_copy) else { return Option::Some(()) };
+            let user = String::from(credentials["user"].to_string().into_boxed_str());
+            let pass = String::from(credentials["pass"].to_string().into_boxed_str());
+            println!("{}:{}", user, pass);
+            if user == String::from("admin") && pass == String::from("admin") {
+                contents = read_to_string("html-css-js/index.html").unwrap();
+            } else {
+                status_line = "HTTP/1.1 404 NOT FOUND";
+                contents = read_to_string("html-css-js/404.html").unwrap();
+            }
+        } else if buffer.starts_with(ping) {
             contents = execute_ping(&mut buffer, rooms); // JN
         } else if buffer.starts_with(run_cb) {
             let buff_copy = process_buffer(&mut buffer);
@@ -439,11 +455,11 @@ async fn handle_connection(
             contents = w_build_articles(&mut buffer);
         } else {
             status_line = "HTTP/1.1 404 NOT FOUND";
-            contents = String::from("Empty");
+            contents = read_to_string("html-css-js/404.html").unwrap();
         };
     } else {
         status_line = "HTTP/1.1 404 NOT FOUND";
-        contents = String::from("Empty");
+        contents = read_to_string("html-css-js/404.html").unwrap();
     }
 
     // NOTE - look at this for error log format
