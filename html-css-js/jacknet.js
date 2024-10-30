@@ -497,6 +497,7 @@ async function setJackNet() {
     // Update tool_header
     let tool_header = document.querySelector('.tool_header');
     tool_header.innerHTML = 'JackNet';
+    history.pushState("test", "JackNet", "/jacknet");
     console.log('Switching to jacknet');
 
     let progGuts = document.querySelector('.program_board .program_guts');

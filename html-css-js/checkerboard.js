@@ -126,26 +126,13 @@ function cb_clearConsole() {
     return;
 }
 
-function pad_html_space(text, len) {
-    let add_spaces = ""
-    if (text.length < len) {
-        for (i in (len-text.length)) {
-            add_spaces += "nbsp;"
-        }
-    }
-    
-    return text+add_spaces;
-}
-
 function setChecker() {
     let tool_header = document.querySelector('.tool_header');
     tool_header.innerHTML = 'Checkerboard';
+    history.pushState("test", "CheckerBoard", "/checkerboard");
 
     console.log('Switching to checkerboard');
     let prog_guts = document.querySelector('.program_board .program_guts');
-
-    var base_time = new Time;
-    base_time.setTime("2024-06-01");
 
     let main_container = document.createElement("div");
     main_container.classList.add("cb_container");
