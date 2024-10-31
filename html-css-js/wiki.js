@@ -35,6 +35,7 @@ async function updatePreview() {
 
 // setWiki()
 async function setWiki() {
+    document.title = "Wiki - Bronson";
     console.log('switching to wiki');
     let tool_header = document.querySelector('.tool_header');
     history.pushState("test", "Wiki", "/wiki");

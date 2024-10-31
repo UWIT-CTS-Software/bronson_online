@@ -218,6 +218,7 @@ async function updateRoomList() {
 //      setCrestronFile()
 // Change the DOM for Crestron File Manager
 async function setCrestronFile() {
+    document.title = "CamCode - Bronson";
     let tool_header = document.querySelector('.tool_header');
     tool_header.innerHTML = 'CamCode';
     history.pushState("test", "CamCode-CFM", "/cc-altmode");
