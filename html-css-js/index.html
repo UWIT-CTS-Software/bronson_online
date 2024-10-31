@@ -16,58 +16,12 @@
     <script src="wiki.js" type="text/javascript" charset="utf-8"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script type="text/javascript">
-      function setSignIn() {
-        let tool_header = document.querySelector('.tool_header');
-        tool_header.innerHTML = 'Dashboard';
-        console.log('Switching to dashboard');
-
-        let prog_guts = document.querySelector('.program_board .program_guts');
-
-        let db_container = document.createElement("div");
-        db_container.classList.add("db_container");
-        // db_container.innerHTML = `
-        //   <p class='tool_header'>
-        //     Dashboard </p>`;
-
-        // signin
-        let signinDiv = document.createElement("div");
-        signinDiv.classList.add('db_console');
-        signinDiv.innerHTML = `
-          <fieldset>
-              <legend> 
-                  Username: </legend>
-              <textarea rows="1" cols ="20" class="userSignIn" name="userSignIn" spellcheck="false">tech</textarea>
-          </fieldset>
-          <fieldset>
-              <legend> 
-                  Password: </legend>
-              <textarea rows="1" cols ="20" class="userPassword" name="userPassword" spellcheck="false"> 
-                  psswd
-              </textarea>
-          </fieldset>
-          <button class=signButton onClick=chkPasswd()>
-            Sign In</button>`;
-    
-        db_container.appendChild(signinDiv);
-
-        let main_container = document.createElement('div');
-        main_container.appendChild(db_container);
-        main_container.classList.add('program_guts');
-        prog_guts.replaceWith(main_container);
-        return;
-      }
-
-      function chkPasswd() {
-        let text = document.querySelector('.userSignIn');
-        if(text.value == "admin") {
-          setDashboard();
-        }
-        return;
-      }
       // setDashboard()
       function setDashboard() {
+        document.title = "Dashboard - Bronson";
         let tool_header = document.querySelector('.tool_header');
         tool_header.innerHTML = 'Dashboard';
+        history.pushState("test", "Dashboard", "/");
         console.log('Switching to dashboard');
 
         let prog_guts = document.querySelector('.program_board .program_guts');
@@ -146,7 +100,6 @@
       <br>
       <!-- <p> Local dashboard of stuff // maybe a feed</p> -->
       <div class="program_guts">
-        <p> Hi you started the program</p>
       </div>
     </div>
   </body>

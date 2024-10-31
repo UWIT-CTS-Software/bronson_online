@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Contrail+One&family=Racing+Sans+One&display=swap" rel="stylesheet">
 </head>
-<body>
+<body onload="document.getElementById('login-modal').style.display='block'">
     <div class="login">
         <div class="program_header">
             <h1 class='site_header'>
@@ -16,7 +16,7 @@
             <p class='p_header'>
               <i>The swiss army knife for the U.W.I.T. department</i></p>
             <h2 class='tool_header'>
-              Dashboard</h2>
+              Log In</h2>
             <div class="tool_buttons">
               <fieldset class="ph_fieldset">
                 <legend class="ph_legend">
@@ -49,29 +49,29 @@
     <div class="program_guts">
     </div>
     <div id="login-modal" class="modal">
-        <form class="'modal-content animate" action="/login" method="post">
+        <form class="modal-content animate" action="/login" method="post">
             <div class="login_imgcontainer">
-                <span onclick="document.getElementById('login-modal').style.display='none'" class="close" title="Close Modal">&times;</span>
-                <!-- <img src="img_avatar2.png" alt="Avatar" class="avatar"> -->
-              </div>
+              <span onclick="document.getElementById('login-modal').style.display='none'" class="close" title="Close Modal">&times;</span>
+              <img src="logo.png" alt="Avatar" class="avatar">
+            </div>
           
-              <div class="container">
-                <label for="uname"><b>Username</b></label>
-                <input type="text" placeholder="Enter Username" name="uname" required>
-          
-                <label for="psw"><b>Password</b></label>
-                <input type="password" placeholder="Enter Password" name="psw" required>
-                  
-                <button type="submit">Login</button>
-                <label>
-                  <input type="checkbox" checked="checked" name="remember"> Remember me
-                </label>
-              </div>
-          
-              <div class="container" style="background-color:#f1f1f1">
-                <button type="button" onclick="document.getElementById('login-modal').style.display='none'" class="cancelbtn">Cancel</button>
-                <span class="psw">Forgot <a href="#">password?</a></span>
-              </div>
+            <div class="container">
+              <label for="uname"><b>Username</b></label>
+              <input type="text" placeholder="Enter Username" name="uname" required>
+        
+              <label for="psw"><b>Password</b></label>
+              <input type="password" placeholder="Enter Password" name="psw" required>
+
+              <label>
+                <input type="checkbox" checked="checked" name="remember"> Remember me
+              </label>
+              <button class="headButton" style="float: right;" type="submit">Log In</button>
+            </div>
+        
+            <div class="container">
+              <button type="button" class="headButton" onclick="document.getElementById('login-modal').style.display='none'" class="cancelbtn">Cancel</button>
+              <!-- <span class="psw">Forgot <a href="#">password?</a></span> -->
+            </div>
         </form>
     </div>
     <script>

@@ -494,6 +494,7 @@ async function postJNVis(graphBool, building) {
 
 // SETTING THE HTML DOM
 async function setJackNet() {
+    document.title = "JackNet - Bronson";
     // Update tool_header
     let tool_header = document.querySelector('.tool_header');
     tool_header.innerHTML = 'JackNet';
