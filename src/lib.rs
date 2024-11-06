@@ -156,7 +156,8 @@ impl<'a> Clone for Keys {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Room {
 	pub name: String,
-	pub items: Vec<u8>,
+	pub hostnames: Vec<String>,
+	pub ips: Vec<String>,
 	pub gp: u8,
 	pub checked: String,
 	pub schedule: Vec<String>
@@ -172,12 +173,14 @@ impl<'a> Clone for Room {
 	fn clone(&self) -> Room {
 		let new_name: Box<str> = <String as Clone>::clone(&self.name).into_boxed_str();
 		let new_checked: Box<str> = <String as Clone>::clone(&self.checked).into_boxed_str();
-		let new_items = &self.items;
+		let new_hostnames = &self.hostnames;
+		let new_ips = &self.ips;
 		let new_schedule = &self.schedule;
 
 		return Room {
 			name: String::from(new_name),
-			items: (&new_items).to_vec(),
+			hostnames: (&new_hostnames).to_vec(),
+			ips: (&new_ips).to_vec(),
 			gp: self.gp,
 			checked: String::from(new_checked),
 			schedule:(&new_schedule).to_vec(),
