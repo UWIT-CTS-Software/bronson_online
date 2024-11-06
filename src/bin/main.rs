@@ -742,9 +742,24 @@ fn execute_ping(buffer: &mut [u8], rooms: HashMap<String, Room>) -> String {
     // TODO
     let rooms_to_ping: Vec<String> = gen_rooms(pr.building.clone(), bs);
 
-    let hostnames = ["BROKEN_SORRY_FIXING_IT"];
+    let mut hostnames: Vec<String> = Vec::new();
 
-    println!("{:?}", hostnames);
+    for rm in rooms_to_ping {
+        match rooms.get(&rm) {
+            Some(rm_info) => {
+                println!("Hostnames: {:?}", rm_info.hostnames);
+                // append rm_info.hostnames to hostnames
+                for hn in &rm_info.hostnames {
+                    hostnames.push(hn.to_string());
+                }
+            }
+            _ => (),
+        }
+    }
+
+    // let hostnames = ["BROKEN_SORRY_FIXING_IT"];
+
+    println!("Hostnames Generated {:?}", hostnames);
 
     // Write for loop through hostnames
     let mut hn_ips: Vec<String> = Vec::new();
@@ -877,8 +892,8 @@ fn gen_hn2(
     let mut tmp_hn    = String::new();
     let mut tmp_dev   = String::new();
     let parts: Vec<&str> = room_name.split(" ").collect();
-    // let building_prefix = parts[0].clone();
-    // let room_number     = parts[1].clone();
+    // let building_prefix = parts[0];
+    // let room_number     = parts[1];
 
     // Assemble the hostname here
     for i in 0..4 {
@@ -892,12 +907,12 @@ fn gen_hn2(
         };
         if item_vec[i] != 0 {
             for j in 0..item_vec[i] { // make n hostnames
-                tmp_hn.push_str(parts[0].clone());
+                tmp_hn.push_str(parts[0]);
                 tmp_hn.push('-');
-                tmp_hn.push_str(parts[1].clone());
+                tmp_hn.push_str(parts[1]);
                 tmp_hn.push('-');
                 tmp_hn.push_str(tmp_dev);
-                tmp_hn.push(char::from_digit(j.into(), 10).expect("digit bad idk"));
+                tmp_hn.push(char::from_digit((j+1).into(), 10).expect("digit bad idk"));
                 hostnames.push(tmp_hn);
                 tmp_hn = String::new();
             };
