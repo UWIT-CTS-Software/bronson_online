@@ -73,9 +73,12 @@ use std::{
 };
 use reqwest::{ 
     header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT, }
+    header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
 /* use tokio::sync::{ Semaphore, }; */
+/* use tokio::sync::{ Semaphore, }; */
 use csv::{ Reader, };
+use local_ip_address::{ local_ip, };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
 use regex::Regex;
@@ -90,6 +93,9 @@ static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
 static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomConfig_agg.csv");
 static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/campus.csv");
 static KEYS      : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/keys.json");
+
+/* static PERMIT    : Semaphore = Semaphore::const_new(1);
+static ROOMS     : Database = Database::setup(); */
 
 /* static PERMIT    : Semaphore = Semaphore::const_new(1);
 static ROOMS     : Database = Database::setup(); */
@@ -283,19 +289,29 @@ async fn handle_connection(
 
     // HTML-oriented files
     // ------------------------------------------------------------------------
+    let get_icon    = b"GET /favicon.ico HTTP/1.1\r\n";
     let get_index   = b"GET / HTTP/1.1\r\n";
     let get_css     = b"GET /page.css HTTP/1.1\r\n";
     let get_cc      = b"GET /camcode.js HTTP/1.1\r\n";
-    let get_ccalt   = b"GET /cc-altmode.js HTTP/1.1\r\n";
-    let get_cb      = b"GET /checkerboard.js HTTP/1.1\r\n";
-    let get_jn      = b"GET /jacknet.js HTTP/1.1\r\n";
+    let get_ccalt1  = b"GET /cc-altmode.js HTTP/1.1\r\n";
+    let get_cb1     = b"GET /checkerboard.js HTTP/1.1\r\n";
+    let get_jn1     = b"GET /jacknet.js HTTP/1.1\r\n";
+    let get_wiki1   = b"GET /wiki.js HTTP/1.1\r\n";
+    let get_ccalt2  = b"GET /cc-altmode HTTP/1.1\r\n";
+    let get_cb2     = b"GET /checkerboard HTTP/1.1\r\n";
+    let get_jn2     = b"GET /jacknet HTTP/1.1\r\n";
+    let get_wiki2   = b"GET /wiki HTTP/1.1\r\n";
     let get_jn_json = b"GET /campus.json HTTP/1.1\r\n";
     let get_cb_json = b"GET /roomChecks.json HTTP/1.1\r\n";
-    let get_wiki    = b"GET /wiki.js HTTP/1.1\r\n";
+
+    let get_logo1   = b"GET /logo.png HTTP/1.1\r\n";
+    let get_logo2   = b"GET /logo-2-line.png HTTP/1'1\r\n";
     // ------------------------------------------------------------------------
     
     // make calls to backend functionality
     // ------------------------------------------------------------------------
+    // login
+    let login       = b"POST /login HTTP/1.1\r\n";
     // Jacknet
     let ping        = b"POST /ping HTTP/1.1\r\n";
     // Checkerboard
@@ -314,34 +330,150 @@ async fn handle_connection(
     // Handle requests
     // ------------------------------------------------------------------------
     let mut status_line = "HTTP/1.1 200 OK";
-    let (contents, filename);
+    let mut contents = String::new();
+    let filename;
+    let mut user_homepage: &str = "html-css-js/index.html";
     
     if buffer.starts_with(b"GET") {
         if buffer.starts_with(get_index) {
-            filename = "html-css-js/index.html";
+            filename = "html-css-js/login.html";
         } else if buffer.starts_with(get_css) {
             filename = "html-css-js/page.css";
         } else if buffer.starts_with(get_cc) {
             filename = "html-css-js/camcode.js";
-        } else if buffer.starts_with(get_ccalt) {
+        } else if buffer.starts_with(get_ccalt1) {
             filename = "html-css-js/cc-altmode.js";
-        } else if buffer.starts_with(get_cb) {
+        } else if buffer.starts_with(get_cb1) {
             filename = "html-css-js/checkerboard.js";
-        } else if buffer.starts_with(get_jn) {
+        } else if buffer.starts_with(get_jn1) {
             filename = "html-css-js/jacknet.js";
+        } else if buffer.starts_with(get_wiki1) {
+            filename = "html-css-js/wiki.js";
+        } else if buffer.starts_with(get_ccalt2) {
+            let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
+            let pre_contents = read_to_string(user_homepage).unwrap();
+            let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return Option::Some(()) };
+            let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
+            let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
+            contents = format!("{} onload='setCrestronFile()'{}", pre, post);
+            let response = format!(
+                "{}\r\nContent-Length: {}\r\n\r\n{}",
+                status_line, contents.len(), contents
+            );
+            stream.write(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+    
+            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+            print!("> ");
+            stdout().flush().unwrap();
+            return Option::Some(());
+        } else if buffer.starts_with(get_cb2) {
+            let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
+            let pre_contents = read_to_string(user_homepage).unwrap();
+            let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return Option::Some(()) };
+            let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
+            let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
+            contents = format!("{} onload='setChecker()'{}", pre, post);
+            let response = format!(
+                "{}\r\nContent-Length: {}\r\n\r\n{}",
+                status_line, contents.len(), contents
+            );
+            stream.write(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+    
+            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+            print!("> ");
+            stdout().flush().unwrap();
+            return Option::Some(());
+        } else if buffer.starts_with(get_jn2) {
+            let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
+            let pre_contents = read_to_string(user_homepage).unwrap();
+            let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return Option::Some(()) };
+            let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
+            let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
+            contents = format!("{} onload='setJackNet()'{}", pre, post);
+            let response = format!(
+                "{}\r\nContent-Length: {}\r\n\r\n{}",
+                status_line, contents.len(), contents
+            );
+            stream.write(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+    
+            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+            print!("> ");
+            stdout().flush().unwrap();
+            return Option::Some(());
+        } else if buffer.starts_with(get_wiki2) {
+            let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
+            let pre_contents = read_to_string(user_homepage).unwrap();
+            let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return Option::Some(()) };
+            let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
+            let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
+            contents = format!("{} onload='setWiki()'{}", pre, post);
+            let response = format!(
+                "{}\r\nContent-Length: {}\r\n\r\n{}",
+                status_line, contents.len(), contents
+            );
+            stream.write(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+    
+            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+            print!("> ");
+            stdout().flush().unwrap();
+            return Option::Some(());
         } else if buffer.starts_with(get_jn_json) {
             filename = "html-css-js/campus.json";
         } else if buffer.starts_with(get_cb_json) {
             filename = "html-css-js/roomChecks.json";
-        } else if buffer.starts_with(get_wiki) {
-            filename = "html-css-js/wiki.js";
+        } else if buffer.starts_with(get_logo1) {
+            filename = "html-css-js/logo.png";
+            let img_contents = read(filename).unwrap();
+            let response = format!(
+                "{}\r\n\
+                Content-Type: img/png\r\n\
+                Content-Length: {}\r\n\r\n",
+                status_line, img_contents.len()
+            );
+            stream.write(response.as_bytes()).unwrap();
+            stream.write(&img_contents).unwrap();
+            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+            print!("> ");
+            stdout().flush().unwrap();
+            return Option::Some(());
         } else {
             status_line =  "HTTP/1.1 404 NOT FOUND";
             filename = "html-css-js/404.html";
         };
         contents = read_to_string(filename).unwrap();
     } else if buffer.starts_with(b"POST") {
-        if buffer.starts_with(ping) {
+        if buffer.starts_with(login) {
+            let buff_copy = str::from_utf8(&buffer[..]).unwrap();
+            let credential_search = Regex::new(r"uname=(?<user>.*)&psw=(?<pass>[\d\w%]*)").unwrap();
+            let Some(credentials) = credential_search.captures(buff_copy) else { return Option::Some(()) };
+            let user = String::from(credentials["user"].to_string().into_boxed_str());
+            let pass = String::from(credentials["pass"].to_string().into_boxed_str());
+            println!("{}:{}", user, pass);
+            for credential in keys.users {
+                if user == credential[0] && pass == credential[1] {
+                    user_homepage = credential[2].clone().as_str();
+                    contents = read_to_string(&credential[2]).unwrap();
+                    let response = format!(
+                        "{}\r\nContent-Length: {}\r\n\r\n{}",
+                        status_line, contents.len(), contents
+                    );
+                    // Sends to STDOUT
+                    stream.write(response.as_bytes()).unwrap();
+                    stream.flush().unwrap();
+            
+                    println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+
+                    print!("> ");
+                    stdout().flush().unwrap();
+                    return Option::Some(());
+                }
+            }
+            contents = read_to_string("html-css-js/login.html").unwrap();
+        } else if buffer.starts_with(ping) {
             contents = execute_ping(&mut buffer, rooms); // JN
         } else if buffer.starts_with(run_cb) {
             let buff_copy = process_buffer(&mut buffer);
@@ -447,11 +579,11 @@ async fn handle_connection(
             contents = w_build_articles(&mut buffer);
         } else {
             status_line = "HTTP/1.1 404 NOT FOUND";
-            contents = String::from("Empty");
+            contents = read_to_string("html-css-js/404.html").unwrap();
         };
     } else {
         status_line = "HTTP/1.1 404 NOT FOUND";
-        contents = String::from("Empty");
+        contents = read_to_string("html-css-js/404.html").unwrap();
     }
 
     // NOTE - look at this for error log format
