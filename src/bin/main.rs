@@ -11,7 +11,7 @@ Backend
     - clone_map(source: HashMap) -> HashMap
     - handle_connection(stream: TcpStream, cookie_jar: Arc<Jar>, rooms: HashMap) -> Option
     - process_buffer(buffer: mut [u8]) -> String
-    - find_curls(s: String) -> (usize, usize)
+    - find_enclosed(s: String, delimeters: (char,char), include_delim: bool) -> String
     - print_type_of<T>(_: &T)
 
 JackNet
@@ -45,6 +45,7 @@ Wiki
 // dependencies
 // ----------------------------------------------------------------------------
 use server_lib::{
+    Keys,
     ThreadPool, BuildingData, PingRequest, 
     Room, ZoneRequest,  
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
@@ -59,6 +60,7 @@ use std::{
         read, read_to_string, read_dir, metadata,
         File,
     },
+    time::{ Duration, },
     sync::{ Arc, },
     string::{ String, },
     borrow::{ Borrow, },
@@ -70,10 +72,11 @@ use std::{
     convert::{ TryFrom, },
 };
 use reqwest::{ 
-    header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT }
+    header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
+/* use tokio::sync::{ Semaphore, }; */
 use csv::{ Reader, };
-use local_ip_address::{ local_ip };
+use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
 use regex::Regex;
 use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta, };
@@ -81,13 +84,15 @@ use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta, };
 
 // define static and const variables
 // ----------------------------------------------------------------------------
-static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bin/campus.json"));
-static CFM_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
-static WIKI_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
-static ROOM_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomConfig.csv");
+static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/campus.json"));
+static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
+static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
+static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomConfig_agg.csv");
 static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/campus.csv");
+static KEYS      : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/keys.json");
 
-static LOGIN: &'static str = "Basic YXBpX2Fzc2VzczpVb2ZXeW8tQ1RTMzk0NS1BUEk=";
+/* static PERMIT    : Semaphore = Semaphore::const_new(1);
+static ROOMS     : Database = Database::setup(); */
 
 const ZONE_1: [&'static str; 11] = [
     "Science%20Initiative%20Building%20(SI)", "Geology%20(GE)", "Health%20Sciences%20(HS)", 
@@ -137,8 +142,14 @@ $$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |  $$ |\$$$$$$$ |
 */
 
 fn main() {
-    //debug setting
+    // debug setting
     env::set_var("RUST_BACKTRACE", "1");
+
+    // get keys
+    let key_file = File::open(KEYS)
+        .expect("[-] FILE_ERR: Could not open.");
+    let keys: Keys = serde_json::from_reader(key_file)
+        .expect("[-] PARSE_ERR: Could not parse into struct.");
 
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
@@ -240,9 +251,10 @@ fn main() {
         let cookie_jar = Arc::clone(&cookie_jar);
         let stream = stream.unwrap();
         let clone_rooms = clone_map(&rooms);
+        let clone_keys = keys.clone();
 
         pool.execute(move || {
-            handle_connection(stream, cookie_jar, clone_rooms);
+            handle_connection(stream, cookie_jar, clone_rooms, clone_keys);
         });
     }
 }
@@ -264,7 +276,8 @@ fn clone_map<
 async fn handle_connection(
     mut stream: TcpStream, 
     cookie_jar: Arc<reqwest::cookie::Jar>, 
-    mut rooms: HashMap<String, Room>
+    mut rooms: HashMap<String, Room>,
+    keys: Keys,
 ) -> Option<()> {
     let mut buffer = [0; 1024];
 
@@ -272,19 +285,29 @@ async fn handle_connection(
 
     // HTML-oriented files
     // ------------------------------------------------------------------------
+    let get_icon    = b"GET /favicon.ico HTTP/1.1\r\n";
     let get_index   = b"GET / HTTP/1.1\r\n";
     let get_css     = b"GET /page.css HTTP/1.1\r\n";
     let get_cc      = b"GET /camcode.js HTTP/1.1\r\n";
-    let get_ccalt   = b"GET /cc-altmode.js HTTP/1.1\r\n";
-    let get_cb      = b"GET /checkerboard.js HTTP/1.1\r\n";
-    let get_jn      = b"GET /jacknet.js HTTP/1.1\r\n";
+    let get_ccalt1  = b"GET /cc-altmode.js HTTP/1.1\r\n";
+    let get_cb1     = b"GET /checkerboard.js HTTP/1.1\r\n";
+    let get_jn1     = b"GET /jacknet.js HTTP/1.1\r\n";
+    let get_wiki1   = b"GET /wiki.js HTTP/1.1\r\n";
+    let get_ccalt2  = b"GET /cc-altmode HTTP/1.1\r\n";
+    let get_cb2     = b"GET /checkerboard HTTP/1.1\r\n";
+    let get_jn2     = b"GET /jacknet HTTP/1.1\r\n";
+    let get_wiki2   = b"GET /wiki HTTP/1.1\r\n";
     let get_jn_json = b"GET /campus.json HTTP/1.1\r\n";
     let get_cb_json = b"GET /roomChecks.json HTTP/1.1\r\n";
-    let get_wiki    = b"GET /wiki.js HTTP/1.1\r\n";
+
+    let get_logo1   = b"GET /logo.png HTTP/1.1\r\n";
+    let get_logo2   = b"GET /logo-2-line.png HTTP/1'1\r\n";
     // ------------------------------------------------------------------------
     
     // make calls to backend functionality
     // ------------------------------------------------------------------------
+    // login
+    let login       = b"POST /login HTTP/1.1\r\n";
     // Jacknet
     let ping        = b"POST /ping HTTP/1.1\r\n";
     // Checkerboard
@@ -303,35 +326,151 @@ async fn handle_connection(
     // Handle requests
     // ------------------------------------------------------------------------
     let mut status_line = "HTTP/1.1 200 OK";
-    let (contents, filename);
+    let mut contents = String::new();
+    let filename;
+    let mut user_homepage: &str = "html-css-js/index.html";
     
     if buffer.starts_with(b"GET") {
         if buffer.starts_with(get_index) {
-            filename = "html-css-js/index.html";
+            filename = "html-css-js/login.html";
         } else if buffer.starts_with(get_css) {
             filename = "html-css-js/page.css";
         } else if buffer.starts_with(get_cc) {
             filename = "html-css-js/camcode.js";
-        } else if buffer.starts_with(get_ccalt) {
+        } else if buffer.starts_with(get_ccalt1) {
             filename = "html-css-js/cc-altmode.js";
-        } else if buffer.starts_with(get_cb) {
+        } else if buffer.starts_with(get_cb1) {
             filename = "html-css-js/checkerboard.js";
-        } else if buffer.starts_with(get_jn) {
+        } else if buffer.starts_with(get_jn1) {
             filename = "html-css-js/jacknet.js";
+        } else if buffer.starts_with(get_wiki1) {
+            filename = "html-css-js/wiki.js";
+        } else if buffer.starts_with(get_ccalt2) {
+            let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
+            let pre_contents = read_to_string(user_homepage).unwrap();
+            let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return Option::Some(()) };
+            let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
+            let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
+            contents = format!("{} onload='setCrestronFile()'{}", pre, post);
+            let response = format!(
+                "{}\r\nContent-Length: {}\r\n\r\n{}",
+                status_line, contents.len(), contents
+            );
+            stream.write(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+    
+            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+            print!("> ");
+            stdout().flush().unwrap();
+            return Option::Some(());
+        } else if buffer.starts_with(get_cb2) {
+            let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
+            let pre_contents = read_to_string(user_homepage).unwrap();
+            let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return Option::Some(()) };
+            let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
+            let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
+            contents = format!("{} onload='setChecker()'{}", pre, post);
+            let response = format!(
+                "{}\r\nContent-Length: {}\r\n\r\n{}",
+                status_line, contents.len(), contents
+            );
+            stream.write(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+    
+            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+            print!("> ");
+            stdout().flush().unwrap();
+            return Option::Some(());
+        } else if buffer.starts_with(get_jn2) {
+            let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
+            let pre_contents = read_to_string(user_homepage).unwrap();
+            let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return Option::Some(()) };
+            let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
+            let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
+            contents = format!("{} onload='setJackNet()'{}", pre, post);
+            let response = format!(
+                "{}\r\nContent-Length: {}\r\n\r\n{}",
+                status_line, contents.len(), contents
+            );
+            stream.write(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+    
+            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+            print!("> ");
+            stdout().flush().unwrap();
+            return Option::Some(());
+        } else if buffer.starts_with(get_wiki2) {
+            let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
+            let pre_contents = read_to_string(user_homepage).unwrap();
+            let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return Option::Some(()) };
+            let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
+            let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
+            contents = format!("{} onload='setWiki()'{}", pre, post);
+            let response = format!(
+                "{}\r\nContent-Length: {}\r\n\r\n{}",
+                status_line, contents.len(), contents
+            );
+            stream.write(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+    
+            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+            print!("> ");
+            stdout().flush().unwrap();
+            return Option::Some(());
         } else if buffer.starts_with(get_jn_json) {
             filename = "html-css-js/campus.json";
         } else if buffer.starts_with(get_cb_json) {
             filename = "html-css-js/roomChecks.json";
-        } else if buffer.starts_with(get_wiki) {
-            filename = "html-css-js/wiki.js";
+        } else if buffer.starts_with(get_logo1) {
+            filename = "html-css-js/logo.png";
+            let img_contents = read(filename).unwrap();
+            let response = format!(
+                "{}\r\n\
+                Content-Type: img/png\r\n\
+                Content-Length: {}\r\n\r\n",
+                status_line, img_contents.len()
+            );
+            stream.write(response.as_bytes()).unwrap();
+            stream.write(&img_contents).unwrap();
+            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+            print!("> ");
+            stdout().flush().unwrap();
+            return Option::Some(());
         } else {
             status_line =  "HTTP/1.1 404 NOT FOUND";
             filename = "html-css-js/404.html";
         };
         contents = read_to_string(filename).unwrap();
     } else if buffer.starts_with(b"POST") {
-        if buffer.starts_with(ping) {
-            contents = execute_ping(&mut buffer); // JN
+        if buffer.starts_with(login) {
+            let buff_copy = str::from_utf8(&buffer[..]).unwrap();
+            let credential_search = Regex::new(r"uname=(?<user>.*)&psw=(?<pass>[\d\w%]*)").unwrap();
+            let Some(credentials) = credential_search.captures(buff_copy) else { return Option::Some(()) };
+            let user = String::from(credentials["user"].to_string().into_boxed_str());
+            let pass = String::from(credentials["pass"].to_string().into_boxed_str());
+            println!("{}:{}", user, pass);
+            for credential in keys.users {
+                if user == credential[0] && pass == credential[1] {
+                    user_homepage = credential[2].clone().as_str();
+                    contents = read_to_string(&credential[2]).unwrap();
+                    let response = format!(
+                        "{}\r\nContent-Length: {}\r\n\r\n{}",
+                        status_line, contents.len(), contents
+                    );
+                    // Sends to STDOUT
+                    stream.write(response.as_bytes()).unwrap();
+                    stream.flush().unwrap();
+            
+                    println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+
+                    print!("> ");
+                    stdout().flush().unwrap();
+                    return Option::Some(());
+                }
+            }
+            contents = read_to_string("html-css-js/login.html").unwrap();
+        } else if buffer.starts_with(ping) {
+            contents = execute_ping(&mut buffer, rooms); // JN
         } else if buffer.starts_with(run_cb) {
             let buff_copy = process_buffer(&mut buffer);
             // get zone selection from request and store
@@ -362,6 +501,7 @@ async fn handle_connection(
             // call for roomchecks in LSM and store
             // ----------------------------------------------------------------
             for parent_location in parent_locations.into_iter() {
+                let clone_keys = keys.clone();
                 let url = format!(
                     r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last7days%22%2CParentLocation%3A%22{}%22%7D", 
                     parent_location
@@ -369,12 +509,15 @@ async fn handle_connection(
                 let req = reqwest::Client::builder()
                     .cookie_provider(Arc::clone(&cookie_jar))
                     .user_agent("server_lib/0.3.1")
-                    .default_headers(construct_headers())
-                    .build().ok()?
-                    .get(url)
+                    .default_headers(construct_headers(clone_keys))
+                    .timeout(Duration::from_secs(15))
+                    .build()
+                    .ok()?
                 ;
     
-                let body = req.send()
+                let body = req.get(url)
+                              .timeout(Duration::from_secs(15))
+                              .send()
                               .await
                               .expect("[-] RESPONSE ERROR")
                               .text()
@@ -432,11 +575,11 @@ async fn handle_connection(
             contents = w_build_articles(&mut buffer);
         } else {
             status_line = "HTTP/1.1 404 NOT FOUND";
-            contents = String::from("Empty");
+            contents = read_to_string("html-css-js/404.html").unwrap();
         };
     } else {
         status_line = "HTTP/1.1 404 NOT FOUND";
-        contents = String::from("Empty");
+        contents = read_to_string("html-css-js/404.html").unwrap();
     }
 
     // NOTE - look at this for error log format
@@ -491,7 +634,7 @@ async fn handle_connection(
 
     print!("> ");
     stdout().flush().unwrap();
-    Option::Some(())
+    return Option::Some(());
 }
 
 // Preps the Buffer to be parsed as json string
@@ -501,26 +644,26 @@ fn process_buffer(buffer: &mut [u8]) -> String {
         .to_string();
 
     // functon that returns first '{' index location and it's '}' location
-    let (i, j) = find_curls(&buff_copy);
-    let buff_copy  = &buff_copy[i..j+1];
-    
-    buff_copy.to_string()
+    let in_curls = find_enclosed(&buff_copy, ('{', '}'), true);
+    return in_curls;
 }
 
 // used to trim excess info off of the buffer
-fn find_curls(s: &String) -> (usize, usize) {
-    let bytes = s.as_bytes();
-    let mut i_return: usize = 0;
-    
-    for (i, &item) in bytes.iter().enumerate() {
-        if item == b'{' {
-            i_return = i;
-        }
-        if item == b'}' {
-            return (i_return, i);
-        }
+fn find_enclosed(s: &String, delimiters: (char,char), include_delim: bool) -> String {
+    let search_rule;
+    if include_delim {
+        search_rule = Regex::new(format!("(?<search_return>\\{}.*{})", delimiters.0, delimiters.1).as_str()).unwrap();
+    } else {
+        search_rule = Regex::new(format!("\\{}(?<search_return>.*){}", delimiters.0, delimiters.1).as_str()).unwrap();
     }
-    (s.len(), s.len())
+
+    let Some(returned_text) = search_rule.captures(s) else { return "Empty".to_string() };
+    println!("\r\nSearch results are {:?}", returned_text["search_return"].to_string());
+
+    let curl_find = Regex::new(r"(?<in_curls>\{.*})").unwrap();
+    let Some(in_curls) = curl_find.captures(s) else { return "{}".to_string() };
+
+    return in_curls["in_curls"].to_string();
 }
 
 fn pad(raw_in: String, length: usize) -> String {
@@ -572,13 +715,10 @@ $$\   $$ | $$$$$$$ |$$ /      $$$$$$  / $$ \$$$$ |$$$$$$$$ | $$ |
 $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\ 
 \$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ $$ | \$$ |\$$$$$$$\  \$$$$  |
  \______/  \_______| \_______|\__|  \__|\__|  \__| \_______|  \____/ 
-        
-TODO:
-   [ ] - Rewrite find_curls() for '(' instead to handle "hn.uwyo.edu (ip-addr)"
 */
 
 // call ping_this executible here
-fn execute_ping(buffer: &mut [u8]) -> String {
+fn execute_ping(buffer: &mut [u8], rooms: HashMap<String, Room>) -> String {
     // Prep Request into Struct
     let buff_copy = process_buffer(buffer);
     let pr: PingRequest = serde_json::from_str(&buff_copy)
@@ -593,7 +733,8 @@ fn execute_ping(buffer: &mut [u8]) -> String {
     let hostnames: Vec<String> = gen_hostnames(
         pr.devices,
         pr.building.clone(),
-        bs);
+        bs,
+        rooms);
 
     println!("{:?}", hostnames);
 
@@ -606,7 +747,7 @@ fn execute_ping(buffer: &mut [u8]) -> String {
         hn_ips.push(hn_ip);
     }
 
-    // format data into json using Serde
+    // format data into json using SerdeLOGIN
     let json_return = json!({
         "building": pr.building,
         "hostnames": hostnames,
@@ -618,7 +759,7 @@ fn execute_ping(buffer: &mut [u8]) -> String {
     println!("----\n------\nEND OF execute_ping() FUNCTION\n------\n-----\n");
 
     // Return JSON with ping results
-    json_return.to_string()
+    return json_return.to_string();
 }
 
 
@@ -633,7 +774,8 @@ fn execute_ping(buffer: &mut [u8]) -> String {
 fn gen_hostnames(
     sel_devs: Vec<String>, 
     sel_b: String,
-    bd: BuildingData) -> Vec<String> {
+    bd: BuildingData,
+    rooms: HashMap<String, Room>) -> Vec<String> {
     // init
     let mut devices: Vec<bool> = [false ,false ,false ,false ,false].to_vec();
     let mut hostnames = Vec::new();
@@ -659,44 +801,51 @@ fn gen_hostnames(
         if sel_b == item.name { // check selection
             for j in item.rooms { // iterate through rooms
                 // Build and append hostnames
-                temp_hostname.push_str(&item.abbrev);
+                temp_hostname.push_str(&item.abbrev.clone());
                 temp_hostname.push('-');
                 temp_hostname.push_str(&format!("{:0>4}", j).to_string());
                 temp_hostname.push('-');
+                println!("{} {}: {:?}", &item.abbrev.clone(), j.clone(), rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())));
                 if devices[0] {
-                    tmp_tmp = temp_hostname.clone();
-                    tmp_tmp.push_str("proc1");
-                    //println!("generated hostname: \n {}", tmp_tmp);
-                    hostnames.push(tmp_tmp);
+                    for n in 0..rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())).unwrap().items[0] {
+                        tmp_tmp = temp_hostname.clone();
+                        tmp_tmp.push_str(format!("proc{}", n+1).as_str());
+                        //println!("generated hostname: \n {}", tmp_tmp);
+                        hostnames.push(tmp_tmp);
+                    }
                 }
                 if devices [1] {
-                    tmp_tmp = temp_hostname.clone();
-                    tmp_tmp.push_str("pj1");
-                    //println!("generated hostname: \n {}", tmp_tmp);
-                    hostnames.push(tmp_tmp);
+                    for n in 0..rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())).unwrap().items[1] {
+                        tmp_tmp = temp_hostname.clone();
+                        tmp_tmp.push_str(format!("pj{}", n+1).as_str());
+                        //println!("generated hostname: \n {}", tmp_tmp);
+                        hostnames.push(tmp_tmp);
+                    }
                 }
                 if devices [2] {
-                    tmp_tmp = temp_hostname.clone();
-                    tmp_tmp.push_str("ws1");
-                    //println!("generated hostname: \n {}", tmp_tmp);
-                    hostnames.push(tmp_tmp);
+                    for n in 0..rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())).unwrap().items[2] {
+                        tmp_tmp = temp_hostname.clone();
+                        tmp_tmp.push_str(format!("ws{}", n+1).as_str());
+                        //println!("generated hostname: \n {}", tmp_tmp);
+                        hostnames.push(tmp_tmp);
+                    }
                 }
                 if devices [3] {
-                    tmp_tmp = temp_hostname.clone();
-                    tmp_tmp.push_str("tp1");
-                    //println!("generated hostname: \n {}", tmp_tmp);
-                    hostnames.push(tmp_tmp);
+                    for n in 0..rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())).unwrap().items[3] {
+                        tmp_tmp = temp_hostname.clone();
+                        tmp_tmp.push_str(format!("tp{}", n+1).as_str());
+                        //println!("generated hostname: \n {}", tmp_tmp);
+                        hostnames.push(tmp_tmp);
+                    }
                 }
                 if devices [4] {
-                    tmp_tmp = temp_hostname.clone();
-                    tmp_tmp.push_str("cmicx1");
-                    //println!("generated hostname: \n {}", tmp_tmp);
-                    hostnames.push(tmp_tmp);
+                    for n in 0..rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())).unwrap().items[4] {
+                        tmp_tmp = temp_hostname.clone();
+                        tmp_tmp.push_str(format!("cmic{}", n+1).as_str());
+                        //println!("generated hostname: \n {}", tmp_tmp);
+                        hostnames.push(tmp_tmp);
+                    }
                 }
-                /* TODO (?): FORMAT WHEN QUANTITY IS KNOWN
-                for q in procCount {
-                    hostnames.push(temp_hostname.push("proc{}", q))
-                } */
                 
                 //hostnames.push(temp_hostname.clone());
                 temp_hostname = String::new();
@@ -704,7 +853,7 @@ fn gen_hostnames(
         }
     }
     // Return value
-    hostnames
+    return hostnames;
 }
 
 /*
@@ -718,10 +867,10 @@ $$ |  $$\ $$ |  $$ |$$  _$$<  $$ |      $$ |  $$ |$$ |      $$ |  $$ |
  \______/ \__|  \__|\__|  \__|\__|      \_______/ \__|       \_______|
 */
 
-fn construct_headers() -> HeaderMap {
+fn construct_headers(keys: Keys) -> HeaderMap {
     let mut header_map = HeaderMap::new();
     header_map.insert(ACCEPT, HeaderValue::from_static("application/json"));
-    header_map.insert(AUTHORIZATION, HeaderValue::from_static(LOGIN));
+    header_map.insert(AUTHORIZATION, HeaderValue::from_str(&keys.api).expect("[-] KEY_ERR: Not found."));
 
     return header_map;
 }
@@ -809,15 +958,15 @@ _|        _|        _|      _|
 */
 
 fn dir_exists(path: &str) -> bool {
-    metadata(path).is_ok()
+    return metadata(path).is_ok();
 }
 
 fn is_this_file(path: &str) -> bool {
-    metadata(path).unwrap().is_file()
+    return metadata(path).unwrap().is_file();
 }
 
 fn is_this_dir(path: &str) -> bool {
-    metadata(path).unwrap().is_dir()
+    return metadata(path).unwrap().is_dir();
 }
 
 fn find_files(building: String, rm: String) -> Vec<String> {
@@ -884,6 +1033,7 @@ fn get_origin(buffer: &mut [u8]) -> String {
             }
         }
     }
+
     println!("FINDING ORIGIN FAILED");
     return buff_copy[ir..ir_end].to_string();
 }
@@ -924,6 +1074,7 @@ fn cfm_build_dir(_buffer: &mut [u8]) -> String {
     let json_return = json!({
         "dir_names": final_dirs
     });
+
     println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
     return json_return.to_string();
 }
@@ -965,6 +1116,7 @@ fn cfm_build_rm(buffer: &mut [u8]) -> String {
     let json_return = json!({
         "rooms": final_dirs
     });
+
     println!("----\n------\nEND OF cfm_build_rm() FUNCTION\n------\n-----\n");
     return json_return.to_string();
 }
@@ -991,7 +1143,6 @@ fn get_cfm(buffer: &mut [u8]) -> String {
     });
 
     println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
-
     return json_return.to_string();
 }
 
@@ -1078,7 +1229,6 @@ fn get_cfm_dir(buffer: &mut [u8]) -> String {
     });
 
     println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
-
     return json_return.to_string();
 }
 

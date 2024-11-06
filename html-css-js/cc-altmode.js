@@ -158,7 +158,7 @@ async function populateFileList(list) {
     for(var i in list) {
         if(list[i].includes(".zip")) {
             classtype = "cfm_zip";
-        } else if (list[i].slice(-8).includes(".")) {
+        } else if (list[i].includes(".") || (list[i] == "makefile")) {
             classtype = "cfm_file";
         } else {
             classtype = "cfm_dir";
@@ -218,8 +218,18 @@ async function updateRoomList() {
 //      setCrestronFile()
 // Change the DOM for Crestron File Manager
 async function setCrestronFile() {
+    const menuItems = document.querySelectorAll(".menuItem");
+    const hamburger = document.querySelector(".hamburger");
+
+    hamburger.addEventListener("click", toggleMenu);
+    menuItems.forEach(function(menuItem) {
+      menuItem.addEventListener("click", toggleMenu);
+    });
+
+    document.title = "CamCode - Bronson";
     let tool_header = document.querySelector('.tool_header');
     tool_header.innerHTML = 'CamCode';
+    history.pushState("test", "CamCode-CFM", "/cc-altmode");
     console.log('switching to camcode-cfm');
   
     // Pull List of Directories

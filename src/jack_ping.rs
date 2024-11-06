@@ -26,7 +26,7 @@ pub mod jp {
                 },
             Err(_) => {
                 println!("Error Pinging {}", hostname);
-                return String::from("x");
+                 return String::from("x");
                 },
         }
 

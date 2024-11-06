@@ -120,6 +120,37 @@ legend {
     border-style: none double inset double;
 }
 
+.hamburger {
+    grid-column: 1 / 2;
+    grid-row: 1;
+    margin: 5px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding-left: 2px;
+    padding-right: 2px;
+    scale: 150%;
+}
+
+.closeIcon {
+    display: none;
+}
+
+.menu {
+    position: fixed;
+    grid-row: 3x;
+    transform: translateX(-150%);
+    transition: transform 0.2s;
+    background: black;
+    color: white;
+    list-style: none;
+    padding-top: 4rem;
+}
+
+.showMenu {
+    transform: translateX(0);
+}
+
 .site_header {
     color: rgb(118, 66, 28);
     background-color: rgb(205, 177, 99);
@@ -223,6 +254,102 @@ legend {
     grid-row: 1 / 2;
 }
 
+input[type=text], input[type=password] {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    display: inline-block;
+    background-color: rgb(50, 50, 50);
+    border: 1px solid rgb(144, 118, 26);
+    color: rgb(144, 118, 26);;
+    box-sizing: border-box;
+}
+
+.login_imgcontainer {
+    text-align: center;
+    margin: 24px 0 12px 0;
+    position: relative;
+}
+
+img.avatar {
+    width: 40%;
+}
+
+.container {
+    padding: 16px;
+  }
+  
+  span.psw {
+    float: right;
+    padding-top: 16px;
+  }
+  
+  /* The Modal (background) */
+  .modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgb(0,0,0); /* Fallback color */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    padding-top: 60px;
+  }
+  
+  /* Modal Content/Box */
+  .modal-content {
+    background-color: rgb(50, 50, 50);
+    margin: 10% auto 15% auto; /* 5% from the top, 15% from the bottom and centered */
+    border: 1px solid rgb(144, 118, 26);
+    width: 40%; /* Could be more or less, depending on screen size */
+  }
+  
+  /* The Close Button (x) */
+  .close {
+    position: absolute;
+    right: 25px;
+    top: 0;
+    color: #000;
+    font-size: 35px;
+    font-weight: bold;
+  }
+  
+  .close:hover,
+  .close:focus {
+    color: red;
+    cursor: pointer;
+  }
+  
+  /* Add Zoom Animation */
+  .animate {
+    -webkit-animation: animatezoom 0.6s;
+    animation: animatezoom 0.6s
+  }
+  
+  @-webkit-keyframes animatezoom {
+    from {-webkit-transform: scale(0)} 
+    to {-webkit-transform: scale(1)}
+  }
+    
+  @keyframes animatezoom {
+    from {transform: scale(0)} 
+    to {transform: scale(1)}
+  }
+  
+  /* Change styles for span and cancel button on extra small screens */
+  @media screen and (max-width: 300px) {
+    span.psw {
+       display: block;
+       float: none;
+    }
+    .cancelbtn {
+       width: 100%;
+    }
+  }
+
 /* JackNet Definitions 
        _            _    _   _      _   
       | |          | |  | \ | |    | |  
@@ -291,6 +418,62 @@ legend {
 .jn_fieldset {
     border:4px outset rgb(144, 118, 26)
 }
+
+.vis_container{
+    position: relative;
+    background-color: rgb(50, 50, 50);
+    display: grid;
+    grid-template-columns: repeat(30,1fr);
+    gap: 0px;
+    grid-auto-rows: minmax(20px, auto);
+    border: 4px outset rgb(144, 118, 26);
+}
+
+.visHeader{
+    color: rgb(205, 177, 99);
+    text-align: center;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    grid-column: 1 / 7;
+    grid-row: 1 / 5;
+}
+
+.visTile{
+    margin: 0px;
+    border: 4px inset rgb(144, 118, 26);
+}
+
+.rmColumn {
+    color: rgb(205, 177, 99);
+    text-align: center;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    grid-auto-columns: auto;
+    -ms-grid-column-span: 10;
+    grid-row-start: auto;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+.devVisFalse {
+    background-color: rgb(184, 92, 101);
+    color: rgb(236, 200, 101);
+    border-radius: 4px;
+    border: 2px inset rgb(144, 118, 26);
+    text-align: left;
+    padding: 5px;
+    margin: 0px 0;
+}
+
+.devVisTrue {
+    background-color: rgb(120, 184, 92);
+    color: rgb(236, 200, 101);
+    border-radius: 4px;
+    border: 2px inset rgb(144, 118, 26);
+    text-align: left;
+    padding: 5px;
+    margin: 0px 0;
+}
+
 
 /* checkerboard Defifnitions 
    _____ _     _         _             _ 
