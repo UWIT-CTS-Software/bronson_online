@@ -275,6 +275,7 @@ async fn handle_connection(
 
     // HTML-oriented files
     // ------------------------------------------------------------------------
+    let get_icon    = b"GET /favicon.ico HTTP/1.1\r\n";
     let get_index   = b"GET / HTTP/1.1\r\n";
     let get_css     = b"GET /page.css HTTP/1.1\r\n";
     let get_cc      = b"GET /camcode.js HTTP/1.1\r\n";
@@ -317,6 +318,7 @@ async fn handle_connection(
     let mut status_line = "HTTP/1.1 200 OK";
     let mut contents = String::new();
     let filename;
+    let mut user_homepage: &str = "html-css-js/index.html";
     
     if buffer.starts_with(b"GET") {
         if buffer.starts_with(get_index) {
@@ -335,7 +337,7 @@ async fn handle_connection(
             filename = "html-css-js/wiki.js";
         } else if buffer.starts_with(get_ccalt2) {
             let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
-            let pre_contents = read_to_string("html-css-js/index.html").unwrap();
+            let pre_contents = read_to_string(user_homepage).unwrap();
             let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return Option::Some(()) };
             let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
             let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
@@ -348,10 +350,12 @@ async fn handle_connection(
             stream.flush().unwrap();
     
             println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+            print!("> ");
+            stdout().flush().unwrap();
             return Option::Some(());
         } else if buffer.starts_with(get_cb2) {
             let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
-            let pre_contents = read_to_string("html-css-js/index.html").unwrap();
+            let pre_contents = read_to_string(user_homepage).unwrap();
             let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return Option::Some(()) };
             let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
             let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
@@ -364,10 +368,12 @@ async fn handle_connection(
             stream.flush().unwrap();
     
             println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+            print!("> ");
+            stdout().flush().unwrap();
             return Option::Some(());
         } else if buffer.starts_with(get_jn2) {
             let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
-            let pre_contents = read_to_string("html-css-js/index.html").unwrap();
+            let pre_contents = read_to_string(user_homepage).unwrap();
             let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return Option::Some(()) };
             let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
             let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
@@ -380,10 +386,12 @@ async fn handle_connection(
             stream.flush().unwrap();
     
             println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+            print!("> ");
+            stdout().flush().unwrap();
             return Option::Some(());
         } else if buffer.starts_with(get_wiki2) {
             let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
-            let pre_contents = read_to_string("html-css-js/index.html").unwrap();
+            let pre_contents = read_to_string(user_homepage).unwrap();
             let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return Option::Some(()) };
             let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
             let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
@@ -396,6 +404,8 @@ async fn handle_connection(
             stream.flush().unwrap();
     
             println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+            print!("> ");
+            stdout().flush().unwrap();
             return Option::Some(());
         } else if buffer.starts_with(get_jn_json) {
             filename = "html-css-js/campus.json";
@@ -412,6 +422,9 @@ async fn handle_connection(
             );
             stream.write(response.as_bytes()).unwrap();
             stream.write(&img_contents).unwrap();
+            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+            print!("> ");
+            stdout().flush().unwrap();
             return Option::Some(());
         } else {
             status_line =  "HTTP/1.1 404 NOT FOUND";
@@ -426,11 +439,26 @@ async fn handle_connection(
             let user = String::from(credentials["user"].to_string().into_boxed_str());
             let pass = String::from(credentials["pass"].to_string().into_boxed_str());
             println!("{}:{}", user, pass);
-            if user == String::from("admin") && pass == String::from("Adm%21n") {
-                contents = read_to_string("html-css-js/index.html").unwrap();
-            } else {
-                contents = read_to_string("html-css-js/login.html").unwrap();
+            for credential in keys.users {
+                if user == credential[0] && pass == credential[1] {
+                    user_homepage = credential[2].clone().as_str();
+                    contents = read_to_string(&credential[2]).unwrap();
+                    let response = format!(
+                        "{}\r\nContent-Length: {}\r\n\r\n{}",
+                        status_line, contents.len(), contents
+                    );
+                    // Sends to STDOUT
+                    stream.write(response.as_bytes()).unwrap();
+                    stream.flush().unwrap();
+            
+                    println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+
+                    print!("> ");
+                    stdout().flush().unwrap();
+                    return Option::Some(());
+                }
             }
+            contents = read_to_string("html-css-js/login.html").unwrap();
         } else if buffer.starts_with(ping) {
             contents = execute_ping(&mut buffer, rooms); // JN
         } else if buffer.starts_with(run_cb) {

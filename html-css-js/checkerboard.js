@@ -127,6 +127,14 @@ function cb_clearConsole() {
 }
 
 function setChecker() {
+    const menuItems = document.querySelectorAll(".menuItem");
+    const hamburger = document.querySelector(".hamburger");
+
+    hamburger.addEventListener("click", toggleMenu);
+    menuItems.forEach(function(menuItem) {
+      menuItem.addEventListener("click", toggleMenu);
+    });
+
     document.title = "CheckerBoard - Bronson";
     let tool_header = document.querySelector('.tool_header');
     tool_header.innerHTML = 'Checkerboard';

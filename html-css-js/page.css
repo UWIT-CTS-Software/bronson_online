@@ -120,6 +120,37 @@ legend {
     border-style: none double inset double;
 }
 
+.hamburger {
+    grid-column: 1 / 2;
+    grid-row: 1;
+    margin: 5px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding-left: 2px;
+    padding-right: 2px;
+    scale: 150%;
+}
+
+.closeIcon {
+    display: none;
+}
+
+.menu {
+    position: fixed;
+    grid-row: 3x;
+    transform: translateX(-150%);
+    transition: transform 0.2s;
+    background: black;
+    color: white;
+    list-style: none;
+    padding-top: 4rem;
+}
+
+.showMenu {
+    transform: translateX(0);
+}
+
 .site_header {
     color: rgb(118, 66, 28);
     background-color: rgb(205, 177, 99);
