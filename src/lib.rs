@@ -36,7 +36,7 @@ use std::{
 	fmt::Debug,
 };
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, };
 
 trait FnBox {
     fn call_box(self: Box<Self>);
@@ -81,10 +81,10 @@ impl Worker {
 			}
 		});
 
-		Worker {
+		return Worker {
 			id,
 			thread: Some(thread),
-		}
+		};
     }
 }
 
@@ -106,10 +106,10 @@ impl ThreadPool {
 			workers.push(Worker::new(id, Arc::clone(&receiver)));
 		}
 
-		ThreadPool { 
+		return ThreadPool { 
 			workers,
 			sender,
-		}
+		};
     }
 
     pub fn execute<F>(&self, f: F)
@@ -139,8 +139,25 @@ impl Drop for ThreadPool {
     }
 }
 
+// keys struct
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Keys {
+	pub api: String,
+	pub users: Vec<Vec<String>>
+}
+impl<'a> Clone for Keys {
+	fn clone(&self) -> Keys {
+		let new_api: Box<str> = <String as Clone>::clone(&self.api).into_boxed_str();
+	
+		return Keys { 
+			api: String::from(new_api),
+			users: self.users.to_vec()
+		};
+	}
+}
+
 // ----------- Custom struct for checkerboard - jn <3
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Room {
 	pub name: String,
 	pub items: Vec<u8>,
@@ -161,13 +178,14 @@ impl<'a> Clone for Room {
 		let new_checked: Box<str> = <String as Clone>::clone(&self.checked).into_boxed_str();
 		let new_items = &self.items;
 		let new_schedule = &self.schedule;
-		Room {
+
+		return Room {
 			name: String::from(new_name),
 			items: (&new_items).to_vec(),
 			gp: self.gp,
 			checked: String::from(new_checked),
 			schedule:(&new_schedule).to_vec(),
-		}
+		};
 	}
 }
 
