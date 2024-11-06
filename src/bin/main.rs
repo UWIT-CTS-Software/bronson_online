@@ -285,7 +285,7 @@ async fn handle_connection(
 
     // HTML-oriented files
     // ------------------------------------------------------------------------
-    let get_icon    = b"GET /favicon.ico HTTP/1.1\r\n";
+    let _get_icon    = b"GET /favicon.ico HTTP/1.1\r\n";
     let get_index   = b"GET / HTTP/1.1\r\n";
     let get_css     = b"GET /page.css HTTP/1.1\r\n";
     let get_cc      = b"GET /camcode.js HTTP/1.1\r\n";
@@ -301,7 +301,7 @@ async fn handle_connection(
     let get_cb_json = b"GET /roomChecks.json HTTP/1.1\r\n";
 
     let get_logo1   = b"GET /logo.png HTTP/1.1\r\n";
-    let get_logo2   = b"GET /logo-2-line.png HTTP/1'1\r\n";
+    let _get_logo2   = b"GET /logo-2-line.png HTTP/1'1\r\n";
     // ------------------------------------------------------------------------
     
     // make calls to backend functionality
@@ -326,9 +326,9 @@ async fn handle_connection(
     // Handle requests
     // ------------------------------------------------------------------------
     let mut status_line = "HTTP/1.1 200 OK";
-    let mut contents = String::new();
+    let contents;
     let filename;
-    let mut user_homepage: &str = "html-css-js/index.html";
+    let mut user_homepage: &str = "html-css-js/index_guest.html";
     
     if buffer.starts_with(b"GET") {
         if buffer.starts_with(get_index) {
@@ -451,8 +451,8 @@ async fn handle_connection(
             println!("{}:{}", user, pass);
             for credential in keys.users {
                 if user == credential[0] && pass == credential[1] {
-                    user_homepage = credential[2].clone().as_str();
-                    contents = read_to_string(&credential[2]).unwrap();
+                    user_homepage = credential[2].as_str();
+                    contents = read_to_string(user_homepage).unwrap();
                     let response = format!(
                         "{}\r\nContent-Length: {}\r\n\r\n{}",
                         status_line, contents.len(), contents
@@ -666,7 +666,7 @@ fn find_enclosed(s: &String, delimiters: (char,char), include_delim: bool) -> St
     return in_curls["in_curls"].to_string();
 }
 
-fn pad(raw_in: String, length: usize) -> String {
+/* fn pad(raw_in: String, length: usize) -> String {
     if raw_in.len() < length {
         let mut out_string: String = String::new();
         for _ in 0..(length-raw_in.len()) {
@@ -677,7 +677,7 @@ fn pad(raw_in: String, length: usize) -> String {
     } else {
         return String::from(raw_in);
     }
-}
+} */
 
 fn pad_zero(raw_in: String, length: usize) -> String {
     if raw_in.len() < length {
@@ -901,10 +901,10 @@ fn check_schedule(room: Room) -> String {
         if block_vec[0].contains(day_of_week) {
             let mut f = Vec::new();
             if adjusted_time < adjusted_start {
-                write!(&mut f, " | [+] AVAILABLE   | UNTIL {}:{}", adjusted_start / 100, pad_zero((adjusted_start % 100).to_string(), 2));
+                write!(&mut f, " | [+] AVAILABLE   | UNTIL {}:{}", adjusted_start / 100, pad_zero((adjusted_start % 100).to_string(), 2)).unwrap();
                 return String::from_utf8(f).expect("EMPTY");
             } else if (adjusted_start <= adjusted_time) && (adjusted_time <= adjusted_end) {
-                write!(&mut f, " | [-] UNAVAILABLE | UNTIL {}:{}", adjusted_end / 100, pad_zero((adjusted_end % 100).to_string(), 2));
+                write!(&mut f, " | [-] UNAVAILABLE | UNTIL {}:{}", adjusted_end / 100, pad_zero((adjusted_end % 100).to_string(), 2)).unwrap();
                 return String::from_utf8(f).expect("EMPTY");
             }
         }
@@ -920,12 +920,12 @@ fn check_lsm(room: Room) -> String {
     let mut d = Vec::new();
     if room.gp == 1 {
         if time_diff.num_seconds() >= 604800 {
-            write!(&mut d, " | [-] NEEDS CHECKED | LAST CHECKED {}", chopped_checked[0]);
+            write!(&mut d, " | [-] NEEDS CHECKED | LAST CHECKED {}", chopped_checked[0]).unwrap();
         } else {
-            write!(&mut d, " | [+] CHECKED       | LAST CHECKED {}", chopped_checked[0]);
+            write!(&mut d, " | [+] CHECKED       | LAST CHECKED {}", chopped_checked[0]).unwrap();
         }
     } else {
-        write!(&mut d, "--- UNDER CONSTRUCTION ---");
+        write!(&mut d, "--- UNDER CONSTRUCTION ---").unwrap();
     }
 
     return String::from_utf8(d).expect("Empty");
@@ -1243,7 +1243,7 @@ $$  /   \$$ |$$ |$$ | \$$\ $$ |
 \__/     \__|\__|\__|  \__|\__|
 */
 
-fn w_build_articles(buffer: &mut [u8]) -> String {
+fn w_build_articles(_buffer: &mut [u8]) -> String {
     // Vars
     let mut article_vec: Vec<String> = Vec::new();
 
