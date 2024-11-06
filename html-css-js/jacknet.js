@@ -494,9 +494,19 @@ async function postJNVis(graphBool, building) {
 
 // SETTING THE HTML DOM
 async function setJackNet() {
+    const menuItems = document.querySelectorAll(".menuItem");
+    const hamburger = document.querySelector(".hamburger");
+
+    hamburger.addEventListener("click", toggleMenu);
+    menuItems.forEach(function(menuItem) {
+      menuItem.addEventListener("click", toggleMenu);
+    });
+
+    document.title = "JackNet - Bronson";
     // Update tool_header
     let tool_header = document.querySelector('.tool_header');
     tool_header.innerHTML = 'JackNet';
+    history.pushState("test", "JackNet", "/jacknet");
     console.log('Switching to jacknet');
 
     let progGuts = document.querySelector('.program_board .program_guts');
