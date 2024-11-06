@@ -73,12 +73,10 @@ use std::{
 };
 use reqwest::{ 
     header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT, }
-    header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
 /* use tokio::sync::{ Semaphore, }; */
 /* use tokio::sync::{ Semaphore, }; */
 use csv::{ Reader, };
-use local_ip_address::{ local_ip, };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
 use regex::Regex;
@@ -742,7 +740,7 @@ fn execute_ping(buffer: &mut [u8], rooms: HashMap<String, Room>) -> String {
     //    USING BuildingData Struct / front-end request info.
     // AB -> [AB 104 , AB 105 , ... ]
     // TODO
-    let rooms_to_ping: Vec<String> = gen_rooms(pr.building.clone());
+    let rooms_to_ping: Vec<String> = gen_rooms(pr.building.clone(), bs);
 
     let hostnames = ["BROKEN_SORRY_FIXING_IT"];
 
@@ -921,14 +919,29 @@ fn gen_ip2(item_vec: Vec<u8>) -> Vec<String> {
 }
 
 // TODO (AG -> [AG 1, AG 2, ...])
-fn gen_rooms(selected_building: String) -> Vec<String> {
+fn gen_rooms(
+    sel_b: String,
+    bd: BuildingData) -> Vec<String> {
     // open campus.csv take each record that begins with respective abbreviation. In the event of 'All Buildings' Take the entirty of collumn 1 (Ignore the first row / header). CAMPUS_CSV.
-    
+    let mut rooms = Vec::new();
+    let mut tmp = String::new();
 
+    for item in bd.building_data { //  For each building in the data
+        if (sel_b == item.name) || (sel_b == "All Buildings") {
+            for j in item.rooms {  // iterate through rooms
+                tmp.push_str(&item.abbrev.clone());
+                tmp.push(' ');
+                tmp.push_str(&j);
+                rooms.push(tmp);
+                tmp = String::new();
+            }
+        }
+    }
+    return rooms;
 }
 
 /*
-$$$$$$\  $$\       $$\                 $$$$$$$\                  $$\ 
+ $$$$$$\  $$\       $$\                 $$$$$$$\                  $$\ 
 $$  __$$\ $$ |      $$ |                $$  __$$\                 $$ |
 $$ /  \__|$$$$$$$\  $$ |  $$\  $$$$$$\  $$ |  $$ | $$$$$$\   $$$$$$$ |
 $$ |      $$  __$$\ $$ | $$  |$$  __$$\ $$$$$$$\ |$$  __$$\ $$  __$$ |
