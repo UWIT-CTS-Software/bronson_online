@@ -1,28 +1,69 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>UWIT-Bronson</title>
     <meta charset="UTF-8" />
+    <title>UWIT-Bronson</title>
+    <!-- <link rel="icon" type="image/x-icon" href="favicon.ico"> -->
     <iframe id="content" style ="display:none;"></iframe>
     <link rel="stylesheet" type="text/css" href="page.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Contrail+One&family=Racing+Sans+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script src="checkerboard.js" type="text/javascript" charset="utf-8"></script>
     <script src="camcode.js" type="text/javascript" charset="utf-8"></script>
     <script src="cc-altmode.js" type="text/javascript" charset="utf-8"></script>
     <script src="jacknet.js" type="text/javascript" charset="utf-8"></script>
-    <script src="signing.js" type="text/javascript" charset="utf-8"></script>
+    <!-- <script src="signing.js" type="text/javascript" charset="utf-8"></script> -->
     <script src="wiki.js" type="text/javascript" charset="utf-8"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script type="text/javascript">
+      window.addEventListener("popstate", () => {
+        console.log(location.href);
+        if (location.pathname == "/checker") {
+          setChecker();
+        } else if (location.pathname == "/jacknet") {
+          setJackNet();
+        } else if (location.pathname == "/cc-altmode") {
+          setCrestronFile();
+        } else if (location.pathname == "/wiki") {
+          setWiki();
+        } else {
+          setDashboard();
+        }
+      },
+      false,
+      );
+
+      function toggleMenu() {
+        const menu = document.querySelector(".menu");
+        const menuIcon = document.querySelector(".menuIcon");
+        const closeIcon = document.querySelector(".closeIcon");
+        if (menu.classList.contains("showMenu")) {
+          menu.classList.remove("showMenu");
+          closeIcon.style.display = "none";
+          menuIcon.style.display = "block";
+        } else {
+          menu.classList.add("showMenu");
+          closeIcon.style.display = "block";
+          menuIcon.style.display = "none";
+        }
+      }
+
       // setDashboard()
       function setDashboard() {
+        const menuItems = document.querySelectorAll(".menuItem");
+        const hamburger = document.querySelector(".hamburger");
+
+        hamburger.addEventListener("click", toggleMenu);
+        menuItems.forEach(function(menuItem) {
+          menuItem.addEventListener("click", toggleMenu);
+        });
+
         document.title = "Dashboard - Bronson";
         let tool_header = document.querySelector('.tool_header');
         tool_header.innerHTML = 'Dashboard';
-        history.pushState("test", "Dashboard", "/");
-        console.log('Switching to dashboard');
+        history.pushState({}, "Dashboard", "/");
 
         let prog_guts = document.querySelector('.program_board .program_guts');
 
@@ -59,6 +100,16 @@
     <div class="program_board">
       <!-- Website Header (Doesn't Change) -->
       <div class="program_header">
+        <!-- <ul class="menu">
+          <li><a class="menuItem" href="#">Link 1</a></li>
+          <li><a class="menuItem" href="#">Link 2</a></li>
+          <li><a class="menuItem" href="#">Link 3</a></li>
+          <li><a class="menuItem" href="#">Link 4</a></li>
+        </ul> -->
+        <button class="hamburger">
+          <i class="menuIcon material-icons">menu</i>
+          <i class="closeIcon material-icons">close</i>
+        </button>
         <h1 class='site_header' onclick='setDashboard()'>
           Bronson</h1>
         <p class='p_header'>
