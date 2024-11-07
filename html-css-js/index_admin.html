@@ -2,10 +2,10 @@
 <html>
   <head>
     <meta charset="UTF-8" />
+    <link rel="stylesheet" type="text/css" href="page.css">
     <title>UWIT-Bronson</title>
     <!-- <link rel="icon" type="image/x-icon" href="favicon.ico"> -->
     <iframe id="content" style ="display:none;"></iframe>
-    <link rel="stylesheet" type="text/css" href="page.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Contrail+One&family=Racing+Sans+One&display=swap" rel="stylesheet">
@@ -14,9 +14,11 @@
     <script src="camcode.js" type="text/javascript" charset="utf-8"></script>
     <script src="cc-altmode.js" type="text/javascript" charset="utf-8"></script>
     <script src="jacknet.js" type="text/javascript" charset="utf-8"></script>
-    <!-- <script src="signing.js" type="text/javascript" charset="utf-8"></script> -->
     <script src="wiki.js" type="text/javascript" charset="utf-8"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- <script src="terminal.js" type="text/javascript" charset="utf-8"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery.terminal/css/jquery.terminal.min.css"/>    
     <script type="text/javascript">
       window.addEventListener("popstate", () => {
         console.log(location.href);
@@ -93,6 +95,25 @@
         prog_guts.replaceWith(main_container);
         return;
       }
+
+      $(function() {
+        $('#terminal').terminal({
+            hello: function(name) {
+              this.echo('Hello, ' + name + '. Nice to meet you.')
+            }
+        }, {
+          greetings: '\
+$$$$$$$$\\                                $$\\                     $$\\ \n\
+\\__$$  __|                               \\__|                    $$ |\n\
+   $$ | $$$$$$\\   $$$$$$\\  $$$$$$\\$$$$\\  $$\\ $$$$$$$\\   $$$$$$\\  $$ |\n\
+   $$ |$$  __$$\\ $$  __$$\\ $$  _$$  _$$\\ $$ |$$  __$$\\  \\____$$\\ $$ |\n\
+   $$ |$$$$$$$$ |$$ |  \\__|$$ / $$ / $$ |$$ |$$ |  $$ | $$$$$$$ |$$ |\n\
+   $$ |$$   ____|$$ |      $$ | $$ | $$ |$$ |$$ |  $$ |$$  __$$ |$$ |\n\
+   $$ |\\$$$$$$$\\ $$ |      $$ | $$ | $$ |$$ |$$ |  $$ |\\$$$$$$$ |$$ |\n\
+   \\__| \\_______|\\__|      \\__| \\__| \\__|\\__|\\__|  \\__| \\_______|\\__|\n\
+'
+        });
+      });
     </script>
   </head>
   <!-- body -->
@@ -108,7 +129,7 @@
         </ul> -->
         <button class="hamburger">
           <i class="menuIcon material-icons">menu</i>
-          <i class="closeIcon material-icons">close</i>
+          <i class="closeIcon material-icons" style="display: none;">close</i>
         </button>
         <h1 class='site_header' onclick='setDashboard()'>
           Bronson</h1>
@@ -129,9 +150,9 @@
               CamCode </button>
             <button id="wiki" onclick="setWiki()" type="button" class="headButton">
               Wiki </button>
-            <button id="terminal" type="button" class="headButton">
+            <!-- <button id="my_terminal" onclick="setTerminal()" type="button" class="headButton">
               Terminal </button>
-            </button>
+            </button> -->
           </fieldset>
         </div>
         <div class="site_buttons">
@@ -150,11 +171,15 @@
               Campus Map </button>
           </fieldset>
         </div>
+        
       </div>
       <br>
       <!-- <p> Local dashboard of stuff // maybe a feed</p> -->
       <div class="program_guts">
       </div>
     </div>
+    <footer id="terminal"></footer>
   </body>
 </html>
+
+
