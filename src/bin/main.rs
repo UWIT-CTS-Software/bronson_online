@@ -198,7 +198,7 @@ fn main() {
         let record = result.unwrap();
         if room_filter.is_match(record.get(0).expect("Empty")) {
             let mut item_vec: Vec<u8> = Vec::new();
-            for i in 1..6 { // Packing item_vec from csv file
+            for i in 1..7 { // Packing item_vec from csv file
                 item_vec.push(record.get(i).expect("-1").parse().unwrap());
             }
 
@@ -219,7 +219,7 @@ fn main() {
                 name: String::from(record.get(0).expect("Empty")),
                 hostnames: hn_vec,
                 ips: ip_vec,
-                gp: record.get(6).expect("-1").parse().unwrap(),
+                gp: record.get(7).expect("-1").parse().unwrap(),
                 checked: String::from("2000-01-01T00:00:00Z"),
                 schedule: schedule,
             };
