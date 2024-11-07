@@ -54,7 +54,7 @@ use server_lib::{
 use getopts::Options;
 use std::{
     str, env,
-    io::{ prelude::*, Read, stdout, stdin},
+    io::{ prelude::*, Read, stdout, },
     net::{ TcpStream, TcpListener, },
     fs::{
         read, read_to_string, read_dir, metadata,
@@ -166,16 +166,6 @@ fn main() {
 
     let room_filter = Regex::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
 
-    // terminal input stuff
-    // ------------------------------------------------------------------------
-
-    let mut terminal_input = String::new();
-
-    stdin().read_line(&mut terminal_input)
-        .expect("Failed to Read Line in Terminal Console");
-    
-    handle_terminal_in(terminal_input);
-
     // generate rooms HashMap
     // ------------------------------------------------------------------------
     let mut schedules: HashMap<String, Vec<String>> = HashMap::new();
@@ -285,9 +275,10 @@ async fn handle_connection(
 
     // HTML-oriented files
     // ------------------------------------------------------------------------
-    let _get_icon    = b"GET /favicon.ico HTTP/1.1\r\n";
+    let _get_icon   = b"GET /favicon.ico HTTP/1.1\r\n";
     let get_index   = b"GET / HTTP/1.1\r\n";
     let get_css     = b"GET /page.css HTTP/1.1\r\n";
+
     let get_cc      = b"GET /camcode.js HTTP/1.1\r\n";
     let get_ccalt1  = b"GET /cc-altmode.js HTTP/1.1\r\n";
     let get_cb1     = b"GET /checkerboard.js HTTP/1.1\r\n";
@@ -297,11 +288,12 @@ async fn handle_connection(
     let get_cb2     = b"GET /checkerboard HTTP/1.1\r\n";
     let get_jn2     = b"GET /jacknet HTTP/1.1\r\n";
     let get_wiki2   = b"GET /wiki HTTP/1.1\r\n";
+
     let get_jn_json = b"GET /campus.json HTTP/1.1\r\n";
     let get_cb_json = b"GET /roomChecks.json HTTP/1.1\r\n";
 
     let get_logo1   = b"GET /logo.png HTTP/1.1\r\n";
-    let _get_logo2   = b"GET /logo-2-line.png HTTP/1'1\r\n";
+    let get_logo2   =  b"GET /logo-2-line.png HTTP/1.1\r\n";
     // ------------------------------------------------------------------------
     
     // make calls to backend functionality
@@ -423,6 +415,21 @@ async fn handle_connection(
             filename = "html-css-js/roomChecks.json";
         } else if buffer.starts_with(get_logo1) {
             filename = "html-css-js/logo.png";
+            let img_contents = read(filename).unwrap();
+            let response = format!(
+                "{}\r\n\
+                Content-Type: img/png\r\n\
+                Content-Length: {}\r\n\r\n",
+                status_line, img_contents.len()
+            );
+            stream.write(response.as_bytes()).unwrap();
+            stream.write(&img_contents).unwrap();
+            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+            print!("> ");
+            stdout().flush().unwrap();
+            return Option::Some(());
+        } else if buffer.starts_with(get_logo2) {
+            filename = "html-css-js/logo-2-line.png";
             let img_contents = read(filename).unwrap();
             let response = format!(
                 "{}\r\n\
@@ -690,14 +697,6 @@ fn pad_zero(raw_in: String, length: usize) -> String {
     } else {
         return String::from(raw_in);
     }
-}
-
-// NEW
-// handle_terminal_in() - takes io::stdin
-async fn handle_terminal_in(t_in: String) {
-    println!("SUCCESS: handle_terminal_in Successfully Called");
-    println!("{}",t_in);
-    return;
 }
 
 // Debug function
@@ -1265,3 +1264,14 @@ fn w_build_articles(_buffer: &mut [u8]) -> String {
 
     return json_return.to_string();
 }
+
+/*
+$$$$$$$$\                                $$\                     $$\ 
+\__$$  __|                               \__|                    $$ |
+   $$ | $$$$$$\   $$$$$$\  $$$$$$\$$$$\  $$\ $$$$$$$\   $$$$$$\  $$ |
+   $$ |$$  __$$\ $$  __$$\ $$  _$$  _$$\ $$ |$$  __$$\  \____$$\ $$ |
+   $$ |$$$$$$$$ |$$ |  \__|$$ / $$ / $$ |$$ |$$ |  $$ | $$$$$$$ |$$ |
+   $$ |$$   ____|$$ |      $$ | $$ | $$ |$$ |$$ |  $$ |$$  __$$ |$$ |
+   $$ |\$$$$$$$\ $$ |      $$ | $$ | $$ |$$ |$$ |  $$ |\$$$$$$$ |$$ |
+   \__| \_______|\__|      \__| \__| \__|\__|\__|  \__| \_______|\__|
+*/
