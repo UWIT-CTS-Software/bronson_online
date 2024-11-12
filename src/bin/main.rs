@@ -194,7 +194,7 @@ fn main() {
         let record = result.unwrap();
         if room_filter.is_match(record.get(0).expect("Empty")) {
             let mut item_vec: Vec<u8> = Vec::new();
-            for i in 1..6 {
+            for i in 1..7 {
                 item_vec.push(record.get(i).expect("-1").parse().unwrap());
             }
 
@@ -207,7 +207,7 @@ fn main() {
             let room = Room {
                 name: String::from(record.get(0).expect("Empty")),
                 items: item_vec,
-                gp: record.get(6).expect("-1").parse().unwrap(),
+                gp: record.get(7).expect("-1").parse().unwrap(),
                 checked: String::from("2000-01-01T00:00:00Z"),
                 schedule: schedule,
             };
@@ -515,7 +515,7 @@ async fn handle_connection(
                 );
                 let req = reqwest::Client::builder()
                     .cookie_provider(Arc::clone(&cookie_jar))
-                    .user_agent("server_lib/0.3.1")
+                    .user_agent("server_lib/1.1.0")
                     .default_headers(construct_headers(clone_keys))
                     .timeout(Duration::from_secs(15))
                     .build()
