@@ -899,7 +899,7 @@ fn gen_hn2(
     for i in 0..4 {
         let tmp_dev = match i {
             0 => "PROC",
-            1 => "PJ",
+            1 => "PROJ",
             2 => "DISP",
             3 => "WS",
             4 => "TP",
