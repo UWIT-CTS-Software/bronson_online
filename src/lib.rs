@@ -270,3 +270,47 @@ pub struct GeneralRequest {
 	pub priority: String,
 	pub buffer: String
 }
+
+pub static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/campus.json"));
+pub static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
+pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
+pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomConfig_agg.csv");
+pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/campus.csv");
+pub static KEYS      : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/keys.json");
+pub static STATUS_200: &str = "HTTP/1.1 200 OK";
+pub static STATUS_404: &str = "HTTP/1.1 404 NOT FOUND";
+
+pub const ZONE_1: [&'static str; 11] = [
+    "Science%20Initiative%20Building%20(SI)", "Geology%20(GE)", "Health%20Sciences%20(HS)", 
+    "STEM%201st%20Floor", "STEM%202nd%20Floor", "STEM%203rd%20Floor", "Berry%20Center%20(BC)",
+    "Engineering%20Education%20and%20Research%20Building%20(EERB)", "Anthropology%20(AN)", 
+    "Earth%20Sciences%20Building%20(ESB)", "Energy%20Innovation%20Center%20(EIC)", 
+];
+pub const ZONE_2: [&'static str; 8] = [
+    "Engineering%20(EN)", "Agriculture%20(AG)", "Education%20(ED)", "History%20(HI)", 
+    "Half%20Acre%20(HA)", "Business%20(BU)", "Coe%20Library%20(CL)", "Education%20Annex%20(EA)", 
+];
+pub const ZONE_3: [&'static str; 9] = [
+    "Physical%20Sciences%20(PS)", "Classroom%20Building%20(CR)", 
+    "Arts%20%26%20Sciences%20(AS)", "Aven%20Nelson%20(AV)", "Biological%20Sciences%20(BS)", 
+    "Native%20American%20Ed%20Research%20%26%20Culteral%20Center%20(NA)", "Ross%20Hall%20(RH)", 
+    "Hoyt%20Hall%20(HO)", "Guthrie%20House%20(GH)", 
+];
+pub const ZONE_4: [&'static str; 8] = [
+    "IT%20Center%20(ITC)", "Corbett%20(CB)", "Law%20School%20(LS)", "Beta%20House%20(BH)", 
+    "Buchanan%20Center%20for%20Performing%20Arts%20(PA)", "Visual%20Arts%20(VA)", 
+    "Animal%20Science/Molecular%20Biology%20(AB)", "American%20Heritage%20Center%20(AC)", 
+];
+
+pub const ZONE_1_SHORT: [&'static str; 9] = [
+    "SI", "GE", "HS", "STEM", "BC", "EERB", "AN", "ES", "EIC",
+];
+pub const ZONE_2_SHORT: [&'static str; 8] = [
+    "EN", "AG", "ED", "HI", "HA", "BU", "CL", "EA",
+];
+pub const ZONE_3_SHORT: [&'static str; 10] = [
+    "PS", "CR", "AS", "AV", "BS", "NAC", "RH", "HO", "GH", "CI" // Add to ZONE_3
+];
+pub const ZONE_4_SHORT: [&'static str; 8] = [
+    "IT", "CB", "LS", "BH", "PA", "VA", "AB", "AC",
+];

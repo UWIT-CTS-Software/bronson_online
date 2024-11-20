@@ -100,21 +100,37 @@
         $('#terminal').terminal({
             hello: function(name) {
               this.echo('Hello, ' + name + '. Nice to meet you.')
+            },
+            refresh: async function() {
+              let res_alert = "[-] File not updated.";
+              this.echo('[+] Updating file...');
+              let res = await fetch('refresh')
+                .then(response => {
+                  if (!response.ok) {
+                    throw new Error("HTTP error " + response.status);
+                  } else {
+                    return response.json();
+                  }
+                })
+              res = JSON.stringify(res);
+              res_alert = JSON.parse(res).body;
+              this.echo(res_alert);
             }
         }, {
-          greetings: '\
-$$$$$$$$\\                                $$\\                     $$\\ \n\
-\\__$$  __|                               \\__|                    $$ |\n\
-   $$ | $$$$$$\\   $$$$$$\\  $$$$$$\\$$$$\\  $$\\ $$$$$$$\\   $$$$$$\\  $$ |\n\
-   $$ |$$  __$$\\ $$  __$$\\ $$  _$$  _$$\\ $$ |$$  __$$\\  \\____$$\\ $$ |\n\
-   $$ |$$$$$$$$ |$$ |  \\__|$$ / $$ / $$ |$$ |$$ |  $$ | $$$$$$$ |$$ |\n\
-   $$ |$$   ____|$$ |      $$ | $$ | $$ |$$ |$$ |  $$ |$$  __$$ |$$ |\n\
-   $$ |\\$$$$$$$\\ $$ |      $$ | $$ | $$ |$$ |$$ |  $$ |\\$$$$$$$ |$$ |\n\
-   \\__| \\_______|\\__|      \\__| \\__| \\__|\\__|\\__|  \\__| \\_______|\\__|\n\
-'
+          greetings: greetings.innerHTML
         });
       });
     </script>
+    <template id='greetings'>
+$$$$$$$$\                                $$\                     $$\ 
+\__$$  __|                               \__|                    $$ |
+   $$ | $$$$$$\   $$$$$$\  $$$$$$\$$$$\  $$\ $$$$$$$\   $$$$$$\  $$ |
+   $$ |$$  __$$\ $$  __$$\ $$  _$$  _$$\ $$ |$$  __$$\  \____$$\ $$ |
+   $$ |$$$$$$$$ |$$ |  \__|$$ / $$ / $$ |$$ |$$ |  $$ | $$$$$$$ |$$ |
+   $$ |$$   ____|$$ |      $$ | $$ | $$ |$$ |$$ |  $$ |$$  __$$ |$$ |
+   $$ |\$$$$$$$\ $$ |      $$ | $$ | $$ |$$ |$$ |  $$ |\$$$$$$$ |$$ |
+   \__| \_______|\__|      \__| \__| \__|\__|\__|  \__| \_______|\__|
+    </template>
   </head>
   <!-- body -->
   <body onload="setDashboard()">

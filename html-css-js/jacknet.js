@@ -94,7 +94,7 @@ async function getBuildingList() {
         bl[i] = buildingData[i].name;
     }
 
-    return bl;
+    return bl.sort();
 }
 
 // Returns a list of rooms given a building name
@@ -104,7 +104,7 @@ async function getRooms(buildingName) {
     let buildingData = JSON.parse(data).buildingData;
     for(var i = 0; i < buildingData.length; i++) {
         if(buildingData[i].name == buildingName) {
-            return buildingData[i].rooms;
+            return buildingData[i].rooms.sort();
         }
     }
 }

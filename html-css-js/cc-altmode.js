@@ -158,7 +158,7 @@ async function populateFileList(list) {
     for(var i in list) {
         if(list[i].includes(".zip")) {
             classtype = "cfm_zip";
-        } else if (list[i].includes(".") || (list[i] == "makefile")) {
+        } else if (list[i].includes(".")) {
             classtype = "cfm_file";
         } else {
             classtype = "cfm_dir";
@@ -345,7 +345,7 @@ async function getCFM_BuildDirs() {
     })
     .then((response) => response.json())
     .then((json) => {
-        return json.dir_names;
+        return json.dir_names.sort();
     });
 }
 
