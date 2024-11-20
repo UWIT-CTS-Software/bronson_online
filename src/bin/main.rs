@@ -50,6 +50,9 @@ use server_lib::{
     Room, ZoneRequest,  
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
+    ZONE_1, ZONE_1_SHORT, ZONE_2, ZONE_2_SHORT, ZONE_3, ZONE_3_SHORT, ZONE_4, ZONE_4_SHORT,
+    CAMPUS_STR, CFM_DIR, WIKI_DIR, ROOM_CSV, CAMPUS_CSV, KEYS,
+    STATUS_200, STATUS_404,
 };
 use getopts::Options;
 use std::{
@@ -74,60 +77,11 @@ use std::{
 use reqwest::{ 
     header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
-/* use tokio::sync::{ Semaphore, }; */
 use csv::{ Reader, };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
 use regex::Regex;
 use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta, };
-// ----------------------------------------------------------------------------
-
-// define static and const variables
-// ----------------------------------------------------------------------------
-static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/campus.json"));
-static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
-static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
-static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomConfig_agg.csv");
-static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/campus.csv");
-static KEYS      : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/keys.json");
-
-/* static PERMIT    : Semaphore = Semaphore::const_new(1);
-static ROOMS     : Database = Database::setup(); */
-
-const ZONE_1: [&'static str; 11] = [
-    "Science%20Initiative%20Building%20(SI)", "Geology%20(GE)", "Health%20Sciences%20(HS)", 
-    "STEM%201st%20Floor", "STEM%202nd%20Floor", "STEM%203rd%20Floor", "Berry%20Center%20(BC)",
-    "Engineering%20Education%20and%20Research%20Building%20(EERB)", "Anthropology%20(AN)", 
-    "Earth%20Sciences%20Building%20(ESB)", "Energy%20Innovation%20Center%20(EIC)", 
-];
-const ZONE_2: [&'static str; 8] = [
-    "Engineering%20(EN)", "Agriculture%20(AG)", "Education%20(ED)", "History%20(HI)", 
-    "Half%20Acre%20(HA)", "Business%20(BU)", "Coe%20Library%20(CL)", "Education%20Annex%20(EA)", 
-];
-const ZONE_3: [&'static str; 9] = [
-    "Physical%20Sciences%20(PS)", "Classroom%20Building%20(CR)", 
-    "Arts%20%26%20Sciences%20(AS)", "Aven%20Nelson%20(AV)", "Biological%20Sciences%20(BS)", 
-    "Native%20American%20Ed%20Research%20%26%20Culteral%20Center%20(NA)", "Ross%20Hall%20(RH)", 
-    "Hoyt%20Hall%20(HO)", "Guthrie%20House%20(GH)", 
-];
-const ZONE_4: [&'static str; 8] = [
-    "IT%20Center%20(ITC)", "Corbett%20(CB)", "Law%20School%20(LS)", "Beta%20House%20(BH)", 
-    "Buchanan%20Center%20for%20Performing%20Arts%20(PA)", "Visual%20Arts%20(VA)", 
-    "Animal%20Science/Molecular%20Biology%20(AB)", "American%20Heritage%20Center%20(AC)", 
-];
-
-const ZONE_1_SHORT: [&'static str; 9] = [
-    "SI", "GE", "HS", "STEM", "BC", "EERB", "AN", "ES", "EIC",
-];
-const ZONE_2_SHORT: [&'static str; 8] = [
-    "EN", "AG", "ED", "HI", "HA", "BU", "CL", "EA",
-];
-const ZONE_3_SHORT: [&'static str; 10] = [
-    "PS", "CR", "AS", "AV", "BS", "NAC", "RH", "HO", "GH", "CI" // Add to ZONE_3
-];
-const ZONE_4_SHORT: [&'static str; 8] = [
-    "IT", "CB", "LS", "BH", "PA", "VA", "AB", "AC",
-];
 // ----------------------------------------------------------------------------
 
 /*
@@ -161,13 +115,47 @@ fn main() {
         Err(f) => { panic!("{}", f.to_string()) }
     };
     if matches.opt_present("d") {
-        println!("\rTest\n> ");
+        println!("\rTest\n");
     }
 
-    let room_filter = Regex::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
 
     // generate rooms HashMap
+    let rooms = gen_hashmap();
+    
+    // set TcpListener and initalize
     // ------------------------------------------------------------------------
+    let host_ip: &str;
+    let local_ip_addr = &(local_ip().unwrap().to_string()+":7878");
+    if matches.opt_present("l") {
+        println!("[#] -- You are running using localhost --");
+        host_ip = "127.0.0.1:7878";
+    } else {
+        println!("[#] -- You are running using public IP --");
+        host_ip = local_ip_addr;
+    }
+    println!("[!] ... {} ...", host_ip);
+
+    let listener = TcpListener::bind(host_ip).unwrap();
+    let pool = ThreadPool::new(4);
+    let cookie_jar = Arc::new(reqwest::cookie::Jar::default());
+    // ------------------------------------------------------------------------
+    stdout().flush().unwrap();
+
+    for stream in listener.incoming() {
+        let cookie_jar = Arc::clone(&cookie_jar);
+        let stream = stream.unwrap();
+        let clone_rooms = clone_map(&rooms);
+        let clone_keys = keys.clone();
+
+        pool.execute(move || {
+            handle_connection(stream, cookie_jar, clone_rooms, clone_keys);
+        });
+    }
+}
+
+fn gen_hashmap() -> HashMap<String, Room> {
+    let room_filter = Regex::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
+
     let mut schedules: HashMap<String, Vec<String>> = HashMap::new();
     let schedule_data = File::open(ROOM_CSV).unwrap();
     let mut schedule_rdr = Reader::from_reader(schedule_data);
@@ -215,38 +203,8 @@ fn main() {
             rooms.insert(String::from(&room.name), room);
         }
     }
-    // ------------------------------------------------------------------------
-    
-    // set TcpListener and initalize
-    // ------------------------------------------------------------------------
-    let host_ip: &str;
-    let local_ip_addr = &(local_ip().unwrap().to_string()+":7878");
-    if matches.opt_present("l") {
-        println!("[#] -- You are running using localhost --");
-        host_ip = "127.0.0.1:7878";
-    } else {
-        println!("[#] -- You are running using public IP --");
-        host_ip = local_ip_addr;
-    }
-    println!("[!] ... {} ...", host_ip);
 
-    let listener = TcpListener::bind(host_ip).unwrap();
-    let pool = ThreadPool::new(4);
-    let cookie_jar = Arc::new(reqwest::cookie::Jar::default());
-    // ------------------------------------------------------------------------
-    print!("> ");
-    stdout().flush().unwrap();
-
-    for stream in listener.incoming() {
-        let cookie_jar = Arc::clone(&cookie_jar);
-        let stream = stream.unwrap();
-        let clone_rooms = clone_map(&rooms);
-        let clone_keys = keys.clone();
-
-        pool.execute(move || {
-            handle_connection(stream, cookie_jar, clone_rooms, clone_keys);
-        });
-    }
+    return rooms;
 }
 
 fn clone_map<
@@ -263,6 +221,7 @@ fn clone_map<
 }
 
 #[tokio::main]
+#[allow(unused_assignments)]
 async fn handle_connection(
     mut stream: TcpStream, 
     cookie_jar: Arc<reqwest::cookie::Jar>, 
@@ -273,216 +232,71 @@ async fn handle_connection(
 
     stream.read(&mut buffer).unwrap();
 
-    // HTML-oriented files
-    // ------------------------------------------------------------------------
-    let _get_icon   = b"GET /favicon.ico HTTP/1.1\r\n";
-    let get_index   = b"GET / HTTP/1.1\r\n";
-    let get_css     = b"GET /page.css HTTP/1.1\r\n";
-
-    let get_cc      = b"GET /camcode.js HTTP/1.1\r\n";
-    let get_ccalt1  = b"GET /cc-altmode.js HTTP/1.1\r\n";
-    let get_cb1     = b"GET /checkerboard.js HTTP/1.1\r\n";
-    let get_jn1     = b"GET /jacknet.js HTTP/1.1\r\n";
-    let get_wiki1   = b"GET /wiki.js HTTP/1.1\r\n";
-    let get_ccalt2  = b"GET /cc-altmode HTTP/1.1\r\n";
-    let get_cb2     = b"GET /checkerboard HTTP/1.1\r\n";
-    let get_jn2     = b"GET /jacknet HTTP/1.1\r\n";
-    let get_wiki2   = b"GET /wiki HTTP/1.1\r\n";
-
-    let get_jn_json = b"GET /campus.json HTTP/1.1\r\n";
-    let get_cb_json = b"GET /roomChecks.json HTTP/1.1\r\n";
-
-    let get_logo1   = b"GET /logo.png HTTP/1.1\r\n";
-    let get_logo2   =  b"GET /logo-2-line.png HTTP/1.1\r\n";
-    // ------------------------------------------------------------------------
-    
-    // make calls to backend functionality
-    // ------------------------------------------------------------------------
-    // login
-    let login       = b"POST /login HTTP/1.1\r\n";
-    // Jacknet
-    let ping        = b"POST /ping HTTP/1.1\r\n";
-    // Checkerboard
-    let run_cb      = b"POST /run_cb HTTP/1.1\r\n";
-    // CamCode
-    //  - CamCode - CFM Requests
-    let cfm_build   = b"POST /cfm_build HTTP/1.1\r\n";
-    let cfm_build_r = b"POST /cfm_build_r HTTP/1.1\r\n";
-    let cfm_c_dir   = b"POST /cfm_c_dir HTTP/1.1\r\n";
-    let cfm_file    = b"POST /cfm_file HTTP/1.1\r\n";
-    let cfm_dir     = b"POST /cfm_dir HTTP/1.1\r\n";
-    // Wiki
-    let w_build     = b"POST /w_build HTTP/1.1\r\n";
-    // ------------------------------------------------------------------------
-
     // Handle requests
     // ------------------------------------------------------------------------
-    let mut status_line = "HTTP/1.1 200 OK";
-    let contents;
-    let filename;
     let mut user_homepage: &str = "html-css-js/index_guest.html";
+    let stream_clone = stream.try_clone().expect("[-] CLONE ERROR: Stream failed to clone.");
+
+    let first_line_search = Regex::new(r"^.*\n").unwrap();
+    let buff_copy = buffer.clone();
+    let first_line = first_line_search.find(str::from_utf8(&buff_copy).expect("Empty")).unwrap().as_str();
+
+    match first_line {
+        "GET / HTTP/1.1\r\n"                => send_data_string(STATUS_200, "html-css-js/login.html", stream_clone, &buff_copy),
+        "GET /page.css HTTP/1.1\r\n"        => send_data_string(STATUS_200, "html-css-js/page.css", stream_clone, &buff_copy),
     
-    if buffer.starts_with(b"GET") {
-        if buffer.starts_with(get_index) {
-            filename = "html-css-js/login.html";
-        } else if buffer.starts_with(get_css) {
-            filename = "html-css-js/page.css";
-        } else if buffer.starts_with(get_cc) {
-            filename = "html-css-js/camcode.js";
-        } else if buffer.starts_with(get_ccalt1) {
-            filename = "html-css-js/cc-altmode.js";
-        } else if buffer.starts_with(get_cb1) {
-            filename = "html-css-js/checkerboard.js";
-        } else if buffer.starts_with(get_jn1) {
-            filename = "html-css-js/jacknet.js";
-        } else if buffer.starts_with(get_wiki1) {
-            filename = "html-css-js/wiki.js";
-        } else if buffer.starts_with(get_ccalt2) {
-            let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
-            let pre_contents = read_to_string(user_homepage).unwrap();
-            let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return Option::Some(()) };
-            let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
-            let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
-            contents = format!("{} onload='setCrestronFile()'{}", pre, post);
-            let response = format!(
-                "{}\r\nContent-Length: {}\r\n\r\n{}",
-                status_line, contents.len(), contents
-            );
-            stream.write(response.as_bytes()).unwrap();
-            stream.flush().unwrap();
+        "GET /camcode.js HTTP/1.1\r\n"      => send_data_string(STATUS_200, "html-css-js/camcode.js", stream_clone, &buff_copy),
+        "GET /cc-altmode.js HTTP/1.1\r\n"   => send_data_string(STATUS_200, "html-css-js/cc-altmode.js", stream_clone, &buff_copy),
+        "GET /checkerboard.js HTTP/1.1\r\n" => send_data_string(STATUS_200, "html-css-js/checkerboard.js", stream_clone, &buff_copy),
+        "GET /jacknet.js HTTP/1.1\r\n"      => send_data_string(STATUS_200, "html-css-js/jacknet.js", stream_clone, &buff_copy),
+        "GET /wiki.js HTTP/1.1\r\n"         => send_data_string(STATUS_200, "html-css-js/wiki.js", stream_clone, &buff_copy),
+        "GET /cc-altmode HTTP/1.1\r\n"      => insert_onload(STATUS_200, "setCrestronFile()", "html-css-js/index_guest.html", stream_clone, &buff_copy),
+        "GET /checkerboard HTTP/1.1\r\n"    => insert_onload(STATUS_200, "setChecker()", "html-css-js/index_guest.html", stream_clone, &buff_copy),
+        "GET /jacknet HTTP/1.1\r\n"         => insert_onload(STATUS_200, "setJackNet()", "html-css-js/index_guest.html", stream_clone, &buff_copy),
+        "GET /wiki HTTP/1.1\r\n"            => insert_onload(STATUS_200, "setWiki()", "html-css-js/index_guest.html", stream_clone, &buff_copy),
+
+        "GET /refresh HTTP/1.1\r\n"         => {
+            let contents = json!({
+                "body": "[+] File updated successfully."
+            }).to_string();
+            rooms = gen_hashmap();
+            send_contents(STATUS_200, contents, stream_clone, &buff_copy);
+        }
     
-            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
-            print!("> ");
-            stdout().flush().unwrap();
-            return Option::Some(());
-        } else if buffer.starts_with(get_cb2) {
-            let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
-            let pre_contents = read_to_string(user_homepage).unwrap();
-            let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return Option::Some(()) };
-            let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
-            let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
-            contents = format!("{} onload='setChecker()'{}", pre, post);
-            let response = format!(
-                "{}\r\nContent-Length: {}\r\n\r\n{}",
-                status_line, contents.len(), contents
-            );
-            stream.write(response.as_bytes()).unwrap();
-            stream.flush().unwrap();
+        "GET /campus.json HTTP/1.1\r\n"     => send_data_string(STATUS_200, "html-css-js/campus.json", stream_clone, &buff_copy),
     
-            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
-            print!("> ");
-            stdout().flush().unwrap();
-            return Option::Some(());
-        } else if buffer.starts_with(get_jn2) {
-            let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
-            let pre_contents = read_to_string(user_homepage).unwrap();
-            let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return Option::Some(()) };
-            let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
-            let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
-            contents = format!("{} onload='setJackNet()'{}", pre, post);
-            let response = format!(
-                "{}\r\nContent-Length: {}\r\n\r\n{}",
-                status_line, contents.len(), contents
-            );
-            stream.write(response.as_bytes()).unwrap();
-            stream.flush().unwrap();
-    
-            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
-            print!("> ");
-            stdout().flush().unwrap();
-            return Option::Some(());
-        } else if buffer.starts_with(get_wiki2) {
-            let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
-            let pre_contents = read_to_string(user_homepage).unwrap();
-            let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return Option::Some(()) };
-            let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
-            let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
-            contents = format!("{} onload='setWiki()'{}", pre, post);
-            let response = format!(
-                "{}\r\nContent-Length: {}\r\n\r\n{}",
-                status_line, contents.len(), contents
-            );
-            stream.write(response.as_bytes()).unwrap();
-            stream.flush().unwrap();
-    
-            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
-            print!("> ");
-            stdout().flush().unwrap();
-            return Option::Some(());
-        } else if buffer.starts_with(get_jn_json) {
-            filename = "html-css-js/campus.json";
-        } else if buffer.starts_with(get_cb_json) {
-            filename = "html-css-js/roomChecks.json";
-        } else if buffer.starts_with(get_logo1) {
-            filename = "html-css-js/logo.png";
-            let img_contents = read(filename).unwrap();
-            let response = format!(
-                "{}\r\n\
-                Content-Type: img/png\r\n\
-                Content-Length: {}\r\n\r\n",
-                status_line, img_contents.len()
-            );
-            stream.write(response.as_bytes()).unwrap();
-            stream.write(&img_contents).unwrap();
-            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
-            print!("> ");
-            stdout().flush().unwrap();
-            return Option::Some(());
-        } else if buffer.starts_with(get_logo2) {
-            filename = "html-css-js/logo-2-line.png";
-            let img_contents = read(filename).unwrap();
-            let response = format!(
-                "{}\r\n\
-                Content-Type: img/png\r\n\
-                Content-Length: {}\r\n\r\n",
-                status_line, img_contents.len()
-            );
-            stream.write(response.as_bytes()).unwrap();
-            stream.write(&img_contents).unwrap();
-            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
-            print!("> ");
-            stdout().flush().unwrap();
-            return Option::Some(());
-        } else {
-            status_line =  "HTTP/1.1 404 NOT FOUND";
-            filename = "html-css-js/404.html";
-        };
-        contents = read_to_string(filename).unwrap();
-    } else if buffer.starts_with(b"POST") {
-        if buffer.starts_with(login) {
-            let buff_copy = str::from_utf8(&buffer[..]).unwrap();
+        "GET /favicon.ico HTTP/1.1\r\n"     => send_data_bytes(STATUS_200, "html-css-js/logo_main.ico", "img/x-icon", stream_clone, &buff_copy),
+        "GET /logo.png HTTP/1.1\r\n"        => send_data_bytes(STATUS_200, "html-css-js/logo.png", "img/png", stream_clone, &buff_copy),
+        "GET /logo-2-line.png HTTP/1.1\r\n" => send_data_bytes(STATUS_200, "html-css-js/logo-2-line.png", "img/png", stream_clone, &buff_copy),
+        // ------------------------------------------------------------------------
+        
+        // make calls to backend functionality
+        // ------------------------------------------------------------------------
+        // login
+        "POST /login HTTP/1.1\r\n"          => {
             let credential_search = Regex::new(r"uname=(?<user>.*)&psw=(?<pass>[\d\w%]*)").unwrap();
-            let Some(credentials) = credential_search.captures(buff_copy) else { return Option::Some(()) };
+            let Some(credentials) = credential_search.captures(str::from_utf8(&buff_copy).expect("Empty")) else { return Option::Some(()) };
             let user = String::from(credentials["user"].to_string().into_boxed_str());
             let pass = String::from(credentials["pass"].to_string().into_boxed_str());
-            println!("{}:{}", user, pass);
             for credential in keys.users {
                 if user == credential[0] && pass == credential[1] {
                     user_homepage = credential[2].as_str();
-                    contents = read_to_string(user_homepage).unwrap();
-                    let response = format!(
-                        "{}\r\nContent-Length: {}\r\n\r\n{}",
-                        status_line, contents.len(), contents
-                    );
-                    // Sends to STDOUT
-                    stream.write(response.as_bytes()).unwrap();
-                    stream.flush().unwrap();
-            
-                    println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
-
-                    print!("> ");
-                    stdout().flush().unwrap();
-                    return Option::Some(());
+                    let login_stream_clone = stream.try_clone().expect("[-] CLONE ERROR: Stream failed to clone.");
+                    send_data_string(STATUS_200, user_homepage, login_stream_clone, &buff_copy);
                 }
             }
-            contents = read_to_string("html-css-js/login.html").unwrap();
-        } else if buffer.starts_with(ping) {
-            contents = execute_ping(&mut buffer, rooms); // JN
-        } else if buffer.starts_with(run_cb) {
-            let buff_copy = process_buffer(&mut buffer);
+        },
+        // Jacknet
+        "POST /ping HTTP/1.1\r\n"           => {
+            let contents = execute_ping(&mut buffer, rooms); // JN
+            send_contents(STATUS_200, contents, stream_clone, &buff_copy);
+        },
+        // Checkerboard
+        "POST /run_cb HTTP/1.1\r\n"         => {
             // get zone selection from request and store
             // ----------------------------------------------------------------
-            let zone_selection: ZoneRequest = serde_json::from_str(&buff_copy)
+            let buff_copy_string = process_buffer(&mut buffer);
+            let zone_selection: ZoneRequest = serde_json::from_str(&buff_copy_string)
                 .expect("Fatal Error 2: Failed to parse ping request");
 
             let mut buildings: Vec<&str> = Vec::new();
@@ -566,82 +380,120 @@ async fn handle_connection(
                 "rooms": return_vec,
             });
             
-            contents = json_return.to_string();
+            let contents = json_return.to_string();
+            send_contents(STATUS_200, contents, stream_clone, &buff_copy);
             // ----------------------------------------------------------------
-        } else if buffer.starts_with(cfm_build) { // CC-CFM
-            contents = cfm_build_dir(&mut buffer);
-        } else if buffer.starts_with(cfm_build_r) {
-            contents = cfm_build_rm(&mut buffer);
-        } else if buffer.starts_with(cfm_c_dir) {
-            contents = get_cfm(&mut buffer);
-        } else if buffer.starts_with(cfm_dir) {
-            contents = get_cfm_dir(&mut buffer);
-        } else if buffer.starts_with(cfm_file) {
-            contents = get_cfm_file(&mut buffer);
-        } else if buffer.starts_with(w_build) {
-            contents = w_build_articles(&mut buffer);
-        } else {
-            status_line = "HTTP/1.1 404 NOT FOUND";
-            contents = read_to_string("html-css-js/404.html").unwrap();
-        };
-    } else {
-        status_line = "HTTP/1.1 404 NOT FOUND";
-        contents = read_to_string("html-css-js/404.html").unwrap();
-    }
+        },
+        // CamCode
+        //  - CamCode - CFM Requests
+        "POST /cfm_build HTTP/1.1\r\n"      => {
+            let contents = cfm_build_dir(&mut buffer);
+            send_contents(STATUS_200, contents, stream_clone, &buff_copy);
+        },
+        "POST /cfm_build_r HTTP/1.1\r\n"    => {
+            let contents = cfm_build_rm(&mut buffer);
+            send_contents(STATUS_200, contents, stream_clone, &buff_copy);
+        },
+        "POST /cfm_c_dir HTTP/1.1\r\n"      => {
+            let contents = get_cfm(&mut buffer);
+            send_contents(STATUS_200, contents, stream_clone, &buff_copy);
+        },
+        "POST /cfm_dir HTTP/1.1\r\n"        => {
+            let contents = get_cfm_dir(&mut buffer);
+            send_contents(STATUS_200, contents, stream_clone, &buff_copy);
+        },
+        "POST /cfm_file HTTP/1.1\r\n"       => {
+            let contents = get_cfm_file(&mut buffer);
+            let mut f = File::open(contents.clone()).unwrap();
+            
+            let mut file_buffer = Vec::new();
+            f.read_to_end(&mut file_buffer).unwrap();
+    
+            let buf_content = read(&contents).unwrap();
+            let length = buf_content.len();
+            
+            let response = format!("\
+            {}\r\n\
+            Content-Type: application/zip\r\n\
+            Content-length: {}\r\n\
+            Content-Disposition: attachment; filename=\"{}\"\r\n\
+            \r\n",
+                STATUS_200, 
+                length, 
+                contents
+            );
+            // Sends to STDOUT
+            stream.write(response.as_bytes()).unwrap();
+            stream.write_all(&file_buffer).unwrap();
+            stream.flush().unwrap();
+    
+            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+        },
+        // Wiki
+        "POST /w_build HTTP/1.1\r\n"        => {
+            let contents = w_build_articles(&mut buffer);
+            send_contents(STATUS_200, contents, stream_clone, &buff_copy);
+        },
+        &_                                  => send_data_string(STATUS_404, "html-css-js/404.html", stream_clone, &buff_copy)
+    };
 
-    // NOTE - look at this for error log format
-    // ie:  
-    //  if status_line == 404 not found
-    //      then put in error file instead.
-    //      add timestamp at top of line
-    // let response = format!(
-    //     "{}\r\nContent-Length: {}\r\n\r\n{}",
-    //     status_line, contents.len(), contents
-    // );
-
-    let response;
-
-    if buffer.starts_with(cfm_file) {
-        let mut f = File::open(contents.clone()).unwrap();
-        
-        let mut file_buffer = Vec::new();
-        f.read_to_end(&mut file_buffer).unwrap();
-
-        let buf_content = read(&contents).unwrap();
-        let length = buf_content.len();
-        
-        response = format!("\
-        {}\r\n\
-        Content-Type: application/zip\r\n\
-        Content-length: {}\r\n\
-        Content-Disposition: attachment; filename=\"{}\"\r\n\
-        \r\n",
-            status_line, 
-            length, 
-            contents
-        );
-        // Sends to STDOUT
-        stream.write(response.as_bytes()).unwrap();
-        stream.write_all(&file_buffer).unwrap();
-        stream.flush().unwrap();
-
-        println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
-    } else {
-        response = format!(
-            "{}\r\nContent-Length: {}\r\n\r\n{}",
-            status_line, contents.len(), contents
-        );
-        // Sends to STDOUT
-        stream.write(response.as_bytes()).unwrap();
-        stream.flush().unwrap();
-
-        println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
-    }
-    // ------------------------------------------------------------------------
-
-    print!("> ");
     stdout().flush().unwrap();
     return Option::Some(());
+}
+
+fn send_data_string(status_line: &str, filepath: &str, mut stream: TcpStream, buffer: &[u8]) {
+    let contents = read_to_string(filepath).unwrap();
+    let response = format!(
+        "{}\r\nContent-Length: {}\r\n\r\n{}",
+        status_line, contents.len(), contents
+    );
+    // Sends to STDOUT
+    stream.write(response.as_bytes()).unwrap();
+    stream.flush().unwrap();
+
+    println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+}
+
+fn send_data_bytes(status_line: &str, filepath: &str, content_type: &str, mut stream: TcpStream, buffer: &[u8]) {
+    let contents = read(filepath).unwrap();
+    let response = format!(
+        "{}\r\n\
+        Content-Type: {}\r\n\
+        Content-Length: {}\r\n\r\n",
+        status_line, content_type, contents.len()
+    );
+    stream.write(response.as_bytes()).unwrap();
+    stream.write(&contents).unwrap();
+    println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+    stdout().flush().unwrap();
+}
+
+fn send_contents(status_line: &str, contents: String, mut stream: TcpStream, buffer: &[u8]) {
+    let response = format!(
+        "{}\r\nContent-Length: {}\r\n\r\n{}",
+        status_line, contents.len(), contents
+    );
+    stream.write(response.as_bytes()).unwrap();
+    println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+    stdout().flush().unwrap();
+}
+
+fn insert_onload(status_line: &str, function: &str, user_homepage: &str, mut stream: TcpStream, buffer: &[u8]) {
+    let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
+    let pre_contents = read_to_string(user_homepage).unwrap();
+    let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return () };
+    let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
+    let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
+    let contents = format!("{} onload='{}'{}", pre, function, post);
+    let response = format!(
+        "{}\r\nContent-Length: {}\r\n\r\n{}",
+        status_line, contents.len(), contents
+    );
+    stream.write(response.as_bytes()).unwrap();
+    stream.flush().unwrap();
+
+    println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+    stdout().flush().unwrap();
 }
 
 // Preps the Buffer to be parsed as json string
@@ -651,29 +503,29 @@ fn process_buffer(buffer: &mut [u8]) -> String {
         .to_string();
 
     // functon that returns first '{' index location and it's '}' location
-    let in_curls = find_enclosed(&buff_copy, ('{', '}'), true);
+    let in_curls = find_enclosed(&buff_copy, (r"\{", r"}"), true);
     return in_curls;
 }
 
 // used to trim excess info off of the buffer
-fn find_enclosed(s: &String, delimiters: (char,char), include_delim: bool) -> String {
+fn find_enclosed(s: &String, delimiters: (&str,&str), include_delim: bool) -> String {
     let search_rule;
     if include_delim {
-        search_rule = Regex::new(format!("(?<search_return>\\{}.*{})", delimiters.0, delimiters.1).as_str()).unwrap();
+        let search_setup = format!("(?<search_return>{}.*{})", delimiters.0, delimiters.1);
+        println!("search_setup = {}", search_setup);
+        search_rule = Regex::new(search_setup.as_str()).unwrap();
     } else {
-        search_rule = Regex::new(format!("\\{}(?<search_return>.*){}", delimiters.0, delimiters.1).as_str()).unwrap();
+        search_rule = Regex::new(format!("{}(?<search_return>.*){}", delimiters.0, delimiters.1).as_str()).unwrap();
     }
 
     let Some(returned_text) = search_rule.captures(s) else { return "Empty".to_string() };
     println!("\r\nSearch results are {:?}", returned_text["search_return"].to_string());
 
-    let curl_find = Regex::new(r"(?<in_curls>\{.*})").unwrap();
-    let Some(in_curls) = curl_find.captures(s) else { return "{}".to_string() };
-
-    return in_curls["in_curls"].to_string();
+    return returned_text["search_return"].to_string();
 }
 
-/* fn pad(raw_in: String, length: usize) -> String {
+#[allow(dead_code)]
+fn pad(raw_in: String, length: usize) -> String {
     if raw_in.len() < length {
         let mut out_string: String = String::new();
         for _ in 0..(length-raw_in.len()) {
@@ -684,7 +536,7 @@ fn find_enclosed(s: &String, delimiters: (char,char), include_delim: bool) -> St
     } else {
         return String::from(raw_in);
     }
-} */
+}
 
 fn pad_zero(raw_in: String, length: usize) -> String {
     if raw_in.len() < length {
@@ -1275,3 +1127,50 @@ $$$$$$$$\                                $$\                     $$\
    $$ |\$$$$$$$\ $$ |      $$ | $$ | $$ |$$ |$$ |  $$ |\$$$$$$$ |$$ |
    \__| \_______|\__|      \__| \__| \__|\__|\__|  \__| \_______|\__|
 */
+
+
+/*
+$$$$$$$$\                    $$\               
+\__$$  __|                   $$ |              
+   $$ | $$$$$$\   $$$$$$$\ $$$$$$\    $$$$$$$\ 
+   $$ |$$  __$$\ $$  _____|\_$$  _|  $$  _____|
+   $$ |$$$$$$$$ |\$$$$$$\    $$ |    \$$$$$$\  
+   $$ |$$   ____| \____$$\   $$ |$$\  \____$$\ 
+   $$ |\$$$$$$$\ $$$$$$$  |  \$$$$  |$$$$$$$  |
+   \__| \_______|\_______/    \____/ \_______/ 
+*/
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pad_zero() {
+        assert_eq!(pad_zero(String::from("123"), 4), String::from("0123"));
+        assert_eq!(pad_zero(String::from("123"), 3), String::from("123"));
+        assert_eq!(pad_zero(String::from("123"), 2), String::from("123"));
+    }
+
+    #[test]
+    fn test_pad() {
+        assert_eq!(pad(String::from("test"), 6), String::from("  test"));
+        assert_eq!(pad(String::from("test"), 4), String::from("test"));
+        assert_eq!(pad(String::from("test"), 3), String::from("test"));
+    }
+
+    #[test]
+    fn test_enclosed() {
+        assert_eq!(
+            find_enclosed(&String::from("(item1 {item2} item3)"), (r"\{",r"}"), true),
+            String::from("{item2}")
+        );
+        assert_eq!(
+            find_enclosed(&String::from("(item1 {item2} item3)"), (r"(",r")"), true ),
+            String::from("(item1 {item2} item3)")
+        );
+        assert_eq!(
+            find_enclosed(&String::from("item1 {item2} item3"), (r"\{",r"}"), false),
+            String::from("item2")
+        );
+    }
+}
