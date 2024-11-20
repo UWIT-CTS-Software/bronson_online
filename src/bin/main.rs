@@ -75,6 +75,7 @@ use reqwest::{
     header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
 /* use tokio::sync::{ Semaphore, }; */
+/* use tokio::sync::{ Semaphore, }; */
 use csv::{ Reader, };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
@@ -90,6 +91,9 @@ static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
 static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomConfig_agg.csv");
 static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/campus.csv");
 static KEYS      : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/keys.json");
+
+/* static PERMIT    : Semaphore = Semaphore::const_new(1);
+static ROOMS     : Database = Database::setup(); */
 
 /* static PERMIT    : Semaphore = Semaphore::const_new(1);
 static ROOMS     : Database = Database::setup(); */
@@ -194,7 +198,7 @@ fn main() {
         let record = result.unwrap();
         if room_filter.is_match(record.get(0).expect("Empty")) {
             let mut item_vec: Vec<u8> = Vec::new();
-            for i in 1..7 {
+            for i in 1..7 { // Packing item_vec from csv file
                 item_vec.push(record.get(i).expect("-1").parse().unwrap());
             }
 
@@ -204,9 +208,17 @@ fn main() {
                 schedules.get(&String::from(record.get(0).expect("Empty"))).unwrap().to_vec()
             };
 
+            // Need to set room hostnames here.
+            // add hostnames and ip addr (empty at first) attributes
+            // function that gen hostnames here
+            let hn_vec = gen_hn2(String::from(record.get(0).expect("Empty")), item_vec.clone());
+
+            let ip_vec = gen_ip2(item_vec);
+            
             let room = Room {
                 name: String::from(record.get(0).expect("Empty")),
-                items: item_vec,
+                hostnames: hn_vec,
+                ips: ip_vec,
                 gp: record.get(7).expect("-1").parse().unwrap(),
                 checked: String::from("2000-01-01T00:00:00Z"),
                 schedule: schedule,
@@ -725,28 +737,56 @@ fn execute_ping(buffer: &mut [u8], rooms: HashMap<String, Room>) -> String {
     println!("Ping Request: \n {:?}", pr);
 
     // BuildingData Struct
+    //   NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
+    //         CAMPUS_STR -> "html-css-js/campus.json" 
     let bs: BuildingData = serde_json::from_str(CAMPUS_STR)
         .expect("Fatal Error: Failed to build building data structs");
 
+    
+    /////   TRYING TO REMOVE THIS BLOCK AND REPLACE
     // Generate the hostnames here
-    let hostnames: Vec<String> = gen_hostnames(
-        pr.devices,
-        pr.building.clone(),
-        bs,
-        rooms);
+    // let hostnames: Vec<String> = gen_hostnames(
+    //     pr.devices,
+    //     pr.building.clone(),
+    //     bs,
+    //     rooms);
 
-    println!("{:?}", hostnames);
+    // NEED TO PULL HOSTNAMES FROM DATABASE NOW
+    // make array of room names -> [AB 104, AB 105, ...]
+    //    USING BuildingData Struct / front-end request info.
+    // AB -> [AB 104 , AB 105 , ... ]
+    // TODO
+    let rooms_to_ping: Vec<String> = gen_rooms(pr.building.clone(), bs);
+
+    let mut hostnames: Vec<String> = Vec::new();
+
+    for rm in rooms_to_ping {
+        match rooms.get(&rm) {
+            Some(rm_info) => {
+                println!("Hostnames: {:?}", rm_info.hostnames);
+                // append rm_info.hostnames to hostnames
+                for hn in &rm_info.hostnames {
+                    hostnames.push(hn.to_string());
+                }
+            }
+            _ => (),
+        }
+    }
+
+    // let hostnames = ["BROKEN_SORRY_FIXING_IT"];
+
+    println!("Hostnames Generated {:?}", hostnames);
 
     // Write for loop through hostnames
     let mut hn_ips: Vec<String> = Vec::new();
     for hn in hostnames.clone() {
         println!("Hostname: {}", hn);
-        let hn_ip = ping_this(hn);
+        let hn_ip = ping_this(hn.to_string());
         println!("IpAdr:    {}", hn_ip);
         hn_ips.push(hn_ip);
     }
 
-    // format data into json using SerdeLOGIN
+    // format data into json using serde
     let json_return = json!({
         "building": pr.building,
         "hostnames": hostnames,
@@ -762,23 +802,23 @@ fn execute_ping(buffer: &mut [u8], rooms: HashMap<String, Room>) -> String {
 }
 
 
-
+/*
 // this could change alot,
 // we want to implement device counts into the campus.json/csv
 // that will come into play here
 //    gen_hostnames(
-//      sel_devs - Selected Devices from ping request (TODO: use booleans)
+//      sel_devs - Selected Devices from ping request  (TODO: use booleans)
 //      sel_b    - Selected building form ping request (TODO: Use an ID number)
 //      bd       - Building Data
 fn gen_hostnames(
-    sel_devs: Vec<String>, 
+    sel_devs: Vec<String>,
     sel_b: String,
     bd: BuildingData,
     rooms: HashMap<String, Room>) -> Vec<String> {
     // init
     let mut devices: Vec<bool> = [false ,false ,false ,false ,false].to_vec();
-    let mut hostnames = Vec::new();
-    let mut temp_hostname = String::new();
+    let mut hostnames          = Vec::new();
+    let mut temp_hostname      = String::new();
     let mut tmp_tmp;
 
     // Set selection flags
@@ -797,8 +837,8 @@ fn gen_hostnames(
         
     // Find relavant data in struct AND build
     for item in bd.building_data { //  For each building in the data
-        if sel_b == item.name { // check selection
-            for j in item.rooms { // iterate through rooms
+        if sel_b == item.name {    // check selection
+            for j in item.rooms {  // iterate through rooms
                 // Build and append hostnames
                 temp_hostname.push_str(&item.abbrev.clone());
                 temp_hostname.push('-');
@@ -854,9 +894,85 @@ fn gen_hostnames(
     // Return value
     return hostnames;
 }
+*/
+
+// Generate Hostnames
+//    Nov. 5 Revision Paradigm Shift -> genHost @ database init
+//      room_name -> "AN 104"
+//      item_vec  -> "[0,1,2,3,4]" 
+//          "[ Proc , Pj , Disp , Ws , Tp ]"
+fn gen_hn2(
+    room_name: String, 
+    item_vec: Vec<u8>) -> Vec<String> {
+    let mut hostnames = Vec::new();
+    let mut tmp_hn    = String::new();
+    let mut tmp_dev   = String::new();
+    let parts: Vec<&str> = room_name.split(" ").collect();
+    // let building_prefix = parts[0];
+    // let room_number     = parts[1];
+
+    // Assemble the hostname here
+    for i in 0..4 {
+        let tmp_dev = match i {
+            0 => "PROC",
+            1 => "PROJ",
+            2 => "DISP",
+            3 => "WS",
+            4 => "TP",
+            _ => "ERROR"
+        };
+        if item_vec[i] != 0 {
+            for j in 0..item_vec[i] { // make n hostnames
+                tmp_hn.push_str(parts[0]);
+                tmp_hn.push('-');
+                tmp_hn.push_str(parts[1]);
+                tmp_hn.push('-');
+                tmp_hn.push_str(tmp_dev);
+                tmp_hn.push(char::from_digit((j+1).into(), 10).expect("digit bad idk"));
+                hostnames.push(tmp_hn);
+                tmp_hn = String::new();
+            };
+        };
+    };
+    return hostnames;
+}
+
+fn gen_ip2(item_vec: Vec<u8>) -> Vec<String> {
+    let mut ips = Vec::new();
+    let mut count = 0;
+    for i in item_vec{
+        count += i;
+    };
+    for i in 0..count{
+        ips.push("x".to_string());
+    };
+    return ips;
+}
+
+// TODO (AG -> [AG 1, AG 2, ...])
+fn gen_rooms(
+    sel_b: String,
+    bd: BuildingData) -> Vec<String> {
+    // open campus.csv take each record that begins with respective abbreviation. In the event of 'All Buildings' Take the entirty of collumn 1 (Ignore the first row / header). CAMPUS_CSV.
+    let mut rooms = Vec::new();
+    let mut tmp = String::new();
+
+    for item in bd.building_data { //  For each building in the data
+        if (sel_b == item.name) || (sel_b == "All Buildings") {
+            for j in item.rooms {  // iterate through rooms
+                tmp.push_str(&item.abbrev.clone());
+                tmp.push(' ');
+                tmp.push_str(&j);
+                rooms.push(tmp);
+                tmp = String::new();
+            }
+        }
+    }
+    return rooms;
+}
 
 /*
-$$$$$$\  $$\       $$\                 $$$$$$$\                  $$\ 
+ $$$$$$\  $$\       $$\                 $$$$$$$\                  $$\ 
 $$  __$$\ $$ |      $$ |                $$  __$$\                 $$ |
 $$ /  \__|$$$$$$$\  $$ |  $$\  $$$$$$\  $$ |  $$ | $$$$$$\   $$$$$$$ |
 $$ |      $$  __$$\ $$ | $$  |$$  __$$\ $$$$$$$\ |$$  __$$\ $$  __$$ |
