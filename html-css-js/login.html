@@ -1,88 +1,101 @@
 <!DOCTYPE html>
 <head>
-    <title>UWIT-Bronson</title>
-    <meta charset="UTF-8" />
-    <iframe id="content" style ="display:none;"></iframe>
-    <link rel="stylesheet" type="text/css" href="page.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Contrail+One&family=Racing+Sans+One&display=swap" rel="stylesheet">
-</head>
-<body onload="document.getElementById('login-modal').style.display='block'">
-    <div class="login">
-        <div class="program_header">
-            <h1 class='site_header'>
-              Bronson</h1>
-            <p class='p_header'>
-              <i>The swiss army knife for the U.W.I.T. department</i></p>
-            <h2 class='tool_header'>
-              Log In</h2>
-            <div class="tool_buttons">
-              <fieldset class="ph_fieldset">
-                <legend class="ph_legend">
-                  Tools:
-                </legend>
-                <button onclick="document.getElementById('login-modal').style.display='block'" style="width:auto;" type="button" class="headButton">
-                    Log In</button>
-              </fieldset>
-            </div>
-            <div class="site_buttons">
-              <fieldset class="ph_fieldset">
-                <legend class="ph_legend">
-                  Sites:</legend>
-                <button id="TimeClockURL" onclick="window.open('https://shibboleth.uwyo.edu/idp/profile/SAML2/Unsolicited/SSO?providerId=https://9922.tcplusondemand.com&shire=https://9922.tcplusondemand.com/api/v0000/saml2Sessions/0/Saml2SingleSignOnEmployeePost&target=CompanyNamespace%3d9922%3bCompanyId%3d1%3bRedirectPat');" type="button" class="headButton">
-                  TimeClock </button>
-                <button id="lsmURL" onclick="window.open('https://uwyo.talem3.com/lsm/login/auth');" type="button" class="headButton">
-                  LSM </button>
-                <button id="tdURL" onclick="window.open('https://uwyo.teamdynamix.com/TDNext/Home/Desktop/Default.aspx');" type="button" class="headButton">
-                  TeamDynamix </button>
-                <button id="25lURL" onclick="window.open('https://25live.collegenet.com/pro/uwyo#!/home/dash');" type="button" class="headButton">
-                  25Live </button>
-                <button id="campusMapURL" onclick="window.open('https://uwoperations.uwyo.edu/portal/apps/webappviewer/index.html?id=66a9c83b1d92419d8579562ed0a6259b');" type="button" class="headButton">
-                  Campus Map </button>
-              </fieldset>
-            </div>
-          </div>
-    </div>
-    <br>
-    <!-- <p> Local dashboard of stuff // maybe a feed</p> -->
-    <div class="program_guts">
-    </div>
-    <div id="login-modal" class="modal">
-        <form class="modal-content animate" action="/login" method="post">
-            <div class="login_imgcontainer">
-              <span onclick="document.getElementById('login-modal').style.display='none'" class="close" title="Close Modal">&times;</span>
-              <img src="logo.png" alt="Avatar" class="avatar">
-            </div>
-          
-            <div class="container">
-              <label for="uname"><b>Username</b></label>
-              <input type="text" placeholder="Enter Username" name="uname" required>
-        
-              <label for="psw"><b>Password</b></label>
-              <input type="password" placeholder="Enter Password" name="psw" required>
+  <title>UWIT-Bronson</title>
+  <meta charset="UTF-8" />
+  <iframe id="content" style ="display:none;"></iframe>
+  <link rel="stylesheet" type="text/css" href="page.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Contrail+One&family=Racing+Sans+One&display=swap" rel="stylesheet">
+  <script>
+    function initLogin() {
+      document.getElementById('login-modal').style.display='block';
+      document.getElementById('uname').select();
+      document.getElementById('bg-img').style.display='none';
+    }
 
-              <label>
-                <input type="checkbox" checked="checked" name="remember"> Remember me
-              </label>
-              <button class="headButton" style="float: right;" type="submit">Log In</button>
-            </div>
-        
-            <div class="container">
-              <button type="button" class="headButton" onclick="document.getElementById('login-modal').style.display='none'" class="cancelbtn">Cancel</button>
-              <!-- <span class="psw">Forgot <a href="#">password?</a></span> -->
-            </div>
-        </form>
+    function terminateLogin() {
+      document.getElementById('login-modal').style.display='none';
+      document.getElementById('bg-img').style.display='block';
+    }
+  </script>
+</head>
+<body onload="initLogin()">
+  <div class="login">
+    <div class="program_header">
+      <h1 class='site_header'>
+        Bronson</h1>
+      <p class='p_header'>
+        <i>The swiss army knife for the U.W.I.T. department</i></p>
+      <h2 class='tool_header'>
+        Log In</h2>
+      <div class="tool_buttons">
+        <fieldset class="ph_fieldset">
+          <legend class="ph_legend">
+            Tools:
+          </legend>
+          <button onclick="initLogin()" style="width:auto;" type="button" class="headButton">
+              Log In</button>
+        </fieldset>
+      </div>
+      <div class="site_buttons">
+        <fieldset class="ph_fieldset">
+          <legend class="ph_legend">
+            Sites:</legend>
+          <button id="TimeClockURL" onclick="window.open('https://shibboleth.uwyo.edu/idp/profile/SAML2/Unsolicited/SSO?providerId=https://9922.tcplusondemand.com&shire=https://9922.tcplusondemand.com/api/v0000/saml2Sessions/0/Saml2SingleSignOnEmployeePost&target=CompanyNamespace%3d9922%3bCompanyId%3d1%3bRedirectPat');" type="button" class="headButton">
+            TimeClock </button>
+          <button id="lsmURL" onclick="window.open('https://uwyo.talem3.com/lsm/login/auth');" type="button" class="headButton">
+            LSM </button>
+          <button id="tdURL" onclick="window.open('https://uwyo.teamdynamix.com/TDNext/Home/Desktop/Default.aspx');" type="button" class="headButton">
+            TeamDynamix </button>
+          <button id="25lURL" onclick="window.open('https://25live.collegenet.com/pro/uwyo#!/home/dash');" type="button" class="headButton">
+            25Live </button>
+          <button id="campusMapURL" onclick="window.open('https://uwoperations.uwyo.edu/portal/apps/webappviewer/index.html?id=66a9c83b1d92419d8579562ed0a6259b');" type="button" class="headButton">
+            Campus Map </button>
+        </fieldset>
+      </div>
     </div>
-    <script>
-        // Get the modal
-        var modal = document.getElementById('login-modal');
-        
-        // When the user clicks anywhere outside of the modal, close it
-        window.onclick = function(event) {
-            if (event.target == modal) {
-                modal.style.display = "none";
-            }
-        }
-        </script>
+  </div>
+  <br>
+  <!-- <p> Local dashboard of stuff // maybe a feed</p> -->
+  <div class="program_guts">
+    <img src="logo-2-line.png" alt="University of Wyoming logo." id="bg-img" class="background">
+  </div>
+  <div id="login-modal" class="modal">
+    <form class="modal-content animate" action="/login" method="post" onload="selectUsername()">
+      <div class="login_imgcontainer">
+        <span onclick="terminateLogin()" class="close" title="Close Modal">&times;</span>
+        <img src="logo.png" alt="Avatar" class="avatar">
+      </div>
+    
+      <div class="container">
+        <label for="uname"><b>Username</b></label>
+        <input type="text" placeholder="Enter Username" name="uname" id="uname" required>
+  
+        <label for="psw"><b>Password</b></label>
+        <input type="password" placeholder="Enter Password" name="psw" required>
+
+        <label>
+          <input type="checkbox" checked="checked" name="remember"> Remember me
+        </label>
+        <button class="headButton" style="float: right;" type="submit">Log In</button>
+      </div>
+  
+      <div class="container">
+        <button type="button" class="headButton" onclick="terminateLogin()" class="cancelbtn">Cancel</button>
+        <!-- <span class="psw">Forgot <a href="#">password?</a></span> -->
+      </div>
+    </form>
+  </div>
+  <script>
+    // Get the modal
+    var modal = document.getElementById('login-modal');
+    
+    // When the user clicks anywhere outside of the modal, close it
+    window.onclick = function(event) {
+      if (event.target == modal) {
+        terminateLogin();
+      }
+    }
+  </script>
 </body>
