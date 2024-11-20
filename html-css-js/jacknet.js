@@ -469,7 +469,7 @@ async function postJNVis(graphBool, building) {
 
     for (var i = 0; i < graphBool.length; i++) { // iterating room
         HTML_tmp_visTile += `<ul class=rmColumn> ${rooms[i]}`;
-        for (var j = 0; (j < graphBool[i].length) && (j < numDevices); j++){ // iterating devices
+        for (var j = 0; (j < graphBool[i].length); j++){ // iterating devices
             console.log(graphBool[i][j]);
             if (graphBool[i][j] == 0) {
                 HTML_tmp_visTile += `<li class=devVisFalse> ${graphBool[i][j]} </li>`;

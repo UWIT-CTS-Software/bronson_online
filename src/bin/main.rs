@@ -182,7 +182,7 @@ fn gen_hashmap() -> HashMap<String, Room> {
         let record = result.unwrap();
         if room_filter.is_match(record.get(0).expect("Empty")) {
             let mut item_vec: Vec<u8> = Vec::new();
-            for i in 1..7 {
+            for i in 1..7 { // Packing item_vec from csv file
                 item_vec.push(record.get(i).expect("-1").parse().unwrap());
             }
 
@@ -192,9 +192,17 @@ fn gen_hashmap() -> HashMap<String, Room> {
                 schedules.get(&String::from(record.get(0).expect("Empty"))).unwrap().to_vec()
             };
 
+            // Need to set room hostnames here.
+            // add hostnames and ip addr (empty at first) attributes
+            // function that gen hostnames here
+            let hn_vec = gen_hn2(String::from(record.get(0).expect("Empty")), item_vec.clone());
+
+            let ip_vec = gen_ip2(item_vec);
+            
             let room = Room {
                 name: String::from(record.get(0).expect("Empty")),
-                items: item_vec,
+                hostnames: hn_vec,
+                ips: ip_vec,
                 gp: record.get(7).expect("-1").parse().unwrap(),
                 checked: String::from("2000-01-01T00:00:00Z"),
                 schedule: schedule,
@@ -577,28 +585,56 @@ fn execute_ping(buffer: &mut [u8], rooms: HashMap<String, Room>) -> String {
     println!("Ping Request: \n {:?}", pr);
 
     // BuildingData Struct
+    //   NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
+    //         CAMPUS_STR -> "html-css-js/campus.json" 
     let bs: BuildingData = serde_json::from_str(CAMPUS_STR)
         .expect("Fatal Error: Failed to build building data structs");
 
+    
+    /////   TRYING TO REMOVE THIS BLOCK AND REPLACE
     // Generate the hostnames here
-    let hostnames: Vec<String> = gen_hostnames(
-        pr.devices,
-        pr.building.clone(),
-        bs,
-        rooms);
+    // let hostnames: Vec<String> = gen_hostnames(
+    //     pr.devices,
+    //     pr.building.clone(),
+    //     bs,
+    //     rooms);
 
-    println!("{:?}", hostnames);
+    // NEED TO PULL HOSTNAMES FROM DATABASE NOW
+    // make array of room names -> [AB 104, AB 105, ...]
+    //    USING BuildingData Struct / front-end request info.
+    // AB -> [AB 104 , AB 105 , ... ]
+    // TODO
+    let rooms_to_ping: Vec<String> = gen_rooms(pr.building.clone(), bs);
+
+    let mut hostnames: Vec<String> = Vec::new();
+
+    for rm in rooms_to_ping {
+        match rooms.get(&rm) {
+            Some(rm_info) => {
+                println!("Hostnames: {:?}", rm_info.hostnames);
+                // append rm_info.hostnames to hostnames
+                for hn in &rm_info.hostnames {
+                    hostnames.push(hn.to_string());
+                }
+            }
+            _ => (),
+        }
+    }
+
+    // let hostnames = ["BROKEN_SORRY_FIXING_IT"];
+
+    println!("Hostnames Generated {:?}", hostnames);
 
     // Write for loop through hostnames
     let mut hn_ips: Vec<String> = Vec::new();
     for hn in hostnames.clone() {
         println!("Hostname: {}", hn);
-        let hn_ip = ping_this(hn);
+        let hn_ip = ping_this(hn.to_string());
         println!("IpAdr:    {}", hn_ip);
         hn_ips.push(hn_ip);
     }
 
-    // format data into json using SerdeLOGIN
+    // format data into json using serde
     let json_return = json!({
         "building": pr.building,
         "hostnames": hostnames,
@@ -613,102 +649,83 @@ fn execute_ping(buffer: &mut [u8], rooms: HashMap<String, Room>) -> String {
     return json_return.to_string();
 }
 
-
-
-// this could change alot,
-// we want to implement device counts into the campus.json/csv
-// that will come into play here
-//    gen_hostnames(
-//      sel_devs - Selected Devices from ping request (TODO: use booleans)
-//      sel_b    - Selected building form ping request (TODO: Use an ID number)
-//      bd       - Building Data
-fn gen_hostnames(
-    sel_devs: Vec<String>, 
-    sel_b: String,
-    bd: BuildingData,
-    rooms: HashMap<String, Room>) -> Vec<String> {
-    // init
-    let mut devices: Vec<bool> = [false ,false ,false ,false ,false].to_vec();
+// Generate Hostnames
+//    Nov. 5 Revision Paradigm Shift -> genHost @ database init
+//      room_name -> "AN 104"
+//      item_vec  -> "[0,1,2,3,4]" 
+//          "[ Proc , Pj , Disp , Ws , Tp ]"
+fn gen_hn2(
+    room_name: String, 
+    item_vec: Vec<u8>) -> Vec<String> {
     let mut hostnames = Vec::new();
-    let mut temp_hostname = String::new();
-    let mut tmp_tmp;
+    let mut tmp_hn    = String::new();
+    let mut tmp_dev   = String::new();
+    let parts: Vec<&str> = room_name.split(" ").collect();
+    // let building_prefix = parts[0];
+    // let room_number     = parts[1];
 
-    // Set selection flags
-    for i in sel_devs {
-        match i.as_ref() {
-            "proc"  => devices[0] = true,
-            "pj"    => devices[1] = true,
-            "ws"    => devices[2] = true,
-            "tp"    => devices[3] = true,
-            "cmicx" => devices[4] = true,
-            &_      => ()
-        }
-    }
-    println!("Boolean Device Flags: \n {:?}", devices);
-    // Implement device count here (Probably?)
-        
-    // Find relavant data in struct AND build
-    for item in bd.building_data { //  For each building in the data
-        if sel_b == item.name { // check selection
-            for j in item.rooms { // iterate through rooms
-                // Build and append hostnames
-                temp_hostname.push_str(&item.abbrev.clone());
-                temp_hostname.push('-');
-                temp_hostname.push_str(&format!("{:0>4}", j).to_string());
-                temp_hostname.push('-');
-                println!("{} {}: {:?}", &item.abbrev.clone(), j.clone(), rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())));
-                if devices[0] {
-                    for n in 0..rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())).unwrap().items[0] {
-                        tmp_tmp = temp_hostname.clone();
-                        tmp_tmp.push_str(format!("proc{}", n+1).as_str());
-                        //println!("generated hostname: \n {}", tmp_tmp);
-                        hostnames.push(tmp_tmp);
-                    }
-                }
-                if devices [1] {
-                    for n in 0..rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())).unwrap().items[1] {
-                        tmp_tmp = temp_hostname.clone();
-                        tmp_tmp.push_str(format!("pj{}", n+1).as_str());
-                        //println!("generated hostname: \n {}", tmp_tmp);
-                        hostnames.push(tmp_tmp);
-                    }
-                }
-                if devices [2] {
-                    for n in 0..rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())).unwrap().items[2] {
-                        tmp_tmp = temp_hostname.clone();
-                        tmp_tmp.push_str(format!("ws{}", n+1).as_str());
-                        //println!("generated hostname: \n {}", tmp_tmp);
-                        hostnames.push(tmp_tmp);
-                    }
-                }
-                if devices [3] {
-                    for n in 0..rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())).unwrap().items[3] {
-                        tmp_tmp = temp_hostname.clone();
-                        tmp_tmp.push_str(format!("tp{}", n+1).as_str());
-                        //println!("generated hostname: \n {}", tmp_tmp);
-                        hostnames.push(tmp_tmp);
-                    }
-                }
-                if devices [4] {
-                    for n in 0..rooms.get(&format!("{} {}", &item.abbrev.clone(), j.clone())).unwrap().items[4] {
-                        tmp_tmp = temp_hostname.clone();
-                        tmp_tmp.push_str(format!("cmic{}", n+1).as_str());
-                        //println!("generated hostname: \n {}", tmp_tmp);
-                        hostnames.push(tmp_tmp);
-                    }
-                }
-                
-                //hostnames.push(temp_hostname.clone());
-                temp_hostname = String::new();
-            }       
-        }
-    }
-    // Return value
+    // Assemble the hostname here
+    for i in 0..4 {
+        let tmp_dev = match i {
+            0 => "PROC",
+            1 => "PROJ",
+            2 => "DISP",
+            3 => "WS",
+            4 => "TP",
+            _ => "ERROR"
+        };
+        if item_vec[i] != 0 {
+            for j in 0..item_vec[i] { // make n hostnames
+                tmp_hn.push_str(parts[0]);
+                tmp_hn.push('-');
+                tmp_hn.push_str(parts[1]);
+                tmp_hn.push('-');
+                tmp_hn.push_str(tmp_dev);
+                tmp_hn.push(char::from_digit((j+1).into(), 10).expect("digit bad idk"));
+                hostnames.push(tmp_hn);
+                tmp_hn = String::new();
+            };
+        };
+    };
     return hostnames;
 }
 
+fn gen_ip2(item_vec: Vec<u8>) -> Vec<String> {
+    let mut ips = Vec::new();
+    let mut count = 0;
+    for i in item_vec{
+        count += i;
+    };
+    for i in 0..count{
+        ips.push("x".to_string());
+    };
+    return ips;
+}
+
+// TODO (AG -> [AG 1, AG 2, ...])
+fn gen_rooms(
+    sel_b: String,
+    bd: BuildingData) -> Vec<String> {
+    // open campus.csv take each record that begins with respective abbreviation. In the event of 'All Buildings' Take the entirty of collumn 1 (Ignore the first row / header). CAMPUS_CSV.
+    let mut rooms = Vec::new();
+    let mut tmp = String::new();
+
+    for item in bd.building_data { //  For each building in the data
+        if (sel_b == item.name) || (sel_b == "All Buildings") {
+            for j in item.rooms {  // iterate through rooms
+                tmp.push_str(&item.abbrev.clone());
+                tmp.push(' ');
+                tmp.push_str(&j);
+                rooms.push(tmp);
+                tmp = String::new();
+            }
+        }
+    }
+    return rooms;
+}
+
 /*
-$$$$$$\  $$\       $$\                 $$$$$$$\                  $$\ 
+ $$$$$$\  $$\       $$\                 $$$$$$$\                  $$\ 
 $$  __$$\ $$ |      $$ |                $$  __$$\                 $$ |
 $$ /  \__|$$$$$$$\  $$ |  $$\  $$$$$$\  $$ |  $$ | $$$$$$\   $$$$$$$ |
 $$ |      $$  __$$\ $$ | $$  |$$  __$$\ $$$$$$$\ |$$  __$$\ $$  __$$ |
