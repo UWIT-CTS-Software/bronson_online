@@ -124,18 +124,24 @@ fn main() {
     
     // set TcpListener and initalize
     // ------------------------------------------------------------------------
-    let host_ip: &str;
-    let local_ip_addr = &(local_ip().unwrap().to_string()+":7878");
+    let mut host_ip: &str;
+    let mut host_port = 7878;
+    let local_ip_addr = &(local_ip().unwrap().to_string());
     if matches.opt_present("l") {
         println!("[#] -- You are running using localhost --");
-        host_ip = "127.0.0.1:7878";
+        host_ip = "127.0.0.1";
     } else {
         println!("[#] -- You are running using public IP --");
         host_ip = local_ip_addr;
     }
-    println!("[!] ... {} ...", host_ip);
 
-    let listener = TcpListener::bind(host_ip).unwrap();
+    while let Err(e) = TcpListener::bind(format!("{}:{}", host_ip, host_port.to_string())) {
+        host_port += 1;
+    }
+    let listener = TcpListener::bind(format!("{}:{}", host_ip, host_port.to_string())).unwrap();
+
+    println!("[!] ... {}:{} ...", host_ip, host_port.to_string());
+
     let pool = ThreadPool::new(4);
     let cookie_jar = Arc::new(reqwest::cookie::Jar::default());
     // ------------------------------------------------------------------------
@@ -273,7 +279,7 @@ async fn handle_connection(
     
         "GET /campus.json HTTP/1.1\r\n"     => send_data_string(STATUS_200, "html-css-js/campus.json", stream_clone, &buff_copy),
     
-        "GET /favicon.ico HTTP/1.1\r\n"     => send_data_bytes(STATUS_200, "html-css-js/logo_main.ico", "img/x-icon", stream_clone, &buff_copy),
+        "GET /favicon.ico HTTP/1.1\r\n"     => send_data_bytes(STATUS_200, "html-css-js/logo_main.png", "image/png", stream_clone, &buff_copy),
         "GET /logo.png HTTP/1.1\r\n"        => send_data_bytes(STATUS_200, "html-css-js/logo.png", "img/png", stream_clone, &buff_copy),
         "GET /logo-2-line.png HTTP/1.1\r\n" => send_data_bytes(STATUS_200, "html-css-js/logo-2-line.png", "img/png", stream_clone, &buff_copy),
         // ------------------------------------------------------------------------
