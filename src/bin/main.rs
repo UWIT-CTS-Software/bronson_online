@@ -124,7 +124,7 @@ fn main() {
     
     // set TcpListener and initalize
     // ------------------------------------------------------------------------
-    let mut host_ip: &str;
+    let host_ip: &str;
     let mut host_port = 7878;
     let local_ip_addr = &(local_ip().unwrap().to_string());
     if matches.opt_present("l") {
@@ -135,7 +135,7 @@ fn main() {
         host_ip = local_ip_addr;
     }
 
-    while let Err(e) = TcpListener::bind(format!("{}:{}", host_ip, host_port.to_string())) {
+    while let Err(_e) = TcpListener::bind(format!("{}:{}", host_ip, host_port.to_string())) {
         host_port += 1;
     }
     let listener = TcpListener::bind(format!("{}:{}", host_ip, host_port.to_string())).unwrap();
@@ -665,7 +665,6 @@ fn gen_hn2(
     item_vec: Vec<u8>) -> Vec<String> {
     let mut hostnames = Vec::new();
     let mut tmp_hn    = String::new();
-    let mut tmp_dev   = String::new();
     let parts: Vec<&str> = room_name.split(" ").collect();
     // let building_prefix = parts[0];
     // let room_number     = parts[1];
@@ -702,7 +701,7 @@ fn gen_ip2(item_vec: Vec<u8>) -> Vec<String> {
     for i in item_vec{
         count += i;
     };
-    for i in 0..count{
+    for _ in 0..count{
         ips.push("x".to_string());
     };
     return ips;
