@@ -142,15 +142,18 @@ impl Drop for ThreadPool {
 // keys struct
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Keys {
-	pub api: String,
+	pub lsm_api: String,
+	pub gh_api: String,
 	pub users: Vec<Vec<String>>
 }
 impl<'a> Clone for Keys {
 	fn clone(&self) -> Keys {
-		let new_api: Box<str> = <String as Clone>::clone(&self.api).into_boxed_str();
+		let new_lsm_api: Box<str> = <String as Clone>::clone(&self.lsm_api).into_boxed_str();
+		let new_gh_api: Box<str> = <String as Clone>::clone(&self.gh_api).into_boxed_str();
 	
 		return Keys { 
-			api: String::from(new_api),
+			lsm_api: String::from(new_lsm_api),
+			gh_api: String::from(new_gh_api),
 			users: self.users.to_vec()
 		};
 	}

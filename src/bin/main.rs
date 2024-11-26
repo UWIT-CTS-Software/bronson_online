@@ -75,13 +75,14 @@ use std::{
     convert::{ TryFrom, },
 };
 use reqwest::{ 
-    header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT, }
+    header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
 use csv::{ Reader, };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
 use regex::Regex;
 use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta, };
+use urlencoding::decode;
 // ----------------------------------------------------------------------------
 
 /*
@@ -253,9 +254,10 @@ async fn handle_connection(
 
     let first_line_search = Regex::new(r"^.*\n").unwrap();
     let buff_copy = buffer.clone();
-    let first_line = first_line_search.find(str::from_utf8(&buff_copy).expect("Empty")).unwrap().as_str();
+    let first_line = first_line_search.find(str::from_utf8(&buff_copy).expect("Empty"));
+    let first_line_str = if first_line.is_some() { first_line.unwrap().as_str() } else { "Empty" };
 
-    match first_line {
+    match first_line_str {
         "GET / HTTP/1.1\r\n"                => send_data_string(STATUS_200, "html-css-js/login.html", stream_clone, &buff_copy),
         "GET /page.css HTTP/1.1\r\n"        => send_data_string(STATUS_200, "html-css-js/page.css", stream_clone, &buff_copy),
     
@@ -299,6 +301,50 @@ async fn handle_connection(
                     send_data_string(STATUS_200, user_homepage, login_stream_clone, &buff_copy);
                 }
             }
+        },
+        "POST /bugreport HTTP/1.1\r\n"      => {
+            let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
+            let Some(credentials) = credential_search.captures(str::from_utf8(&buff_copy).expect("Empty")) else { return Option::Some(()) };
+            let encoded_title = String::from(credentials["title"].to_string().into_boxed_str());
+            let mut encoded_desc = String::from(credentials["desc"].to_string().into_boxed_str());
+            if encoded_desc == String::from("") {
+                encoded_desc = encoded_title.clone();
+            }
+            let mut decoded_title = decode(&encoded_title).expect("UTF-8");
+            let mut decoded_desc = decode(&encoded_desc).expect("UTF-8");
+            decoded_title = decoded_title.replace("+", " ").into();
+            decoded_desc = decoded_desc.replace("+", " ").into();
+            decoded_desc = decoded_desc.replace("\0", "").into();
+            let mut arg_map = HashMap::new();
+            arg_map.insert("title", decoded_title);
+            arg_map.insert("body", decoded_desc);
+
+            println!("{:?}:{:?}", arg_map.get("title").unwrap(), arg_map.get("body").unwrap());
+
+            let clone_keys = keys.clone();
+            let url = "https://api.github.com/repos/UWIT-CTS-Software/bronson_online/issues";
+            let req = reqwest::Client::builder()
+                .cookie_provider(Arc::clone(&cookie_jar))
+                .user_agent("server_lib/1.1.0")
+                .default_headers(construct_headers("gh", clone_keys))
+                .timeout(Duration::from_secs(15))
+                .build()
+                .ok()?
+            ;
+
+            let _body = req.post(url)
+                          .timeout(Duration::from_secs(15))
+                          .json(&arg_map)
+                          .send()
+                          .await
+                          .expect("[-] RESPONSE ERROR")
+                          .text()
+                          .await
+                          .expect("[-] PAYLOAD ERROR");
+
+            
+            send_data_string(STATUS_200, user_homepage, stream_clone, &buff_copy);
+
         },
         // Jacknet
         "POST /ping HTTP/1.1\r\n"           => {
@@ -344,7 +390,7 @@ async fn handle_connection(
                 let req = reqwest::Client::builder()
                     .cookie_provider(Arc::clone(&cookie_jar))
                     .user_agent("server_lib/1.1.0")
-                    .default_headers(construct_headers(clone_keys))
+                    .default_headers(construct_headers("lsm", clone_keys))
                     .timeout(Duration::from_secs(15))
                     .build()
                     .ok()?
@@ -740,10 +786,16 @@ $$ |  $$\ $$ |  $$ |$$  _$$<  $$ |      $$ |  $$ |$$ |      $$ |  $$ |
  \______/ \__|  \__|\__|  \__|\__|      \_______/ \__|       \_______|
 */
 
-fn construct_headers(keys: Keys) -> HeaderMap {
+fn construct_headers(call_type: &str, keys: Keys) -> HeaderMap {
     let mut header_map = HeaderMap::new();
-    header_map.insert(ACCEPT, HeaderValue::from_static("application/json"));
-    header_map.insert(AUTHORIZATION, HeaderValue::from_str(&keys.api).expect("[-] KEY_ERR: Not found."));
+    if call_type == "lsm" {
+        header_map.insert(ACCEPT, HeaderValue::from_static("application/json"));
+        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&keys.lsm_api).expect("[-] KEY_ERR: Not found."));
+    } else if call_type == "gh" {
+        header_map.insert(ACCEPT, HeaderValue::from_static("application/vnd.github+json"));
+        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&keys.gh_api).expect("[-] KEY_ERR: Not found."));
+        header_map.insert(HeaderName::from_static("x-github-api-version"), HeaderValue::from_static("2022-11-28"));
+    }
 
     return header_map;
 }
