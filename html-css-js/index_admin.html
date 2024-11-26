@@ -58,9 +58,6 @@
         const hamburger = document.querySelector(".hamburger");
 
         hamburger.addEventListener("click", toggleMenu);
-        menuItems.forEach(function(menuItem) {
-          menuItem.addEventListener("click", toggleMenu);
-        });
 
         document.title = "Dashboard - Bronson";
         let tool_header = document.querySelector('.tool_header');
@@ -94,6 +91,30 @@
         main_container.classList.add('program_guts');
         prog_guts.replaceWith(main_container);
         return;
+      }
+
+      function initForm() {
+        document.getElementById('bug_report_modal').style.display='block';
+        let bodies = document.getElementsByClassName('program_guts')
+        for (let i=0; i<bodies.length; i++) {
+          bodies[i].style.display='none';
+        }
+        toggleMenu();
+      }
+
+      function terminateForm() {
+        document.getElementById('bug_report_modal').style.display='none';
+        let bodies = document.getElementsByClassName('program_guts')
+        for (let i=0; i<bodies.length; i++) {
+          bodies[i].style.display='block';
+        }
+      }
+
+      var modal = document.getElementById('bug_report_modal');
+      window.onclick = function(event) {
+        if (event.target == modal) {
+          terminateForm();
+        }
       }
 
       $(function() {
@@ -139,12 +160,12 @@ $$$$$$$$\                                $$\                     $$\
       <!-- Website Header (Doesn't Change) -->
       <div class="program_header">
         <ul class="menu">
-          <li><a class="menuItem" href="#">Link 1</a></li>
-          <li><a class="menuItem" href="#">Link 2</a></li>
-          <li><a class="menuItem" href="#">Link 3</a></li>
-          <li><a class="menuItem" href="#">Link 4</a></li>
+          <li><a class="menuItem" onclick="toggleMenu()">Back</a></li>
+          <li><a class="menuItem"></a></li>
+          <li><a class="menuItem">Help / FAQ</a></li>
+          <li><a class="menuItem" onclick="initForm()">Report Bug</a></li>
         </ul>
-        <button class="hamburger" onclick="toggleMenu()">
+        <button class="hamburger">
           <i class="menuIcon material-icons">menu</i>
           <i class="closeIcon material-icons" style="display: none;">close</i>
         </button>
@@ -191,6 +212,27 @@ $$$$$$$$\                                $$\                     $$\
         
       </div>
       <br>
+      <div id="bug_report_modal" class="modal" style="display:none;">
+        <form class="modal-content animate" action="/bugreport" method="post">
+          <div class="login_imgcontainer">
+            <span onclick="terminateForm()" class="close" title="Close Modal">&times;</span>
+            <img src="logo.png" alt="Avatar" class="avatar">
+          </div>
+        
+          <div class="container" id="entry_field">
+            <label for="title"><b>Title</b></label>
+            <input type="text" placeholder="Briefly Describe Your Issue" name="title" required>
+      
+            <label for="desc"><b>Description</b></label>
+            <input type="text" placeholder="Give More Detail" name="desc">
+          </div>
+      
+          <div class="container">
+            <button type="button" class="headButton" onclick="terminateForm()" class="cancelbtn">Cancel</button>
+            <button class="headButton" style="float: right;" type="submit">Done</button>
+          </div>
+        </form>
+      </div>
       <!-- <p> Local dashboard of stuff // maybe a feed</p> -->
       <div class="program_guts">
       </div>
