@@ -123,14 +123,10 @@
       <div class="program_header">
         <ul class="menu">
           <li><a class="menuItem" onclick="toggleMenu()">Back</a></li>
-          <li><a class="menuItem"></a></li>
           <li><a class="menuItem">Help / FAQ</a></li>
           <li><a class="menuItem" onclick="initForm()">Report Bug</a></li>
         </ul>
-        <button class="hamburger">
-          <i class="menuIcon material-icons">menu</i>
-          <i class="closeIcon material-icons" style="display: none;">close</i>
-        </button>
+        
         <h1 class='site_header' onclick='setDashboard()'>
           Bronson</h1>
         <p class='p_header'>
@@ -142,6 +138,10 @@
             <legend class="ph_legend">
               Tools:
             </legend>
+            <button class="hamburger">
+              <i class="menuIcon material-icons">menu</i>
+              <i class="closeIcon material-icons" style="display: none;">close</i>
+            </button>
             <button id="CBButton" onclick="setChecker()" type="button" class="headButton">
               Checkerboard </button>
             <button id="JNButton" onclick="setJackNet()" type="button" class="headButton">
