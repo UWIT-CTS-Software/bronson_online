@@ -36,7 +36,7 @@
       );
 
       function toggleMenu() {
-        const menu = document.querySelector(".menu");
+        const menu = document.querySelector(".hb_menu");
         const menuIcon = document.querySelector(".menuIcon");
         const closeIcon = document.querySelector(".closeIcon");
         if (menu.classList.contains("showMenu")) {
@@ -121,18 +121,40 @@
     <div class="program_board">
       <!-- Website Header (Doesn't Change) -->
       <div class="program_header">
-        <ul class="menu">
-          <li><a class="menuItem" onclick="toggleMenu()">Back</a></li>
-          <li><a class="menuItem">Help / FAQ</a></li>
-          <li><a class="menuItem" onclick="initForm()">Report Bug</a></li>
-        </ul>
-        
+        <!-- Hamburger Declaration -->
+        <div class="hb_menu">
+          <fieldset class="ph_fieldset">
+            <legend class="ph_legend">
+              Menu:</legend>
+            <button class="headButton siteButton" onclick="toggleMenu()">Back</button>
+            <button class="headButton siteButton">Help / FAQ </button>
+            <button class="headButton siteButton" onclick="initForm()">Report Bug</button>
+          </fieldset>
+          <fieldset class="ph_fieldset">
+            <legend class="ph_legend">
+              Sites:</legend>
+            <button id="TimeClockURL" onclick="window.open('https://shibboleth.uwyo.edu/idp/profile/SAML2/Unsolicited/SSO?providerId=https://9922.tcplusondemand.com&shire=https://9922.tcplusondemand.com/api/v0000/saml2Sessions/0/Saml2SingleSignOnEmployeePost&target=CompanyNamespace%3d9922%3bCompanyId%3d1%3bRedirectPat');" type="button" class="headButton siteButton">
+              TimeClock </button>
+            <button id="lsmURL" onclick="window.open('https://uwyo.talem3.com/lsm/login/auth');" type="button" class="headButton siteButton">
+              LSM </button>
+            <button id="tdURL" onclick="window.open('https://uwyo.teamdynamix.com/TDNext/Home/Desktop/Default.aspx');" type="button" class="headButton siteButton">
+              TeamDynamix </button>
+            <button id="25lURL" onclick="window.open('https://25live.collegenet.com/pro/uwyo#!/home/dash');" type="button" class="headButton siteButton">
+              25Live </button>
+            <button id="campusMapURL" onclick="window.open('https://uwoperations.uwyo.edu/portal/apps/webappviewer/index.html?id=66a9c83b1d92419d8579562ed0a6259b');" type="button" class="headButton siteButton">
+              Campus Map </button>
+          </fieldset>
+        </div>
+        <!-- Site Button -->
         <h1 class='site_header' onclick='setDashboard()'>
           Bronson</h1>
+        <!-- Message -->
         <p class='p_header'>
           <i>The swiss army knife for the U.W.I.T. department</i></p>
+        <!-- Currently Selected Page -->
         <h2 class='tool_header'>
           Dashboard</h2>
+        <!-- Tool Button Section-->
         <div class="tool_buttons">
           <fieldset class="ph_fieldset">
             <legend class="ph_legend">
@@ -150,22 +172,9 @@
               CamCode </button>
             <button id="wiki" onclick="setWiki()" type="button" class="headButton">
               Wiki </button>
-          </fieldset>
-        </div>
-        <div class="site_buttons">
-          <fieldset class="ph_fieldset">
-            <legend class="ph_legend">
-              Sites:</legend>
-            <button id="TimeClockURL" onclick="window.open('https://shibboleth.uwyo.edu/idp/profile/SAML2/Unsolicited/SSO?providerId=https://9922.tcplusondemand.com&shire=https://9922.tcplusondemand.com/api/v0000/saml2Sessions/0/Saml2SingleSignOnEmployeePost&target=CompanyNamespace%3d9922%3bCompanyId%3d1%3bRedirectPat');" type="button" class="headButton">
-              TimeClock </button>
-            <button id="lsmURL" onclick="window.open('https://uwyo.talem3.com/lsm/login/auth');" type="button" class="headButton">
-              LSM </button>
-            <button id="tdURL" onclick="window.open('https://uwyo.teamdynamix.com/TDNext/Home/Desktop/Default.aspx');" type="button" class="headButton">
-              TeamDynamix </button>
-            <button id="25lURL" onclick="window.open('https://25live.collegenet.com/pro/uwyo#!/home/dash');" type="button" class="headButton">
-              25Live </button>
-            <button id="campusMapURL" onclick="window.open('https://uwoperations.uwyo.edu/portal/apps/webappviewer/index.html?id=66a9c83b1d92419d8579562ed0a6259b');" type="button" class="headButton">
-              Campus Map </button>
+            <!-- <button id="my_terminal" onclick="setTerminal()" type="button" class="headButton">
+              Terminal </button>
+            </button> -->
           </fieldset>
         </div>
       </div>
