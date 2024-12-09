@@ -55,16 +55,17 @@ legend {
     display: inline-block;
     font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 400;
     line-height: 20px;
     list-style: none;
-    padding: 2px 8px;
+    padding: 2px auto;
+    margin: 2px;
+    text-align: center;
     position: relative;
     transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1);
     user-select: none;
     -webkit-user-select: none;
     touch-action: manipulation;
-    vertical-align: middle;
     white-space: nowrap;
     word-wrap: break-word;
   }
@@ -72,6 +73,7 @@ legend {
   .headButton:hover {
     background-color: #F3F4F6;
     text-decoration: none;
+    /* font-weight: 500; */
     transition-duration: 0.1s;
   }
   
@@ -100,6 +102,12 @@ legend {
     display: none;
   }
 
+  .siteButton {
+    display: block;
+    margin: 2px auto;
+    width: 120px;
+  }
+
 .program_board {
     padding-bottom: 10%;
 }
@@ -125,52 +133,6 @@ legend {
     grid-auto-rows: minmax(5px, auto);
     border:4px none rgb(133, 118, 60);
     border-style: none double inset double;
-}
-
-.hamburger {
-    margin: 0px;
-    display: inline-block;
-    vertical-align: middle;
-    border: 2px outset rgb(133, 118, 60);;
-    background: none;
-    cursor: pointer;
-    padding-left: 2px;
-    padding-top: 4px;
-    padding-right: 2px;
-    scale: 70%;
-}
-
-.closeIcon {
-    display: none;
-}
-
-.menu {
-    grid-row: 8 / 3;
-    z-index: 1;
-    position: fixed;
-    grid-row: 3x;
-    transform: translateX(-150%);
-    transition: transform 0.2s;
-    border:4px outset rgb(144, 118, 26);
-    background: rgb(39, 35, 35);
-    color: white;
-    list-style: none;
-    margin-top: 5%;
-    width: 9rem;
-}
-
-.showMenu {
-    transform: translateX(0);
-}
-
-.menuItem {
-    color: white;
-}
-
-.menuItem:hover {
-    cursor: pointer;
-    color: #959DA5;
-    border: 2px inset rgb(144, 118, 26);
 }
 
 .site_header {
@@ -216,7 +178,7 @@ legend {
     font-size: large;
     font-weight: 400;
     font-style: normal;
-    grid-column: 4 / 7;
+    grid-column: 5 / 7;
     grid-row: 1;
     margin: 10px;
 }
@@ -232,9 +194,10 @@ legend {
     color: rgb(118, 66, 28);
     background-color: rgb(190, 164, 92);
     border: 2px inset rgb(144, 118, 26);
-    padding: 2px;
-    margin: 0px;
-    width:fit-content;
+    display: block;
+    padding: 3px 15px;
+    margin: 5px auto;
+    width: fit-content;
     height: fit-content;
 }
 
@@ -249,13 +212,81 @@ legend {
     margin: 1px;
 }
  
+
+/*
+▗▖ ▗▖▗▞▀▜▌▄▄▄▄  ▗▖█  ▐▌ ▄▄▄  ▗▞▀▚▖ ▄▄▄ 
+▐▌ ▐▌▝▚▄▟▌█ █ █ ▐▌▀▄▄▞▘█     ▐▛▀▀▘█    
+▐▛▀▜▌     █   █ ▐▛▀▚▖  █     ▝▚▄▄▖█    
+▐▌ ▐▌           ▐▙▄▞▘      ▗▄▖         
+                          ▐▌ ▐▌        
+                           ▝▀▜▌        
+                          ▐▙▄▞▘        
+
+*/
+.hamburger {
+    margin: 0px;
+    display: inline-block;
+    vertical-align: middle;
+    border: 2px outset rgb(133, 118, 60);;
+    background: none;
+    cursor: pointer;
+    padding-left: 2px;
+    padding-top: 4px;
+    padding-right: 2px;
+    scale: 70%;
+}
+
+.closeIcon {
+    display: none;
+}
+
+.hb_menu {
+    z-index: 1;
+    position: fixed;
+    grid-row: 3x;
+    border:4px outset rgb(144, 118, 26);
+    background: rgb(39, 35, 35);
+    transform: translateX(-150%);
+    transition: transform 0.2s;
+    color: white;
+    margin-top: 5%;
+    width: 11rem;
+}
+
+.menu_ul {
+    grid-row: 8 / 3;
+    z-index: 1;
+    position: fixed;
+    grid-row: 3x;
+    /* transform: translateX(-150%); */
+    transition: transform 0.2s;
+    border:4px outset rgb(144, 118, 26);
+    background: rgb(39, 35, 35);
+    color: white;
+    list-style: none;
+    margin-top: 5%;
+    width: 9rem;
+}
+
+.showMenu {
+    transform: translateX(0);
+}
+
+.menuItem {
+    color: white;
+}
+
+.menuItem:hover {
+    cursor: pointer;
+    color: #959DA5;
+    border: 2px inset rgb(144, 118, 26);
+}
+
 .site_buttons {
     color: rgb(118, 66, 28);
     background-color: rgba(0, 0, 0, 0);
     text-align: center;
     font-family:'Courier New', Courier, monospace;
-    grid-column: 7 / 10;
-    grid-row: 1;
     margin: 4px;
     margin-left: 136px;
 }
