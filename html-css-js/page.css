@@ -144,7 +144,7 @@ legend {
     font-style: normal;
     grid-column: 1 / 1;
     grid-row: 1;
-    margin: 5px;
+    margin: 12px;
     border:4px outset rgb(133, 118, 60);
     cursor: pointer;
     padding-left: 2px;
@@ -164,9 +164,11 @@ legend {
     font-family: "Racing Sans One", sans-serif;
     font-weight: 400;
     vertical-align: middle;
-    grid-column: 10 / 12;
+    grid-column: 10 / 11;
     grid-row: 1;
-    margin: 10px;
+    margin: 14px;
+    padding: 0px 20px;
+    width: fit-content;
     border:4px inset rgb(207, 184, 94);
 }
 
