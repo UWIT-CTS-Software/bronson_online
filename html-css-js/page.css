@@ -268,7 +268,7 @@ legend {
     grid-column: 1 / 2;
     grid-row: 1;
     z-index: 1;
-    transform: translate(-25px, 20px)
+    transform: translate(-3%, 20px)
 }
 
 .closeIcon {
@@ -284,7 +284,7 @@ legend {
     transform: translateX(-150%);
     transition: transform 0.2s;
     color: white;
-    margin-top: 5%;
+    margin-top: 90px;
     width: 11rem;
 }
 
