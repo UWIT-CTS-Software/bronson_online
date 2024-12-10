@@ -136,8 +136,8 @@ function setChecker() {
     });
 
     document.title = "CheckerBoard - Bronson";
-    let tool_header = document.querySelector('.tool_header');
-    tool_header.innerHTML = 'Checkerboard';
+    let active_tab_header = document.querySelector('.active_tab_header');
+    active_tab_header.innerHTML = 'Checkerboard';
     history.pushState("test", "CheckerBoard", "/checkerboard");
 
     console.log('Switching to checkerboard');

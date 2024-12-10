@@ -45,9 +45,9 @@ async function setWiki() {
 
     document.title = "Wiki - Bronson";
     console.log('switching to wiki');
-    let tool_header = document.querySelector('.tool_header');
+    let active_tab_header = document.querySelector('.active_tab_header');
     history.pushState("test", "Wiki", "/wiki");
-    tool_header.innerHTML = 'Wiki';
+    active_tab_header.innerHTML = 'Wiki';
 
     let progGuts = document.querySelector('.program_board .program_guts');
     let main_container = document.createElement('div');

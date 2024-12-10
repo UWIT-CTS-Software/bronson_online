@@ -46,7 +46,7 @@ legend {
 } */
 .headButton {
     appearance: none;
-    background-color: #e9d27eb6;
+    background-color: #e9d27e;
     border: 1px inset rgba(27, 31, 35, 0.15);
     box-shadow: rgba(27, 31, 35, 0.04) 0 1px 0, rgba(255, 255, 255, 0.25) 0 1px 0 inset;
     box-sizing: border-box;
@@ -112,17 +112,6 @@ legend {
     padding-bottom: 10%;
 }
 
-/* Program Header        .program_header
-    Hamburger               - .hamburger
-    Close Icon              - .closeIcon
-    Menu                    - .menu
-    Site (Dashboard Button) - .site_header
-    text                    - .p_header
-    Selected Tool           - .tool_header
-
-    Tool Buttons            - .tool_buttons
-    Site Buttons            - .site_buttons
-*/
 .program_header {
     color: rgb(118, 66, 28);
     background-color: rgb(224, 193, 108);
@@ -135,6 +124,9 @@ legend {
     border-style: none double inset double;
 }
 
+/* Banner aesthetic changes should go here, add ph_checkerboard class item on page load. (program header checkerboard) */
+
+/* Bronson icon in top left */
 .site_header {
     color: rgb(118, 66, 28);
     background-color: rgb(205, 177, 99);
@@ -142,13 +134,13 @@ legend {
     font-family: "Racing Sans One", sans-serif;
     font-weight: 400;
     font-style: normal;
-    grid-column: 1 / 1;
+    grid-column: 1 / 2;
     grid-row: 1;
-    margin: 12px;
+    margin: 12px auto;
     border:4px outset rgb(133, 118, 60);
     cursor: pointer;
-    padding-left: 2px;
-    padding-right: 2px;
+    padding-left: 10px;
+    padding-right: 10px;
 }
 
 .site_header:hover {
@@ -157,32 +149,143 @@ legend {
     transition-duration: 0.1s;
   }
 
-.tool_header {
+/* Displays active tab in top right */
+.active_tab_header {
     color: rgb(118, 66, 28);
     background-color: rgb(176, 154, 91);
     text-align: center;
     font-family: "Racing Sans One", sans-serif;
     font-weight: 400;
     vertical-align: middle;
-    grid-column: 10 / 11;
+    grid-column: 9 / 11;
     grid-row: 1;
-    margin: 14px;
-    padding: 0px 20px;
+    margin: 15px;
+    padding: 2px 64px;
     width: fit-content;
     border:4px inset rgb(207, 184, 94);
 }
 
-.p_header {
+/* Middle panel, contains tab, hamburger button, message of the day. */
+.middle_section {
     color: rgb(118, 66, 28);
-    background-color: rgb(224, 193, 108);
-    text-align: left;
+    background-color: rgba(0, 0, 0, 0);
+    text-align: center;
+    font-family:'Courier New', Courier, monospace;
+    display: grid;
+    /* grid-area: 2 / 9; */
+    grid-column: 2 / 10;
+    grid-row: 1;
+    /* height: 20px; */
+    padding-top: 0px;
+    margin: 1px;
+}
+
+.message_header {
+    color: rgb(118, 66, 28);
+    /* background-color: rgb(224, 193, 108); */
     font-family: "Contrail One", sans-serif;
     font-size: large;
     font-weight: 400;
     font-style: normal;
-    grid-column: 5 / 7;
+    text-align: left;
+    display: inline-grid;
+    grid-column: 1 / 4;
     grid-row: 1;
+    /* vertical-align: end; */
     margin: 10px;
+    transform: translateX(-3%);
+}
+
+.tab_row {
+    margin: 14px auto;
+    display: inline-grid;
+    padding: 5px 0px;
+    grid-auto-columns: 1fr;
+    grid-column: 1 / 40;
+    grid-row: 1;
+    transform: translateY(26px);
+}
+
+.toolTab {
+    /* margin: 19px auto;
+    display: inline-block;
+    vertical-align: middle;
+    padding: 6px 26px; */
+    /* transform: translateY(26px); */
+    /* grid-column: 1 / 12; */
+    opacity: 100%;
+    grid-row: 1;
+}
+
+.chTab {
+    grid-column: 1 / 1;
+}
+
+.jnTab {
+    grid-column: 2 / 2;
+}
+
+.ccTab {
+    grid-column: 3 / 3;
+}
+
+.wikiTab {
+    grid-column: 4 / 4;
+}
+
+/* .hmButton {
+    margin: 16px auto;
+    display: inline-block;
+    vertical-align: middle;
+    transform: translateX(-20px);
+    
+} */
+ 
+
+/*
+▗▖ ▗▖▗▞▀▜▌▄▄▄▄  ▗▖█  ▐▌ ▄▄▄  ▗▞▀▚▖ ▄▄▄ 
+▐▌ ▐▌▝▚▄▟▌█ █ █ ▐▌▀▄▄▞▘█     ▐▛▀▀▘█    
+▐▛▀▜▌     █   █ ▐▛▀▚▖  █     ▝▚▄▄▖█    
+▐▌ ▐▌           ▐▙▄▞▘      ▗▄▖         
+                          ▐▌ ▐▌        
+                           ▝▀▜▌        
+                          ▐▙▄▞▘        
+
+*/
+
+/* This refers to the button in the middle panel */
+.hamburger {
+    margin: 19px auto;
+    display: inline-grid;
+    /* vertical-align: middle; */
+    border: 2px outset rgb(133, 118, 60);;
+    background: none;
+    cursor: pointer;
+    padding-left: 2px;
+    padding-top: 4px;
+    padding-right: 2px;
+    scale: 70%;
+    grid-column: 1 / 2;
+    grid-row: 1;
+    z-index: 1;
+    transform: translate(-25px, 20px)
+}
+
+.closeIcon {
+    display: none;
+}
+
+.hb_menu {
+    z-index: 1;
+    position: fixed;
+    grid-row: 3x;
+    border:4px outset rgb(144, 118, 26);
+    background: rgb(39, 35, 35);
+    transform: translateX(-150%);
+    transition: transform 0.2s;
+    color: white;
+    margin-top: 5%;
+    width: 11rem;
 }
 
 .ph_legend {
@@ -201,58 +304,6 @@ legend {
     margin: 5px auto;
     width: fit-content;
     height: fit-content;
-}
-
-.tool_buttons {
-    color: rgb(118, 66, 28);
-    background-color: rgba(0, 0, 0, 0);
-    text-align: center;
-    font-family:'Courier New', Courier, monospace;
-    grid-column: 2 / 5;
-    grid-row: 1;
-    padding-top: 0px;
-    margin: 1px;
-}
- 
-
-/*
-▗▖ ▗▖▗▞▀▜▌▄▄▄▄  ▗▖█  ▐▌ ▄▄▄  ▗▞▀▚▖ ▄▄▄ 
-▐▌ ▐▌▝▚▄▟▌█ █ █ ▐▌▀▄▄▞▘█     ▐▛▀▀▘█    
-▐▛▀▜▌     █   █ ▐▛▀▚▖  █     ▝▚▄▄▖█    
-▐▌ ▐▌           ▐▙▄▞▘      ▗▄▖         
-                          ▐▌ ▐▌        
-                           ▝▀▜▌        
-                          ▐▙▄▞▘        
-
-*/
-.hamburger {
-    margin: 0px;
-    display: inline-block;
-    vertical-align: middle;
-    border: 2px outset rgb(133, 118, 60);;
-    background: none;
-    cursor: pointer;
-    padding-left: 2px;
-    padding-top: 4px;
-    padding-right: 2px;
-    scale: 70%;
-}
-
-.closeIcon {
-    display: none;
-}
-
-.hb_menu {
-    z-index: 1;
-    position: fixed;
-    grid-row: 3x;
-    border:4px outset rgb(144, 118, 26);
-    background: rgb(39, 35, 35);
-    transform: translateX(-150%);
-    transition: transform 0.2s;
-    color: white;
-    margin-top: 5%;
-    width: 11rem;
 }
 
 .menu_ul {
