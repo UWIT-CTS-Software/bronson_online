@@ -503,9 +503,9 @@ async function setJackNet() {
     });
 
     document.title = "JackNet - Bronson";
-    // Update tool_header
-    let tool_header = document.querySelector('.tool_header');
-    tool_header.innerHTML = 'JackNet';
+    // Update active_tab_header
+    let active_tab_header = document.querySelector('.active_tab_header');
+    active_tab_header.innerHTML = 'JackNet';
     history.pushState("test", "JackNet", "/jacknet");
     console.log('Switching to jacknet');
 

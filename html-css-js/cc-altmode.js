@@ -227,8 +227,8 @@ async function setCrestronFile() {
     });
 
     document.title = "CamCode - Bronson";
-    let tool_header = document.querySelector('.tool_header');
-    tool_header.innerHTML = 'CamCode';
+    let active_tab_header = document.querySelector('.active_tab_header');
+    active_tab_header.innerHTML = 'CamCode';
     history.pushState("test", "CamCode-CFM", "/cc-altmode");
     console.log('switching to camcode-cfm');
   

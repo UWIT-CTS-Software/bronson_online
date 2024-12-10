@@ -58,8 +58,8 @@
         hamburger.addEventListener("click", toggleMenu);
 
         document.title = "Dashboard - Bronson";
-        let tool_header = document.querySelector('.tool_header');
-        tool_header.innerHTML = 'Dashboard';
+        let active_tab_header = document.querySelector('.active_tab_header');
+        active_tab_header.innerHTML = 'Dashboard';
         history.pushState({}, "Dashboard", "/");
 
         let prog_guts = document.querySelector('.program_board .program_guts');
@@ -67,7 +67,7 @@
         let db_container = document.createElement("div");
         db_container.classList.add("db_container");
         // db_container.innerHTML = `
-        //   <p class='tool_header'>
+        //   <p class='active_tab_header'>
         //     Dashboard </p>`;
 
         // Console Output
@@ -121,7 +121,7 @@
     <div class="program_board">
       <!-- Website Header (Doesn't Change) -->
       <div class="program_header">
-        <!-- Hamburger Declaration -->
+        <!-- Hamburger Menu Declaration -->
         <div class="hb_menu">
           <fieldset class="ph_fieldset">
             <legend class="ph_legend">
@@ -145,37 +145,35 @@
               Campus Map </button>
           </fieldset>
         </div>
+
         <!-- Site Button -->
         <h1 class='site_header' onclick='setDashboard()'>
           Bronson</h1>
-        <!-- Message -->
-        <p class='p_header'>
-          <i>The swiss army knife for the U.W.I.T. department</i></p>
+        
         <!-- Currently Selected Page -->
-        <h2 class='tool_header'>
+        <h2 class='active_tab_header'>
           Dashboard</h2>
-        <!-- Tool Button Section-->
-        <div class="tool_buttons">
-          <fieldset class="ph_fieldset">
-            <legend class="ph_legend">
-              Tools:
-            </legend>
-            <button class="hamburger">
-              <i class="menuIcon material-icons">menu</i>
-              <i class="closeIcon material-icons" style="display: none;">close</i>
-            </button>
-            <button id="CBButton" onclick="setChecker()" type="button" class="headButton">
+
+        <!-- Tool Button / Middle Section-->
+        <div class="middle_section">
+          <button class="headButton hamburger">
+            <i class="menuIcon material-icons">menu</i>
+            <i class="closeIcon material-icons" style="display: none;">close</i>
+          </button>
+
+          <!-- Message -->
+          <p class='message_header'>
+            <i>The swiss army knife for the U.W.I.T. department</i></p>
+          <div class="tab_row">
+            <button id="CBButton" onclick="setChecker()" type="button" class="headButton toolTab chTab">
               Checkerboard </button>
-            <button id="JNButton" onclick="setJackNet()" type="button" class="headButton">
+            <button id="JNButton" onclick="setJackNet()" type="button" class="headButton toolTab jnTab">
               JackNet </button>
-            <button id="CCButton" onclick="setCrestronFile()" type="button" class="headButton">
+            <button id="CCButton" onclick="setCrestronFile()" type="button" class="headButton toolTab ccTab">
               CamCode </button>
-            <button id="wiki" onclick="setWiki()" type="button" class="headButton">
+            <button id="wiki" onclick="setWiki()" type="button" class="headButton toolTab wikiTab">
               Wiki </button>
-            <!-- <button id="my_terminal" onclick="setTerminal()" type="button" class="headButton">
-              Terminal </button>
-            </button> -->
-          </fieldset>
+          </div>
         </div>
       </div>
       <br>
