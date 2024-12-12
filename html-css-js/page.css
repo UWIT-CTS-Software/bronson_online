@@ -207,15 +207,35 @@ legend {
 }
 
 .toolTab {
-    /* margin: 19px auto;
-    display: inline-block;
-    vertical-align: middle;
-    padding: 6px 26px; */
+    margin: 0px 3px;
+    /* display: inline-block;
+    vertical-align: middle; */
+    padding: 6px 26px;
     /* transform: translateY(26px); */
     /* grid-column: 1 / 12; */
     opacity: 100%;
     grid-row: 1;
+    
 }
+
+.trapezoid {
+    width: 160px;
+    text-align: center;
+    height: 0; 
+    position: relative;
+    border-right: 12px solid transparent;
+    border-left: 12px solid transparent;
+    border-bottom: 39px solid #d8ce83;
+    border-top: 0px solid transparent;
+    /* border-bottom: 15px solid #24292E; */
+    box-sizing: content-box;
+  }
+  .trapezoid span { 
+    position: absolute;
+    top: 21px;
+    left: 32%;
+    /* color: #fff; */
+  }
 
 .chTab {
     grid-column: 1 / 1;
@@ -232,14 +252,6 @@ legend {
 .wikiTab {
     grid-column: 4 / 4;
 }
-
-/* .hmButton {
-    margin: 16px auto;
-    display: inline-block;
-    vertical-align: middle;
-    transform: translateX(-20px);
-    
-} */
  
 
 /*
@@ -255,20 +267,20 @@ legend {
 
 /* This refers to the button in the middle panel */
 .hamburger {
-    margin: 19px auto;
+    margin: 25px auto;
     display: inline-grid;
     /* vertical-align: middle; */
     border: 2px outset rgb(133, 118, 60);;
     background: none;
     cursor: pointer;
-    padding-left: 2px;
-    padding-top: 4px;
-    padding-right: 2px;
+    padding-left: 4px;
+    padding-top: 6px;
+    padding-right: 4px;
     scale: 70%;
     grid-column: 1 / 2;
     grid-row: 1;
     z-index: 1;
-    transform: translate(-3%, 20px)
+    transform: translate(-78%, 20px)
 }
 
 .closeIcon {
