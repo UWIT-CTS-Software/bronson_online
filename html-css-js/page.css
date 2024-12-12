@@ -62,7 +62,7 @@ legend {
     margin: 2px;
     text-align: center;
     position: relative;
-    transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1);
+    /* transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1); */
     user-select: none;
     -webkit-user-select: none;
     touch-action: manipulation;
@@ -203,54 +203,74 @@ legend {
     grid-auto-columns: 1fr;
     grid-column: 1 / 40;
     grid-row: 1;
-    transform: translateY(26px);
+    transform: translateY(32px);
 }
 
 .toolTab {
-    margin: 0px 3px;
+    margin: 0px -6px;
     /* display: inline-block;
     vertical-align: middle; */
-    padding: 6px 26px;
+    padding: 0px 24px;
     /* transform: translateY(26px); */
     /* grid-column: 1 / 12; */
     opacity: 100%;
     grid-row: 1;
-    
-}
-
-.trapezoid {
     width: 160px;
     text-align: center;
     height: 0; 
     position: relative;
     border-right: 12px solid transparent;
     border-left: 12px solid transparent;
-    border-bottom: 39px solid #d8ce83;
+    border-bottom: 39px solid #64603d;
     border-top: 0px solid transparent;
+    background-color: transparent;
     /* border-bottom: 15px solid #24292E; */
     box-sizing: content-box;
-  }
-  .trapezoid span { 
+    /* box-shadow: rgb(27, 31, 35) 0 1px 0, rgba(255, 255, 255, 0.25) 0 1px 0 inset; */
+}
+
+.toolTab span { 
     position: absolute;
-    top: 21px;
-    left: 32%;
+    top: 9px;
+    left: 19px;
+    color: rgb(194, 194, 194);
     /* color: #fff; */
-  }
+}
+.toolTab:hover {
+    border-right: 9px solid transparent;
+    border-left: 9px solid transparent;
+    border-bottom: 37px solid #94742e;
+    border-top: 0px solid transparent;
+    text-decoration: none;
+    /* font-weight: 500; */
+    transition-duration: 0.1s;
+    transform: scale(1.1);
+    /* z-index: 1; */
+    background: transparent;
+}
+
+.toolTab:active {
+    z-index: 2;
+}
 
 .chTab {
     grid-column: 1 / 1;
+    z-index: 1;
 }
 
 .jnTab {
     grid-column: 2 / 2;
+    z-index: 2;
 }
 
 .ccTab {
     grid-column: 3 / 3;
+    z-index: 3;
 }
 
 .wikiTab {
     grid-column: 4 / 4;
+    z-index: 4;
 }
  
 
