@@ -136,8 +136,20 @@ function setChecker() {
     });
 
     document.title = "CheckerBoard - Bronson";
-    let active_tab_header = document.querySelector('.active_tab_header');
-    active_tab_header.innerHTML = 'Checkerboard';
+    // remove currently active status mark tab has active.
+    // let active_tab_header = document.querySelector('.active_tab_header');
+    // active_tab_header.innerHTML = 'Checkerboard';
+    let current = document.getElementsByClassName("selected");
+    console.log(current);
+    if (current.length != 0) {
+        current[0].classList.remove("selected");
+        // current[0].classList.remove("active");
+    }
+    let newCurrent = document.getElementById("CBButton");
+    // newCurrent.classList.add("active");
+    newCurrent.classList.add("selected");
+
+
     history.pushState("test", "CheckerBoard", "/checkerboard");
 
     console.log('Switching to checkerboard');
