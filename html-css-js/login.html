@@ -12,16 +12,20 @@
       document.getElementById('login-modal').style.display='block';
       document.getElementById('uname').select();
       document.getElementById('bg-img').style.display='none';
+
     }
 
     function terminateLogin() {
       document.getElementById('login-modal').style.display='none';
       document.getElementById('bg-img').style.display='block';
+
+      let pb = document.querySelector(".program_board");
+      pb.classList.remove("login");
     }
   </script>
 </head>
 <body onload="initLogin()">
-  <div class="login">
+  <div class="program_board login">
     <!-- Website Header (Doesn't Change) -->
     <div class="program_header">
       <!-- Hamburger Declaration -->
@@ -54,12 +58,12 @@
       <!-- Message -->
       <p class='p_header'>
         <i>The swiss army knife for the U.W.I.T. department</i></p>
-      <h2 class='active_tab_header'>
-        Log In</h2>
+      <!-- <h2 class='active_tab_header'>
+        Log In</h2> -->
       <div class="tool_buttons">
         <fieldset class="ph_fieldset">
           <legend class="ph_legend">
-            Tools:
+            Log in:
           </legend>
           <button onclick="initLogin()" style="width:auto;" type="button" class="headButton">
               Log In</button>
