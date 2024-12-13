@@ -495,9 +495,7 @@ async function postJNVis(graphBool, building) {
 // SETTING THE HTML DOM
 async function setJackNet() {
     const menuItems = document.querySelectorAll(".menuItem");
-    const hamburger = document.querySelector(".hamburger");
 
-    hamburger.addEventListener("click", toggleMenu);
     menuItems.forEach(function(menuItem) {
       menuItem.addEventListener("click", toggleMenu);
     });
