@@ -227,8 +227,20 @@ async function setCrestronFile() {
     });
 
     document.title = "CamCode - Bronson";
-    let active_tab_header = document.querySelector('.active_tab_header');
-    active_tab_header.innerHTML = 'CamCode';
+    // remove currently active status mark tab has active.
+    // let active_tab_header = document.querySelector('.active_tab_header');
+    // active_tab_header.innerHTML = 'CamCode';
+    let current = document.getElementsByClassName("selected");
+    console.log(current);
+    if (current.length != 0) {
+        // current[0].classList.remove("active");
+        current[0].classList.remove("selected");
+    }
+    let newCurrent = document.getElementById("CCButton");
+    // newCurrent.classList.add("active");
+    newCurrent.classList.add("selected");
+
+
     history.pushState("test", "CamCode-CFM", "/cc-altmode");
     console.log('switching to camcode-cfm');
   

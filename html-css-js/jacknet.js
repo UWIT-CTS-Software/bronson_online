@@ -503,9 +503,21 @@ async function setJackNet() {
     });
 
     document.title = "JackNet - Bronson";
+    
+    // remove currently active status mark tab has active.
     // Update active_tab_header
-    let active_tab_header = document.querySelector('.active_tab_header');
-    active_tab_header.innerHTML = 'JackNet';
+    // let active_tab_header = document.querySelector('.active_tab_header');
+    // active_tab_header.innerHTML = 'JackNet';
+    let current = document.getElementsByClassName("selected");
+    console.log(current);
+    if (current.length != 0) {
+        // current[0].classList.remove("active");
+        current[0].classList.remove("selected");
+    }
+    let newCurrent = document.getElementById("JNButton");
+    // newCurrent.classList.add("active");
+    newCurrent.classList.add("selected");
+
     history.pushState("test", "JackNet", "/jacknet");
     console.log('Switching to jacknet');
 
