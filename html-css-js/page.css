@@ -3,7 +3,6 @@ body {
     background-color: rgb(50, 50, 50);
 }
 
-/* Other */
 label {
     color: rgb(236, 200, 101);
     text-align: center;
@@ -20,31 +19,7 @@ legend {
     font-family:'Courier New', Courier, monospace;
 }
 
-.racing-sans-one-regular {
-    font-family: "Racing Sans One", sans-serif;
-    font-weight: 400;
-    font-style: normal;
-}
-
-.contrail-one-regular {
-    font-family: "Contrail One", sans-serif;
-    font-weight: 400;
-    font-style: normal;
-  }
-
-/*  HEADER BUTTON STYLE */
-/* .headButton {
-    border: none;
-    color: rgb(69, 69, 69);
-    padding: 8px 16px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 12px;
-    margin: 4px 2px;
-    cursor: pointer;
-} */
-.headButton {
+button {
     appearance: none;
     background-color: #e9d27e;
     border: 1px inset rgba(27, 31, 35, 0.15);
@@ -68,49 +43,70 @@ legend {
     touch-action: manipulation;
     white-space: nowrap;
     word-wrap: break-word;
-  }
-  
-  .headButton:hover {
+}
+
+button:hover {
     background-color: #F3F4F6;
     text-decoration: none;
     /* font-weight: 500; */
     transition-duration: 0.1s;
-  }
+}
   
-  .headButton:disabled {
+button:disabled {
     background-color: #FAFBFC;
     border-color: rgba(27, 31, 35, 0.15);
     color: #959DA5;
     cursor: default;
-  }
+}
   
-  .headButton:active {
+button:active {
     background-color: #EDEFF2;
     box-shadow: rgba(225, 228, 232, 0.2) 0 1px 0 inset;
     transition: none 0s;
-  }
+}
   
-  .headButton:focus {
+button:focus {
     outline: 1px transparent;
-  }
+}
   
-  .headButton:before {
+button:before {
     display: none;
-  }
+}
   
-  .headButton:-webkit-details-marker {
+button:-webkit-details-marker {
     display: none;
+}
+
+/* Fonts */
+
+.racing-sans-one-regular {
+    font-family: "Racing Sans One", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
+.contrail-one-regular {
+    font-family: "Contrail One", sans-serif;
+    font-weight: 400;
+    font-style: normal;
   }
 
-  .siteButton {
+/* Buttons located in the hamburger menu */
+.hb_button {
     display: block;
     margin: 2px auto;
     width: 120px;
-  }
+}
 
+/* The space in which the website exists. */
 .program_board {
     padding-bottom: 10%;
 }
+
+/* Program Header Section          */
+/* ----------=--------=----------- */
+/* The top of the page, navigation */
+/* ----------=--------=----------- */
 
 .program_header {
     color: rgb(118, 66, 28);
@@ -122,11 +118,10 @@ legend {
     grid-auto-rows: minmax(5px, auto);
     border:4px none rgb(133, 118, 60);
     border-style: none double inset double;
+    box-shadow: 5px 7px 7px black;
 }
 
-/* Banner aesthetic changes should go here, add ph_checkerboard class item on page load. (program header checkerboard) */
-
-/* Bronson icon in top left */
+/* Bronson icon in top left, brings out hamburger menu */
 .site_header {
     color: rgb(118, 66, 28);
     background-color: rgb(205, 177, 99);
@@ -142,35 +137,21 @@ legend {
     cursor: pointer;
     padding-left: 10px;
     padding-right: 10px;
+    
 }
 
 .site_header:hover {
     background-color: rgb(211, 181, 98);
     text-decoration: none;
     transition-duration: 0.1s;
+    box-shadow: 5px 7px 7px;
   }
 
-/* Displays active tab in top right */
-.active_tab_header {
-    color: rgb(118, 66, 28);
-    background-color: rgb(176, 154, 91);
-    text-align: center;
-    font-family: "Racing Sans One", sans-serif;
-    font-weight: 400;
-    vertical-align: middle;
-    grid-column: 9 / 11;
-    grid-row: 1;
-    margin: 15px;
-    padding: 2px 64px;
-    width: fit-content;
-    border:4px inset rgb(207, 184, 94);
-}
-
-/* Middle panel, contains tab, hamburger button, message of the day. */
+/* Middle panel, contains tabs and message of the day */
 .middle_section {
     color: rgb(118, 66, 28);
     background-color: rgba(0, 0, 0, 0);
-    text-align: center;
+    text-align: left;
     font-family:'Courier New', Courier, monospace;
     display: grid;
     /* grid-area: 2 / 9; */
@@ -179,6 +160,10 @@ legend {
     /* height: 20px; */
     padding-top: 0px;
     margin: 1px;
+}
+
+.middle_test {
+    display: inline-grid;
 }
 
 .message_header {
@@ -194,17 +179,17 @@ legend {
     grid-row: 1;
     /* vertical-align: end; */
     margin: 10px;
-    transform: translateX(-3%);
-}
+    /* transform: translateX(-3%);*/
+} 
 
 .tab_row {
     margin: 14px auto;
     display: inline-grid;
     padding: 5px 0px;
     grid-auto-columns: 1fr;
-    grid-column: 1 / 40;
+    grid-column: 1 / auto;
     grid-row: 1;
-    transform: translate(-220px , 24px);
+    transform: translate(-100px , 24px);
 }
 
 .toolTab {
@@ -216,7 +201,7 @@ legend {
     /* grid-column: 1 / 12; */
     opacity: 100%;
     grid-row: 1;
-    width: 160px;
+    width: 100px;
     text-align: center;
     height: 0; 
     position: relative;
@@ -225,7 +210,6 @@ legend {
     border-bottom: 39px solid #64603d;
     border-top: 0px solid transparent;
     background-color: transparent;
-    /* border-bottom: 15px solid #24292E; */
     box-sizing: content-box;
     /* box-shadow: rgb(27, 31, 35) 0 1px 0, rgba(255, 255, 255, 0.25) 0 1px 0 inset; */
 }
@@ -285,6 +269,7 @@ legend {
     transform: translateY(10px);
     transition-duration: 0.1s;
     border-bottom: 29px solid #7c1919;
+    
 }
  
 /*
@@ -328,9 +313,10 @@ legend {
     background: rgb(39, 35, 35);
     transform: translateX(-150%);
     transition: transform 0.2s;
-    color: white;
+    color: black;
     margin-top: 90px;
     width: 11rem;
+    box-shadow: 5px 10px 10px;
 }
 
 .ph_legend {

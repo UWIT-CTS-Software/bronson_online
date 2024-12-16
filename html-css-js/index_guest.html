@@ -50,41 +50,30 @@
         }
       }
 
-      // setDashboard()
+      /* setDashboard()
+            Places the dashboard page, pretty baren at the moment.
+      */
       function setDashboard() {
-        const menuItems = document.querySelectorAll(".menuItem");
-        // const hamburger = document.querySelector(".hamburger");
-
-        // hamburger.addEventListener("click", toggleMenu);
-
+        // History and init
         document.title = "Dashboard - Bronson";
+        history.pushState({}, "Dashboard", "/");
 
-        // remove currently active status mark tab has active.
-        // Update active_tab_header
-        // let active_tab_header = document.querySelector('.active_tab_header');
-        // active_tab_header.innerHTML = 'Dashboard';
+        // remove currently active status, mark tab has active.
         let current = document.getElementsByClassName("selected");
         console.log(current);
         if (current.length != 0) {
-            // current[0].classList.remove("active");
             current[0].classList.remove("selected");
         }
-
         let newCurrent = document.getElementById("DBButton");
-        // newCurrent.classList.add("active");
         newCurrent.classList.add("selected");
 
-        history.pushState({}, "Dashboard", "/");
-
+        // Select Program guts, page content.
         let prog_guts = document.querySelector('.program_board .program_guts');
 
         let db_container = document.createElement("div");
         db_container.classList.add("db_container");
-        // db_container.innerHTML = `
-        //   <p class='active_tab_header'>
-        //     Dashboard </p>`;
 
-        // Console Output
+        // Dashboard Contents
         let consoleOutput = document.createElement("div");
         consoleOutput.classList.add('db_console');
         consoleOutput.innerHTML = `
@@ -105,6 +94,7 @@
         return;
       }
 
+      // Bug Report form
       function initForm() {
         document.getElementById('bug_report_modal').style.display='block';
         let bodies = document.getElementsByClassName('program_guts')
@@ -114,6 +104,7 @@
         toggleMenu();
       }
 
+      // Bug Report Form Terminate
       function terminateForm() {
         document.getElementById('bug_report_modal').style.display='none';
         let bodies = document.getElementsByClassName('program_guts')
@@ -140,61 +131,50 @@
           <fieldset class="ph_fieldset">
             <legend class="ph_legend">
               Menu:</legend>
-            <button class="headButton siteButton" onclick="toggleMenu()">Back</button>
-            <button class="headButton siteButton">Help / FAQ </button>
-            <button class="headButton siteButton" onclick="initForm()">Report Bug</button>
+            <button class="hb_button" onclick="toggleMenu()">Back</button>
+            <button class="hb_button">Help / FAQ </button>
+            <button class="hb_button" onclick="initForm()">Report Bug</button>
           </fieldset>
           <fieldset class="ph_fieldset">
             <legend class="ph_legend">
               Sites:</legend>
-            <button id="TimeClockURL" onclick="window.open('https://shibboleth.uwyo.edu/idp/profile/SAML2/Unsolicited/SSO?providerId=https://9922.tcplusondemand.com&shire=https://9922.tcplusondemand.com/api/v0000/saml2Sessions/0/Saml2SingleSignOnEmployeePost&target=CompanyNamespace%3d9922%3bCompanyId%3d1%3bRedirectPat');" type="button" class="headButton siteButton">
+            <button id="TimeClockURL" onclick="window.open('https://shibboleth.uwyo.edu/idp/profile/SAML2/Unsolicited/SSO?providerId=https://9922.tcplusondemand.com&shire=https://9922.tcplusondemand.com/api/v0000/saml2Sessions/0/Saml2SingleSignOnEmployeePost&target=CompanyNamespace%3d9922%3bCompanyId%3d1%3bRedirectPat');" type="button" class="hb_button">
               TimeClock </button>
-            <button id="lsmURL" onclick="window.open('https://uwyo.talem3.com/lsm/login/auth');" type="button" class="headButton siteButton">
+            <button id="lsmURL" onclick="window.open('https://uwyo.talem3.com/lsm/login/auth');" type="button" class="hb_button">
               LSM </button>
-            <button id="tdURL" onclick="window.open('https://uwyo.teamdynamix.com/TDNext/Home/Desktop/Default.aspx');" type="button" class="headButton siteButton">
+            <button id="tdURL" onclick="window.open('https://uwyo.teamdynamix.com/TDNext/Home/Desktop/Default.aspx');" type="button" class="hb_button">
               TeamDynamix </button>
-            <button id="25lURL" onclick="window.open('https://25live.collegenet.com/pro/uwyo#!/home/dash');" type="button" class="headButton siteButton">
+            <button id="25lURL" onclick="window.open('https://25live.collegenet.com/pro/uwyo#!/home/dash');" type="button" class="hb_button">
               25Live </button>
-            <button id="campusMapURL" onclick="window.open('https://uwoperations.uwyo.edu/portal/apps/webappviewer/index.html?id=66a9c83b1d92419d8579562ed0a6259b');" type="button" class="headButton siteButton">
+            <button id="campusMapURL" onclick="window.open('https://uwoperations.uwyo.edu/portal/apps/webappviewer/index.html?id=66a9c83b1d92419d8579562ed0a6259b');" type="button" class="hb_button">
               Campus Map </button>
           </fieldset>
         </div>
-
         <!-- Site Button -->
         <h1 class='site_header' onclick='toggleMenu()'>
           Bronson</h1>
-        
-        <!-- Currently Selected Page -->
-        <!-- <h2 class='active_tab_header'>
-          Dashboard</h2> -->
-
-        <!-- Tool Button / Middle Section-->
+        <!-- Tool Tabs / Middle Section -->
         <div class="middle_section">
-          <!-- Hamburger button - replace bronson toggle -->
-          <!-- <button class="headButton hamburger">
-            <i class="menuIcon material-icons">menu</i>
-            <i class="closeIcon material-icons" style="display: none;">close</i>
-          </button> -->
-
-          <!-- Message -->
-          <p class='message_header'>
-            <i>Basic Room Observations and Notifications for Status and Operational Needs</i></p>
-          <div class="tab_row">
-            <button id="DBButton" onclick="setDashboard()" type="button" class="headButton toolTab dbTab"><span>
-              Dashboard </span></button>
-            <button id="CBButton" onclick="setChecker()" type="button" class="headButton toolTab chTab"><span>
-              Checkerboard </span></button>
-            <button id="JNButton" onclick="setJackNet()" type="button" class="headButton toolTab jnTab">
-              <span> JackNet </span></button>
-            <button id="CCButton" onclick="setCrestronFile()" type="button" class="headButton toolTab ccTab">
-              <span> CamCode </span></button>
-            <!-- <button id="wiki" onclick="setWiki()" type="button" class="headButton toolTab wikiTab">
-              <span> Wiki </span></button> -->
+          <div class="middle_test">
+            <!-- Message -->
+            <p class='message_header'>
+              <i>Basic Room Observations and Notifications for Status and Operational Needs</i></p>
+            <!-- Tab Rows -->
+            <div class="tab_row">
+              <button id="DBButton" onclick="setDashboard()" type="button" class="toolTab dbTab"><span>
+                Dashboard </span></button>
+              <button id="CBButton" onclick="setChecker()" type="button" class="toolTab chTab"><span>
+                Checkerboard </span></button>
+              <button id="JNButton" onclick="setJackNet()" type="button" class="toolTab jnTab">
+                <span> JackNet </span></button>
+              <button id="CCButton" onclick="setCrestronFile()" type="button" class="toolTab ccTab">
+                <span> CamCode </span></button>
+            </div>
           </div>
         </div>
       </div>
       <br>
-      <!-- <p> Local dashboard of stuff // maybe a feed</p> -->
+      <!-- Bug Report Form -->
       <div id="bug_report_modal" class="modal" style="display:none;">
         <form class="modal-content animate" action="/bugreport" method="post">
           <div class="login_imgcontainer">
@@ -216,6 +196,7 @@
           </div>
         </form>
       </div>
+      <!-- Main Space for Selected Tool -->
       <div class="program_guts">
       </div>
     </div>
