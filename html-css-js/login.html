@@ -12,46 +12,61 @@
       document.getElementById('login-modal').style.display='block';
       document.getElementById('uname').select();
       document.getElementById('bg-img').style.display='none';
+
     }
 
     function terminateLogin() {
       document.getElementById('login-modal').style.display='none';
       document.getElementById('bg-img').style.display='block';
+
+      let pb = document.querySelector(".program_board");
+      pb.classList.remove("login");
     }
   </script>
 </head>
 <body onload="initLogin()">
-  <div class="login">
+  <div class="program_board login">
+    <!-- Website Header (Doesn't Change) -->
     <div class="program_header">
-      <h1 class='site_header'>
-        Bronson</h1>
-      <p class='p_header'>
-        <i>The swiss army knife for the U.W.I.T. department</i></p>
-      <h2 class='tool_header'>
-        Log In</h2>
-      <div class="tool_buttons">
+      <!-- Hamburger Declaration -->
+      <div class="hb_menu">
         <fieldset class="ph_fieldset">
           <legend class="ph_legend">
-            Tools:
-          </legend>
-          <button onclick="initLogin()" style="width:auto;" type="button" class="headButton">
-              Log In</button>
+            Menu:</legend>
+          <button class="hb_button" onclick="toggleMenu()">Back</button>
+          <button class="hb_button">Help / FAQ </button>
+          <button class="hb_button" onclick="initForm()">Report Bug</button>
         </fieldset>
-      </div>
-      <div class="site_buttons">
         <fieldset class="ph_fieldset">
           <legend class="ph_legend">
             Sites:</legend>
-          <button id="TimeClockURL" onclick="window.open('https://shibboleth.uwyo.edu/idp/profile/SAML2/Unsolicited/SSO?providerId=https://9922.tcplusondemand.com&shire=https://9922.tcplusondemand.com/api/v0000/saml2Sessions/0/Saml2SingleSignOnEmployeePost&target=CompanyNamespace%3d9922%3bCompanyId%3d1%3bRedirectPat');" type="button" class="headButton">
+          <button id="TimeClockURL" onclick="window.open('https://shibboleth.uwyo.edu/idp/profile/SAML2/Unsolicited/SSO?providerId=https://9922.tcplusondemand.com&shire=https://9922.tcplusondemand.com/api/v0000/saml2Sessions/0/Saml2SingleSignOnEmployeePost&target=CompanyNamespace%3d9922%3bCompanyId%3d1%3bRedirectPat');" type="button" class="hb_button">
             TimeClock </button>
-          <button id="lsmURL" onclick="window.open('https://uwyo.talem3.com/lsm/login/auth');" type="button" class="headButton">
+          <button id="lsmURL" onclick="window.open('https://uwyo.talem3.com/lsm/login/auth');" type="button" class="hb_button">
             LSM </button>
-          <button id="tdURL" onclick="window.open('https://uwyo.teamdynamix.com/TDNext/Home/Desktop/Default.aspx');" type="button" class="headButton">
+          <button id="tdURL" onclick="window.open('https://uwyo.teamdynamix.com/TDNext/Home/Desktop/Default.aspx');" type="button" class="hb_button">
             TeamDynamix </button>
-          <button id="25lURL" onclick="window.open('https://25live.collegenet.com/pro/uwyo#!/home/dash');" type="button" class="headButton">
+          <button id="25lURL" onclick="window.open('https://25live.collegenet.com/pro/uwyo#!/home/dash');" type="button" class="hb_button">
             25Live </button>
-          <button id="campusMapURL" onclick="window.open('https://uwoperations.uwyo.edu/portal/apps/webappviewer/index.html?id=66a9c83b1d92419d8579562ed0a6259b');" type="button" class="headButton">
+          <button id="campusMapURL" onclick="window.open('https://uwoperations.uwyo.edu/portal/apps/webappviewer/index.html?id=66a9c83b1d92419d8579562ed0a6259b');" type="button" class="hb_button">
             Campus Map </button>
+        </fieldset>
+      </div>
+      <!-- Site Button -->
+      <h1 class='site_header' onclick='setDashboard()'>
+        Bronson</h1>
+      <!-- Message -->
+      <p class='p_header'>
+        <i>The swiss army knife for the U.W.I.T. department</i></p>
+      <!-- <h2 class='active_tab_header'>
+        Log In</h2> -->
+      <div class="tool_buttons">
+        <fieldset class="ph_fieldset">
+          <legend class="ph_legend">
+            Log in:
+          </legend>
+          <button onclick="initLogin()" style="width:auto;" type="button">
+              Log In</button>
         </fieldset>
       </div>
     </div>
