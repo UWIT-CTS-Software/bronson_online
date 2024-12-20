@@ -63,7 +63,7 @@ use std::{
         read, read_to_string, read_dir, metadata,
         File,
     },
-    time::{ Duration, },
+    time::{ Duration, SystemTime},
     sync::{ Arc, },
     string::{ String, },
     borrow::{ Borrow, },
@@ -205,13 +205,14 @@ fn gen_hashmap() -> HashMap<String, Room> {
             let hn_vec = gen_hn2(String::from(record.get(0).expect("Empty")), item_vec.clone());
 
             let ip_vec = gen_ip2(item_vec);
-            
+            let duration = Duration::from_secs(1_000_000);
             let room = Room {
                 name: String::from(record.get(0).expect("Empty")),
                 hostnames: hn_vec,
                 ips: ip_vec,
                 gp: record.get(7).expect("-1").parse().unwrap(),
                 checked: String::from("2000-01-01T00:00:00Z"),
+                jn_checked: SystemTime::now().checked_sub(duration).expect("Failed to init unchecked time"),
                 schedule: schedule,
             };
 
@@ -629,7 +630,7 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 */
 
 // call ping_this executible here
-fn execute_ping(buffer: &mut [u8], rooms: HashMap<String, Room>) -> String {
+fn execute_ping(buffer: &mut [u8], mut rooms: HashMap<String, Room>) -> String {
     // Prep Request into Struct
     let buff_copy = process_buffer(buffer);
     let pr: PingRequest = serde_json::from_str(&buff_copy)
@@ -659,15 +660,58 @@ fn execute_ping(buffer: &mut [u8], rooms: HashMap<String, Room>) -> String {
     let rooms_to_ping: Vec<String> = gen_rooms(pr.building.clone(), bs);
 
     let mut hostnames: Vec<String> = Vec::new();
+    let mut hn_ips: Vec<String> = Vec::new();
+    let mut hostnames_cached: Vec<String> = Vec::new();
+    let mut ip_addr_cached: Vec<String> = Vec::new();
+    
+    let mut room_vec: Vec<Vec<String>> = Vec::new();
+    // let mut jn_checked_vec: Vec<String> = Vec::new();
+
 
     for rm in rooms_to_ping {
         match rooms.get(&rm) {
             Some(rm_info) => {
                 println!("Hostnames: {:?}", rm_info.hostnames);
-                // append rm_info.hostnames to hostnames
-                for hn in &rm_info.hostnames {
-                    hostnames.push(hn.to_string());
+                let time = SystemTime::now().duration_since(rm_info.jn_checked);
+                println!("Time since last run: {:?}", time.clone().expect("Time failed to do time").as_secs());
+                // 10 minutes = 600 Seconds
+                if time.expect("Time failed to do time").as_secs() > 600 {
+                    //DEBUG - Print rm_info stuff
+                    println!("Logged Time: {:?}", rm_info.jn_checked);
+
+                    // append rm_info.hostnames to hostnames
+                    for hn in &rm_info.hostnames { // make this ping
+                        println!("Hostname: {}", hn);
+                        let hn_ip = ping_this(hn.to_string());
+                        println!("IpAdr:    {}", hn_ip);
+                        hn_ips.push(hn_ip);
+                        hostnames.push(hn.to_string());
+                    }
+                    room_vec.push(hostnames.clone());
+                    room_vec.push(hn_ips.clone());
+                    rooms.get_mut(&rm).expect("Error").update_ips(hn_ips);
+                    //update jn_checked timestamp here
+                    rooms.get_mut(&rm).expect("failed to get room").update_jn_checked();
+
+                    hostnames = Vec::new();
+                    hn_ips = Vec::new();
+                    
+                    // Check update
+                    println!("Updated Logged Time: {:?}", rooms.get(&rm).expect("error").jn_checked);
+                } else {
+                    println!("Cache response!");
+                    // append rm_info.hostnames to hostnames
+                    for hn in &rm_info.hostnames {
+                        hostnames_cached.push(hn.to_string());
+                    }
+                    // append rm_info.ips to cached ips
+                    for ip in &rm_info.ips {
+                        ip_addr_cached.push(ip.to_string());
+                    }
+                    room_vec.push(hostnames_cached.clone());
+                    room_vec.push(ip_addr_cached.clone());
                 }
+                // jn_checked_vec.push();
             }
             _ => (),
         }
@@ -675,22 +719,61 @@ fn execute_ping(buffer: &mut [u8], rooms: HashMap<String, Room>) -> String {
 
     // let hostnames = ["BROKEN_SORRY_FIXING_IT"];
 
-    println!("Hostnames Generated {:?}", hostnames);
+    println!("Hostnames Generated {:?}", room_vec);
 
     // Write for loop through hostnames
-    let mut hn_ips: Vec<String> = Vec::new();
-    for hn in hostnames.clone() {
-        println!("Hostname: {}", hn);
-        let hn_ip = ping_this(hn.to_string());
-        println!("IpAdr:    {}", hn_ip);
-        hn_ips.push(hn_ip);
-    }
+    // [ ] TODO - Check timestamp and see if it's been ran in the last 10 minutes
+    //            If so return cache. 
+    
+    // let room_vec_len = room_vec.len();
+    // for i in (1..room_vec_len).step_by(2) {
+    //     println!("i: {}", i);
+    //     println!("j: {}", i - 1);
+    //     if room_vec[i].is_empty() {
+    //         for hn in room_vec[i-1].clone() {
+    //             println!("Hostname: {}", hn);
+    //             let hn_ip = ping_this(hn.to_string());
+    //             println!("IpAdr:    {}", hn_ip);
+    //             hn_ips.push(hn_ip);
+    //         }
+    //         room_vec[i] = hn_ips.clone();
+    //         //rooms.get_mut()
+    //         // Update room hash with updated ips
+    //         hn_ips = Vec::new();
+    //     }
+    // }
+
+    // println!("Hostnames Generated {:?}", room_vec);
+    // for hn in hostnames.clone() {
+    //     println!("Hostname: {}", hn);
+    //     let hn_ip = ping_this(hn.to_string());
+    //     println!("IpAdr:    {}", hn_ip);
+    //     hn_ips.push(hn_ip);
+    // }
 
     // format data into json using serde
+    //Final Prep
+    let mut f_hn = Vec::new();
+    let mut f_ip = Vec::new();
+
+    let room_vec_len = room_vec.len();
+
+    for i in 0..room_vec_len {
+        if i % 2 == 0 {
+            f_hn.append(&mut room_vec[i].clone());
+        } else {
+            f_ip.append(&mut room_vec[i].clone());
+        }
+    }
+
+    println!("Final Hostname Vec: {:?}", f_hn);
+    println!("Final IP Vec: {:?}", f_ip);
+
+    // [ ] TODO - Save output / Cache, filter return to only be selected devices
     let json_return = json!({
         "building": pr.building,
-        "hostnames": hostnames,
-        "ips": hn_ips
+        "hostnames": f_hn,
+        "ips": f_ip
     });
 
     // convert to string and return it
@@ -774,6 +857,16 @@ fn gen_rooms(
     }
     return rooms;
 }
+
+// given a hostname, returns a string that can be used to look it up in the hashmap, ie: AN-0204-PROC1 -> AN 204
+// Helper function to track down the right records in the hasmap to make correct updates.
+// fn hn_to_rm(hn: String) -> String {
+//     let parts = hn.split("-");
+//     let tmp = parts[0].clone();
+//     for part in parts {
+//         println!(part);
+//     }
+// }
 
 /*
  $$$$$$\  $$\       $$\                 $$$$$$$\                  $$\ 
