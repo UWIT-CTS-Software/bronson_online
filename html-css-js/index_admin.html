@@ -22,17 +22,7 @@
     <script type="text/javascript">
       window.addEventListener("popstate", () => {
         console.log(location.href);
-        if (location.pathname == "/checker") {
-          setChecker();
-        } else if (location.pathname == "/jacknet") {
-          setJackNet();
-        } else if (location.pathname == "/cc-altmode") {
-          setCrestronFile();
-        } else if (location.pathname == "/wiki") {
-          setWiki();
-        } else {
-          setDashboard();
-        }
+        history.back();
       },
       false,
       );
