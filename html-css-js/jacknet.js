@@ -495,17 +495,27 @@ async function postJNVis(graphBool, building) {
 // SETTING THE HTML DOM
 async function setJackNet() {
     const menuItems = document.querySelectorAll(".menuItem");
-    const hamburger = document.querySelector(".hamburger");
 
-    hamburger.addEventListener("click", toggleMenu);
     menuItems.forEach(function(menuItem) {
       menuItem.addEventListener("click", toggleMenu);
     });
 
     document.title = "JackNet - Bronson";
-    // Update tool_header
-    let tool_header = document.querySelector('.tool_header');
-    tool_header.innerHTML = 'JackNet';
+    
+    // remove currently active status mark tab has active.
+    // Update active_tab_header
+    // let active_tab_header = document.querySelector('.active_tab_header');
+    // active_tab_header.innerHTML = 'JackNet';
+    let current = document.getElementsByClassName("selected");
+    console.log(current);
+    if (current.length != 0) {
+        // current[0].classList.remove("active");
+        current[0].classList.remove("selected");
+    }
+    let newCurrent = document.getElementById("JNButton");
+    // newCurrent.classList.add("active");
+    newCurrent.classList.add("selected");
+
     history.pushState("test", "JackNet", "/jacknet");
     console.log('Switching to jacknet');
 

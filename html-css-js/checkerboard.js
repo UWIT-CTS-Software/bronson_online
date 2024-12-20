@@ -128,16 +128,26 @@ function cb_clearConsole() {
 
 function setChecker() {
     const menuItems = document.querySelectorAll(".menuItem");
-    const hamburger = document.querySelector(".hamburger");
 
-    hamburger.addEventListener("click", toggleMenu);
     menuItems.forEach(function(menuItem) {
       menuItem.addEventListener("click", toggleMenu);
     });
 
     document.title = "CheckerBoard - Bronson";
-    let tool_header = document.querySelector('.tool_header');
-    tool_header.innerHTML = 'Checkerboard';
+    // remove currently active status mark tab has active.
+    // let active_tab_header = document.querySelector('.active_tab_header');
+    // active_tab_header.innerHTML = 'Checkerboard';
+    let current = document.getElementsByClassName("selected");
+    console.log(current);
+    if (current.length != 0) {
+        current[0].classList.remove("selected");
+        // current[0].classList.remove("active");
+    }
+    let newCurrent = document.getElementById("CBButton");
+    // newCurrent.classList.add("active");
+    newCurrent.classList.add("selected");
+
+
     history.pushState("test", "CheckerBoard", "/checkerboard");
 
     console.log('Switching to checkerboard');

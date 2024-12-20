@@ -219,16 +219,26 @@ async function updateRoomList() {
 // Change the DOM for Crestron File Manager
 async function setCrestronFile() {
     const menuItems = document.querySelectorAll(".menuItem");
-    const hamburger = document.querySelector(".hamburger");
 
-    hamburger.addEventListener("click", toggleMenu);
     menuItems.forEach(function(menuItem) {
       menuItem.addEventListener("click", toggleMenu);
     });
 
     document.title = "CamCode - Bronson";
-    let tool_header = document.querySelector('.tool_header');
-    tool_header.innerHTML = 'CamCode';
+    // remove currently active status mark tab has active.
+    // let active_tab_header = document.querySelector('.active_tab_header');
+    // active_tab_header.innerHTML = 'CamCode';
+    let current = document.getElementsByClassName("selected");
+    console.log(current);
+    if (current.length != 0) {
+        // current[0].classList.remove("active");
+        current[0].classList.remove("selected");
+    }
+    let newCurrent = document.getElementById("CCButton");
+    // newCurrent.classList.add("active");
+    newCurrent.classList.add("selected");
+
+
     history.pushState("test", "CamCode-CFM", "/cc-altmode");
     console.log('switching to camcode-cfm');
   
