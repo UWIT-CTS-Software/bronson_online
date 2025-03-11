@@ -63,7 +63,7 @@ use std::{
         read, read_to_string, read_dir, metadata,
         File,
     },
-    time::{ Duration, SystemTime},
+    time::{ Duration, SystemTime, UNIX_EPOCH },
     sync::{ Arc, },
     string::{ String, },
     borrow::{ Borrow, },
@@ -81,7 +81,7 @@ use csv::{ Reader, };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
 use regex::Regex;
-use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta, };
+use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta, Utc };
 use urlencoding::decode;
 // ----------------------------------------------------------------------------
 
@@ -205,14 +205,13 @@ fn gen_hashmap() -> HashMap<String, Room> {
             let hn_vec = gen_hn2(String::from(record.get(0).expect("Empty")), item_vec.clone());
 
             let ip_vec = gen_ip2(item_vec);
-            let duration = Duration::from_secs(1_000_000);
             let room = Room {
                 name: String::from(record.get(0).expect("Empty")),
                 hostnames: hn_vec,
                 ips: ip_vec,
                 gp: record.get(7).expect("-1").parse().unwrap(),
                 checked: String::from("2000-01-01T00:00:00Z"),
-                jn_checked: SystemTime::now().checked_sub(duration).expect("Failed to init unchecked time"),
+                jn_checked: Utc.with_ymd_and_hms(2000, 1, 1, 12, 0, 0),
                 schedule: schedule,
             };
 
@@ -669,7 +668,63 @@ fn execute_ping(buffer: &mut [u8], mut rooms: HashMap<String, Room>) -> String {
 
 
     for rm in rooms_to_ping {
-        match rooms.get(&rm) {
+        let rm_info = rooms.get(&rm).unwrap();
+        if Some(rm_info).is_some() {
+            println!("Hostnames: {:?}", rm_info.hostnames);
+            let (sec, nsec) = match SystemTime::now().duration_since(UNIX_EPOCH) {
+                Ok(dur) => (dur.as_secs() as i64, dur.subsec_nanos()),
+                Err(e) => {
+                    let dur = e.duration();
+                    let (sec, nsec) = (dur.as_secs() as i64, dur.subsec_nanos());
+                    if nsec == 0 {
+                        (-sec, 0)
+                    } else {
+                        (-sec - 1, 1000000000 - nsec)
+                    }
+                },
+            };
+            let dt_time: DateTime<Utc> = DateTime::from_timestamp(sec, nsec).unwrap();
+            println!("Time: {:?}", dt_time);
+            /* println!("Time since last run: {:?}", time.clone().expect("Time failed to do time").as_secs());
+            // 10 minutes = 600 Seconds
+            if time.unwrap().as_secs() > 600 {
+                //DEBUG - Print rm_info stuff
+                println!("Logged Time: {:?}", rm_info.jn_checked);
+
+                // append rm_info.hostnames to hostnames
+                for hn in &rm_info.hostnames { // make this ping
+                    println!("Hostname: {}", hn);
+                    let hn_ip = ping_this(hn.to_string());
+                    println!("IpAdr:    {}", hn_ip);
+                    hn_ips.push(hn_ip);
+                    hostnames.push(hn.to_string());
+                }
+                room_vec.push(hostnames.clone());
+                room_vec.push(hn_ips.clone());
+                rooms.get_mut(&rm).expect("Error").update_ips(hn_ips);
+                //update jn_checked timestamp here
+                rooms.get_mut(&rm).expect("failed to get room").update_jn_checked();
+
+                hostnames = Vec::new();
+                hn_ips = Vec::new();
+                
+                // Check update
+                println!("Updated Logged Time: {:?}", rooms.get(&rm).expect("error").jn_checked);
+            } else {
+                println!("Cached response!");
+                // append rm_info.hostnames to hostnames
+                for hn in &rm_info.hostnames {
+                    hostnames_cached.push(hn.to_string());
+                }
+                // append rm_info.ips to cached ips
+                for ip in &rm_info.ips {
+                    ip_addr_cached.push(ip.to_string());
+                }
+                room_vec.push(hostnames_cached.clone());
+                room_vec.push(ip_addr_cached.clone());
+            } */
+        }
+        /* match rooms.get(&rm) {
             Some(rm_info) => {
                 println!("Hostnames: {:?}", rm_info.hostnames);
                 let time = SystemTime::now().duration_since(rm_info.jn_checked);
@@ -699,7 +754,7 @@ fn execute_ping(buffer: &mut [u8], mut rooms: HashMap<String, Room>) -> String {
                     // Check update
                     println!("Updated Logged Time: {:?}", rooms.get(&rm).expect("error").jn_checked);
                 } else {
-                    println!("Cache response!");
+                    println!("Cached response!");
                     // append rm_info.hostnames to hostnames
                     for hn in &rm_info.hostnames {
                         hostnames_cached.push(hn.to_string());
@@ -714,7 +769,7 @@ fn execute_ping(buffer: &mut [u8], mut rooms: HashMap<String, Room>) -> String {
                 // jn_checked_vec.push();
             }
             _ => (),
-        }
+        } */
     }
 
     // let hostnames = ["BROKEN_SORRY_FIXING_IT"];
