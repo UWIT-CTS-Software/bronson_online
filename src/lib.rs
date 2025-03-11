@@ -30,7 +30,7 @@ GeneralRequest
 
 use std::{
 	thread,
-	time:: {Duration, SystemTime},
+	time:: { Duration, SystemTime, UNIX_EPOCH },
 	sync::{
 		mpsc, Arc, Mutex,
 	},
@@ -168,7 +168,7 @@ pub struct Room {
 	pub ips: Vec<String>,
 	pub gp: u8,
 	pub checked: String,
-	pub jn_checked: SystemTime,
+	pub jn_checked: DateTime<Utc>,
 	pub schedule: Vec<String>
 }
 
@@ -178,7 +178,7 @@ impl Room {
 		self.checked = val;
 	}
 	pub fn update_jn_checked(&mut self) {
-		self.jn_checked = SystemTime::now();
+		self.jn_checked = SystemTime::now().into();
 	}
 	pub fn update_ips(&mut self, val: Vec<String>) {
 		self.ips = val;
@@ -198,7 +198,7 @@ impl<'a> Clone for Room {
 			hostnames: (&new_hostnames).to_vec(),
 			ips: (&new_ips).to_vec(),
 			gp: self.gp,
-			jn_checked: SystemTime::from(*new_jn_checked),
+			jn_checked: Duration::from(*new_jn_checked),
 			checked: String::from(new_checked),
 			schedule:(&new_schedule).to_vec(),
 		};

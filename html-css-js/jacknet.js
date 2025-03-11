@@ -359,7 +359,7 @@ async function runSearch() {
     updateConsole("====--------------------========--------------------====");
     // get user-selection
     const building = await getSelectedBuilding();
-    const devices  = await getSelectedDevices();
+    const devices  = getSelectedDevices();
 
     // Variables
     let totalNumDevices =  0; // count
