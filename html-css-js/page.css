@@ -3,7 +3,6 @@ body {
     background-color: rgb(50, 50, 50);
 }
 
-/* Other */
 label {
     color: rgb(236, 200, 101);
     text-align: center;
@@ -20,6 +19,73 @@ legend {
     font-family:'Courier New', Courier, monospace;
 }
 
+button {
+    appearance: none;
+    background-color: #e9d27e;
+    border: 1px inset rgba(27, 31, 35, 0.15);
+    box-shadow: rgba(27, 31, 35, 0.04) 0 1px 0, rgba(255, 255, 255, 0.25) 0 1px 0 inset;
+    box-sizing: border-box;
+    color: #24292E;
+    cursor: pointer;
+    display: inline-block;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 20px;
+    list-style: none;
+    padding: 2px auto;
+    margin: 2px;
+    text-align: center;
+    position: relative;
+    /* transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1); */
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    white-space: nowrap;
+    word-wrap: break-word;
+}
+
+button:hover {
+    background-color: #F3F4F6;
+    text-decoration: none;
+    /* font-weight: 500; */
+    transition-duration: 0.1s;
+}
+  
+button:disabled {
+    background-color: #FAFBFC;
+    border-color: rgba(27, 31, 35, 0.15);
+    color: #959DA5;
+    cursor: default;
+}
+  
+button:active {
+    background-color: #EDEFF2;
+    box-shadow: rgba(225, 228, 232, 0.2) 0 1px 0 inset;
+    transition: none 0s;
+}
+  
+button:focus {
+    outline: 1px transparent;
+}
+  
+button:before {
+    display: none;
+}
+  
+button:-webkit-details-marker {
+    display: none;
+}
+
+/* Buttons located in the hamburger menu */
+.hb_button {
+    display: block;
+    margin: 2px auto;
+    width: 120px;
+}
+
+/* Fonts */
+
 .racing-sans-one-regular {
     font-family: "Racing Sans One", sans-serif;
     font-weight: 400;
@@ -30,88 +96,19 @@ legend {
     font-family: "Contrail One", sans-serif;
     font-weight: 400;
     font-style: normal;
-  }
-
-/*  HEADER BUTTON STYLE */
-/* .headButton {
-    border: none;
-    color: rgb(69, 69, 69);
-    padding: 8px 16px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 12px;
-    margin: 4px 2px;
-    cursor: pointer;
-} */
-.headButton {
-    appearance: none;
-    background-color: #e9d27eb6;
-    border: 1px inset rgba(27, 31, 35, 0.15);
-    box-shadow: rgba(27, 31, 35, 0.04) 0 1px 0, rgba(255, 255, 255, 0.25) 0 1px 0 inset;
-    box-sizing: border-box;
-    color: #24292E;
-    cursor: pointer;
-    display: inline-block;
-    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 20px;
-    list-style: none;
-    padding: 2px 8px;
-    position: relative;
-    transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1);
-    user-select: none;
-    -webkit-user-select: none;
-    touch-action: manipulation;
-    vertical-align: middle;
-    white-space: nowrap;
-    word-wrap: break-word;
-  }
-  
-  .headButton:hover {
-    background-color: #F3F4F6;
-    text-decoration: none;
-    transition-duration: 0.1s;
-  }
-  
-  .headButton:disabled {
-    background-color: #FAFBFC;
-    border-color: rgba(27, 31, 35, 0.15);
-    color: #959DA5;
-    cursor: default;
-  }
-  
-  .headButton:active {
-    background-color: #EDEFF2;
-    box-shadow: rgba(225, 228, 232, 0.2) 0 1px 0 inset;
-    transition: none 0s;
-  }
-  
-  .headButton:focus {
-    outline: 1px transparent;
-  }
-  
-  .headButton:before {
-    display: none;
-  }
-  
-  .headButton:-webkit-details-marker {
-    display: none;
-  }
-
-.program_board {
-    padding-bottom: 10%;
 }
 
-/* Program Header        .program_header
-    Site (Dashboard Button) - .site_header
-    text                    - .p_header
-    Selected Tool           - .tool_header
+/* The space in which the website exists. */
+.program_board {
+    padding-bottom: 10%;
+    margin-top: -6px;
+}
 
-    Tool Buttons            - .tool_buttons
-    Site Buttons            - .site_buttons
-*/
+/* Program Header Section          */
+/* ----------=--------=----------- */
+/* The top of the page, navigation */
+/* ----------=--------=----------- */
+
 .program_header {
     color: rgb(118, 66, 28);
     background-color: rgb(224, 193, 108);
@@ -119,42 +116,13 @@ legend {
     display: grid;
     grid-template-columns: repeat(10,1fr);
     gap: 10px;
-    grid-auto-rows: minmax(10px, auto);
+    grid-auto-rows: minmax(5px, auto);
     border:4px none rgb(133, 118, 60);
     border-style: none double inset double;
+    box-shadow: 5px 7px 7px black;
 }
 
-.hamburger {
-    grid-column: 1 / 2;
-    grid-row: 1;
-    margin: 5px;
-    border: none;
-    background: none;
-    cursor: pointer;
-    padding-left: 2px;
-    padding-right: 2px;
-    scale: 150%;
-}
-
-.closeIcon {
-    display: none;
-}
-
-.menu {
-    position: fixed;
-    grid-row: 3x;
-    transform: translateX(-150%);
-    transition: transform 0.2s;
-    background: black;
-    color: white;
-    list-style: none;
-    padding-top: 4rem;
-}
-
-.showMenu {
-    transform: translateX(0);
-}
-
+/* Bronson icon in top left, brings out hamburger menu */
 .site_header {
     color: rgb(118, 66, 28);
     background-color: rgb(205, 177, 99);
@@ -162,77 +130,250 @@ legend {
     font-family: "Racing Sans One", sans-serif;
     font-weight: 400;
     font-style: normal;
-    grid-column: 2 / 3;
+    grid-column: 1 / 2;
     grid-row: 1;
-    margin: 5px;
-    border:4px outset rgb(133, 118, 60);
+    margin: 12px auto;
+    border:4px double rgb(133, 60, 60);
+    border-radius: 20px;
     cursor: pointer;
-    padding-left: 2px;
-    padding-right: 2px;
+    padding-left: 10px;
+    padding-right: 10px;
+    
 }
 
 .site_header:hover {
     background-color: rgb(211, 181, 98);
     text-decoration: none;
     transition-duration: 0.1s;
+    box-shadow: 5px 7px 7px;
   }
 
-.tool_header {
+/* Middle panel, contains tabs and message of the day */
+.middle_section {
     color: rgb(118, 66, 28);
-    background-color: rgb(176, 154, 91);
-    text-align: center;
-    font-family: "Racing Sans One", sans-serif;
-    font-weight: 400;
-    vertical-align: middle;
-    grid-column: 8 / 10;
+    background-color: rgba(0, 0, 0, 0);
+    text-align: left;
+    font-family:'Courier New', Courier, monospace;
+    display: grid;
+    /* grid-area: 2 / 9; */
+    grid-column: 2 / 10;
     grid-row: 1;
-    margin: 10px;
-    border:4px inset rgb(207, 184, 94);
+    /* height: 20px; */
+    padding-top: 0px;
+    margin: 1px;
 }
 
-.p_header {
+.middle_test {
+    display: inline-grid;
+}
+
+.message_header {
     color: rgb(118, 66, 28);
-    background-color: rgb(224, 193, 108);
-    text-align: left;
+    /* background-color: rgb(224, 193, 108); */
     font-family: "Contrail One", sans-serif;
     font-size: large;
     font-weight: 400;
     font-style: normal;
-    grid-column: 3 / 7;
+    text-align: left;
+    display: inline-grid;
+    grid-column: 1 / 4;
     grid-row: 1;
-    margin: 20px;
+    /* vertical-align: end; */
+    margin: 10px;
+    /* transform: translateX(-3%);*/
+} 
+
+.tab_row {
+    margin: 14px auto;
+    display: inline-grid;
+    padding: 5px 0px;
+    grid-auto-columns: 1fr;
+    grid-column: 1 / auto;
+    grid-row: 1;
+    transform: translate(-100px , 24px);
+}
+
+.toolTab {
+    margin: 0px -6px;
+    /* display: inline-block;
+    vertical-align: middle; */
+    padding: 0px 24px;
+    /* transform: translateY(26px); */
+    /* grid-column: 1 / 12; */
+    opacity: 100%;
+    grid-row: 1;
+    width: 100px;
+    text-align: center;
+    height: 0; 
+    position: relative;
+    border-right: 12px solid transparent;
+    border-left: 12px solid transparent;
+    border-bottom: 39px solid #64603d;
+    border-top: 0px solid transparent;
+    background-color: transparent;
+    box-sizing: content-box;
+    /* box-shadow: rgb(27, 31, 35) 0 1px 0, rgba(255, 255, 255, 0.25) 0 1px 0 inset; */
+}
+
+.toolTab span { 
+    position: absolute;
+    top: 9px;
+    left: 19px;
+    color: rgb(194, 194, 194);
+    /* color: #fff; */
+}
+.toolTab:hover {
+    border-right: 9px solid transparent;
+    border-left: 9px solid transparent;
+    border-bottom: 37px solid #94742e;
+    border-top: 0px solid transparent;
+    text-decoration: none;
+    /* font-weight: 500; */
+    transition-duration: 0.1s;
+    transform: scale(1.1);
+    /* z-index: 1; */
+    background: transparent;
+}
+
+.dbTab {
+    grid-column: auto;
+    z-index: 0;
+}
+.chTab {
+    grid-column: auto;
+    z-index: 1;
+}
+
+.jnTab {
+    grid-column: auto;
+    z-index: 2;
+}
+
+.ccTab {
+    grid-column: auto;
+    z-index: 3;
+}
+
+.wikiTab {
+    grid-column: auto;
+    z-index: 4;
+}
+
+.dbTab:active, .chTab:active, .jnTab:active, .ccTab:active, .wikiTab:active {
+    background: transparent;
+    border-bottom: 39px solid #8f513e;
+    transform: translateY(0px);
+    /* transform: translateY(-30px); */
+}
+
+.dbTab.selected, .chTab.selected, .jnTab.selected, .ccTab.selected, .wikiTab.selected {
+    transform: translateY(10px);
+    transition-duration: 0.1s;
+    border-bottom: 29px solid #7c1919;
+    
+}
+ 
+/*
+▗▖ ▗▖▗▞▀▜▌▄▄▄▄  ▗▖█  ▐▌ ▄▄▄  ▗▞▀▚▖ ▄▄▄ 
+▐▌ ▐▌▝▚▄▟▌█ █ █ ▐▌▀▄▄▞▘█     ▐▛▀▀▘█    
+▐▛▀▜▌     █   █ ▐▛▀▚▖  █     ▝▚▄▄▖█    
+▐▌ ▐▌           ▐▙▄▞▘      ▗▄▖         
+                          ▐▌ ▐▌        
+                           ▝▀▜▌        
+                          ▐▙▄▞▘        
+
+*/
+
+/* This refers to the button in the middle panel */
+.hamburger {
+    margin: 20px auto;
+    display: inline-grid;
+    /* vertical-align: middle; */
+    border: 2px outset rgb(133, 118, 60);;
+    background: none;
+    cursor: pointer;
+    padding-left: 4px;
+    padding-top: 6px;
+    padding-right: 4px;
+    scale: 70%;
+    grid-column: 1 / 2;
+    grid-row: 1;
+    z-index: 1;
+    transform: translate(-78%, 20px)
+}
+
+.closeIcon {
+    display: none;
+}
+
+.hb_menu {
+    z-index: 1;
+    position: fixed;
+    grid-row: 3x;
+    border:4px outset rgb(144, 118, 26);
+    background: rgb(39, 35, 35);
+    transform: translateX(-150%);
+    transition: transform 0.2s;
+    color: black;
+    margin-top: 90px;
+    width: 11rem;
+    box-shadow: 5px 10px 10px;
 }
 
 .ph_legend {
     color: rgb(118, 66, 28);
     background-color: rgb(214, 184, 103);
     border: 2px outset rgb(144, 118, 26);
+    font-size: smaller;
 }
 
 .ph_fieldset {
     color: rgb(118, 66, 28);
     background-color: rgb(190, 164, 92);
-    border: 2px inset rgb(144, 118, 26)
+    border: 2px inset rgb(144, 118, 26);
+    display: block;
+    padding: 3px 15px;
+    margin: 5px auto;
+    width: fit-content;
+    height: fit-content;
 }
 
-.tool_buttons {
-    color: rgb(118, 66, 28);
-    background-color: rgb(224, 193, 108);
-    text-align: center;
-    font-family:'Courier New', Courier, monospace;
-    grid-column: 2 / 6;
-    grid-row: 2;
-    margin: 5px;
+.menu_ul {
+    grid-row: 8 / 3;
+    z-index: 1;
+    position: fixed;
+    grid-row: 3x;
+    /* transform: translateX(-150%); */
+    transition: transform 0.2s;
+    border:4px outset rgb(144, 118, 26);
+    background: rgb(39, 35, 35);
+    color: white;
+    list-style: none;
+    margin-top: 5%;
+    width: 9rem;
 }
- 
+
+.showMenu {
+    transform: translateX(0);
+}
+
+.menuItem {
+    color: white;
+}
+
+.menuItem:hover {
+    cursor: pointer;
+    color: #959DA5;
+    border: 2px inset rgb(144, 118, 26);
+}
+
 .site_buttons {
     color: rgb(118, 66, 28);
-    background-color: rgb(224, 193, 108);
+    background-color: rgba(0, 0, 0, 0);
     text-align: center;
     font-family:'Courier New', Courier, monospace;
-    grid-column: 6 / 10;
-    grid-row: 2;
-    margin: 5px;
+    margin: 4px;
+    margin-left: 136px;
 }
 
 /*

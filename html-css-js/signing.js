@@ -4,9 +4,7 @@ Handles sign-in protocol and setting up the webpage once authorized.
 
 notes;
 make tool/site bar load once login is succesful
-make sure to update bronson logo .onclick to return to dash instead of log in page.
 */
-
 
 function setSignIn() {
     let tool_header = document.querySelector('.tool_header');
