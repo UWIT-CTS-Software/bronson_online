@@ -251,7 +251,7 @@ async fn handle_connection(
 
     // Handle requests
     // ------------------------------------------------------------------------
-    let mut user_homepage: &str = "html-css-js/index_guest.html";
+    let mut user_homepage: &str = "html-css-js/index.html";
     let stream_clone = stream.try_clone().expect("[-] CLONE ERROR: Stream failed to clone.");
 
     let first_line_search = Regex::new(r"^.*\n").unwrap();
