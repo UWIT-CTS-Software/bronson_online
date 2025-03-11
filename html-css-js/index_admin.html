@@ -1,100 +1,17 @@
+<!-- HTML 5 -->
 <!DOCTYPE html>
 <html>
   <head>
+    <title>UWIT-Bronson Admin</title>
     <meta charset="UTF-8" />
     <link rel="stylesheet" type="text/css" href="page.css">
-    <title>UWIT-Bronson</title>
-    <!-- <link rel="icon" type="image/x-icon" href="favicon.ico"> -->
-    <iframe id="content" style ="display:none;"></iframe>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Contrail+One&family=Racing+Sans+One&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <script src="checkerboard.js" type="text/javascript" charset="utf-8"></script>
-    <script src="camcode.js" type="text/javascript" charset="utf-8"></script>
-    <script src="cc-altmode.js" type="text/javascript" charset="utf-8"></script>
-    <script src="jacknet.js" type="text/javascript" charset="utf-8"></script>
-    <script src="wiki.js" type="text/javascript" charset="utf-8"></script>
-    <!-- <script src="terminal.js" type="text/javascript" charset="utf-8"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery.terminal/css/jquery.terminal.min.css"/>    
     <script type="text/javascript">
-      window.addEventListener("popstate", () => {
-        console.log(location.href);
-        if (location.pathname == "/checker") {
-          setChecker();
-        } else if (location.pathname == "/jacknet") {
-          setJackNet();
-        } else if (location.pathname == "/cc-altmode") {
-          setCrestronFile();
-        } else if (location.pathname == "/wiki") {
-          setWiki();
-        } else {
-          setDashboard();
-        }
-      },
-      false,
-      );
-
-      function toggleMenu() {
-        const menu = document.querySelector(".menu");
-        const menuIcon = document.querySelector(".menuIcon");
-        const closeIcon = document.querySelector(".closeIcon");
-        if (menu.classList.contains("showMenu")) {
-          menu.classList.remove("showMenu");
-          closeIcon.style.display = "none";
-          menuIcon.style.display = "block";
-        } else {
-          menu.classList.add("showMenu");
-          closeIcon.style.display = "block";
-          menuIcon.style.display = "none";
-        }
-      }
-
-      // setDashboard()
-      function setDashboard() {
-        const menuItems = document.querySelectorAll(".menuItem");
-        const hamburger = document.querySelector(".hamburger");
-
-        hamburger.addEventListener("click", toggleMenu);
-        menuItems.forEach(function(menuItem) {
-          menuItem.addEventListener("click", toggleMenu);
-        });
-
-        document.title = "Dashboard - Bronson";
-        let tool_header = document.querySelector('.tool_header');
-        tool_header.innerHTML = 'Dashboard';
-        history.pushState({}, "Dashboard", "/");
-
-        let prog_guts = document.querySelector('.program_board .program_guts');
-
-        let db_container = document.createElement("div");
-        db_container.classList.add("db_container");
-        // db_container.innerHTML = `
-        //   <p class='tool_header'>
-        //     Dashboard </p>`;
-
-        // Console Output
-        let consoleOutput = document.createElement("div");
-        consoleOutput.classList.add('db_console');
-        consoleOutput.innerHTML = `
-          <fieldset>
-              <legend> 
-                  Messages: </legend>
-              <textarea readonly rows="20" cols ="75" class="innerConsole" name="consoleOutput" spellcheck="false"> 
-                  Welcome to Bronson!
-              </textarea>
-          </fieldset>`;
-    
-        db_container.appendChild(consoleOutput);
-
-        let main_container = document.createElement('div');
-        main_container.appendChild(db_container);
-        main_container.classList.add('program_guts');
-        prog_guts.replaceWith(main_container);
-        return;
-      }
+      $.get("index.html", function(data){
+        $("#prog_placeholder").replaceWith(data);
+      });
 
       $(function() {
         $('#terminal').terminal({
@@ -135,68 +52,8 @@ $$$$$$$$\                                $$\                     $$\
   </head>
   <!-- body -->
   <body onload="setDashboard()">
-    <div class="program_board">
-      <!-- Website Header (Doesn't Change) -->
-      <div class="program_header">
-        <ul class="menu">
-          <li><a class="menuItem" href="#">Link 1</a></li>
-          <li><a class="menuItem" href="#">Link 2</a></li>
-          <li><a class="menuItem" href="#">Link 3</a></li>
-          <li><a class="menuItem" href="#">Link 4</a></li>
-        </ul>
-        <button class="hamburger" onclick="toggleMenu()">
-          <i class="menuIcon material-icons">menu</i>
-          <i class="closeIcon material-icons" style="display: none;">close</i>
-        </button>
-        <h1 class='site_header' onclick='setDashboard()'>
-          Bronson</h1>
-        <p class='p_header'>
-          <i>The swiss army knife for the U.W.I.T. department</i></p>
-        <h2 class='tool_header'>
-          Dashboard</h2>
-        <div class="tool_buttons">
-          <fieldset class="ph_fieldset">
-            <legend class="ph_legend">
-              Tools:
-            </legend>
-            <button id="CBButton" onclick="setChecker()" type="button" class="headButton">
-              Checkerboard </button>
-            <button id="JNButton" onclick="setJackNet()" type="button" class="headButton">
-              JackNet </button>
-            <button id="CCButton" onclick="setCrestronFile()" type="button" class="headButton">
-              CamCode </button>
-            <button id="wiki" onclick="setWiki()" type="button" class="headButton">
-              Wiki </button>
-            <!-- <button id="my_terminal" onclick="setTerminal()" type="button" class="headButton">
-              Terminal </button>
-            </button> -->
-          </fieldset>
-        </div>
-        <div class="site_buttons">
-          <fieldset class="ph_fieldset">
-            <legend class="ph_legend">
-              Sites:</legend>
-            <button id="TimeClockURL" onclick="window.open('https://shibboleth.uwyo.edu/idp/profile/SAML2/Unsolicited/SSO?providerId=https://9922.tcplusondemand.com&shire=https://9922.tcplusondemand.com/api/v0000/saml2Sessions/0/Saml2SingleSignOnEmployeePost&target=CompanyNamespace%3d9922%3bCompanyId%3d1%3bRedirectPat');" type="button" class="headButton">
-              TimeClock </button>
-            <button id="lsmURL" onclick="window.open('https://uwyo.talem3.com/lsm/login/auth');" type="button" class="headButton">
-              LSM </button>
-            <button id="tdURL" onclick="window.open('https://uwyo.teamdynamix.com/TDNext/Home/Desktop/Default.aspx');" type="button" class="headButton">
-              TeamDynamix </button>
-            <button id="25lURL" onclick="window.open('https://25live.collegenet.com/pro/uwyo#!/home/dash');" type="button" class="headButton">
-              25Live </button>
-            <button id="campusMapURL" onclick="window.open('https://uwoperations.uwyo.edu/portal/apps/webappviewer/index.html?id=66a9c83b1d92419d8579562ed0a6259b');" type="button" class="headButton">
-              Campus Map </button>
-          </fieldset>
-        </div>
-        
-      </div>
-      <br>
-      <!-- <p> Local dashboard of stuff // maybe a feed</p> -->
-      <div class="program_guts">
-      </div>
+    <div class="program_board" id="prog_placeholder">
     </div>
     <footer id="terminal"></footer>
   </body>
 </html>
-
-
