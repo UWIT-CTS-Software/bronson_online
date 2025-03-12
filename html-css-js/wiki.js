@@ -36,18 +36,30 @@ async function updatePreview() {
 // setWiki()
 async function setWiki() {
     const menuItems = document.querySelectorAll(".menuItem");
-    const hamburger = document.querySelector(".hamburger");
 
-    hamburger.addEventListener("click", toggleMenu);
     menuItems.forEach(function(menuItem) {
       menuItem.addEventListener("click", toggleMenu);
     });
 
     document.title = "Wiki - Bronson";
     console.log('switching to wiki');
-    let tool_header = document.querySelector('.tool_header');
+    
+    // remove currently active status mark tab has active.
+    // Update active_tab_header
+    // let active_tab_header = document.querySelector('.active_tab_header');
+    // active_tab_header.innerHTML = 'Wiki';
+    let current = document.getElementsByClassName("selected");
+    console.log(current);
+    if (current.length != 0) {
+        // current[0].classList.remove("active");
+        current[0].classList.remove("selected");
+    }
+    let newCurrent = document.getElementById("wiki");
+    // newCurrent.classList.add("active");
+    newCurrent.classList.add("selected");
+
+
     history.pushState("test", "Wiki", "/wiki");
-    tool_header.innerHTML = 'Wiki';
 
     let progGuts = document.querySelector('.program_board .program_guts');
     let main_container = document.createElement('div');
