@@ -63,7 +63,7 @@ use std::{
         read, read_to_string, read_dir, metadata,
         File,
     },
-    time::{ Duration, },
+    time::{ Duration },
     sync::{ Arc, },
     string::{ String, },
     borrow::{ Borrow, },
@@ -75,13 +75,14 @@ use std::{
     convert::{ TryFrom, },
 };
 use reqwest::{ 
-    header::{ HeaderMap, HeaderValue, AUTHORIZATION, ACCEPT, }
+    header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
 use csv::{ Reader, };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
 use regex::Regex;
-use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta, };
+use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta };
+use urlencoding::decode;
 // ----------------------------------------------------------------------------
 
 /*
@@ -117,7 +118,6 @@ fn main() {
     if matches.opt_present("d") {
         println!("\rTest\n");
     }
-
 
     // generate rooms HashMap
     let rooms = gen_hashmap();
@@ -204,13 +204,16 @@ fn gen_hashmap() -> HashMap<String, Room> {
             let hn_vec = gen_hn2(String::from(record.get(0).expect("Empty")), item_vec.clone());
 
             let ip_vec = gen_ip2(item_vec);
-            
+            // let duration = Duration::from_secs(1_000_000);
+            // let s_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).expect("s_time bad");
+
             let room = Room {
                 name: String::from(record.get(0).expect("Empty")),
                 hostnames: hn_vec,
                 ips: ip_vec,
                 gp: record.get(7).expect("-1").parse().unwrap(),
                 checked: String::from("2000-01-01T00:00:00Z"),
+                // jn_checked: s_time - duration,
                 schedule: schedule,
             };
 
@@ -248,26 +251,28 @@ async fn handle_connection(
 
     // Handle requests
     // ------------------------------------------------------------------------
-    let mut user_homepage: &str = "html-css-js/index_guest.html";
+    let mut user_homepage: &str = "html-css-js/index.html";
     let stream_clone = stream.try_clone().expect("[-] CLONE ERROR: Stream failed to clone.");
 
     let first_line_search = Regex::new(r"^.*\n").unwrap();
     let buff_copy = buffer.clone();
-    let first_line = first_line_search.find(str::from_utf8(&buff_copy).expect("Empty")).unwrap().as_str();
+    let first_line = first_line_search.find(str::from_utf8(&buff_copy).expect("Empty"));
+    let first_line_str = if first_line.is_some() { first_line.unwrap().as_str() } else { "Empty" };
 
-    match first_line {
+    match first_line_str {
         "GET / HTTP/1.1\r\n"                => send_data_string(STATUS_200, "html-css-js/login.html", stream_clone, &buff_copy),
         "GET /page.css HTTP/1.1\r\n"        => send_data_string(STATUS_200, "html-css-js/page.css", stream_clone, &buff_copy),
+        "GET /index.html HTTP/1.1\r\n"        => send_data_string(STATUS_200, "html-css-js/index.html", stream_clone, &buff_copy),
     
         "GET /camcode.js HTTP/1.1\r\n"      => send_data_string(STATUS_200, "html-css-js/camcode.js", stream_clone, &buff_copy),
         "GET /cc-altmode.js HTTP/1.1\r\n"   => send_data_string(STATUS_200, "html-css-js/cc-altmode.js", stream_clone, &buff_copy),
         "GET /checkerboard.js HTTP/1.1\r\n" => send_data_string(STATUS_200, "html-css-js/checkerboard.js", stream_clone, &buff_copy),
         "GET /jacknet.js HTTP/1.1\r\n"      => send_data_string(STATUS_200, "html-css-js/jacknet.js", stream_clone, &buff_copy),
         "GET /wiki.js HTTP/1.1\r\n"         => send_data_string(STATUS_200, "html-css-js/wiki.js", stream_clone, &buff_copy),
-        "GET /cc-altmode HTTP/1.1\r\n"      => insert_onload(STATUS_200, "setCrestronFile()", "html-css-js/index_guest.html", stream_clone, &buff_copy),
-        "GET /checkerboard HTTP/1.1\r\n"    => insert_onload(STATUS_200, "setChecker()", "html-css-js/index_guest.html", stream_clone, &buff_copy),
-        "GET /jacknet HTTP/1.1\r\n"         => insert_onload(STATUS_200, "setJackNet()", "html-css-js/index_guest.html", stream_clone, &buff_copy),
-        "GET /wiki HTTP/1.1\r\n"            => insert_onload(STATUS_200, "setWiki()", "html-css-js/index_guest.html", stream_clone, &buff_copy),
+        "GET /cc-altmode HTTP/1.1\r\n"      => insert_onload(STATUS_200, "setCrestronFile()", "html-css-js/index.html", stream_clone, &buff_copy),
+        "GET /checkerboard HTTP/1.1\r\n"    => insert_onload(STATUS_200, "setChecker()", "html-css-js/index.html", stream_clone, &buff_copy),
+        "GET /jacknet HTTP/1.1\r\n"         => insert_onload(STATUS_200, "setJackNet()", "html-css-js/index.html", stream_clone, &buff_copy),
+        "GET /wiki HTTP/1.1\r\n"            => insert_onload(STATUS_200, "setWiki()", "html-css-js/index.html", stream_clone, &buff_copy),
 
         "GET /refresh HTTP/1.1\r\n"         => {
             let contents = json!({
@@ -283,7 +288,6 @@ async fn handle_connection(
         "GET /logo.png HTTP/1.1\r\n"        => send_data_bytes(STATUS_200, "html-css-js/logo.png", "img/png", stream_clone, &buff_copy),
         "GET /logo-2-line.png HTTP/1.1\r\n" => send_data_bytes(STATUS_200, "html-css-js/logo-2-line.png", "img/png", stream_clone, &buff_copy),
         // ------------------------------------------------------------------------
-        
         // make calls to backend functionality
         // ------------------------------------------------------------------------
         // login
@@ -300,9 +304,53 @@ async fn handle_connection(
                 }
             }
         },
+        "POST /bugreport HTTP/1.1\r\n"      => {
+            let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
+            let Some(credentials) = credential_search.captures(str::from_utf8(&buff_copy).expect("Empty")) else { return Option::Some(()) };
+            let encoded_title = String::from(credentials["title"].to_string().into_boxed_str());
+            let mut encoded_desc = String::from(credentials["desc"].to_string().into_boxed_str());
+            if encoded_desc == String::from("") {
+                encoded_desc = encoded_title.clone();
+            }
+            let mut decoded_title = decode(&encoded_title).expect("UTF-8");
+            let mut decoded_desc = decode(&encoded_desc).expect("UTF-8");
+            decoded_title = decoded_title.replace("+", " ").into();
+            decoded_desc = decoded_desc.replace("+", " ").into();
+            decoded_desc = decoded_desc.replace("\0", "").into();
+            let mut arg_map = HashMap::new();
+            arg_map.insert("title", decoded_title);
+            arg_map.insert("body", decoded_desc);
+
+            println!("{:?}:{:?}", arg_map.get("title").unwrap(), arg_map.get("body").unwrap());
+
+            let clone_keys = keys.clone();
+            let url = "https://api.github.com/repos/UWIT-CTS-Software/bronson_online/issues";
+            let req = reqwest::Client::builder()
+                .cookie_provider(Arc::clone(&cookie_jar))
+                .user_agent("server_lib/1.1.0")
+                .default_headers(construct_headers("gh", clone_keys))
+                .timeout(Duration::from_secs(15))
+                .build()
+                .ok()?
+            ;
+
+            let _body = req.post(url)
+                          .timeout(Duration::from_secs(15))
+                          .json(&arg_map)
+                          .send()
+                          .await
+                          .expect("[-] RESPONSE ERROR")
+                          .text()
+                          .await
+                          .expect("[-] PAYLOAD ERROR");
+
+            
+            send_data_string(STATUS_200, user_homepage, stream_clone, &buff_copy);
+
+        },
         // Jacknet
         "POST /ping HTTP/1.1\r\n"           => {
-            let contents = execute_ping(&mut buffer, rooms); // JN
+            let contents = execute_ping(&mut buffer, &mut rooms); // JN
             send_contents(STATUS_200, contents, stream_clone, &buff_copy);
         },
         // Checkerboard
@@ -332,7 +380,6 @@ async fn handle_connection(
                 parent_locations.extend(&ZONE_4);
             }
             // ----------------------------------------------------------------
-
             // call for roomchecks in LSM and store
             // ----------------------------------------------------------------
             for parent_location in parent_locations.into_iter() {
@@ -344,7 +391,7 @@ async fn handle_connection(
                 let req = reqwest::Client::builder()
                     .cookie_provider(Arc::clone(&cookie_jar))
                     .user_agent("server_lib/1.1.0")
-                    .default_headers(construct_headers(clone_keys))
+                    .default_headers(construct_headers("lsm", clone_keys))
                     .timeout(Duration::from_secs(15))
                     .build()
                     .ok()?
@@ -565,12 +612,6 @@ fn pad_zero(raw_in: String, length: usize) -> String {
     }
 }
 
-// Debug function
-//   Prints the type of a variable
-/* fn print_type_of<T>(_: &T) {
-    println!("{}", std::any::type_name::<T>());
-} */
-
 /*
    $$$$$\                     $$\       $$\   $$\            $$\     
    \__$$ |                    $$ |      $$$\  $$ |           $$ |    
@@ -580,10 +621,16 @@ $$\   $$ | $$$$$$$ |$$ /      $$$$$$  / $$ \$$$$ |$$$$$$$$ | $$ |
 $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\ 
 \$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ $$ | \$$ |\$$$$$$$\  \$$$$  |
  \______/  \_______| \_______|\__|  \__|\__|  \__| \_______|  \____/ 
+
+ - execute_ping()
+ - gen_hn2()
+ - gen_ip2()
+ - gen_rooms()
+
 */
 
 // call ping_this executible here
-fn execute_ping(buffer: &mut [u8], rooms: HashMap<String, Room>) -> String {
+fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> String {
     // Prep Request into Struct
     let buff_copy = process_buffer(buffer);
     let pr: PingRequest = serde_json::from_str(&buff_copy)
@@ -593,58 +640,65 @@ fn execute_ping(buffer: &mut [u8], rooms: HashMap<String, Room>) -> String {
     // BuildingData Struct
     //   NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
     //         CAMPUS_STR -> "html-css-js/campus.json" 
+
     let bs: BuildingData = serde_json::from_str(CAMPUS_STR)
         .expect("Fatal Error: Failed to build building data structs");
-
-    
-    /////   TRYING TO REMOVE THIS BLOCK AND REPLACE
-    // Generate the hostnames here
-    // let hostnames: Vec<String> = gen_hostnames(
-    //     pr.devices,
-    //     pr.building.clone(),
-    //     bs,
-    //     rooms);
 
     // NEED TO PULL HOSTNAMES FROM DATABASE NOW
     // make array of room names -> [AB 104, AB 105, ...]
     //    USING BuildingData Struct / front-end request info.
     // AB -> [AB 104 , AB 105 , ... ]
-    // TODO
     let rooms_to_ping: Vec<String> = gen_rooms(pr.building.clone(), bs);
-
     let mut hostnames: Vec<String> = Vec::new();
+    let mut hn_ips: Vec<String> = Vec::new();
+    let mut room_vec: Vec<Vec<String>> = Vec::new();
 
     for rm in rooms_to_ping {
-        match rooms.get(&rm) {
-            Some(rm_info) => {
-                println!("Hostnames: {:?}", rm_info.hostnames);
-                // append rm_info.hostnames to hostnames
-                for hn in &rm_info.hostnames {
-                    hostnames.push(hn.to_string());
-                }
-            }
-            _ => (),
+        let rm_info = rooms.get_mut(&rm).expect("err0r");
+        println!("Hostnames: {:?}", rm_info.hostnames);
+        for hn in &rm_info.hostnames { // make this ping
+            println!("Hostname: {}", hn);
+            let hn_ip = ping_this(hn.to_string());
+            println!("IpAdr:    {}", hn_ip);
+            hn_ips.push(hn_ip);
+            hostnames.push(hn.to_string());
         }
+        room_vec.push(hostnames.clone());
+        room_vec.push(hn_ips.clone());
+        
+        let _ = &rm_info.update_ips(hn_ips);
+
+        hostnames = Vec::new();
+        hn_ips = Vec::new();
     }
 
     // let hostnames = ["BROKEN_SORRY_FIXING_IT"];
 
-    println!("Hostnames Generated {:?}", hostnames);
-
-    // Write for loop through hostnames
-    let mut hn_ips: Vec<String> = Vec::new();
-    for hn in hostnames.clone() {
-        println!("Hostname: {}", hn);
-        let hn_ip = ping_this(hn.to_string());
-        println!("IpAdr:    {}", hn_ip);
-        hn_ips.push(hn_ip);
-    }
+    println!("Hostnames Generated {:?}", room_vec);
 
     // format data into json using serde
+    // Final Prep
+    let mut f_hn = Vec::new();
+    let mut f_ip = Vec::new();
+
+    let room_vec_len = room_vec.len();
+
+    for i in 0..room_vec_len {
+        if i % 2 == 0 {
+            f_hn.append(&mut room_vec[i].clone());
+        } else {
+            f_ip.append(&mut room_vec[i].clone());
+        }
+    }
+
+    println!("Final Hostname Vec: {:?}", f_hn);
+    println!("Final IP Vec: {:?}", f_ip);
+
+    // [ ] TODO - Save output / Cache, filter return to only be selected devices
     let json_return = json!({
         "building": pr.building,
-        "hostnames": hostnames,
-        "ips": hn_ips
+        "hostnames": f_hn,
+        "ips": f_ip
     });
 
     // convert to string and return it
@@ -695,6 +749,7 @@ fn gen_hn2(
     return hostnames;
 }
 
+// helper function for packing x's into the hashmap on init
 fn gen_ip2(item_vec: Vec<u8>) -> Vec<String> {
     let mut ips = Vec::new();
     let mut count = 0;
@@ -729,6 +784,16 @@ fn gen_rooms(
     return rooms;
 }
 
+// given a hostname, returns a string that can be used to look it up in the hashmap, ie: AN-0204-PROC1 -> AN 204
+// Helper function to track down the right records in the hasmap to make correct updates.
+// fn hn_to_rm(hn: String) -> String {
+//     let parts = hn.split("-");
+//     let tmp = parts[0].clone();
+//     for part in parts {
+//         println!(part);
+//     }
+// }
+
 /*
  $$$$$$\  $$\       $$\                 $$$$$$$\                  $$\ 
 $$  __$$\ $$ |      $$ |                $$  __$$\                 $$ |
@@ -740,10 +805,16 @@ $$ |  $$\ $$ |  $$ |$$  _$$<  $$ |      $$ |  $$ |$$ |      $$ |  $$ |
  \______/ \__|  \__|\__|  \__|\__|      \_______/ \__|       \_______|
 */
 
-fn construct_headers(keys: Keys) -> HeaderMap {
+fn construct_headers(call_type: &str, keys: Keys) -> HeaderMap {
     let mut header_map = HeaderMap::new();
-    header_map.insert(ACCEPT, HeaderValue::from_static("application/json"));
-    header_map.insert(AUTHORIZATION, HeaderValue::from_str(&keys.api).expect("[-] KEY_ERR: Not found."));
+    if call_type == "lsm" {
+        header_map.insert(ACCEPT, HeaderValue::from_static("application/json"));
+        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&keys.lsm_api).expect("[-] KEY_ERR: Not found."));
+    } else if call_type == "gh" {
+        header_map.insert(ACCEPT, HeaderValue::from_static("application/vnd.github+json"));
+        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&keys.gh_api).expect("[-] KEY_ERR: Not found."));
+        header_map.insert(HeaderName::from_static("x-github-api-version"), HeaderValue::from_static("2022-11-28"));
+    }
 
     return header_map;
 }

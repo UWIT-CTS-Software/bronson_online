@@ -142,15 +142,18 @@ impl Drop for ThreadPool {
 // keys struct
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Keys {
-	pub api: String,
+	pub lsm_api: String,
+	pub gh_api: String,
 	pub users: Vec<Vec<String>>
 }
 impl<'a> Clone for Keys {
 	fn clone(&self) -> Keys {
-		let new_api: Box<str> = <String as Clone>::clone(&self.api).into_boxed_str();
+		let new_lsm_api: Box<str> = <String as Clone>::clone(&self.lsm_api).into_boxed_str();
+		let new_gh_api: Box<str> = <String as Clone>::clone(&self.gh_api).into_boxed_str();
 	
 		return Keys { 
-			api: String::from(new_api),
+			lsm_api: String::from(new_lsm_api),
+			gh_api: String::from(new_gh_api),
 			users: self.users.to_vec()
 		};
 	}
@@ -164,6 +167,7 @@ pub struct Room {
 	pub ips: Vec<String>,
 	pub gp: u8,
 	pub checked: String,
+	//pub jn_checked: Duration, //
 	pub schedule: Vec<String>
 }
 
@@ -172,11 +176,18 @@ impl Room {
 	pub fn update_checked(&mut self, val: String) {
 		self.checked = val;
 	}
+	// pub fn update_jn_checked(&mut self) {
+	// 	self.jn_checked = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).expect("Failed to init unchecked time");
+	// }
+	pub fn update_ips(&mut self, val: Vec<String>) {
+		self.ips = val;
+	}
 }
 impl<'a> Clone for Room {
 	fn clone(&self) -> Room {
 		let new_name: Box<str> = <String as Clone>::clone(&self.name).into_boxed_str();
 		let new_checked: Box<str> = <String as Clone>::clone(&self.checked).into_boxed_str();
+		// let new_jn_checked = &self.jn_checked;
 		let new_hostnames = &self.hostnames;
 		let new_ips = &self.ips;
 		let new_schedule = &self.schedule;
@@ -186,6 +197,7 @@ impl<'a> Clone for Room {
 			hostnames: (&new_hostnames).to_vec(),
 			ips: (&new_ips).to_vec(),
 			gp: self.gp,
+			// jn_checked: self.jn_checked,
 			checked: String::from(new_checked),
 			schedule:(&new_schedule).to_vec(),
 		};

@@ -1,9 +1,9 @@
 /target
 Cargo.lock
-/src/*/*.swp
 /src/keys.json
 /CFM_Code
 /.vscode
 /html-css-js/raw_roomConfig.csv
 /src/keys.json
 *.DS_Store
+*.swp
