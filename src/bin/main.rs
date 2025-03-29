@@ -52,7 +52,7 @@ use server_lib::{
     jp::{ ping_this, },
     ZONE_1, ZONE_1_SHORT, ZONE_2, ZONE_2_SHORT, ZONE_3, ZONE_3_SHORT, ZONE_4, ZONE_4_SHORT,
     CAMPUS_STR, CFM_DIR, WIKI_DIR, ROOM_CSV, CAMPUS_CSV, KEYS,
-    STATUS_200, STATUS_404,
+    Request, Response, STATUS_200, STATUS_404,
 };
 use getopts::Options;
 use std::{
@@ -77,6 +77,7 @@ use std::{
 use reqwest::{ 
     header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
+use cookie::{ Cookie, CookieJar, };
 use csv::{ Reader, };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
@@ -143,7 +144,7 @@ fn main() {
     println!("[!] ... {}:{} ...", host_ip, host_port.to_string());
 
     let pool = ThreadPool::new(4);
-    let cookie_jar = Arc::new(reqwest::cookie::Jar::default());
+    let cookie_jar = Arc::new(CookieJar::new());
     // ------------------------------------------------------------------------
     stdout().flush().unwrap();
 
@@ -241,40 +242,79 @@ fn clone_map<
 #[allow(unused_assignments)]
 async fn handle_connection(
     mut stream: TcpStream, 
-    cookie_jar: Arc<reqwest::cookie::Jar>, 
+    cookie_jar: Arc<CookieJar>, 
     mut rooms: HashMap<String, Room>,
     keys: Keys,
 ) -> Option<()> {
     let mut buffer = [0; 1024];
 
     stream.read(&mut buffer).unwrap();
+    let req = Request::build(buffer.clone());
 
     // Handle requests
     // ------------------------------------------------------------------------
     let mut user_homepage: &str = "html-css-js/index.html";
     let stream_clone = stream.try_clone().expect("[-] CLONE ERROR: Stream failed to clone.");
-
-    let first_line_search = Regex::new(r"^.*\n").unwrap();
     let buff_copy = buffer.clone();
-    let first_line = first_line_search.find(str::from_utf8(&buff_copy).expect("Empty"));
-    let first_line_str = if first_line.is_some() { first_line.unwrap().as_str() } else { "Empty" };
 
-    match first_line_str {
-        "GET / HTTP/1.1\r\n"                => send_data_string(STATUS_200, "html-css-js/login.html", stream_clone, &buff_copy),
-        "GET /page.css HTTP/1.1\r\n"        => send_data_string(STATUS_200, "html-css-js/page.css", stream_clone, &buff_copy),
-        "GET /index.html HTTP/1.1\r\n"        => send_data_string(STATUS_200, "html-css-js/index.html", stream_clone, &buff_copy),
+    let mut res: Response = Response::new();
+
+    match req.start_line.as_str() {
+        "GET / HTTP/1.1"                => {
+            res.status(STATUS_200);
+            res.send_file(user_homepage);
+        },
+        "GET /page.css HTTP/1.1"        => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/page.css");
+        },
+        "GET /index.html HTTP/1.1"      => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/index.html");
+        },
     
-        "GET /camcode.js HTTP/1.1\r\n"      => send_data_string(STATUS_200, "html-css-js/camcode.js", stream_clone, &buff_copy),
-        "GET /cc-altmode.js HTTP/1.1\r\n"   => send_data_string(STATUS_200, "html-css-js/cc-altmode.js", stream_clone, &buff_copy),
-        "GET /checkerboard.js HTTP/1.1\r\n" => send_data_string(STATUS_200, "html-css-js/checkerboard.js", stream_clone, &buff_copy),
-        "GET /jacknet.js HTTP/1.1\r\n"      => send_data_string(STATUS_200, "html-css-js/jacknet.js", stream_clone, &buff_copy),
-        "GET /wiki.js HTTP/1.1\r\n"         => send_data_string(STATUS_200, "html-css-js/wiki.js", stream_clone, &buff_copy),
-        "GET /cc-altmode HTTP/1.1\r\n"      => insert_onload(STATUS_200, "setCrestronFile()", "html-css-js/index.html", stream_clone, &buff_copy),
-        "GET /checkerboard HTTP/1.1\r\n"    => insert_onload(STATUS_200, "setChecker()", "html-css-js/index.html", stream_clone, &buff_copy),
-        "GET /jacknet HTTP/1.1\r\n"         => insert_onload(STATUS_200, "setJackNet()", "html-css-js/index.html", stream_clone, &buff_copy),
-        "GET /wiki HTTP/1.1\r\n"            => insert_onload(STATUS_200, "setWiki()", "html-css-js/index.html", stream_clone, &buff_copy),
+        "GET /camcode.js HTTP/1.1"      => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/camcode.js");
+        },
+        "GET /cc-altmode.js HTTP/1.1"   => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/cc-altmode.js");
+        },
+        "GET /checkerboard.js HTTP/1.1" => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/checkerboard.js");
+        },
+        "GET /jacknet.js HTTP/1.1"      => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/jacknet.js");
+        },
+        "GET /wiki.js HTTP/1.1"         => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/wiki.js");
+        },
+        "GET /cc-altmode HTTP/1.1"      => {
+            res.status(STATUS_200);
+            res.send_file(user_homepage);
+            res.insert_onload("setCamcode()");
+        },
+        "GET /checkerboard HTTP/1.1"    => {
+            res.status(STATUS_200);
+            res.send_file(user_homepage);
+            res.insert_onload("setChecker())");
+        },
+        "GET /jacknet HTTP/1.1"         => {
+            res.status(STATUS_200);
+            res.send_file(user_homepage);
+            res.insert_onload("setJackNet()");
+        },
+        "GET /wiki HTTP/1.1"            => {
+            res.status(STATUS_200);
+            res.send_file(user_homepage);
+            res.insert_onload("setWiki()");
+        },
 
-        "GET /refresh HTTP/1.1\r\n"         => {
+        "GET /refresh HTTP/1.1"         => {
             let contents = json!({
                 "body": "[+] File updated successfully."
             }).to_string();
@@ -282,16 +322,28 @@ async fn handle_connection(
             send_contents(STATUS_200, contents, stream_clone, &buff_copy);
         }
     
-        "GET /campus.json HTTP/1.1\r\n"     => send_data_string(STATUS_200, "html-css-js/campus.json", stream_clone, &buff_copy),
+        "GET /campus.json HTTP/1.1"     => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/campus.json");
+        },
     
-        "GET /favicon.ico HTTP/1.1\r\n"     => send_data_bytes(STATUS_200, "html-css-js/logo_main.png", "image/png", stream_clone, &buff_copy),
-        "GET /logo.png HTTP/1.1\r\n"        => send_data_bytes(STATUS_200, "html-css-js/logo.png", "img/png", stream_clone, &buff_copy),
-        "GET /logo-2-line.png HTTP/1.1\r\n" => send_data_bytes(STATUS_200, "html-css-js/logo-2-line.png", "img/png", stream_clone, &buff_copy),
+        "GET /favicon.ico HTTP/1.1"     => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/logo-main.png");
+        },
+        "GET /logo.png HTTP/1.1"        => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/logo.png");
+        },
+        "GET /logo-2-line.png HTTP/1.1" => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/logo-2-line.png");
+        },
         // ------------------------------------------------------------------------
         // make calls to backend functionality
         // ------------------------------------------------------------------------
         // login
-        "POST /login HTTP/1.1\r\n"          => {
+        "POST /login HTTP/1.1"          => {
             let credential_search = Regex::new(r"uname=(?<user>.*)&psw=(?<pass>[\d\w%]*)").unwrap();
             let Some(credentials) = credential_search.captures(str::from_utf8(&buff_copy).expect("Empty")) else { return Option::Some(()) };
             let user = String::from(credentials["user"].to_string().into_boxed_str());
@@ -304,7 +356,7 @@ async fn handle_connection(
                 }
             }
         },
-        "POST /bugreport HTTP/1.1\r\n"      => {
+        "POST /bugreport HTTP/1.1"      => {
             let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
             let Some(credentials) = credential_search.captures(str::from_utf8(&buff_copy).expect("Empty")) else { return Option::Some(()) };
             let encoded_title = String::from(credentials["title"].to_string().into_boxed_str());
@@ -326,7 +378,8 @@ async fn handle_connection(
             let clone_keys = keys.clone();
             let url = "https://api.github.com/repos/UWIT-CTS-Software/bronson_online/issues";
             let req = reqwest::Client::builder()
-                .cookie_provider(Arc::clone(&cookie_jar))
+                .cookie_store(true)
+                // .cookie_provider(Arc::clone(&cookie_jar))
                 .user_agent("server_lib/1.1.0")
                 .default_headers(construct_headers("gh", clone_keys))
                 .timeout(Duration::from_secs(15))
@@ -349,12 +402,12 @@ async fn handle_connection(
 
         },
         // Jacknet
-        "POST /ping HTTP/1.1\r\n"           => {
+        "POST /ping HTTP/1.1"           => {
             let contents = execute_ping(&mut buffer, &mut rooms); // JN
             send_contents(STATUS_200, contents, stream_clone, &buff_copy);
         },
         // Checkerboard
-        "POST /run_cb HTTP/1.1\r\n"         => {
+        "POST /run_cb HTTP/1.1"         => {
             // get zone selection from request and store
             // ----------------------------------------------------------------
             let buff_copy_string = process_buffer(&mut buffer);
@@ -389,7 +442,8 @@ async fn handle_connection(
                     parent_location
                 );
                 let req = reqwest::Client::builder()
-                    .cookie_provider(Arc::clone(&cookie_jar))
+                    .cookie_store(true)
+                    // .cookie_provider(Arc::clone(&cookie_jar))
                     .user_agent("server_lib/1.1.0")
                     .default_headers(construct_headers("lsm", clone_keys))
                     .timeout(Duration::from_secs(15))
@@ -447,23 +501,23 @@ async fn handle_connection(
         },
         // CamCode
         //  - CamCode - CFM Requests
-        "POST /cfm_build HTTP/1.1\r\n"      => {
+        "POST /cfm_build HTTP/1.1"      => {
             let contents = cfm_build_dir(&mut buffer);
             send_contents(STATUS_200, contents, stream_clone, &buff_copy);
         },
-        "POST /cfm_build_r HTTP/1.1\r\n"    => {
+        "POST /cfm_build_r HTTP/1.1"    => {
             let contents = cfm_build_rm(&mut buffer);
             send_contents(STATUS_200, contents, stream_clone, &buff_copy);
         },
-        "POST /cfm_c_dir HTTP/1.1\r\n"      => {
+        "POST /cfm_c_dir HTTP/1.1"      => {
             let contents = get_cfm(&mut buffer);
             send_contents(STATUS_200, contents, stream_clone, &buff_copy);
         },
-        "POST /cfm_dir HTTP/1.1\r\n"        => {
+        "POST /cfm_dir HTTP/1.1"        => {
             let contents = get_cfm_dir(&mut buffer);
             send_contents(STATUS_200, contents, stream_clone, &buff_copy);
         },
-        "POST /cfm_file HTTP/1.1\r\n"       => {
+        "POST /cfm_file HTTP/1.1"       => {
             let contents = get_cfm_file(&mut buffer);
             let mut f = File::open(contents.clone()).unwrap();
             
@@ -491,11 +545,11 @@ async fn handle_connection(
             println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
         },
         // Wiki
-        "POST /w_build HTTP/1.1\r\n"        => {
+        "POST /w_build HTTP/1.1"        => {
             let contents = w_build_articles(&mut buffer);
             send_contents(STATUS_200, contents, stream_clone, &buff_copy);
         },
-        &_                                  => send_data_string(STATUS_404, "html-css-js/404.html", stream_clone, &buff_copy)
+        &_                              => send_data_string(STATUS_404, "html-css-js/404.html", stream_clone, &buff_copy)
     };
 
     stdout().flush().unwrap();
@@ -573,14 +627,12 @@ fn find_enclosed(s: &String, delimiters: (&str,&str), include_delim: bool) -> St
     let search_rule;
     if include_delim {
         let search_setup = format!("(?<search_return>{}.*{})", delimiters.0, delimiters.1);
-        println!("search_setup = {}", search_setup);
         search_rule = Regex::new(search_setup.as_str()).unwrap();
     } else {
         search_rule = Regex::new(format!("{}(?<search_return>.*){}", delimiters.0, delimiters.1).as_str()).unwrap();
     }
 
     let Some(returned_text) = search_rule.captures(s) else { return "Empty".to_string() };
-    println!("\r\nSearch results are {:?}", returned_text["search_return"].to_string());
 
     return returned_text["search_return"].to_string();
 }
