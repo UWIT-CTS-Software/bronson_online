@@ -29,13 +29,17 @@ GeneralRequest
 */
 
 use std::{
+	str,
 	thread,
 	sync::{
 		mpsc, Arc, Mutex,
 	},
 	fmt::Debug,
+	collections::HashMap,
+	fs::read,
 };
 
+use regex::bytes::Regex;
 use serde::{Deserialize, Serialize, };
 
 trait FnBox {
@@ -205,6 +209,135 @@ impl<'a> Clone for Room {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct Request {
+	pub start_line: String,
+	pub headers: HashMap<String, String>,
+	pub body: String
+}
+
+impl Request {
+	pub fn build(buffer: [u8; 1024]) -> Request {
+		let buf_str = str::from_utf8(&buffer).expect("Empty");
+		let mut lines = Vec::new();
+
+		for line in buf_str.lines() {
+			lines.push(line);
+		}
+
+		let start_line: String = String::from(lines[0]);
+		let  mut headers: HashMap<String, String> = HashMap::new();
+
+		let mut iter = lines.iter();
+		while let Some(header_line) = iter.next() {
+			if *header_line == "" {
+				break;
+			}
+
+			let parts: Vec<&str> = header_line.split(": ").collect();
+			if parts.len() == 2 {
+				headers.insert(String::from(parts[0]), String::from(parts[1]));
+			}
+		}
+		let mut body_string = String::new();
+		while let Some(body_line) = iter.next() {
+			body_string.push_str(body_line);
+		}
+
+		let body: String = body_string;
+
+		return Request{start_line, headers, body};
+	}
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Response {
+	pub status: String,
+	pub headers: HashMap<String, String>,
+	pub body: Vec<u8>,
+	pub is_bytes: u8
+}
+
+impl Response {
+	pub fn new() -> Response {
+		let mut default_headers = HashMap::new();
+		default_headers.insert(String::from("Content-Type"), String::from("*/*"));
+		default_headers.insert(String::from("Content-Length"), String::from("0"));
+
+		return Response{
+			status: String::from(STATUS_500),
+			headers: default_headers,
+			body: Vec::new(),
+			is_bytes: 0
+		};
+	}
+
+	pub fn status(&mut self, status: &str) {
+		self.status = String::from(status);
+	}
+
+	pub fn insert_header(&mut self, key: &str, val: &str) {
+		self.headers.insert(String::from(key), String::from(val));
+	}
+
+	pub fn send_file(&mut self, filepath: &str) {
+		let file_parts: Vec<&str> = filepath.split(".").collect();
+		let content_type = String::from("Content-Type");
+		match file_parts[1] {
+			"png"  => {
+				self.headers.insert(content_type, String::from("image/png"));
+				self.is_bytes = 1;
+				Some(String::new())
+			},
+			"html" => self.headers.insert(content_type, String::from("text/html")),
+			"css"  => self.headers.insert(content_type, String::from("text/css")),
+			"js"   => self.headers.insert(content_type, String::from("text/javascript")),
+			"json" => self.headers.insert(content_type, String::from("application/json")),
+			"zip"  => {
+				self.headers.insert(content_type, String::from("application/zip"));
+				let attachment_string = format!("attachment; filename=\"{}\"", filepath);
+				self.headers.insert(String::from("Content-Disposition"), attachment_string);
+				Some(String::new())
+			},
+			_      => self.headers.insert(content_type, String::from("application/octet-stream"))
+		};
+
+		self.body = read(filepath).unwrap();
+		self.headers.insert(String::from("Content-Length"), self.body.len().to_string());
+	}
+
+	pub fn send_contents(&mut self, contents: String) {
+		self.headers.insert(String::from("Content-Type"), String::from("text/text"));
+		self.body = contents.into();
+		self.headers.insert(String::from("Content-Length"), self.body.len().to_string());
+	}
+
+	pub fn insert_onload(&mut self, function: &str) {
+		let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
+		let pre_contents = self.body;
+		let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return () };
+		let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
+		let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
+		let contents = format!("{} onload='{}'{}", pre, function, post);
+		self.body = contents.into();
+	}
+
+	pub fn build(&mut self) -> String {
+		let mut content: String = String::new();
+		content.push_str(&self.status);
+		content.push_str("\r\n");
+		for (key, val) in <HashMap<String, String> as Clone>::clone(&self.headers).into_iter() {
+			content.push_str(&key);
+			content.push_str(": ");
+			content.push_str(&val);
+			content.push_str("\r\n");
+		}
+		content.push_str(&str::from_utf8(&self.body).unwrap());
+
+		return content;
+	}
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ZoneRequest {
 	pub zones: Vec<String>,
 }
@@ -290,7 +423,8 @@ pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/
 pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/campus.csv");
 pub static KEYS      : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/keys.json");
 pub static STATUS_200: &str = "HTTP/1.1 200 OK";
-pub static STATUS_404: &str = "HTTP/1.1 404 NOT FOUND";
+pub static STATUS_404: &str = "HTTP/1.1 404 Not Found";
+pub static STATUS_500: &str = "HTTP/1.1 500 Internal Server Error";
 
 pub const ZONE_1: [&'static str; 11] = [
     "Science%20Initiative%20Building%20(SI)", "Geology%20(GE)", "Health%20Sciences%20(HS)", 
