@@ -36,7 +36,7 @@ use std::{
 	},
 	fmt::Debug,
 	collections::HashMap,
-	fs::read,
+	fs::{ read }
 };
 
 use regex::bytes::Regex;
@@ -254,7 +254,7 @@ pub struct Response {
 	pub status: String,
 	pub headers: HashMap<String, String>,
 	pub body: Vec<u8>,
-	pub is_bytes: u8
+	pub is_bytes: bool
 }
 
 impl Response {
@@ -267,7 +267,7 @@ impl Response {
 			status: String::from(STATUS_500),
 			headers: default_headers,
 			body: Vec::new(),
-			is_bytes: 0
+			is_bytes: false
 		};
 	}
 
@@ -285,7 +285,7 @@ impl Response {
 		match file_parts[1] {
 			"png"  => {
 				self.headers.insert(content_type, String::from("image/png"));
-				self.is_bytes = 1;
+				self.is_bytes = true;
 				Some(String::new())
 			},
 			"html" => self.headers.insert(content_type, String::from("text/html")),
@@ -296,6 +296,7 @@ impl Response {
 				self.headers.insert(content_type, String::from("application/zip"));
 				let attachment_string = format!("attachment; filename=\"{}\"", filepath);
 				self.headers.insert(String::from("Content-Disposition"), attachment_string);
+				self.is_bytes = true;
 				Some(String::new())
 			},
 			_      => self.headers.insert(content_type, String::from("application/octet-stream"))
@@ -306,6 +307,13 @@ impl Response {
 	}
 
 	pub fn send_contents(&mut self, contents: String) {
+		if self.headers.contains_key("Content-Type") {
+			self.headers.remove("Content-Type");
+		}
+		if self.headers.contains_key("Content-Length") {
+			self.headers.remove("Content-Length");
+		}
+		
 		self.headers.insert(String::from("Content-Type"), String::from("text/text"));
 		self.body = contents.into();
 		self.headers.insert(String::from("Content-Length"), self.body.len().to_string());
@@ -313,10 +321,10 @@ impl Response {
 
 	pub fn insert_onload(&mut self, function: &str) {
 		let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
-		let pre_contents = self.body;
+		let pre_contents = &self.body;
 		let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return () };
-		let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
-		let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
+		let pre = String::from_utf8(pre_post["preamble"].to_vec()).unwrap();
+		let post = String::from_utf8(pre_post["postamble"].to_vec()).unwrap();
 		let contents = format!("{} onload='{}'{}", pre, function, post);
 		self.body = contents.into();
 	}
@@ -331,7 +339,8 @@ impl Response {
 			content.push_str(&val);
 			content.push_str("\r\n");
 		}
-		content.push_str(&str::from_utf8(&self.body).unwrap());
+		content.push_str("\r\n");
+		content.push_str(&String::from_utf8_lossy(&self.body));
 
 		return content;
 	}
