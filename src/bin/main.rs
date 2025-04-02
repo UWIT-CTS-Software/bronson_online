@@ -60,7 +60,7 @@ use std::{
     io::{ prelude::*, Read, stdout, },
     net::{ TcpStream, TcpListener, },
     fs::{
-        read, read_to_string, read_dir, metadata,
+        read, read_dir, metadata,
         File,
     },
     time::{ Duration },
@@ -249,15 +249,22 @@ async fn handle_connection(
     let mut buffer = [0; 1024];
 
     stream.read(&mut buffer).unwrap();
+    
+    let mut user_homepage: &str = "html-css-js/login.html";
     let req = Request::build(buffer.clone());
+    let mut res: Response = Response::new();
+    if req.headers.contains_key("Cookie") {
+        let username_search = Regex::new("user=(?<username>admin|guest)").unwrap();
+        let Some(username) = username_search.captures(&req.headers.get("Cookie").unwrap()) else { panic!("Empty") };
+        if &username["username"] == "admin" {
+            user_homepage = "html-css-js/index_admin.html";
+        } else {
+            user_homepage = "html-css-js/index.html"
+        }
+    }
 
     // Handle requests
     // ------------------------------------------------------------------------
-    let mut user_homepage: &str = "html-css-js/index.html";
-    let stream_clone = stream.try_clone().expect("[-] CLONE ERROR: Stream failed to clone.");
-    let buff_copy = buffer.clone();
-
-    let mut res: Response = Response::new();
 
     match req.start_line.as_str() {
         "GET / HTTP/1.1"                => {
@@ -319,7 +326,8 @@ async fn handle_connection(
                 "body": "[+] File updated successfully."
             }).to_string();
             rooms = gen_hashmap();
-            send_contents(STATUS_200, contents, stream_clone, &buff_copy);
+            res.status(STATUS_200);
+            res.send_contents(contents);
         }
     
         "GET /campus.json HTTP/1.1"     => {
@@ -329,7 +337,7 @@ async fn handle_connection(
     
         "GET /favicon.ico HTTP/1.1"     => {
             res.status(STATUS_200);
-            res.send_file("html-css-js/logo-main.png");
+            res.send_file("html-css-js/logo_main.png");
         },
         "GET /logo.png HTTP/1.1"        => {
             res.status(STATUS_200);
@@ -345,20 +353,29 @@ async fn handle_connection(
         // login
         "POST /login HTTP/1.1"          => {
             let credential_search = Regex::new(r"uname=(?<user>.*)&psw=(?<pass>[\d\w%]*)").unwrap();
-            let Some(credentials) = credential_search.captures(str::from_utf8(&buff_copy).expect("Empty")) else { return Option::Some(()) };
+            let Some(credentials) = credential_search.captures(str::from_utf8(&buffer).expect("Empty")) else { return Option::Some(()) };
             let user = String::from(credentials["user"].to_string().into_boxed_str());
             let pass = String::from(credentials["pass"].to_string().into_boxed_str());
             for credential in keys.users {
                 if user == credential[0] && pass == credential[1] {
-                    user_homepage = credential[2].as_str();
-                    let login_stream_clone = stream.try_clone().expect("[-] CLONE ERROR: Stream failed to clone.");
-                    send_data_string(STATUS_200, user_homepage, login_stream_clone, &buff_copy);
+                    let mut cookie;
+                    if user == "admin" {
+                        cookie = Cookie::build(("user","admin"));
+                        user_homepage = "html-css-js/index_admin.html";
+                    } else {
+                        cookie = Cookie::build(("user","guest"));
+                        user_homepage = "html-css-js/index.html";
+                    }
+                    res.insert_header("Set-Cookie", cookie.to_string().as_str());
+                    res.insert_header("Access-Control-Expose-Headers", "Set-Cookie");
+                    res.status(STATUS_200);
+                    res.send_file(user_homepage);
                 }
             }
         },
         "POST /bugreport HTTP/1.1"      => {
             let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
-            let Some(credentials) = credential_search.captures(str::from_utf8(&buff_copy).expect("Empty")) else { return Option::Some(()) };
+            let Some(credentials) = credential_search.captures(str::from_utf8(&buffer).expect("Empty")) else { return Option::Some(()) };
             let encoded_title = String::from(credentials["title"].to_string().into_boxed_str());
             let mut encoded_desc = String::from(credentials["desc"].to_string().into_boxed_str());
             if encoded_desc == String::from("") {
@@ -397,21 +414,21 @@ async fn handle_connection(
                           .await
                           .expect("[-] PAYLOAD ERROR");
 
-            
-            send_data_string(STATUS_200, user_homepage, stream_clone, &buff_copy);
-
+            res.status(STATUS_200);
+            res.send_file(user_homepage);
         },
         // Jacknet
         "POST /ping HTTP/1.1"           => {
             let contents = execute_ping(&mut buffer, &mut rooms); // JN
-            send_contents(STATUS_200, contents, stream_clone, &buff_copy);
+            res.status(STATUS_200);
+            res.send_contents(contents);
         },
         // Checkerboard
         "POST /run_cb HTTP/1.1"         => {
             // get zone selection from request and store
             // ----------------------------------------------------------------
-            let buff_copy_string = process_buffer(&mut buffer);
-            let zone_selection: ZoneRequest = serde_json::from_str(&buff_copy_string)
+            let buff_string = process_buffer(&mut buffer);
+            let zone_selection: ZoneRequest = serde_json::from_str(&buff_string)
                 .expect("Fatal Error 2: Failed to parse ping request");
 
             let mut buildings: Vec<&str> = Vec::new();
@@ -496,26 +513,31 @@ async fn handle_connection(
             });
             
             let contents = json_return.to_string();
-            send_contents(STATUS_200, contents, stream_clone, &buff_copy);
+            res.status(STATUS_200);
+            res.send_contents(contents);
             // ----------------------------------------------------------------
         },
         // CamCode
         //  - CamCode - CFM Requests
         "POST /cfm_build HTTP/1.1"      => {
             let contents = cfm_build_dir(&mut buffer);
-            send_contents(STATUS_200, contents, stream_clone, &buff_copy);
+            res.status(STATUS_200);
+            res.send_contents(contents);
         },
         "POST /cfm_build_r HTTP/1.1"    => {
             let contents = cfm_build_rm(&mut buffer);
-            send_contents(STATUS_200, contents, stream_clone, &buff_copy);
+            res.status(STATUS_200);
+            res.send_contents(contents);
         },
         "POST /cfm_c_dir HTTP/1.1"      => {
             let contents = get_cfm(&mut buffer);
-            send_contents(STATUS_200, contents, stream_clone, &buff_copy);
+            res.status(STATUS_200);
+            res.send_contents(contents);
         },
         "POST /cfm_dir HTTP/1.1"        => {
             let contents = get_cfm_dir(&mut buffer);
-            send_contents(STATUS_200, contents, stream_clone, &buff_copy);
+            res.status(STATUS_200);
+            res.send_contents(contents);
         },
         "POST /cfm_file HTTP/1.1"       => {
             let contents = get_cfm_file(&mut buffer);
@@ -523,92 +545,29 @@ async fn handle_connection(
             
             let mut file_buffer = Vec::new();
             f.read_to_end(&mut file_buffer).unwrap();
-    
-            let buf_content = read(&contents).unwrap();
-            let length = buf_content.len();
-            
-            let response = format!("\
-            {}\r\n\
-            Content-Type: application/zip\r\n\
-            Content-length: {}\r\n\
-            Content-Disposition: attachment; filename=\"{}\"\r\n\
-            \r\n",
-                STATUS_200, 
-                length, 
-                contents
-            );
-            // Sends to STDOUT
-            stream.write(response.as_bytes()).unwrap();
-            stream.write_all(&file_buffer).unwrap();
-            stream.flush().unwrap();
-    
-            println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
+
+            res.status(STATUS_200);
+            res.insert_header("Content-Type", "application/zip");
+            let filename = format!("attachment; filename={}", contents);
+            res.insert_header("Content-Disposition", &filename);
+            res.send_contents(String::from_utf8(file_buffer).expect("Unable to parse vec to string."));
         },
         // Wiki
         "POST /w_build HTTP/1.1"        => {
             let contents = w_build_articles(&mut buffer);
-            send_contents(STATUS_200, contents, stream_clone, &buff_copy);
+            res.status(STATUS_200);
+            res.send_contents(contents);
         },
-        &_                              => send_data_string(STATUS_404, "html-css-js/404.html", stream_clone, &buff_copy)
+        &_                              => {
+            res.status(STATUS_404);
+            res.send_file("html-css-js/404.html");
+        }
     };
-
+    
+    stream.write(res.build().as_bytes()).unwrap();
+    stream.flush().unwrap();
     stdout().flush().unwrap();
     return Option::Some(());
-}
-
-fn send_data_string(status_line: &str, filepath: &str, mut stream: TcpStream, buffer: &[u8]) {
-    let contents = read_to_string(filepath).unwrap();
-    let response = format!(
-        "{}\r\nContent-Length: {}\r\n\r\n{}",
-        status_line, contents.len(), contents
-    );
-    // Sends to STDOUT
-    stream.write(response.as_bytes()).unwrap();
-    stream.flush().unwrap();
-
-    println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
-}
-
-fn send_data_bytes(status_line: &str, filepath: &str, content_type: &str, mut stream: TcpStream, buffer: &[u8]) {
-    let contents = read(filepath).unwrap();
-    let response = format!(
-        "{}\r\n\
-        Content-Type: {}\r\n\
-        Content-Length: {}\r\n\r\n",
-        status_line, content_type, contents.len()
-    );
-    stream.write(response.as_bytes()).unwrap();
-    stream.write(&contents).unwrap();
-    println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
-    stdout().flush().unwrap();
-}
-
-fn send_contents(status_line: &str, contents: String, mut stream: TcpStream, buffer: &[u8]) {
-    let response = format!(
-        "{}\r\nContent-Length: {}\r\n\r\n{}",
-        status_line, contents.len(), contents
-    );
-    stream.write(response.as_bytes()).unwrap();
-    println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
-    stdout().flush().unwrap();
-}
-
-fn insert_onload(status_line: &str, function: &str, user_homepage: &str, mut stream: TcpStream, buffer: &[u8]) {
-    let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
-    let pre_contents = read_to_string(user_homepage).unwrap();
-    let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return () };
-    let pre = String::from(pre_post["preamble"].to_string().into_boxed_str());
-    let post = String::from(pre_post["postamble"].to_string().into_boxed_str());
-    let contents = format!("{} onload='{}'{}", pre, function, post);
-    let response = format!(
-        "{}\r\nContent-Length: {}\r\n\r\n{}",
-        status_line, contents.len(), contents
-    );
-    stream.write(response.as_bytes()).unwrap();
-    stream.flush().unwrap();
-
-    println!("\rRequest: {}", str::from_utf8(&buffer).unwrap());
-    stdout().flush().unwrap();
 }
 
 // Preps the Buffer to be parsed as json string
