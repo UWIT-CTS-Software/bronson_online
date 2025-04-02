@@ -356,8 +356,10 @@ async fn handle_connection(
             let Some(credentials) = credential_search.captures(str::from_utf8(&buffer).expect("Empty")) else { return Option::Some(()) };
             let user = String::from(credentials["user"].to_string().into_boxed_str());
             let pass = String::from(credentials["pass"].to_string().into_boxed_str());
+            let mut found_user: bool = false;
             for credential in keys.users {
                 if user == credential[0] && pass == credential[1] {
+                    found_user = true;
                     let mut cookie;
                     if user == "admin" {
                         cookie = Cookie::build(("user","admin"));
@@ -370,7 +372,12 @@ async fn handle_connection(
                     res.insert_header("Access-Control-Expose-Headers", "Set-Cookie");
                     res.status(STATUS_200);
                     res.send_file(user_homepage);
+                    break;
                 }
+            }
+            if (!found_user) {
+                res.status(STATUS_200);
+                res.send_file(user_homepage);
             }
         },
         "POST /bugreport HTTP/1.1"      => {
@@ -564,7 +571,7 @@ async fn handle_connection(
         }
     };
     
-    stream.write(res.build().as_bytes()).unwrap();
+    stream.write(&res.build()).unwrap();
     stream.flush().unwrap();
     stdout().flush().unwrap();
     return Option::Some(());
