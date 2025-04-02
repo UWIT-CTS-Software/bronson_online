@@ -329,18 +329,28 @@ impl Response {
 		self.body = contents.into();
 	}
 
-	pub fn build(&mut self) -> String {
-		let mut content: String = String::new();
-		content.push_str(&self.status);
-		content.push_str("\r\n");
-		for (key, val) in <HashMap<String, String> as Clone>::clone(&self.headers).into_iter() {
-			content.push_str(&key);
-			content.push_str(": ");
-			content.push_str(&val);
-			content.push_str("\r\n");
+	pub fn build(&mut self) -> Vec<u8> {
+		let mut content: Vec<u8> = Vec::new();
+		for c in self.status.chars() {
+			content.push(c as u8);
 		}
-		content.push_str("\r\n");
-		content.push_str(&String::from_utf8_lossy(&self.body));
+		content.push(b'\r');
+		content.push(b'\n');
+		for (key, val) in <HashMap<String, String> as Clone>::clone(&self.headers).into_iter() {
+			for c in key.chars() {
+				content.push(c as u8);
+			}
+			content.push(b':');
+			content.push(b' ');
+			for c in val.chars() {
+				content.push(c as u8);
+			}
+			content.push(b'\r');
+			content.push(b'\n');
+		}
+		content.push(b'\r');
+		content.push(b'\n');
+		content.extend(&self.body);
 
 		return content;
 	}
