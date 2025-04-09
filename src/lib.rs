@@ -306,7 +306,7 @@ impl Response {
 		self.headers.insert(String::from("Content-Length"), self.body.len().to_string());
 	}
 
-	pub fn send_contents(&mut self, contents: String) {
+	pub fn send_contents(&mut self, contents: Vec<u8>) {
 		if self.headers.contains_key("Content-Type") {
 			self.headers.remove("Content-Type");
 		}
@@ -320,12 +320,16 @@ impl Response {
 	}
 
 	pub fn insert_onload(&mut self, function: &str) {
-		let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body)(?<postamble>[\d\D]*)").unwrap();
+		let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body).*(?<postamble>>[\d\D]*)").unwrap();
 		let pre_contents = &self.body;
 		let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return () };
 		let pre = String::from_utf8(pre_post["preamble"].to_vec()).unwrap();
 		let post = String::from_utf8(pre_post["postamble"].to_vec()).unwrap();
-		let contents = format!("{} onload='{}'{}", pre, function, post);
+		let contents = format!("{} onload={}{}", pre, function, post);
+		if self.headers.contains_key("Content-Length") {
+			self.headers.remove("Content-Length");
+		}
+		self.headers.insert(String::from("Content-Length"), self.body.len().to_string());
 		self.body = contents.into();
 	}
 
