@@ -447,6 +447,7 @@ pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/
 pub static KEYS      : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/keys.json");
 pub static STATUS_200: &str = "HTTP/1.1 200 OK";
 pub static STATUS_404: &str = "HTTP/1.1 404 Not Found";
+pub static STATUS_302: &str = "HTTP/1.1 302 Found";
 pub static STATUS_500: &str = "HTTP/1.1 500 Internal Server Error";
 
 pub const ZONE_1: [&'static str; 11] = [

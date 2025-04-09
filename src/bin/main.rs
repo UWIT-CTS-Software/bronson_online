@@ -52,7 +52,7 @@ use server_lib::{
     jp::{ ping_this, },
     ZONE_1, ZONE_1_SHORT, ZONE_2, ZONE_2_SHORT, ZONE_3, ZONE_3_SHORT, ZONE_4, ZONE_4_SHORT,
     CAMPUS_STR, CFM_DIR, WIKI_DIR, ROOM_CSV, CAMPUS_CSV, KEYS,
-    Request, Response, STATUS_200, STATUS_404,
+    Request, Response, STATUS_200, STATUS_302, STATUS_404,
 };
 use getopts::Options;
 use std::{
@@ -275,8 +275,13 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_file("html-css-js/index.html");
         },
-    
-        "GET /camcode.js HTTP/1.1"      => {
+        "GET /saml-login HTTP/1.1"      => { // SAML SP Function Calls
+            handle_saml_login(&stream);
+        }
+        "GET /logout HTTP/1.1" => {
+            handle_logout(&stream);
+        }
+        "GET /camcode.js HTTP/1.1"      => { // js files
             res.status(STATUS_200);
             res.send_file("html-css-js/camcode.js");
         },
@@ -571,6 +576,44 @@ async fn handle_connection(
     stream.flush().unwrap();
     stdout().flush().unwrap();
     return Option::Some(());
+}
+
+// SAML Functions
+fn handle_saml_login(mut stream: &TcpStream) -> Option<()> {
+    let mut buffer = [0; 1024];
+    stream.read(&mut buffer).unwrap();
+
+    let headers = String::from_utf8_lossy(&buffer[..]);
+    let mut user_info = HashMap::new();
+
+    // Extract user information from HTTP headers set by Shibboleth SP
+    for line in headers.lines() {
+        if line.starts_with("HTTP_SHIB_") {
+            let parts: Vec<&str> = line.splitn(2, ": ").collect();
+            if parts.len() == 2{
+                user_info.insert(parts[0].to_string(), parts[1].to_string());
+            }
+        }
+    }
+
+    // Store user session
+    println!("User Info {:?}", user_info);
+
+    let mut res = Response::new();
+    res.status(STATUS_302);
+    res.insert_header("Location","https://shibboleth.uwyo.edu/idp/profile/Shibboleth/SSO"); // I HAVE NO IDEA IF THIS IS THE RIGHT URL
+    //stream.write(&res.build()).unwrap();
+    //stream.flush().unwrap();
+    Some(())
+}
+
+fn handle_logout(mut stream: &TcpStream) -> Option<()> {
+    let mut res = Response::new();
+    res.status(STATUS_302);
+    res.insert_header("Location", "https://shibboleth.uwyo.edu/idp/profile/SAML2/Redirect/SLO"); // I HAVE NO IDEA IF THIS IS THE RIGHT URL
+    stream.write(&res.build()).unwrap();
+    //stream.flush().unwrap();
+    Some(())
 }
 
 // Preps the Buffer to be parsed as json string

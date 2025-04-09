@@ -17,6 +17,10 @@
 
     }
 
+    function ssoLogin() {
+      window.location.href = '/saml-login'
+    }
+
     function terminateLogin() {
       document.getElementById('login-modal').style.display='none';
       document.getElementById('bg-img').style.display='block';
@@ -69,7 +73,9 @@
             Log in:
           </legend>
           <button onclick="initLogin()" style="width:auto;" type="button">
-              Log In</button>
+            Log In</button>
+          <button onclick="ssoLogin()" style="width:auto;" type="button">
+            SAML Log In </button>
         </fieldset>
       </div>
     </div>
