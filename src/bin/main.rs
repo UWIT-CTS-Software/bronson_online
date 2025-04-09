@@ -60,11 +60,10 @@ use std::{
     io::{ prelude::*, Read, stdout, },
     net::{ TcpStream, TcpListener, },
     fs::{
-        read, read_dir, metadata,
+        read_dir, metadata,
         File,
     },
     time::{ Duration },
-    sync::{ Arc, },
     string::{ String, },
     borrow::{ Borrow, },
     clone::{ Clone, },
@@ -77,7 +76,7 @@ use std::{
 use reqwest::{ 
     header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
-use cookie::{ Cookie, CookieJar, };
+use cookie::{ Cookie, };
 use csv::{ Reader, };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
@@ -128,12 +127,12 @@ fn main() {
     let host_ip: &str;
     let mut host_port = 7878;
     let local_ip_addr = &(local_ip().unwrap().to_string());
-    if matches.opt_present("l") {
-        println!("[#] -- You are running using localhost --");
-        host_ip = "127.0.0.1";
-    } else {
+    if matches.opt_present("p") {
         println!("[#] -- You are running using public IP --");
         host_ip = local_ip_addr;
+    } else {
+        println!("[#] -- You are running using localhost --");
+        host_ip = "127.0.0.1";
     }
 
     while let Err(_e) = TcpListener::bind(format!("{}:{}", host_ip, host_port.to_string())) {
@@ -143,19 +142,17 @@ fn main() {
 
     println!("[!] ... {}:{} ...", host_ip, host_port.to_string());
 
-    let pool = ThreadPool::new(4);
-    let cookie_jar = Arc::new(CookieJar::new());
+    let pool = ThreadPool::new(6);
     // ------------------------------------------------------------------------
     stdout().flush().unwrap();
 
     for stream in listener.incoming() {
-        let cookie_jar = Arc::clone(&cookie_jar);
         let stream = stream.unwrap();
         let clone_rooms = clone_map(&rooms);
         let clone_keys = keys.clone();
 
         pool.execute(move || {
-            handle_connection(stream, cookie_jar, clone_rooms, clone_keys);
+            handle_connection(stream, clone_rooms, clone_keys);
         });
     }
 }
@@ -242,7 +239,6 @@ fn clone_map<
 #[allow(unused_assignments)]
 async fn handle_connection(
     mut stream: TcpStream, 
-    cookie_jar: Arc<CookieJar>, 
     mut rooms: HashMap<String, Room>,
     keys: Keys,
 ) -> Option<()> {
@@ -308,7 +304,7 @@ async fn handle_connection(
         "GET /checkerboard HTTP/1.1"    => {
             res.status(STATUS_200);
             res.send_file(user_homepage);
-            res.insert_onload("setChecker())");
+            res.insert_onload("setChecker()");
         },
         "GET /jacknet HTTP/1.1"         => {
             res.status(STATUS_200);
@@ -324,7 +320,7 @@ async fn handle_connection(
         "GET /refresh HTTP/1.1"         => {
             let contents = json!({
                 "body": "[+] File updated successfully."
-            }).to_string();
+            }).to_string().into();
             rooms = gen_hashmap();
             res.status(STATUS_200);
             res.send_contents(contents);
@@ -360,7 +356,7 @@ async fn handle_connection(
             for credential in keys.users {
                 if user == credential[0] && pass == credential[1] {
                     found_user = true;
-                    let mut cookie;
+                    let cookie;
                     if user == "admin" {
                         cookie = Cookie::build(("user","admin"));
                         user_homepage = "html-css-js/index_admin.html";
@@ -375,7 +371,7 @@ async fn handle_connection(
                     break;
                 }
             }
-            if (!found_user) {
+            if !found_user {
                 res.status(STATUS_200);
                 res.send_file(user_homepage);
             }
@@ -519,7 +515,7 @@ async fn handle_connection(
                 "rooms": return_vec,
             });
             
-            let contents = json_return.to_string();
+            let contents = json_return.to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
             // ----------------------------------------------------------------
@@ -557,7 +553,7 @@ async fn handle_connection(
             res.insert_header("Content-Type", "application/zip");
             let filename = format!("attachment; filename={}", contents);
             res.insert_header("Content-Disposition", &filename);
-            res.send_contents(String::from_utf8(file_buffer).expect("Unable to parse vec to string."));
+            res.send_contents(file_buffer);
         },
         // Wiki
         "POST /w_build HTTP/1.1"        => {
@@ -648,7 +644,7 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 */
 
 // call ping_this executible here
-fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> String {
+fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> Vec<u8> {
     // Prep Request into Struct
     let buff_copy = process_buffer(buffer);
     let pr: PingRequest = serde_json::from_str(&buff_copy)
@@ -724,7 +720,7 @@ fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> String 
     println!("----\n------\nEND OF execute_ping() FUNCTION\n------\n-----\n");
 
     // Return JSON with ping results
-    return json_return.to_string();
+    return json_return.to_string().into();
 }
 
 // Generate Hostnames
@@ -1011,7 +1007,7 @@ fn get_origin(buffer: &mut [u8]) -> String {
 */
                                              
 //   cfm_build_dir() - post BUILDING dropdown
-fn cfm_build_dir(_buffer: &mut [u8]) -> String {
+fn cfm_build_dir(_buffer: &mut [u8]) -> Vec<u8> {
     // Vars
     let mut final_dirs: Vec<String> = Vec::new();
     // Check for CFM_Code Directory
@@ -1038,11 +1034,11 @@ fn cfm_build_dir(_buffer: &mut [u8]) -> String {
     });
 
     println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
-    return json_return.to_string();
+    return json_return.to_string().into();
 }
 
 // cfm_build_rm() - post ROOM dropdown
-fn cfm_build_rm(buffer: &mut [u8]) -> String {
+fn cfm_build_rm(buffer: &mut [u8]) -> Vec<u8> {
     let mut final_dirs: Vec<String> = Vec::new();
 
     // Check for CFM_Code Directory
@@ -1080,11 +1076,11 @@ fn cfm_build_rm(buffer: &mut [u8]) -> String {
     });
 
     println!("----\n------\nEND OF cfm_build_rm() FUNCTION\n------\n-----\n");
-    return json_return.to_string();
+    return json_return.to_string().into();
 }
 
 // get_cfm - generate code (Sends list of files to user)
-fn get_cfm(buffer: &mut [u8]) -> String {
+fn get_cfm(buffer: &mut [u8]) -> Vec<u8> {
     // crestron file manager request (CFMR)
     //   - building
     //   - rm
@@ -1105,7 +1101,7 @@ fn get_cfm(buffer: &mut [u8]) -> String {
     });
 
     println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
-    return json_return.to_string();
+    return json_return.to_string().into();
 }
 
 
@@ -1157,7 +1153,7 @@ fn get_cfm_file(buffer: &mut [u8]) -> String {
 // TODO:
 //    [ ] - store selected file as bytes ?
 //    [ ] - send in json as usual ?
-fn get_cfm_dir(buffer: &mut [u8]) -> String {
+fn get_cfm_dir(buffer: &mut [u8]) -> Vec<u8> {
     // RequstFile
     //    - filename
     let mut strings = Vec::new();
@@ -1181,7 +1177,7 @@ fn get_cfm_dir(buffer: &mut [u8]) -> String {
             println!("Failure Not really a directory!");
             strings.push("FAILED, directory is a file".to_string());
             let json_return = json!({"names": strings});
-            return json_return.to_string();
+            return json_return.to_string().into();
         }
     }
 
@@ -1191,7 +1187,7 @@ fn get_cfm_dir(buffer: &mut [u8]) -> String {
     });
 
     println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
-    return json_return.to_string();
+    return json_return.to_string().into();
 }
 
 /*
@@ -1205,7 +1201,7 @@ $$  /   \$$ |$$ |$$ | \$$\ $$ |
 \__/     \__|\__|\__|  \__|\__|
 */
 
-fn w_build_articles(_buffer: &mut [u8]) -> String {
+fn w_build_articles(_buffer: &mut [u8]) -> Vec<u8> {
     // Vars
     let mut article_vec: Vec<String> = Vec::new();
 
@@ -1225,7 +1221,7 @@ fn w_build_articles(_buffer: &mut [u8]) -> String {
         "names": article_vec
     });
 
-    return json_return.to_string();
+    return json_return.to_string().into();
 }
 
 /*

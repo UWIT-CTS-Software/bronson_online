@@ -1,4 +1,4 @@
-l<!-- HTML 5 -->
+<!-- HTML 5 -->
 <!DOCTYPE html>
 <html>
   <head>
@@ -13,7 +13,118 @@ l<!-- HTML 5 -->
     <link href="https://fonts.googleapis.com/css2?family=Contrail+One&family=Racing+Sans+One&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
-  </head>
+  </head><!-- Javascript  -->
+  <script src="checkerboard.js" type="text/javascript" charset="utf-8"></script>
+  <script src="camcode.js" type="text/javascript" charset="utf-8"></script>
+  <script src="cc-altmode.js" type="text/javascript" charset="utf-8"></script>
+  <script src="jacknet.js" type="text/javascript" charset="utf-8"></script>
+
+  <!-- <script src="signing.js" type="text/javascript" charset="utf-8"></script> -->
+  <!-- <script src="wiki.js" type="text/javascript" charset="utf-8"></script> -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> -->
+  <script>
+    window.addEventListener("popstate", () => {
+      console.log(location.href);
+      if (location.pathname == "/checker") {
+        setChecker();
+      } else if (location.pathname == "/jacknet") {
+        setJackNet();
+      } else if (location.pathname == "/cc-altmode") {
+        setCrestronFile();
+      } else if (location.pathname == "/wiki") {
+        setWiki();
+      } else {
+        setDashboard();
+      }
+    },
+    false,
+    );
+
+    function toggleMenu() {
+      const menu = document.querySelector(".hb_menu");
+      // const menuIcon = document.querySelector(".menuIcon");
+      // const closeIcon = document.querySelector(".closeIcon");
+      if (menu.classList.contains("showMenu")) {
+        menu.classList.remove("showMenu");
+        // closeIcon.style.display = "none";
+        // menuIcon.style.display = "block";
+      } else {
+        menu.classList.add("showMenu");
+        // closeIcon.style.display = "block";
+        // menuIcon.style.display = "none";
+      }
+    }
+
+    /* setDashboard()
+          Places the dashboard page, pretty baren at the moment.
+    */
+    function setDashboard() {
+      // History and init
+      document.title = "Dashboard - Bronson";
+      history.pushState({}, "Dashboard", "/");
+
+      // remove currently active status, mark tab has active.
+      let current = document.getElementsByClassName("selected");
+      console.log(current);
+      if (current.length != 0) {
+          current[0].classList.remove("selected");
+      }
+      let newCurrent = document.getElementById("DBButton");
+      newCurrent.classList.add("selected");
+
+      // Select Program guts, page content.
+      let prog_guts = document.querySelector('.program_board .program_guts');
+
+      let db_container = document.createElement("div");
+      db_container.classList.add("db_container");
+
+      // Dashboard Contents
+      let consoleOutput = document.createElement("div");
+      consoleOutput.classList.add('db_console');
+      consoleOutput.innerHTML = `
+        <fieldset>
+            <legend> 
+                Messages: </legend>
+            <textarea readonly rows="20" cols ="75" class="innerConsole" name="consoleOutput" spellcheck="false"> 
+                Welcome to Bronson!
+            </textarea>
+        </fieldset>`;
+  
+      db_container.appendChild(consoleOutput);
+
+      let main_container = document.createElement('div');
+      main_container.appendChild(db_container);
+      main_container.classList.add('program_guts');
+      prog_guts.replaceWith(main_container);
+      return;
+    }
+
+    // Bug Report form
+    function initForm() {
+      document.getElementById('bug_report_modal').style.display='block';
+      let bodies = document.getElementsByClassName('program_guts')
+      for (let i=0; i<bodies.length; i++) {
+        bodies[i].style.display='none';
+      }
+      toggleMenu();
+    }
+
+    // Bug Report Form Terminate
+    function terminateForm() {
+      document.getElementById('bug_report_modal').style.display='none';
+      let bodies = document.getElementsByClassName('program_guts')
+      for (let i=0; i<bodies.length; i++) {
+        bodies[i].style.display='block';
+      }
+    }
+
+    var modal = document.getElementById('bug_report_modal');
+    window.onclick = function(event) {
+      if (event.target == modal) {
+        terminateForm();
+      }
+    }
+  </script>
   <!-- body -->
   <body onload="setDashboard()">
     <div class="program_board" id="prog_placeholder">
@@ -93,117 +204,5 @@ l<!-- HTML 5 -->
       <div class="program_guts">
       </div>
     </div>
-
-    <!-- Javascript  -->
-    <script src="checkerboard.js" type="text/javascript" charset="utf-8"></script>
-    <script src="camcode.js" type="text/javascript" charset="utf-8"></script>
-    <script src="cc-altmode.js" type="text/javascript" charset="utf-8"></script>
-    <script src="jacknet.js" type="text/javascript" charset="utf-8"></script>
-    <!-- <script src="signing.js" type="text/javascript" charset="utf-8"></script> -->
-    <!-- <script src="wiki.js" type="text/javascript" charset="utf-8"></script> -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> -->
-    <script type="text/javascript">
-      window.addEventListener("popstate", () => {
-        console.log(location.href);
-        if (location.pathname == "/checker") {
-          setChecker();
-        } else if (location.pathname == "/jacknet") {
-          setJackNet();
-        } else if (location.pathname == "/cc-altmode") {
-          setCrestronFile();
-        } else if (location.pathname == "/wiki") {
-          setWiki();
-        } else {
-          setDashboard();
-        }
-      },
-      false,
-      );
-
-      function toggleMenu() {
-        const menu = document.querySelector(".hb_menu");
-        // const menuIcon = document.querySelector(".menuIcon");
-        // const closeIcon = document.querySelector(".closeIcon");
-        if (menu.classList.contains("showMenu")) {
-          menu.classList.remove("showMenu");
-          // closeIcon.style.display = "none";
-          // menuIcon.style.display = "block";
-        } else {
-          menu.classList.add("showMenu");
-          // closeIcon.style.display = "block";
-          // menuIcon.style.display = "none";
-        }
-      }
-
-      /* setDashboard()
-            Places the dashboard page, pretty baren at the moment.
-      */
-      function setDashboard() {
-        // History and init
-        document.title = "Dashboard - Bronson";
-        history.pushState({}, "Dashboard", "/");
-
-        // remove currently active status, mark tab has active.
-        let current = document.getElementsByClassName("selected");
-        console.log(current);
-        if (current.length != 0) {
-            current[0].classList.remove("selected");
-        }
-        let newCurrent = document.getElementById("DBButton");
-        newCurrent.classList.add("selected");
-
-        // Select Program guts, page content.
-        let prog_guts = document.querySelector('.program_board .program_guts');
-
-        let db_container = document.createElement("div");
-        db_container.classList.add("db_container");
-
-        // Dashboard Contents
-        let consoleOutput = document.createElement("div");
-        consoleOutput.classList.add('db_console');
-        consoleOutput.innerHTML = `
-          <fieldset>
-              <legend> 
-                  Messages: </legend>
-              <textarea readonly rows="20" cols ="75" class="innerConsole" name="consoleOutput" spellcheck="false"> 
-                  Welcome to Bronson!
-              </textarea>
-          </fieldset>`;
-    
-        db_container.appendChild(consoleOutput);
-
-        let main_container = document.createElement('div');
-        main_container.appendChild(db_container);
-        main_container.classList.add('program_guts');
-        prog_guts.replaceWith(main_container);
-        return;
-      }
-
-      // Bug Report form
-      function initForm() {
-        document.getElementById('bug_report_modal').style.display='block';
-        let bodies = document.getElementsByClassName('program_guts')
-        for (let i=0; i<bodies.length; i++) {
-          bodies[i].style.display='none';
-        }
-        toggleMenu();
-      }
-
-      // Bug Report Form Terminate
-      function terminateForm() {
-        document.getElementById('bug_report_modal').style.display='none';
-        let bodies = document.getElementsByClassName('program_guts')
-        for (let i=0; i<bodies.length; i++) {
-          bodies[i].style.display='block';
-        }
-      }
-
-      var modal = document.getElementById('bug_report_modal');
-      window.onclick = function(event) {
-        if (event.target == modal) {
-          terminateForm();
-        }
-      }
-    </script>
   </body>
 </html>
