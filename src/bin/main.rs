@@ -276,10 +276,14 @@ async fn handle_connection(
             res.send_file("html-css-js/index.html");
         },
         "GET /saml-login HTTP/1.1"      => { // SAML SP Function Calls
-            handle_saml_login(&stream);
+            res.status(STATUS_302);
+            res.insert_header("Location","https://shibboleth.uwyo.edu/idp/profile/Shibboleth/SSO"); // I HAVE NO IDEA IF THIS IS THE RIGHT URL
+            //res = handle_saml_login(&stream);
         }
         "GET /logout HTTP/1.1" => {
-            handle_logout(&stream);
+            res.status(STATUS_302);
+            res.insert_header("Location", "https://shibboleth.uwyo.edu/idp/profile/SAML2/Redirect/SLO"); // I HAVE NO IDEA IF THIS IS THE RIGHT URL
+            //handle_logout(&stream);
         }
         "GET /camcode.js HTTP/1.1"      => { // js files
             res.status(STATUS_200);
@@ -602,7 +606,7 @@ fn handle_saml_login(mut stream: &TcpStream) -> Option<()> {
     let mut res = Response::new();
     res.status(STATUS_302);
     res.insert_header("Location","https://shibboleth.uwyo.edu/idp/profile/Shibboleth/SSO"); // I HAVE NO IDEA IF THIS IS THE RIGHT URL
-    stream.write(&res.build()).unwrap();
+    //stream.write(&res.build()).unwrap();
     //stream.flush().unwrap();
     Some(())
 }
