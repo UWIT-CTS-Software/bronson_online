@@ -602,7 +602,7 @@ fn handle_saml_login(mut stream: &TcpStream) -> Option<()> {
     let mut res = Response::new();
     res.status(STATUS_302);
     res.insert_header("Location","https://shibboleth.uwyo.edu/idp/profile/Shibboleth/SSO"); // I HAVE NO IDEA IF THIS IS THE RIGHT URL
-    //stream.write(&res.build()).unwrap();
+    stream.write(&res.build()).unwrap();
     //stream.flush().unwrap();
     Some(())
 }
