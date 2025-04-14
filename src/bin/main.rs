@@ -132,7 +132,7 @@ fn main() {
         host_ip = local_ip_addr;
     } else {
         println!("[#] -- You are running using localhost --");
-        host_ip = "127.0.0.1";
+        host_ip = "127.0.0.2";
     }
 
     while let Err(_e) = TcpListener::bind(format!("{}:{}", host_ip, host_port.to_string())) {
@@ -277,14 +277,30 @@ async fn handle_connection(
         },
         "GET /saml-login HTTP/1.1"      => { // SAML SP Function Calls
             res.status(STATUS_302);
-            res.insert_header("Location","https://shibboleth.uwyo.edu/idp/profile/Shibboleth/SSO"); // I HAVE NO IDEA IF THIS IS THE RIGHT URL
+            // I think I need to create a function here to communicate
+            // with the Shibboleth SP system process.
+            // ---
+            // let url = "https://bronson.uwyo.edu/Shibboleth.sso";
+            // let req = reqwest::Client::builder()
+            //     .cookie_store(true)
+            //     .user_agent("server_lib/1.1.0")
+            //     .build()
+            //     .ok()?
+
+            // let body = req.get(url)
+            //     .send()
+            //     .await
+            //     .expect("[-] SSO SP ERROR");
+            // /// ---
+            
+            // res.insert_header("Location","https://shibboleth.uwyo.edu/idp/profile/Shibboleth/SSO"); // I HAVE NO IDEA IF THIS IS THE RIGHT URL
             //res = handle_saml_login(&stream);
-        }
+        },
         "GET /logout HTTP/1.1" => {
             res.status(STATUS_302);
             res.insert_header("Location", "https://shibboleth.uwyo.edu/idp/profile/SAML2/Redirect/SLO"); // I HAVE NO IDEA IF THIS IS THE RIGHT URL
             //handle_logout(&stream);
-        }
+        },
         "GET /camcode.js HTTP/1.1"      => { // js files
             res.status(STATUS_200);
             res.send_file("html-css-js/camcode.js");
