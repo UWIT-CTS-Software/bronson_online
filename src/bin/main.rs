@@ -132,7 +132,7 @@ fn main() {
         host_ip = local_ip_addr;
     } else {
         println!("[#] -- You are running using localhost --");
-        host_ip = "127.0.0.2";
+        host_ip = "127.0.0.1";
     }
 
     while let Err(_e) = TcpListener::bind(format!("{}:{}", host_ip, host_port.to_string())) {
