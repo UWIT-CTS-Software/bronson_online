@@ -293,7 +293,7 @@ async fn handle_connection(
             //     .expect("[-] SSO SP ERROR");
             // /// ---
             
-            // res.insert_header("Location","https://shibboleth.uwyo.edu/idp/profile/Shibboleth/SSO"); // I HAVE NO IDEA IF THIS IS THE RIGHT URL
+            res.insert_header("Location","https://dummyidp.com/apps/app_01jrv14gpw6rbw5wcqht6zx7w7/sso"); // I HAVE NO IDEA IF THIS IS THE RIGHT URL
             //res = handle_saml_login(&stream);
         },
         "GET /logout HTTP/1.1" => {
