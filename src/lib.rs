@@ -225,20 +225,21 @@ impl Request {
 			lines.push(line.into());
 		}
 
-		let start_line: String = String::from_utf8_lossy(&lines[0]).to_string();
+		let start_line: String = String::from_utf8(lines[0].to_vec()).unwrap();
 		let mut headers: HashMap<String, String> = HashMap::new();
 
-		let mut iter = lines.iter();
+		let mut iter = lines[1..].iter();
 		while let Some(header_line) = iter.next() {
-			if *header_line == "".as_bytes() {
+			let header_string = String::from_utf8(header_line.to_vec()).unwrap();
+			if *header_string == *"" {
 				break;
 			}
 
-			let mut header_parts = header_line.split(|c| *c == ":".as_bytes()[0]);
-			if header_parts.clone().count() == 2 {
+			let header_parts: Vec<_> = header_string.split(": ").collect();
+			if header_parts.len() == 2 {
 				headers.insert(
-					String::from_utf8_lossy(header_parts.nth(1).unwrap()).to_string(), 
-					String::from_utf8_lossy(header_parts.nth(2).unwrap()).to_string()
+					String::from(header_parts[0]), 
+					String::from(header_parts[1])
 				);
 			}
 		}
