@@ -212,40 +212,52 @@ impl<'a> Clone for Room {
 pub struct Request {
 	pub start_line: String,
 	pub headers: HashMap<String, String>,
-	pub body: String
+	pub body: Vec<u8>
 }
 
 impl Request {
 	pub fn build(buffer: [u8; 1024]) -> Request {
-		let buf_str = str::from_utf8(&buffer).expect("Empty");
-		let mut lines = Vec::new();
+		// let buf_str = str::from_utf8(&buffer).expect("Empty");
+		let buf_vec = Vec::from(&buffer);
+		let mut lines: Vec<Vec<u8>> = Vec::new();
+		// for line in buf_str.lines() {
+		// 	lines.push(line);
+		// }
 
-		for line in buf_str.lines() {
-			lines.push(line);
+		let mut buf_lines = buf_vec
+			.split(|b| b == &0xA)
+			.map(|line| line.strip_suffix(&[0xD])
+			.unwrap_or(line));
+
+		for line in buf_lines{
+			lines.push(line.into());
 		}
 
-		let start_line: String = String::from(lines[0]);
-		let  mut headers: HashMap<String, String> = HashMap::new();
+		let start_line: String = String::from_utf8_lossy(&lines[0]).to_string();
 
-		let mut iter = lines.iter();
+		let mut headers: HashMap<String, String> = HashMap::new();
+
+		let mut iter = lines[1..].iter();
 		while let Some(header_line) = iter.next() {
-			if *header_line == "" {
+			let header_string = String::from_utf8_lossy(&header_line).to_string();
+			if *header_string == *"" {
 				break;
 			}
 
-			let parts: Vec<&str> = header_line.split(": ").collect();
-			if parts.len() == 2 {
-				headers.insert(String::from(parts[0]), String::from(parts[1]));
+			let header_parts: Vec<&str> = header_string.split(": ").collect();
+			if header_parts.len() == 2 {
+				headers.insert(
+					String::from(header_parts[0]), 
+					String::from(header_parts[1])
+				);
 			}
 		}
-		let mut body_string = String::new();
+		let body: &mut Vec<u8> = &mut Vec::new();
 		while let Some(body_line) = iter.next() {
-			body_string.push_str(body_line);
+			body.extend_from_slice(&body_line);
 		}
 
-		let body: String = body_string;
-
-		return Request{start_line, headers, body};
+		return Request{start_line, headers, body : body.to_vec()};
 	}
 }
 
