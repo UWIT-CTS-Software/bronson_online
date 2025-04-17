@@ -60,7 +60,7 @@ enum Message {
 }
 
 struct Worker {
-    id: usize,
+    _id: usize,
     thread: Option<thread::JoinHandle<()>>,
 }
 
@@ -86,7 +86,7 @@ impl Worker {
 		});
 
 		return Worker {
-			id,
+			_id: id,
 			thread: Some(thread),
 		};
     }
@@ -131,11 +131,7 @@ impl Drop for ThreadPool {
 			self.sender.send(Message::Terminate).unwrap();
 		}
 
-		println!("\rShutting down all workers"); 
-
 		for worker in &mut self.workers {
-			println!("\rShutting down worker {}", worker.id);
-
 			if let Some(thread) = worker.thread.take() {
 				thread.join().unwrap();
 			}
@@ -212,40 +208,47 @@ impl<'a> Clone for Room {
 pub struct Request {
 	pub start_line: String,
 	pub headers: HashMap<String, String>,
-	pub body: String
+	pub body: Vec<u8>
 }
 
 impl Request {
 	pub fn build(buffer: [u8; 1024]) -> Request {
-		let buf_str = str::from_utf8(&buffer).expect("Empty");
-		let mut lines = Vec::new();
+		let buf_vec: Vec<u8> = Vec::from(buffer);
+		let mut lines: Vec<Vec<u8>> = Vec::new();
 
-		for line in buf_str.lines() {
-			lines.push(line);
+		let buf_lines = buf_vec
+			.split(|b| b == &0xA)
+			.map(|line| line.strip_suffix(&[0xD])
+			.unwrap_or(line));
+
+		for line in buf_lines {
+			lines.push(line.into());
 		}
 
-		let start_line: String = String::from(lines[0]);
-		let  mut headers: HashMap<String, String> = HashMap::new();
+		let start_line: String = String::from_utf8_lossy(&lines[0]).to_string();
+		let mut headers: HashMap<String, String> = HashMap::new();
 
 		let mut iter = lines.iter();
 		while let Some(header_line) = iter.next() {
-			if *header_line == "" {
+			if *header_line == "".as_bytes() {
 				break;
 			}
 
-			let parts: Vec<&str> = header_line.split(": ").collect();
-			if parts.len() == 2 {
-				headers.insert(String::from(parts[0]), String::from(parts[1]));
+			let mut header_parts = header_line.split(|c| *c == ":".as_bytes()[0]);
+			if header_parts.clone().count() == 2 {
+				headers.insert(
+					String::from_utf8_lossy(header_parts.nth(1).unwrap()).to_string(), 
+					String::from_utf8_lossy(header_parts.nth(2).unwrap()).to_string()
+				);
 			}
 		}
-		let mut body_string = String::new();
+
+		let body: &mut Vec<u8> = &mut Vec::new();
 		while let Some(body_line) = iter.next() {
-			body_string.push_str(body_line);
+			body.extend_from_slice(&body_line);
 		}
 
-		let body: String = body_string;
-
-		return Request{start_line, headers, body};
+		return Request{start_line, headers, body: body.to_vec()};
 	}
 }
 
@@ -446,6 +449,7 @@ pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/
 pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/campus.csv");
 pub static KEYS      : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/keys.json");
 pub static STATUS_200: &str = "HTTP/1.1 200 OK";
+pub static STATUS_303: &str = "HTTP/1.1 303 See Other";
 pub static STATUS_404: &str = "HTTP/1.1 404 Not Found";
 pub static STATUS_500: &str = "HTTP/1.1 500 Internal Server Error";
 
