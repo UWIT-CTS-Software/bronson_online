@@ -52,7 +52,7 @@ use server_lib::{
     jp::{ ping_this, },
     ZONE_1, ZONE_1_SHORT, ZONE_2, ZONE_2_SHORT, ZONE_3, ZONE_3_SHORT, ZONE_4, ZONE_4_SHORT,
     CAMPUS_STR, CFM_DIR, WIKI_DIR, ROOM_CSV, CAMPUS_CSV, KEYS,
-    Request, Response, STATUS_200, STATUS_404,
+    Request, Response, STATUS_200, STATUS_303, STATUS_404,
 };
 use getopts::Options;
 use std::{
@@ -263,6 +263,8 @@ async fn handle_connection(
     // ------------------------------------------------------------------------
 
     match req.start_line.as_str() {
+        // Page Content
+        // --------------------------------------------------------------------
         "GET / HTTP/1.1"                => {
             res.status(STATUS_200);
             res.send_file(user_homepage);
@@ -316,15 +318,6 @@ async fn handle_connection(
             res.send_file(user_homepage);
             res.insert_onload("setWiki()");
         },
-
-        "GET /refresh HTTP/1.1"         => {
-            let contents = json!({
-                "body": "[+] File updated successfully."
-            }).to_string().into();
-            rooms = gen_hashmap();
-            res.status(STATUS_200);
-            res.send_contents(contents);
-        }
     
         "GET /campus.json HTTP/1.1"     => {
             res.status(STATUS_200);
@@ -343,9 +336,40 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_file("html-css-js/logo-2-line.png");
         },
-        // ------------------------------------------------------------------------
+        // Terminal
+        // --------------------------------------------------------------------
+        "GET /refresh/all HTTP/1.1"         => {
+            let contents = json!({
+                "body": "[+] All updated successfully."
+            }).to_string().into();
+            rooms = gen_hashmap();
+            res.status(STATUS_200);
+            res.send_contents(contents);
+        },
+        "GET /refresh/threads HTTP/1.1"         => {
+            let contents = json!({
+                "body": "[!] Feature not implemented."
+            }).to_string().into();
+            res.status(STATUS_200);
+            res.send_contents(contents);
+        },
+        "GET /refresh/map HTTP/1.1"         => {
+            let contents = json!({
+                "body": "[+] Map updated successfully."
+            }).to_string().into();
+            rooms = gen_hashmap();
+            res.status(STATUS_200);
+            res.send_contents(contents);
+        },
+        "POST /get/PLACEHOLDER HTTP/1.1"         => {
+            println!("test!");
+            println!("{:?}", req.body);
+            res.status(STATUS_200);
+            res.send_contents("".into());
+        },
+        // --------------------------------------------------------------------
         // make calls to backend functionality
-        // ------------------------------------------------------------------------
+        // --------------------------------------------------------------------
         // login
         "POST /login HTTP/1.1"          => {
             let credential_search = Regex::new(r"uname=(?<user>.*)&psw=(?<pass>[\d\w%]*)").unwrap();
@@ -366,7 +390,7 @@ async fn handle_connection(
                     }
                     res.insert_header("Set-Cookie", cookie.to_string().as_str());
                     res.insert_header("Access-Control-Expose-Headers", "Set-Cookie");
-                    res.status(STATUS_200);
+                    res.status(STATUS_303);
                     res.send_file(user_homepage);
                     break;
                 }
@@ -392,8 +416,6 @@ async fn handle_connection(
             let mut arg_map = HashMap::new();
             arg_map.insert("title", decoded_title);
             arg_map.insert("body", decoded_desc);
-
-            println!("{:?}:{:?}", arg_map.get("title").unwrap(), arg_map.get("body").unwrap());
 
             let clone_keys = keys.clone();
             let url = "https://api.github.com/repos/UWIT-CTS-Software/bronson_online/issues";
@@ -649,7 +671,6 @@ fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> Vec<u8>
     let buff_copy = process_buffer(buffer);
     let pr: PingRequest = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 2: Failed to parse ping request");
-    println!("Ping Request: \n {:?}", pr);
 
     // BuildingData Struct
     //   NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
@@ -669,11 +690,8 @@ fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> Vec<u8>
 
     for rm in rooms_to_ping {
         let rm_info = rooms.get_mut(&rm).expect("err0r");
-        println!("Hostnames: {:?}", rm_info.hostnames);
         for hn in &rm_info.hostnames { // make this ping
-            println!("Hostname: {}", hn);
             let hn_ip = ping_this(hn.to_string());
-            println!("IpAdr:    {}", hn_ip);
             hn_ips.push(hn_ip);
             hostnames.push(hn.to_string());
         }
@@ -685,10 +703,6 @@ fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> Vec<u8>
         hostnames = Vec::new();
         hn_ips = Vec::new();
     }
-
-    // let hostnames = ["BROKEN_SORRY_FIXING_IT"];
-
-    println!("Hostnames Generated {:?}", room_vec);
 
     // format data into json using serde
     // Final Prep
@@ -705,9 +719,6 @@ fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> Vec<u8>
         }
     }
 
-    println!("Final Hostname Vec: {:?}", f_hn);
-    println!("Final IP Vec: {:?}", f_ip);
-
     // [ ] TODO - Save output / Cache, filter return to only be selected devices
     let json_return = json!({
         "building": pr.building,
@@ -716,8 +727,6 @@ fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> Vec<u8>
     });
 
     // convert to string and return it
-    println!("\rPulled IP's:\n{:?}",hn_ips);
-    println!("----\n------\nEND OF execute_ping() FUNCTION\n------\n-----\n");
 
     // Return JSON with ping results
     return json_return.to_string().into();
@@ -934,20 +943,15 @@ fn find_files(building: String, rm: String) -> Vec<String> {
     path.push_str(&building);
     path.push_str(&rm);
 
-    println!("CFM Debug - Looking for path:\n{:?}", path);
-
     if dir_exists(&path) {
-        println!("SUCCESS 2: ROOM DIRECTORY FOUND");
         // let paths = fs::read_dir(&path).unwrap();
         // for p in paths {
         //     println!("{}\n", p.as_ref().unwrap().path().display());
         //     strings.push(p.unwrap().path().display().to_string());
         // }
         strings = get_dir_contents(&path);
-        return strings;
     }
-    
-    println!("Fatal Error 4: ROOM DIRECTORY DOES NOT EXIST");
+
     return strings;
 }
 
@@ -955,7 +959,6 @@ fn get_dir_contents(path: &str) -> Vec<String> {
     let mut strings = Vec::new();
     let paths = read_dir(&path).unwrap();
     for p in paths {
-        println!("{}\n", p.as_ref().unwrap().path().display());
         strings.push(p.unwrap().path().display().to_string());
     }
 
@@ -974,7 +977,6 @@ fn get_origin(buffer: &mut [u8]) -> String {
     let mut origin_line: bool = false;
 
     for (i, &item) in bytes.iter().enumerate() {
-        //println!("get_origin() Lookng at\n{}", item as char);
         if item == b'O'{ // newline isnt real
             newline = true;
         }
@@ -991,8 +993,6 @@ fn get_origin(buffer: &mut [u8]) -> String {
             }
         }
     }
-
-    println!("FINDING ORIGIN FAILED");
     return buff_copy[ir..ir_end].to_string();
 }
 
@@ -1012,7 +1012,6 @@ fn cfm_build_dir(_buffer: &mut [u8]) -> Vec<u8> {
     let mut final_dirs: Vec<String> = Vec::new();
     // Check for CFM_Code Directory
     if dir_exists(CFM_DIR) {
-        println!("SUCCESS: CFM_Code Directory Found");
     }
     let cfm_dirs = get_dir_contents(CFM_DIR);
     // iterate over cfm_dirs and snip ../CFM_Code/
@@ -1033,7 +1032,6 @@ fn cfm_build_dir(_buffer: &mut [u8]) -> Vec<u8> {
         "dir_names": final_dirs
     });
 
-    println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
     return json_return.to_string().into();
 }
 
@@ -1043,7 +1041,6 @@ fn cfm_build_rm(buffer: &mut [u8]) -> Vec<u8> {
 
     // Check for CFM_Code Directory
     if dir_exists(CFM_DIR) {
-        println!("SUCCESS: CFM_Code Directory Found");
     }
 
     // Prep buffer into Room List Request Struct
@@ -1075,7 +1072,6 @@ fn cfm_build_rm(buffer: &mut [u8]) -> Vec<u8> {
         "rooms": final_dirs
     });
 
-    println!("----\n------\nEND OF cfm_build_rm() FUNCTION\n------\n-----\n");
     return json_return.to_string().into();
 }
 
@@ -1090,7 +1086,6 @@ fn get_cfm(buffer: &mut [u8]) -> Vec<u8> {
     
     // Check CFM_Code Directory
     if dir_exists(CFM_DIR) {
-        println!("SUCCESS: CFM_Code Directory Found");
     }
     
     let cfm_files = find_files(cfmr.building, cfmr.rm);
@@ -1100,7 +1095,6 @@ fn get_cfm(buffer: &mut [u8]) -> Vec<u8> {
         "names": cfm_files
     });
 
-    println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
     return json_return.to_string().into();
 }
 
@@ -1112,22 +1106,18 @@ fn get_cfm(buffer: &mut [u8]) -> Vec<u8> {
 fn get_cfm_file(buffer: &mut [u8]) -> String {
     // RequstFile
     //    - filename
-    let buff_copy1: String = String::from_utf8_lossy(&buffer[..])
-        .to_string();
 
-    println!("Testing buff_copy1\n{}", buff_copy1);
     // let gr: GeneralRequest = serde_json::from_str(&buff_copy1)
     //     .expect("Fatal Error 49: general Request Failed");
-    let gr_origin: String = get_origin(buffer);
+    let _gr_origin: String = get_origin(buffer);
 
-    println!("Origin IP Address\n{}", gr_origin);
     
     let buff_copy: String = process_buffer(buffer);
     let cfmr_f: CFMRequestFile = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 38: failed to parse filename");
     
     if dir_exists(CFM_DIR) {
-        println!("SUCCESS: CFM_Code Directory Found");
+        // Error handling that never got implemented?
     }
 
     // build_path
@@ -1139,11 +1129,10 @@ fn get_cfm_file(buffer: &mut [u8]) -> String {
     let mut path_raw: String = String::from(CFM_DIR);
     path_raw.push_str(&cfmr_f.filename);
 
-    println!("Filename Path:\n {:?}", &path_raw);
 
     // Check for file
     if dir_exists(&path_raw) {
-        println!("SUCCESS: FILE Found");
+        // Error handling?
     }
 
     return path_raw.to_string();
@@ -1162,19 +1151,16 @@ fn get_cfm_dir(buffer: &mut [u8]) -> Vec<u8> {
         .expect("Fatal Error 38: failed to parse filename");
 
     if dir_exists(CFM_DIR) {
-        println!("SUCCESS: CFM_Code Directory Found");
+        // Error handling
     }
 
     let mut path = String::from(CFM_DIR);
     path.push_str(&cfmr_d.filename);
     
     if dir_exists(&path) {
-        println!("SUCCESS 2: ROOM DIRECTORY FOUND");
         if is_this_dir(&path) {
-            println!("SUCCESS 3: ROOM DIRECTORY IS A DIR");
             strings = get_dir_contents(&path);
         } else {
-            println!("Failure Not really a directory!");
             strings.push("FAILED, directory is a file".to_string());
             let json_return = json!({"names": strings});
             return json_return.to_string().into();
@@ -1186,7 +1172,6 @@ fn get_cfm_dir(buffer: &mut [u8]) -> Vec<u8> {
         "names": strings
     });
 
-    println!("----\n------\nEND OF get_cfm() FUNCTION\n------\n-----\n");
     return json_return.to_string().into();
 }
 
@@ -1207,7 +1192,7 @@ fn w_build_articles(_buffer: &mut [u8]) -> Vec<u8> {
 
     // Check for CFM_Code Directory
     if dir_exists(WIKI_DIR) {
-        println!("SUCCESS: WIKI Directory Found");
+        // Error handling
     }
     let cfm_dirs = get_dir_contents(WIKI_DIR);
     // iterate over cfm_dirs and snip ../CFM_Code/

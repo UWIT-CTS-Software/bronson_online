@@ -15,26 +15,73 @@
 
       $(function() {
         $('#terminal').terminal({
-            hello: function(name) {
-              this.echo('Hello, ' + name + '. Nice to meet you.')
-            },
-            refresh: async function() {
-              let res_alert = "[-] File not updated.";
-              this.echo('[+] Updating file...');
-              let res = await fetch('refresh')
-                .then(response => {
-                  if (!response.ok) {
-                    throw new Error("HTTP error " + response.status);
-                  } else {
-                    return response.json();
-                  }
-                })
-              res = JSON.stringify(res);
-              res_alert = JSON.parse(res).body;
-              this.echo(res_alert);
-            },
+          help: function() {
+            this.echo(`
+hello  : hello NAME
+refresh: refresh [ all | threads | map ]
+check  : check [ all | threads | map ]
+get    : get [ log | map | version | alerts | blacklist ]
+update : update [key [lsm|git] | schedule | blacklist [-r] ID ]
+test   : test VALUE
+            `)
+          },
+          hello: function(name) {
+            this.echo('Hello, ' + name + '. Nice to meet you.')
+          },
+          refresh: async function(...args) {
+            let url = "refresh/all";
+            let res_alert = "[-] File not updated.";
+            let res;
+            if (args.length == 0) {
+              this.echo("[!] No target specified, refreshing all.");
+            } else if (args.length > 1) {
+              this.echo("[-] Too many arguments.\nusage: refresh [all|threads|map]");
+              return;
+            } else switch (args[0]) {
+                default:
+                  this.echo("[-] Unknown option.\nusage: refresh [all|threads|map]");
+                  break;
+                case "all":
+                  this.echo("[!] Refreshing all.");
+                  break;
+                case "threads":
+                  this.echo("[!] Refreshing threads.");
+                  url = "refresh/threads";
+                  break;
+                case "map":
+                  this.echo("[!] Refreshing map.");
+                  url = "refresh/map";
+                  break;
+              }
+
+            res = await fetch(url)
+                  .then(response => {
+                    if (!response.ok) {
+                      throw new Error("HTTP error " + response.status);
+                    } else {
+                      return response.json();
+                    }
+                  })
+            res_alert = res.body;
+            this.echo(res_alert);
+
+            this.echo("[+] Completed.");
+          },
+          test: async function(value) {
+            this.echo(`Hello, ${value}!`);
+            await fetch("get/PLACEHOLDER", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                content: value
+              })
+            })
+          }
             
         }, {
+          checkArity: false,
           greetings: greetings.innerHTML
         });
       });
