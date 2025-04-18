@@ -251,6 +251,7 @@ impl Request {
 					String::from(header_parts[1])
 				);
 			}
+			println!("User Info {:?}:", header_parts);
 		}
 		let body: &mut Vec<u8> = &mut Vec::new();
 		while let Some(body_line) = iter.next() {
