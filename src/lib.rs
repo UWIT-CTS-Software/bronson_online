@@ -38,7 +38,7 @@ use std::{
 	collections::HashMap,
 	fs::{ read }
 };
-
+use log::{ warn, };
 use regex::bytes::Regex;
 use serde::{Deserialize, Serialize, };
 
@@ -72,12 +72,10 @@ impl Worker {
 
 				match message {
 					Message::NewJob(job) => {
-						println!("\rWorker {} got a job. Executing...", id);
-
 						job.call_box();
 					},
 					Message::Terminate => {
-						println!("\rWorker {} was told to terminate.", id);
+						warn!("\rWorker {} was told to terminate.", id);
 
 						break;
 					},
@@ -125,7 +123,7 @@ impl ThreadPool {
 
 impl Drop for ThreadPool {
     fn drop(&mut self) {
-		println!("\rSending terminate message to all workers.");
+		warn!("\rSending terminate message to all workers.");
 
 		for _ in &mut self.workers {
 			self.sender.send(Message::Terminate).unwrap();
@@ -163,7 +161,7 @@ impl<'a> Clone for Keys {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Room {
 	pub name: String,
-	pub hostnames: Vec<String>,
+	pub hostnames: Vec<Vec<String>>,
 	pub ips: Vec<String>,
 	pub gp: u8,
 	pub checked: String,
@@ -395,7 +393,7 @@ pub struct Building {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PingRequest {
-    pub devices: Vec<String>,
+    pub devices: Vec<u8>,
     pub building: String
 }
 

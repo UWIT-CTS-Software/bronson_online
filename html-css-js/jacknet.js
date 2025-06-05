@@ -128,10 +128,13 @@ function getSelectedDevices() {
     let devices = document.getElementsByName('jn_dev');
     let devList = [];
     for (var i = 0; i < devices.length; ++i) {
-        if(devices[i].checked) {
-            devList.push(devices[i].id);
+        if(devices[i].checked === true) {
+            devList.push(1);
+        } else {
+            devList.push(0);
         };
     };
+    console.log(devList);
     return devList;
 }
 
@@ -470,7 +473,6 @@ async function postJNVis(graphBool, building) {
     for (var i = 0; i < graphBool.length; i++) { // iterating room
         HTML_tmp_visTile += `<ul class=rmColumn> ${rooms[i]}`;
         for (var j = 0; (j < graphBool[i].length); j++){ // iterating devices
-            console.log(graphBool[i][j]);
             if (graphBool[i][j] == 0) {
                 HTML_tmp_visTile += `<li class=devVisFalse> ${graphBool[i][j]} </li>`;
             } else{
@@ -507,7 +509,6 @@ async function setJackNet() {
     // let active_tab_header = document.querySelector('.active_tab_header');
     // active_tab_header.innerHTML = 'JackNet';
     let current = document.getElementsByClassName("selected");
-    console.log(current);
     if (current.length != 0) {
         // current[0].classList.remove("active");
         current[0].classList.remove("selected");
@@ -562,6 +563,10 @@ async function setJackNet() {
             <input class="cbDev" type="checkbox" id="pj" name="jn_dev" value="Projectors"/>
             <label for="pj">
                 Projectors</label>
+            <br>
+            <input class="cbDev" type="checkbox" id="disp" name="jn_dev" value="Display"/>
+            <label for="disp">
+                Displays</label>
             <br>
             <input class="cbDev" type="checkbox" id="ws" name="jn_dev" value="Wyo Shares"/>
             <label for="ws">
