@@ -353,20 +353,20 @@ async fn handle_connection(
     
         "GET /campus.json HTTP/1.1"     => {
             res.status(STATUS_200);
-            res.send_file("html-css-js/campus.json");
+            res.send_file("data/campus.json");
         },
     
         "GET /favicon.ico HTTP/1.1"     => {
             res.status(STATUS_200);
-            res.send_file("html-css-js/logo_main.png");
+            res.send_file("assets/logo_main.png");
         },
         "GET /logo.png HTTP/1.1"        => {
             res.status(STATUS_200);
-            res.send_file("html-css-js/logo.png");
+            res.send_file("assets/logo.png");
         },
         "GET /logo-2-line.png HTTP/1.1" => {
             res.status(STATUS_200);
-            res.send_file("html-css-js/logo-2-line.png");
+            res.send_file("assets/logo-2-line.png");
         },
         // Terminal
         // --------------------------------------------------------------------
