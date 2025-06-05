@@ -63,7 +63,7 @@ use std::{
         read_dir, metadata,
         File,
     },
-    time::{ Duration },
+    time::{ Duration, SystemTime },
     string::{ String, },
     borrow::{ Borrow, },
     clone::{ Clone, },
@@ -76,6 +76,7 @@ use std::{
 use reqwest::{ 
     header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
+use log::{ debug, error, info, trace, warn, };
 use cookie::{ Cookie, };
 use csv::{ Reader, };
 use local_ip_address::{ local_ip, };
@@ -96,7 +97,7 @@ $$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |  $$ |\$$$$$$$ |
 \_______/  \_______| \_______|\__|  \__| \_______|\__|  \__| \_______|
 */
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // debug setting
     env::set_var("RUST_BACKTRACE", "1");
 
@@ -116,7 +117,9 @@ fn main() {
         Err(f) => { panic!("{}", f.to_string()) }
     };
     if matches.opt_present("d") {
-        println!("\rTest\n");
+        init_logger("debug")?;
+    } else {
+        init_logger("info")?;
     }
 
     // generate rooms HashMap
@@ -128,10 +131,10 @@ fn main() {
     let mut host_port = 7878;
     let local_ip_addr = &(local_ip().unwrap().to_string());
     if matches.opt_present("p") {
-        println!("[#] -- You are running using public IP --");
+        info!("[#] -- You are running using public IP --");
         host_ip = local_ip_addr;
     } else {
-        println!("[#] -- You are running using localhost --");
+        info!("[#] -- You are running using localhost --");
         host_ip = "127.0.0.1";
     }
 
@@ -140,7 +143,8 @@ fn main() {
     }
     let listener = TcpListener::bind(format!("{}:{}", host_ip, host_port.to_string())).unwrap();
 
-    println!("[!] ... {}:{} ...", host_ip, host_port.to_string());
+    info!("[!] ... {}:{} ...", host_ip, host_port.to_string());
+    debug!("Server mounted!");
 
     let pool = ThreadPool::new(6);
     // ------------------------------------------------------------------------
@@ -155,6 +159,34 @@ fn main() {
             handle_connection(stream, clone_rooms, clone_keys);
         });
     }
+
+    return Ok(());
+}
+
+fn init_logger(level: &str) -> Result<(), fern::InitError> {
+    let log_filter: log::LevelFilter;
+    match level {
+        "debug" => log_filter = log::LevelFilter::Debug,
+        "info"  => log_filter = log::LevelFilter::Info,
+        &_      => log_filter = log::LevelFilter::Error
+    };
+
+    fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{} {} {}] {}",
+                humantime::format_rfc3339_seconds(SystemTime::now()),
+                record.level(),
+                record.target(),
+                message
+            ))
+        })
+        .level(log_filter)
+        .chain(stdout())
+        .chain(fern::log_file("output.log")?)
+        .apply()?;
+    
+    return Ok(());
 }
 
 fn gen_hashmap() -> HashMap<String, Room> {
@@ -199,9 +231,9 @@ fn gen_hashmap() -> HashMap<String, Room> {
             // Need to set room hostnames here.
             // add hostnames and ip addr (empty at first) attributes
             // function that gen hostnames here
-            let hn_vec = gen_hn2(String::from(record.get(0).expect("Empty")), item_vec.clone());
+            let hn_vec = gen_hn(String::from(record.get(0).expect("Empty")), item_vec.clone());
 
-            let ip_vec = gen_ip2(item_vec);
+            let ip_vec = gen_ip(item_vec);
             // let duration = Duration::from_secs(1_000_000);
             // let s_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).expect("s_time bad");
 
@@ -338,7 +370,7 @@ async fn handle_connection(
         },
         // Terminal
         // --------------------------------------------------------------------
-        "GET /refresh/all HTTP/1.1"         => {
+        "GET /refresh/all HTTP/1.1"     => {
             let contents = json!({
                 "body": "[+] All updated successfully."
             }).to_string().into();
@@ -346,14 +378,14 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "GET /refresh/threads HTTP/1.1"         => {
+        "GET /refresh/threads HTTP/1.1" => {
             let contents = json!({
                 "body": "[!] Feature not implemented."
             }).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "GET /refresh/map HTTP/1.1"         => {
+        "GET /refresh/map HTTP/1.1"     => {
             let contents = json!({
                 "body": "[+] Map updated successfully."
             }).to_string().into();
@@ -361,12 +393,27 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "POST /get/PLACEHOLDER HTTP/1.1"         => {
-            println!("test!");
-            println!("{:?}", req.body);
+        "GET /get/PLACEHOLDER HTTP/1.1" => {
+            debug!("test!");
+            debug!("{:?}", req.body);
             res.status(STATUS_200);
             res.send_contents("".into());
         },
+        "GET /get/log HTTP/1.1"         => {
+            let mut f = File::open("/home/beth-c137/Desktop/UWIT/bronson_online/output.log").unwrap();
+            
+            let mut file_buffer = Vec::new();
+            f.read_to_end(&mut file_buffer).unwrap();
+
+            res.status(STATUS_200);
+            res.insert_header("Content-Type", "application/zip");
+            let filename = "attachment; filename=output.log";
+            res.insert_header("Content-Disposition", &filename);
+            res.send_contents(file_buffer);
+        },
+        "POST /add/user HTTP/1.1"       => {
+            
+        }      
         // --------------------------------------------------------------------
         // make calls to backend functionality
         // --------------------------------------------------------------------
@@ -597,7 +644,6 @@ async fn handle_connection(
 
 // Preps the Buffer to be parsed as json string
 fn process_buffer(buffer: &mut [u8]) -> String {
-    println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
     let buff_copy: String = String::from_utf8_lossy(&buffer[..])
         .to_string();
 
@@ -659,8 +705,8 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
  \______/  \_______| \_______|\__|  \__|\__|  \__| \_______|  \____/ 
 
  - execute_ping()
- - gen_hn2()
- - gen_ip2()
+ - gen_hn()
+ - gen_ip()
  - gen_rooms()
 
 */
@@ -684,16 +730,22 @@ fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> Vec<u8>
     //    USING BuildingData Struct / front-end request info.
     // AB -> [AB 104 , AB 105 , ... ]
     let rooms_to_ping: Vec<String> = gen_rooms(pr.building.clone(), bs);
+    debug!("{:?}", pr.devices);
     let mut hostnames: Vec<String> = Vec::new();
     let mut hn_ips: Vec<String> = Vec::new();
     let mut room_vec: Vec<Vec<String>> = Vec::new();
 
     for rm in rooms_to_ping {
-        let rm_info = rooms.get_mut(&rm).expect("err0r");
-        for hn in &rm_info.hostnames { // make this ping
-            let hn_ip = ping_this(hn.to_string());
-            hn_ips.push(hn_ip);
-            hostnames.push(hn.to_string());
+        let rm_info = rooms.get_mut(&rm).expect("error");
+        for hn_group in 0..rm_info.hostnames.len() { // make this ping
+            if pr.devices[hn_group] == 0 {
+                continue;
+            }
+            for hn in &rm_info.hostnames[hn_group] {
+                let hn_ip = ping_this(hn.to_string());
+                hn_ips.push(hn_ip);
+                hostnames.push(hn.to_string());
+            }
         }
         room_vec.push(hostnames.clone());
         room_vec.push(hn_ips.clone());
@@ -737,9 +789,10 @@ fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> Vec<u8>
 //      room_name -> "AN 104"
 //      item_vec  -> "[0,1,2,3,4]" 
 //          "[ Proc , Pj , Disp , Ws , Tp ]"
-fn gen_hn2(
+fn gen_hn(
     room_name: String, 
-    item_vec: Vec<u8>) -> Vec<String> {
+    item_vec: Vec<u8>
+) -> Vec<Vec<String>> {
     let mut hostnames = Vec::new();
     let mut tmp_hn    = String::new();
     let parts: Vec<&str> = room_name.split(" ").collect();
@@ -747,33 +800,35 @@ fn gen_hn2(
     // let room_number     = parts[1];
 
     // Assemble the hostname here
-    for i in 0..4 {
-        let tmp_dev = match i {
+    for i in 0..6 {
+        let dev_type = match i {
             0 => "PROC",
             1 => "PROJ",
             2 => "DISP",
             3 => "WS",
             4 => "TP",
+            5 => "CMICX",
             _ => "ERROR"
         };
-        if item_vec[i] != 0 {
-            for j in 0..item_vec[i] { // make n hostnames
-                tmp_hn.push_str(parts[0]);
-                tmp_hn.push('-');
-                tmp_hn.push_str(parts[1]);
-                tmp_hn.push('-');
-                tmp_hn.push_str(tmp_dev);
-                tmp_hn.push(char::from_digit((j+1).into(), 10).expect("digit bad idk"));
-                hostnames.push(tmp_hn);
-                tmp_hn = String::new();
-            };
+
+        hostnames.push(Vec::new());
+        for j in 0..item_vec[i] {
+            tmp_hn.push_str(parts[0]);
+            tmp_hn.push('-');
+            tmp_hn.push_str(parts[1]);
+            tmp_hn.push('-');
+            tmp_hn.push_str(dev_type);
+            tmp_hn.push(char::from_digit((j+1).into(), 10).expect("digit bad idk"));
+            hostnames[i].push(tmp_hn);
+            tmp_hn = String::new();
         };
     };
+    debug!("Generated hostnames: {:?}", hostnames);
     return hostnames;
 }
 
 // helper function for packing x's into the hashmap on init
-fn gen_ip2(item_vec: Vec<u8>) -> Vec<String> {
+fn gen_ip(item_vec: Vec<u8>) -> Vec<String> {
     let mut ips = Vec::new();
     let mut count = 0;
     for i in item_vec{
@@ -806,16 +861,6 @@ fn gen_rooms(
     }
     return rooms;
 }
-
-// given a hostname, returns a string that can be used to look it up in the hashmap, ie: AN-0204-PROC1 -> AN 204
-// Helper function to track down the right records in the hasmap to make correct updates.
-// fn hn_to_rm(hn: String) -> String {
-//     let parts = hn.split("-");
-//     let tmp = parts[0].clone();
-//     for part in parts {
-//         println!(part);
-//     }
-// }
 
 /*
  $$$$$$\  $$\       $$\                 $$$$$$$\                  $$\ 
@@ -944,11 +989,6 @@ fn find_files(building: String, rm: String) -> Vec<String> {
     path.push_str(&rm);
 
     if dir_exists(&path) {
-        // let paths = fs::read_dir(&path).unwrap();
-        // for p in paths {
-        //     println!("{}\n", p.as_ref().unwrap().path().display());
-        //     strings.push(p.unwrap().path().display().to_string());
-        // }
         strings = get_dir_contents(&path);
     }
 

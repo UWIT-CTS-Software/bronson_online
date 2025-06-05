@@ -28,31 +28,26 @@ test   : test VALUE
           hello: function(name) {
             this.echo('Hello, ' + name + '. Nice to meet you.')
           },
-          refresh: async function(...args) {
+          refresh: async function(resource) {
             let url = "refresh/all";
             let res_alert = "[-] File not updated.";
             let res;
-            if (args.length == 0) {
-              this.echo("[!] No target specified, refreshing all.");
-            } else if (args.length > 1) {
-              this.echo("[-] Too many arguments.\nusage: refresh [all|threads|map]");
-              return;
-            } else switch (args[0]) {
-                default:
-                  this.echo("[-] Unknown option.\nusage: refresh [all|threads|map]");
-                  break;
-                case "all":
-                  this.echo("[!] Refreshing all.");
-                  break;
-                case "threads":
-                  this.echo("[!] Refreshing threads.");
-                  url = "refresh/threads";
-                  break;
-                case "map":
-                  this.echo("[!] Refreshing map.");
-                  url = "refresh/map";
-                  break;
-              }
+            
+            switch (resource) {
+              default:
+                this.echo("usage: refresh [all|threads|map]");
+              case "all":
+                this.echo("[!] Refreshing all.");
+                break;
+              case "threads":
+                this.echo("[!] Refreshing threads.");
+                url = "refresh/threads";
+                break;
+              case "map":
+                this.echo("[!] Refreshing map.");
+                url = "refresh/map";
+                break;
+            }
 
             res = await fetch(url)
                   .then(response => {
@@ -61,23 +56,44 @@ test   : test VALUE
                     } else {
                       return response.json();
                     }
-                  })
+                  });
             res_alert = res.body;
             this.echo(res_alert);
 
             this.echo("[+] Completed.");
           },
+          check: async function (...args) {
+            this.echo("Hello!");
+          },
+          get: async function(resource) {
+            switch (resource) {
+              case "log":
+                this.echo("log called.");
+                await fetch("http://127.0.0.1:7878/get/log", {
+                  method: "GET",
+                  headers: {
+                    "Content-Type": "application/json"
+                  }
+                }).then((response) => response.blob())
+                  .then((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+    
+                    a.href=url;
+
+                    a.download = "output.log";
+                    a.click();
+                  })
+                break;
+              default:
+                this.echo("usage: get [log]");
+            }
+          },
+          update: async function(...args) {
+            this.echo("Hello!");
+          },
           test: async function(value) {
             this.echo(`Hello, ${value}!`);
-            await fetch("get/PLACEHOLDER", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                content: value
-              })
-            })
           }
             
         }, {
