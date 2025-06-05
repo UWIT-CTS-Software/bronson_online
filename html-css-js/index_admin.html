@@ -15,26 +15,89 @@
 
       $(function() {
         $('#terminal').terminal({
-            hello: function(name) {
-              this.echo('Hello, ' + name + '. Nice to meet you.')
-            },
-            refresh: async function() {
-              let res_alert = "[-] File not updated.";
-              this.echo('[+] Updating file...');
-              let res = await fetch('refresh')
-                .then(response => {
-                  if (!response.ok) {
-                    throw new Error("HTTP error " + response.status);
-                  } else {
-                    return response.json();
+          help: function() {
+            this.echo(`
+hello  : hello NAME
+refresh: refresh [ all | threads | map ]
+check  : check [ all | threads | map ]
+get    : get [ log | map | version | alerts | blacklist ]
+update : update [key [lsm|git] | schedule | blacklist [-r] ID ]
+test   : test VALUE
+            `)
+          },
+          hello: function(name) {
+            this.echo('Hello, ' + name + '. Nice to meet you.')
+          },
+          refresh: async function(resource) {
+            let url = "refresh/all";
+            let res_alert = "[-] File not updated.";
+            let res;
+            
+            switch (resource) {
+              default:
+                this.echo("usage: refresh [all|threads|map]");
+              case "all":
+                this.echo("[!] Refreshing all.");
+                break;
+              case "threads":
+                this.echo("[!] Refreshing threads.");
+                url = "refresh/threads";
+                break;
+              case "map":
+                this.echo("[!] Refreshing map.");
+                url = "refresh/map";
+                break;
+            }
+
+            res = await fetch(url)
+                  .then(response => {
+                    if (!response.ok) {
+                      throw new Error("HTTP error " + response.status);
+                    } else {
+                      return response.json();
+                    }
+                  });
+            res_alert = res.body;
+            this.echo(res_alert);
+
+            this.echo("[+] Completed.");
+          },
+          check: async function (...args) {
+            this.echo("Hello!");
+          },
+          get: async function(resource) {
+            switch (resource) {
+              case "log":
+                this.echo("log called.");
+                await fetch("http://127.0.0.1:7878/get/log", {
+                  method: "GET",
+                  headers: {
+                    "Content-Type": "application/json"
                   }
-                })
-              res = JSON.stringify(res);
-              res_alert = JSON.parse(res).body;
-              this.echo(res_alert);
-            },
+                }).then((response) => response.blob())
+                  .then((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+    
+                    a.href=url;
+
+                    a.download = "output.log";
+                    a.click();
+                  })
+                break;
+              default:
+                this.echo("usage: get [log]");
+            }
+          },
+          update: async function(...args) {
+            this.echo("Hello!");
+          },
+          test: async function(value) {
+            this.echo(`Hello, ${value}!`);
+          }
             
         }, {
+          checkArity: false,
           greetings: greetings.innerHTML
         });
       });
