@@ -6,6 +6,8 @@ Bronson is a suite of diagnostic tools for the I.T. department. Looking to monit
 
 The frontend is written in JavaScript and the backend was written in Rust.
 
+![image](https://github.com/user-attachments/assets/cfa5f07a-f835-48dc-b6c1-1ede2ec43b15)
+
 ---
 
 ## Prerequisites
