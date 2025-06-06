@@ -371,7 +371,7 @@ pub struct ZoneRequest {
 // campus.json format
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BuildingData {
-    pub building_data: Vec<Building>,
+    pub buildingData: Vec<Building>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
