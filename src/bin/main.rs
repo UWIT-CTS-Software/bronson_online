@@ -527,7 +527,7 @@ async fn handle_connection(
             for parent_location in parent_locations.into_iter() {
                 let clone_keys = keys.clone();
                 let url = format!(
-                    r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last7days%22%2CParentLocation%3A%22{}%22%7D", 
+                    r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", 
                     parent_location
                 );
                 let req = reqwest::Client::builder()
@@ -737,8 +737,14 @@ fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> Vec<u8>
 
     for rm in rooms_to_ping {
         let rm_info = rooms.get_mut(&rm).expect("error");
+        let mut dev_map = Vec::new(); 
+        if pr.devices.iter().sum::<u8>() == 0 {
+            dev_map = vec![1,1,1,1,1,1];
+        } else {
+            dev_map = pr.devices.clone();
+        }
         for hn_group in 0..rm_info.hostnames.len() { // make this ping
-            if pr.devices[hn_group] == 0 {
+            if dev_map[hn_group] == 0 {
                 continue;
             }
             for hn in &rm_info.hostnames[hn_group] {
@@ -848,7 +854,7 @@ fn gen_rooms(
     let mut rooms = Vec::new();
     let mut tmp = String::new();
 
-    for item in bd.building_data { //  For each building in the data
+    for item in bd.buildingData { //  For each building in the data
         if (sel_b == item.name) || (sel_b == "All Buildings") {
             for j in item.rooms {  // iterate through rooms
                 tmp.push_str(&item.abbrev.clone());
