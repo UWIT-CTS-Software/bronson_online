@@ -174,9 +174,6 @@ impl Room {
 	pub fn update_checked(&mut self, val: String) {
 		self.checked = val;
 	}
-	// pub fn update_jn_checked(&mut self) {
-	// 	self.jn_checked = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).expect("Failed to init unchecked time");
-	// }
 	pub fn update_ips(&mut self, val: Vec<String>) {
 		self.ips = val;
 	}
@@ -185,7 +182,6 @@ impl<'a> Clone for Room {
 	fn clone(&self) -> Room {
 		let new_name: Box<str> = <String as Clone>::clone(&self.name).into_boxed_str();
 		let new_checked: Box<str> = <String as Clone>::clone(&self.checked).into_boxed_str();
-		// let new_jn_checked = &self.jn_checked;
 		let new_hostnames = &self.hostnames;
 		let new_ips = &self.ips;
 		let new_schedule = &self.schedule;
@@ -195,7 +191,6 @@ impl<'a> Clone for Room {
 			hostnames: (&new_hostnames).to_vec(),
 			ips: (&new_ips).to_vec(),
 			gp: self.gp,
-			// jn_checked: self.jn_checked,
 			checked: String::from(new_checked),
 			schedule:(&new_schedule).to_vec(),
 		};
