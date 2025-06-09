@@ -186,7 +186,7 @@ button:-webkit-details-marker {
 .tab_row {
     margin: 14px auto;
     display: inline-grid;
-    padding: 5px 0px;
+    padding: 5px 100px;
     grid-auto-columns: 1fr;
     grid-column: 1 / auto;
     grid-row: 1;
@@ -254,19 +254,14 @@ button:-webkit-details-marker {
     z-index: 3;
 }
 
-.wikiTab {
-    grid-column: auto;
-    z-index: 4;
-}
-
-.dbTab:active, .chTab:active, .jnTab:active, .ccTab:active, .wikiTab:active {
+.dbTab:active, .chTab:active, .jnTab:active, .ccTab:active {
     background: transparent;
     border-bottom: 39px solid #8f513e;
     transform: translateY(0px);
     /* transform: translateY(-30px); */
 }
 
-.dbTab.selected, .chTab.selected, .jnTab.selected, .ccTab.selected, .wikiTab.selected {
+.dbTab.selected, .chTab.selected, .jnTab.selected, .ccTab.selected {
     transform: translateY(10px);
     transition-duration: 0.1s;
     border-bottom: 29px solid #7c1919;
@@ -570,12 +565,12 @@ img.background {
 .jn_fieldset {
     border:4px outset rgb(144, 118, 26)
 }
-
+/* Visualizer Stuff */
 .vis_container{
     position: relative;
     background-color: rgb(50, 50, 50);
     display: grid;
-    grid-template-columns: repeat(30,1fr);
+    grid-template-columns: repeat(21,1fr);
     gap: 0px;
     grid-auto-rows: minmax(20px, auto);
     border: 4px outset rgb(144, 118, 26);
@@ -586,12 +581,13 @@ img.background {
     text-align: center;
     font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
     grid-column: 1 / 7;
-    grid-row: 1 / 5;
+    grid-row: 1 / 1;
 }
 
 .visTile{
     margin: 0px;
     border: 4px inset rgb(144, 118, 26);
+    grid-area: 2;
 }
 
 .rmColumn {

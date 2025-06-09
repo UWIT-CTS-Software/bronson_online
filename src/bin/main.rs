@@ -147,7 +147,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     debug!("Server mounted!");
 
     let pool = ThreadPool::new(6);
-    // ------------------------------------------------------------------------
+
+    // ----------------------------------------------------------------------
     stdout().flush().unwrap();
 
     for stream in listener.incoming() {
@@ -730,7 +731,7 @@ fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> Vec<u8>
     //    USING BuildingData Struct / front-end request info.
     // AB -> [AB 104 , AB 105 , ... ]
     let rooms_to_ping: Vec<String> = gen_rooms(pr.building.clone(), bs);
-    debug!("{:?}", pr.devices);
+    //debug!("JackNet: DevicePingBoolean Array - {:?}", pr.devices);
     let mut hostnames: Vec<String> = Vec::new();
     let mut hn_ips: Vec<String> = Vec::new();
     let mut room_vec: Vec<Vec<String>> = Vec::new();
@@ -779,7 +780,6 @@ fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> Vec<u8>
     });
 
     // convert to string and return it
-
     // Return JSON with ping results
     return json_return.to_string().into();
 }
@@ -848,7 +848,7 @@ fn gen_rooms(
     let mut rooms = Vec::new();
     let mut tmp = String::new();
 
-    for item in bd.building_data { //  For each building in the data
+    for item in bd.buildingData { //  For each building in the data
         if (sel_b == item.name) || (sel_b == "All Buildings") {
             for j in item.rooms {  // iterate through rooms
                 tmp.push_str(&item.abbrev.clone());

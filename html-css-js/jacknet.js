@@ -440,6 +440,12 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 function clearConsole() {
     let consoleObj = document.querySelector('.innerConsole');
     consoleObj.value = '';
+    // TODO - Clear Visualizer Section
+    // remove every div with the class 'vis_container'
+    let visObj = document.querySelectorAll('.vis_container').forEach(element =>    {
+        element.remove();
+    }
+    );
 
     return;
 };
