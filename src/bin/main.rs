@@ -8,18 +8,15 @@
 
 Backend
     - main()
-    - clone_map(source: HashMap) -> HashMap
-    - handle_connection(stream: TcpStream, cookie_jar: Arc<Jar>, rooms: HashMap) -> Option
+    - handle_connection(stream: TcpStream, cookie_jar: Arc<Jar>, buildings: HashMap) -> Option
     - process_buffer(buffer: mut [u8]) -> String
     - find_enclosed(s: String, delimeters: (char,char), include_delim: bool) -> String
-    - print_type_of<T>(_: &T)
 
 JackNet
-    - execute_ping(buffer: mut [u8]) -> String
-    - gen_hostnames(sel_devs: Vec<String?, sel_b: String, bd: BuildingData) -> Vec<String>
+    - execute_ping(body: Vec<u8>) -> String
 
 ChkrBrd
-    - construct_headers() -> HeaderMap
+    - construct_headers(call_type: &str, keys: Keys) -> HeaderMap
     - check_schedule(room: Room) -> String
     - check_lsm(room: Room) -> String
 
@@ -30,16 +27,16 @@ CamCode
     - is_this_dir(path: &str) -> bool
     - find_files(building: String, rm: String) -> Vec<String>
     - get_dir_contents(path: &str) -> Vec<String>
-    - get_origin(buffer: mut [u8]) -> String
+    - get_origin(req: Request) -> String
 -- Handlers -----------------------------
-    - cfm_build_dir(buffer: mut [u8]) -> String
-    - cfm_build_rm(buffer: mut [u8]) -> String
-    - get_cfm(buffer: mut [u8]) -> String
-    - get_cfm_file(buffer: mut [u8]) -> String
-    - get_cfm_dir(buffer: mut [u8]) -> String
+    - cfm_build_dir() -> Vec<u8>
+    - cfm_build_rm(body: Vec<u8>) -> String
+    - get_cfm(body: Vec<u8>) -> String
+    - get_cfm_file(body: Vec<u8>) -> String
+    - get_cfm_dir(body: Vec<u8>) -> String
 
 Wiki
-    - w_build_articles(buffer: mut [u8]) -> String
+    - w_build_articles() -> String
 */
 
 // dependencies
@@ -422,7 +419,7 @@ async fn handle_connection(
         // login
         "POST /login HTTP/1.1"          => {
             let credential_search = Regex::new(r"uname=(?<user>.*)&psw=(?<pass>[\d\w%]*)").unwrap();
-            let Some(credentials) = credential_search.captures(str::from_utf8(&buffer).expect("Empty")) else { return Option::Some(()) };
+            let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Option::Some(()) };
             let user = String::from(credentials["user"].to_string().into_boxed_str());
             let pass = String::from(credentials["pass"].to_string().into_boxed_str());
             let mut found_user: bool = false;
@@ -451,7 +448,7 @@ async fn handle_connection(
         },
         "POST /bugreport HTTP/1.1"      => {
             let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
-            let Some(credentials) = credential_search.captures(str::from_utf8(&buffer).expect("Empty")) else { return Option::Some(()) };
+            let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Option::Some(()) };
             let encoded_title = String::from(credentials["title"].to_string().into_boxed_str());
             let mut encoded_desc = String::from(credentials["desc"].to_string().into_boxed_str());
             if encoded_desc == String::from("") {
@@ -493,7 +490,7 @@ async fn handle_connection(
         },
         // Jacknet
         "POST /ping HTTP/1.1"           => {
-            let contents = execute_ping(&mut buffer, buildings); // JN
+            let contents = execute_ping(req.body, buildings); // JN
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -501,8 +498,7 @@ async fn handle_connection(
         "POST /run_cb HTTP/1.1"         => {
             // get zone selection from request and store
             // ----------------------------------------------------------------
-            let buff_string = process_buffer(&mut buffer);
-            let zone_selection: ZoneRequest = serde_json::from_str(&buff_string)
+            let zone_selection: ZoneRequest = serde_json::from_str(String::from_utf8(req.body).unwrap().as_str())
                 .expect("Fatal Error 2: Failed to parse ping request");
 
             let mut building_names: Vec<&str> = Vec::new();
@@ -592,27 +588,27 @@ async fn handle_connection(
         // CamCode
         //  - CamCode - CFM Requests
         "POST /cfm_build HTTP/1.1"      => {
-            let contents = cfm_build_dir(&mut buffer);
+            let contents = cfm_build_dir();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "POST /cfm_build_r HTTP/1.1"    => {
-            let contents = cfm_build_rm(&mut buffer);
+            let contents = cfm_build_rm(req.body);
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "POST /cfm_c_dir HTTP/1.1"      => {
-            let contents = get_cfm(&mut buffer);
+            let contents = get_cfm(req.body);
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "POST /cfm_dir HTTP/1.1"        => {
-            let contents = get_cfm_dir(&mut buffer);
+            let contents = get_cfm_dir(req.body);
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "POST /cfm_file HTTP/1.1"       => {
-            let contents = get_cfm_file(&mut buffer);
+            let contents = get_cfm_file(req.body);
             let mut f = File::open(contents.clone()).unwrap();
             
             let mut file_buffer = Vec::new();
@@ -626,7 +622,7 @@ async fn handle_connection(
         },
         // Wiki
         "POST /w_build HTTP/1.1"        => {
-            let contents = w_build_articles(&mut buffer);
+            let contents = w_build_articles();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -640,31 +636,6 @@ async fn handle_connection(
     stream.flush().unwrap();
     stdout().flush().unwrap();
     return Option::Some(());
-}
-
-// Preps the Buffer to be parsed as json string
-fn process_buffer(buffer: &mut [u8]) -> String {
-    let buff_copy: String = String::from_utf8_lossy(&buffer[..])
-        .to_string();
-
-    // functon that returns first '{' index location and it's '}' location
-    let in_curls = find_enclosed(&buff_copy, (r"\{", r"}"), true);
-    return in_curls;
-}
-
-// used to trim excess info off of the buffer
-fn find_enclosed(s: &String, delimiters: (&str,&str), include_delim: bool) -> String {
-    let search_rule;
-    if include_delim {
-        let search_setup = format!("(?<search_return>{}.*{})", delimiters.0, delimiters.1);
-        search_rule = Regex::new(search_setup.as_str()).unwrap();
-    } else {
-        search_rule = Regex::new(format!("{}(?<search_return>.*){}", delimiters.0, delimiters.1).as_str()).unwrap();
-    }
-
-    let Some(returned_text) = search_rule.captures(s) else { return "Empty".to_string() };
-
-    return returned_text["search_return"].to_string();
 }
 
 #[allow(dead_code)]
@@ -712,10 +683,9 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 */
 
 // call ping_this executible here
-fn execute_ping(buffer: &mut [u8], mut buildings: HashMap<String, Building>) -> Vec<u8> {
+fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<u8> {
     // Prep Request into Struct
-    let buff_copy = process_buffer(buffer);
-    let pr: PingRequest = serde_json::from_str(&buff_copy)
+    let pr: PingRequest = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
         .expect("Fatal Error 2: Failed to parse ping request");
 
     // BuildingData Struct
@@ -962,9 +932,8 @@ fn get_dir_contents(path: &str) -> Vec<String> {
     return strings;
 }
 
-fn get_origin(buffer: &mut [u8]) -> String {
-    let buff_copy: String = String::from_utf8_lossy(&buffer[..])
-        .to_string();
+fn get_origin(body: Vec<u8>) -> String {
+    let buff_copy: String = String::from_utf8_lossy(&body).to_string();
 
     let bytes = buff_copy.as_bytes();
     let mut ir: usize = 0;
@@ -1004,7 +973,7 @@ fn get_origin(buffer: &mut [u8]) -> String {
 */
                                              
 //   cfm_build_dir() - post BUILDING dropdown
-fn cfm_build_dir(_buffer: &mut [u8]) -> Vec<u8> {
+fn cfm_build_dir() -> Vec<u8> {
     // Vars
     let mut final_dirs: Vec<String> = Vec::new();
     // Check for CFM_Code Directory
@@ -1033,7 +1002,7 @@ fn cfm_build_dir(_buffer: &mut [u8]) -> Vec<u8> {
 }
 
 // cfm_build_rm() - post ROOM dropdown
-fn cfm_build_rm(buffer: &mut [u8]) -> Vec<u8> {
+fn cfm_build_rm(body: Vec<u8>) -> Vec<u8> {
     let mut final_dirs: Vec<String> = Vec::new();
 
     // Check for CFM_Code Directory
@@ -1042,8 +1011,7 @@ fn cfm_build_rm(buffer: &mut [u8]) -> Vec<u8> {
 
     // Prep buffer into Room List Request Struct
     //     - building
-    let buff_copy: String = process_buffer(buffer);
-    let cfm_rms: CFMRoomRequest = serde_json::from_str(&buff_copy)
+    let cfm_rms: CFMRoomRequest = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
         .expect("Fatal Error 39: Failed to parse cfm room request.");
     
     // Build Directory
@@ -1073,12 +1041,11 @@ fn cfm_build_rm(buffer: &mut [u8]) -> Vec<u8> {
 }
 
 // get_cfm - generate code (Sends list of files to user)
-fn get_cfm(buffer: &mut [u8]) -> Vec<u8> {
+fn get_cfm(body: Vec<u8>) -> Vec<u8> {
     // crestron file manager request (CFMR)
     //   - building
     //   - rm
-    let buff_copy: String = process_buffer(buffer);
-    let cfmr: CFMRequest = serde_json::from_str(&buff_copy)
+    let cfmr: CFMRequest = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
         .expect("Fatal Error 3: Failed to parse cfm request");
     
     // Check CFM_Code Directory
@@ -1100,17 +1067,15 @@ fn get_cfm(buffer: &mut [u8]) -> Vec<u8> {
 // TODO:
 //    [ ] - store selected file as bytes ?
 //    [ ] - send in json as usual ?
-fn get_cfm_file(buffer: &mut [u8]) -> String {
+fn get_cfm_file(body: Vec<u8>) -> String {
     // RequstFile
     //    - filename
 
     // let gr: GeneralRequest = serde_json::from_str(&buff_copy1)
     //     .expect("Fatal Error 49: general Request Failed");
-    let _gr_origin: String = get_origin(buffer);
+    let _gr_origin: String = get_origin(body.clone());
 
-    
-    let buff_copy: String = process_buffer(buffer);
-    let cfmr_f: CFMRequestFile = serde_json::from_str(&buff_copy)
+    let cfmr_f: CFMRequestFile = serde_json::from_str(String::from_utf8(body.clone()).unwrap().as_str())
         .expect("Fatal Error 38: failed to parse filename");
     
     if dir_exists(CFM_DIR) {
@@ -1139,12 +1104,11 @@ fn get_cfm_file(buffer: &mut [u8]) -> String {
 // TODO:
 //    [ ] - store selected file as bytes ?
 //    [ ] - send in json as usual ?
-fn get_cfm_dir(buffer: &mut [u8]) -> Vec<u8> {
+fn get_cfm_dir(body: Vec<u8>) -> Vec<u8> {
     // RequstFile
     //    - filename
     let mut strings = Vec::new();
-    let buff_copy: String = process_buffer(buffer);
-    let cfmr_d: CFMRequestFile = serde_json::from_str(&buff_copy)
+    let cfmr_d: CFMRequestFile = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
         .expect("Fatal Error 38: failed to parse filename");
 
     if dir_exists(CFM_DIR) {
@@ -1183,7 +1147,7 @@ $$  /   \$$ |$$ |$$ | \$$\ $$ |
 \__/     \__|\__|\__|  \__|\__|
 */
 
-fn w_build_articles(_buffer: &mut [u8]) -> Vec<u8> {
+fn w_build_articles() -> Vec<u8> {
     // Vars
     let mut article_vec: Vec<String> = Vec::new();
 
