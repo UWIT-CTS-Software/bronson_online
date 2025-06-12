@@ -749,7 +749,7 @@ fn execute_ping(buffer: &mut [u8], mut buildings: HashMap<String, Building>) -> 
     buildings.get_mut(&pr.building.clone()).unwrap().rooms = rooms_to_ping.to_vec();
 
     let json_return = json!({
-        "cb_body": buildings.get(&pr.building.clone()).unwrap(),
+        "jn_body": buildings.get(&pr.building.clone()).unwrap(),
     });
     // Return JSON with ping results
     return json_return.to_string().into();
