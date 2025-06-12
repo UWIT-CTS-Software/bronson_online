@@ -144,7 +144,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     debug!("Server mounted!");
 
     let pool = ThreadPool::new(6);
-    // ------------------------------------------------------------------------
+
+    // ----------------------------------------------------------------------
     stdout().flush().unwrap();
 
     for stream in listener.incoming() {

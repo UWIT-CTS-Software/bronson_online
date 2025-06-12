@@ -356,8 +356,9 @@ async function printPingResult(pingResult, building) {
 
 // runSearch()
 // runs the search and calls the above functions to do so.
-//      TODO: 
-//          [ ] - Fix "all buildings" export by adding new data structures
+//     TODO: 
+//        [ ] - Fix "all buildings" export by adding new data structures
+//        [ ] - Add a pop-up when "All Buildings" is selected. Are you sure? This will be computationally very heavy and may take some time to complete.
 async function runSearch() {
     updateConsole("====--------------------========--------------------====");
     // get user-selection
@@ -381,6 +382,8 @@ async function runSearch() {
     // Check All Buildings Flag
     if (building == "All Buildings") {
         bdl = await getBuildingList();
+        // STOP THE USER HERE AND ASK ARE YOU SURE.
+        // await abPrompt();
     } else {
         bdl = [building];
     }
@@ -440,6 +443,12 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 function clearConsole() {
     let consoleObj = document.querySelector('.innerConsole');
     consoleObj.value = '';
+    // TODO - Clear Visualizer Section
+    // remove every div with the class 'vis_container'
+    let visObj = document.querySelectorAll('.vis_container').forEach(element =>    {
+        element.remove();
+    }
+    );
 
     return;
 };

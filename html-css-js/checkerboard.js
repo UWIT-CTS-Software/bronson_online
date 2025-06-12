@@ -58,6 +58,18 @@ async function run() {
     return;
 }
 
+// 6/6/2025 - JN
+// Updating this display to be a bit more information.
+// Alex will be updating the rust response to include
+// general pool inclusion, once that is present we will 
+// include some indicater within the record inside the console.
+//  TODO Filters:
+//     - Include two new filter behaviors
+//          - "Show Unavailable Rooms"
+//          - "Show Recently Checked Rooms"
+//       This will allow for zones to become smaller.
+//       We can also create an additional message when a zone
+//       is completely checked and upto date.
 function cb_updateConsole(array) {
     let consoleObj = document.querySelector('.cb_console');
     let html_str = `
@@ -65,7 +77,7 @@ function cb_updateConsole(array) {
             <legend>
                 Console Output: </legend>
             <ul>`;
-
+    console.log(array);
     for (row in array) {
         let split_str = array[row].split(' | ');
         let span_str = '';
