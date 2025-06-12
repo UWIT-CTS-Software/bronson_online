@@ -159,14 +159,44 @@ impl<'a> Clone for Keys {
 
 // ----------- Custom struct for checkerboard - jn <3
 #[derive(Serialize, Deserialize, Debug)]
+pub struct Building {
+	pub name: String,
+	pub lsm_name: String,
+	pub abbrev: String,
+	pub rooms: Vec<Room>,
+}
+
+impl Building {
+	pub fn get_completion(&self) -> f32 {
+		return 1.0;
+	}
+}
+impl<'a> Clone for Building {
+	fn clone(&self) -> Building {
+		let new_name: Box<str> = <String as Clone>::clone(&self.name).into_boxed_str();
+		let new_lsm_name: Box<str> = <String as Clone>::clone(&self.lsm_name).into_boxed_str();
+		let new_abbrev: Box<str> = <String as Clone>::clone(&self.abbrev).into_boxed_str();
+
+		return Building {
+			name: String::from(new_name),
+			lsm_name: String::from(new_lsm_name),
+			abbrev: String::from(new_abbrev),
+			rooms: (&self.rooms).to_vec()
+		}
+	}
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Room {
 	pub name: String,
 	pub hostnames: Vec<Vec<String>>,
-	pub ips: Vec<String>,
+	pub ips: Vec<Vec<String>>,
 	pub gp: u8,
 	pub checked: String,
-	//pub jn_checked: Duration, //
-	pub schedule: Vec<String>
+	pub needs_checked: u8,
+	pub schedule: Vec<String>,
+	pub available: u8,
+	pub until: String
 }
 
 // this is very rag-tag - error handling needs to be built-in
@@ -174,10 +204,7 @@ impl Room {
 	pub fn update_checked(&mut self, val: String) {
 		self.checked = val;
 	}
-	// pub fn update_jn_checked(&mut self) {
-	// 	self.jn_checked = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).expect("Failed to init unchecked time");
-	// }
-	pub fn update_ips(&mut self, val: Vec<String>) {
+	pub fn update_ips(&mut self, val: Vec<Vec<String>>) {
 		self.ips = val;
 	}
 }
@@ -185,19 +212,18 @@ impl<'a> Clone for Room {
 	fn clone(&self) -> Room {
 		let new_name: Box<str> = <String as Clone>::clone(&self.name).into_boxed_str();
 		let new_checked: Box<str> = <String as Clone>::clone(&self.checked).into_boxed_str();
-		// let new_jn_checked = &self.jn_checked;
-		let new_hostnames = &self.hostnames;
-		let new_ips = &self.ips;
-		let new_schedule = &self.schedule;
+		let new_until: Box<str> = <String as Clone>::clone(&self.until).into_boxed_str();
 
 		return Room {
 			name: String::from(new_name),
-			hostnames: (&new_hostnames).to_vec(),
-			ips: (&new_ips).to_vec(),
+			hostnames: (&self.hostnames).to_vec(),
+			ips: (&self.ips).to_vec(),
 			gp: self.gp,
-			// jn_checked: self.jn_checked,
 			checked: String::from(new_checked),
-			schedule:(&new_schedule).to_vec(),
+			needs_checked: self.needs_checked,
+			schedule:(&self.schedule).to_vec(),
+			available: self.available,
+			until: String::from(new_until),
 		};
 	}
 }
@@ -367,15 +393,8 @@ pub struct ZoneRequest {
 	pub zones: Vec<String>,
 }
 
-// ----------- Custom structs for JackNet Requests
-// campus.json format
 #[derive(Serialize, Deserialize, Debug)]
-pub struct BuildingData {
-    pub buildingData: Vec<Building>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Building {
+pub struct BuildingJSON {
     pub name: String,
     pub abbrev: String,
     pub rooms: Vec<String>
@@ -384,7 +403,7 @@ pub struct Building {
 // building.get_building_hostnames()
 //   - Could this be a good idea?
 //   - TODO (?)
-// impl Building {
+// impl BuildingJSON {
 //     fn get_building_hostnames(&self) -> Vec<String> {
 //         let mut string_vec: Vec<String> = ["EN-0104-PROC1"];
 //         string_vec
@@ -452,9 +471,9 @@ pub static STATUS_303: &str = "HTTP/1.1 303 See Other";
 pub static STATUS_404: &str = "HTTP/1.1 404 Not Found";
 pub static STATUS_500: &str = "HTTP/1.1 500 Internal Server Error";
 
-pub const ZONE_1: [&'static str; 11] = [
+pub const ZONE_1: [&'static str; 9] = [
     "Science%20Initiative%20Building%20(SI)", "Geology%20(GE)", "Health%20Sciences%20(HS)", 
-    "STEM%201st%20Floor", "STEM%202nd%20Floor", "STEM%203rd%20Floor", "Berry%20Center%20(BC)",
+    "Michael%20B.%20Enzi%20STEM%20(STEM)", "Berry%20Center%20(BC)",
     "Engineering%20Education%20and%20Research%20Building%20(EERB)", "Anthropology%20(AN)", 
     "Earth%20Sciences%20Building%20(ESB)", "Energy%20Innovation%20Center%20(EIC)", 
 ];
@@ -462,11 +481,12 @@ pub const ZONE_2: [&'static str; 8] = [
     "Engineering%20(EN)", "Agriculture%20(AG)", "Education%20(ED)", "History%20(HI)", 
     "Half%20Acre%20(HA)", "Business%20(BU)", "Coe%20Library%20(CL)", "Education%20Annex%20(EA)", 
 ];
-pub const ZONE_3: [&'static str; 9] = [
+pub const ZONE_3: [&'static str; 11] = [
     "Physical%20Sciences%20(PS)", "Classroom%20Building%20(CR)", 
     "Arts%20%26%20Sciences%20(AS)", "Aven%20Nelson%20(AV)", "Biological%20Sciences%20(BS)", 
     "Native%20American%20Ed%20Research%20%26%20Culteral%20Center%20(NA)", "Ross%20Hall%20(RH)", 
-    "Hoyt%20Hall%20(HO)", "Guthrie%20House%20(GH)", 
+    "Hoyt%20Hall%20(HO)", "Guthrie%20House%20(GH)", "Cheney%20International%20Center%20(CIC)",
+	"Knight%20Hall%20(KH)"
 ];
 pub const ZONE_4: [&'static str; 8] = [
     "IT%20Center%20(ITC)", "Corbett%20(CB)", "Law%20School%20(LS)", "Beta%20House%20(BH)", 
@@ -480,9 +500,48 @@ pub const ZONE_1_SHORT: [&'static str; 9] = [
 pub const ZONE_2_SHORT: [&'static str; 8] = [
     "EN", "AG", "ED", "HI", "HA", "BU", "CL", "EA",
 ];
-pub const ZONE_3_SHORT: [&'static str; 10] = [
-    "PS", "CR", "AS", "AV", "BS", "NAC", "RH", "HO", "GH", "CI" // Add to ZONE_3
+pub const ZONE_3_SHORT: [&'static str; 11] = [
+    "PS", "CR", "AS", "AV", "BS", "NAC", "RH", "HO", "GH", "CI", "KH" // Add to ZONE_3
 ];
 pub const ZONE_4_SHORT: [&'static str; 8] = [
     "IT", "CB", "LS", "BH", "PA", "VA", "AB", "AC",
+];
+
+pub const ABBREV_TO_NAME: [(&'static str, &'static str, &'static str); 36] = [
+	("SI",   "Science Initiative",          "Science%20Initiative%20Building%20(SI)"),
+	("GE",   "Geology",                     "Geology%20(GE)"),
+	("HS",   "Health Sciences",             "Health%20Sciences%20(HS)"),
+	("ST",   "Enzi STEM",                   "Michael%20B.%20Enzi%20STEM%20(STEM)"),
+	("BC",   "Berry Center",                "Berry%20Center%20(BC)"),
+	("EERB", "EERB",                        "Engineering%20Education%20and%20Research%20Building%20(EERB)"),
+	("AN",   "Anthropology",                "Anthropology%20(AN)"),
+	("ES",   "Earth Sciences",              "Earth%20Sciences%20Building%20(ESB)"),
+	("EIC",  "Energy Innovation Center",    "Energy%20Innovation%20Center%20(EIC)"),
+	("EN",   "Engineering",                 "Engineering%20(EN)"),
+	("AG",   "Agriculture",                 "Agriculture%20(AG)"),
+	("ED",   "Education",                   "Education%20(ED)"),
+	("HI",   "History",                     "History%20(HI)"),
+	("HA",   "Half Acre",                   "Half%20Acre%20(HA)"),
+	("BU",   "Business",                    "Business%20(BU)"),
+	("CL",   "Coe Library",                 "Coe%20Library%20(CL)"),
+	("EA",   "Education Annex",             "Education%20Annex%20(EA)"),
+	("PS",   "Physical Sciences",           "Physical%20Sciences%20(PS)"),
+	("CR",   "Classroom Building",          "Classroom%20Building%20(CR)"),
+	("AS",   "Arts and Sciences",           "Arts%20%26%20Sciences%20(AS)"),
+	("AV",   "Aven Nelson",                 "Aven%20Nelson%20(AV)"),
+	("BS",   "Biological Sciences",         "Biological%20Sciences%20(BS)"),
+	("NAC",  "Native American Center",      "Native%20American%20Ed%20Research%20%26%20Culteral%20Center%20(NA)"),
+	("RH",   "Ross Hall",                   "Ross%20Hall%20(RH)"),
+	("HO",   "Hoyt Hall",                   "Hoyt%20Hall%20(HO)"),
+	("GH",   "Guthrie House",               "Guthrie%20House%20(GH)"),
+	("CI",   "Cheney International Center", "Cheney%20International%20Center%20(CIC)"),
+	("IT",   "IT Center",                   "IT%20Center%20(ITC)"),
+	("CB",   "Corbett",                     "Corbett%20(CB)"),
+	("LS",   "Law School",                  "Law%20School%20(LS)"),
+	("BH",   "Beta House",                  "Beta%20House%20(BH)"),
+	("PA",   "Performing Arts",             "Buchanan%20Center%20for%20Performing%20Arts%20(PA)"),
+	("VA",   "Visual Arts",                 "Visual%20Arts%20(VA)"),
+	("AB",   "Animal Sciences",             "Animal%20Science/Molecular%20Biology%20(AB)"),
+	("AC",   "American Heritage Center",    "American%20Heritage%20Center%20(AC)"),
+	("KH",   "Knight Hall",                 "Knight%20Hall%20(KH)")
 ];

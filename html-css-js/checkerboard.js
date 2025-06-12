@@ -76,6 +76,9 @@ function cb_updateConsole(array) {
             case 8:
                 span_str = `<li>&nbsp;&nbsp;${split_str[0]} | `;
                 break;
+            case 6:
+                span_str = `<li>&nbsp;&nbsp;&nbsp;&nbsp;${split_str[0]}&nbsp;&nbsp; | `;
+                break;
             default:
                 span_str = `<li>${split_str[0]} | `;
                 break;
