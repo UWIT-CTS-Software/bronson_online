@@ -712,16 +712,31 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 
 */
 
+/*
+execute_ping()
+--
+NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
+      CAMPUS_STR -> "html-css-js/campus.json"
+
+TO-DO:
+   [ ] - Consider returning a building as follows
+        [[[room1-proc],[room1-pj1,room1-pj2],[],[room1-tp]],
+        [[room2-proc],[],[room2-disp1, room2-disp2],[room2-tp]]]
+          The hashmap will utilize this structure to some extent. 
+          The structure of this return is important.
+          It is currently returning a massive list of every hostname
+          and ip within a building. This will turn it into a nested
+          vector of nested vectors. The front-end (jacknet.js) is
+          not written to handle this structure and will need
+          to be able to.
+*/
 // call ping_this executible here
 fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> Vec<u8> {
     // Prep Request into Struct
     let buff_copy = process_buffer(buffer);
+
     let pr: PingRequest = serde_json::from_str(&buff_copy)
         .expect("Fatal Error 2: Failed to parse ping request");
-
-    // BuildingData Struct
-    //   NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
-    //         CAMPUS_STR -> "html-css-js/campus.json" 
 
     let bs: BuildingData = serde_json::from_str(CAMPUS_STR)
         .expect("Fatal Error: Failed to build building data structs");
@@ -736,6 +751,7 @@ fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> Vec<u8>
     let mut hn_ips: Vec<String> = Vec::new();
     let mut room_vec: Vec<Vec<String>> = Vec::new();
 
+    //
     for rm in rooms_to_ping {
         let rm_info = rooms.get_mut(&rm).expect("error");
         for hn_group in 0..rm_info.hostnames.len() { // make this ping
