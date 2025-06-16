@@ -18,17 +18,66 @@ class Cookie {
 
     getCookie() { return this.value; }
 }
+// New Functions (6/16/2025) -jn
 
-/*
-$$\   $$\ $$$$$$$$\ $$\      $$\ $$\       
-$$ |  $$ |\__$$  __|$$$\    $$$ |$$ |      
-$$ |  $$ |   $$ |   $$$$\  $$$$ |$$ |      
-$$$$$$$$ |   $$ |   $$\$$\$$ $$ |$$ |      
-$$  __$$ |   $$ |   $$ \$$$  $$ |$$ |      
-$$ |  $$ |   $$ |   $$ |\$  /$$ |$$ |      
-$$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\ 
-\__|  \__|   \__|   \__|     \__|\________|
-*/
+// I would like to use a function to call by building.
+// this would allow us to do procedural printing but 
+// we need a way to get a list of rooms in a zone to do
+// so.
+async function getCheckerboardByZone(zone_array) {
+    await fetch('run_cb', {
+        method: "POST",
+        body: JSON.stringify({
+            zones: zone_array,
+        })
+    })
+    .then((response) => response.json())
+    .then((json) => {return json;});
+}
+
+// takes the response, cb_body, which is a list of buildings and
+// prints the output as it goes through.
+// Note: If we can get a getCheckerboardByBuilding() system made,
+//   the change here would simply be it not being a for loop.
+function printCBResponse(JSON) {
+    let rooms = [];
+    // HTML
+    let consoleObj = document.querySelector('.cb_console');
+    // 
+    let buildings = JSON['cb_body'];
+    // Iterating through each building
+    for(var i = 0; i < buildings.length; i++) {
+        // Start building output
+        let cbContainter = document.createElement('div');
+        cbContainter.classList.add('cbVisContainer');
+        // Building Name
+        HTML_cbBuildingHeader = `<div class="cbVisHeader"> ${buildings[i]['name']} (${buildings[i]['abbrev']}) </div>`;
+        console.log(buildings[i]);
+        // Start the room processing
+        let rooms = buildings[i]['rooms'];
+        let HTML_cbVisRooms = ``;
+        let HTML_cbVisRoomTmp = ``;
+        // Iterating through each room in a building
+        for(var j = 0; j < rooms.length; j++) {
+            let cbRoomEntry = document.createElement('div');
+            cbRoomEntry.classList.add('cbVisRoomName');
+            // Maybe add some generalPool/DepartmentShared indicator
+            cbRoomEntry.innerHTML = `${rooms[j]['name']}`;
+            // Does it need checked?
+            //  NOTE: end of day but pick up from here.
+            if(rooms[j]['needs_checked']) {
+                console.log("room needs checked")
+            }
+            // Is available ?
+            if(rooms[j]['available']) {
+                console.log("room is available");
+            }
+        }
+        // Send a processed building to the page
+        // FUNC
+    }
+    return;
+}
 
 async function run() {
     let zones = document.getElementsByName('cb_dev');
@@ -42,21 +91,29 @@ async function run() {
         }
     }
 
-    let response = await fetch('run_cb', {
-        method: "POST",
-        body: JSON.stringify({
-            zones: zone_array,
-        })
-    })
-    .then((response) => response.json())
-    .then((json) => {
-        return json.rooms.sort();
-    });
+    // TODO - getCheckerboardByBuilding(buildingAbbrev);
+    // Ideally, would want a call to get a list of buildings in a given zone
+    // then make a call using those building names iteratively.
+    let cbJSON = await getCheckerboardByZone(zone_array);
 
-    cb_updateConsole(response);
+    console.log(cbJSON);
+
+    printCBResponse(cbJSON);
+    //cb_updateConsole(response);
 
     return;
 }
+
+/*
+$$\   $$\ $$$$$$$$\ $$\      $$\ $$\       
+$$ |  $$ |\__$$  __|$$$\    $$$ |$$ |      
+$$ |  $$ |   $$ |   $$$$\  $$$$ |$$ |      
+$$$$$$$$ |   $$ |   $$\$$\$$ $$ |$$ |      
+$$  __$$ |   $$ |   $$ \$$$  $$ |$$ |      
+$$ |  $$ |   $$ |   $$ |\$  /$$ |$$ |      
+$$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\ 
+\__|  \__|   \__|   \__|     \__|\________|
+*/
 
 // 6/6/2025 - JN
 // Updating this display to be a bit more information.
