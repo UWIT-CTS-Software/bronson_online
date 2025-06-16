@@ -123,7 +123,10 @@ async function getAbbrev(buildingName) {
 
 // ---- ---- -- -- -  GET USER CONFIG FUNCTIONS
 // getSelectedDevices()
-//   - returns a list of user-selected devices to search for.
+//   - returns a list of booleans mapped to device types
+//   [1,1,0,0,0,0] Representing procs and pjs.
+//     Relations:
+//   [procs, projs, disps, ws, tp, cmix]
 function getSelectedDevices() {
     let devices = document.getElementsByName('jn_dev');
     let devList = [];
@@ -134,8 +137,25 @@ function getSelectedDevices() {
             devList.push(0);
         };
     };
-    console.log(devList);
+    //console.log("JN Binary Device List:", devList);
     return devList;
+}
+
+//getSelDevNames(binaryDevList)
+// converts binaryDevList provided from getSelectedDevices(
+//  to an array of device names. 
+// This is used in the visualizer to get index collumn headers. 
+function getSelDevNames(binaryDevList) {
+    const devices = ["Processor", "Projector(s)", "Display(s)", "Wyo Share", "Touch Panel", "Ceiling Mic"];
+    output = [];
+    for(var i=0;i < binaryDevList.length; i++) {
+        if (binaryDevList[i]) {
+            output.push(devices[i]);
+        } else {
+            continue;
+        }
+    }
+    return output;
 }
 
 // getSelectedBuilding()
@@ -249,8 +269,6 @@ function downloadCsv(data) {
     return;
 }
 
-
-
 /*
  $$$$$$\                                          $$\       
 $$  __$$\                                         $$ |      
@@ -310,9 +328,10 @@ async function printPingResult(pingResult, building) {
         printHostnames = "";
         printIps       = "";
         tmpBool = [];
-        updateConsole("---------")
+        updateConsole("---------");
         updateConsole(bAbbrev + " " + rooms[i]);
         rms.push(bAbbrev + " " + rooms[i]);
+        // Iterate over the hostnames
         for (var j=0; j < hns.length; j++) {
             // if hostname contains room#
             //   add to printout hostname line
@@ -320,6 +339,7 @@ async function printPingResult(pingResult, building) {
             if(hns[j].includes(pad(rooms[i], 4))){
                 printHostnames += pad(hns[j], 15, " ") + "|";
                 printIps       += pad(ips[j], 15, " ") + "|";
+                // Visualizer Booleans
                 if (ips[j] == 'x') {
                     tmpBool.push('0');
                 } else {
@@ -331,25 +351,69 @@ async function printPingResult(pingResult, building) {
         updateConsole("IP's     : " + printIps);
         graphBool.push(tmpBool)
     }
-    // This is where we post some visualizations
-    // Put together visualizer information
-    /*      GOAL:
-        ROOOOM |#1|#2|#3|... #9999
-        --------------------------
-            pj |x |o |o |
-          proc |o |o |o |
-            ws |x |o |x |
-            tp |o |o |o |
-        --------------------------
-        Need some booleans array for each room
-        ie: [[0,1,0,1],[1,1,1,1],[1,1,0,1]]
-
-        
-
-    */
+    
     // we got it 
     //console.log(graphBool);
     postJNVis(graphBool, building);
+
+    return rms;
+}
+
+// New replacement printPingResult for the new response format
+// [
+//  [[room1-dev1-hn1],[room1-dev2-hn1]],
+//  [[][room2-dev2-hn1]],
+//  ...
+// ],
+// [
+//  [[IP-Addr],[IP-Addr]],
+//  [[][IP-Addr]],
+//  ...
+// ]
+// TODO - replace printPingRequest
+// note index value names are important
+async function printPR2(formPing, building) {
+    let hns = formPing[0];
+    let ips = formPing[1];
+
+    let graphBool = [];
+    let tmpBool = [];
+
+    let printHostnames = "";
+    let printIps       = "";
+    let rms = [];
+
+    let rooms   = await getRooms(building);
+    let bAbbrev = await getAbbrev(building);
+    
+    // Iterate over each room in hns
+    for (var j = 0; j < hns.length; j++) {
+        printHostnames = "";
+        printIps       = "";
+        tmpBool = [];
+        updateConsole("---------");
+        updateConsole(bAbbrev + " " + rooms[j]);
+        rms.push(bAbbrev + " " + rooms[j]);
+        // Iterate over the device type in each room in each hn
+        for (var a=0; a < hns[j].length; a++) {
+            // Iterate over each hostname in a given device type
+            for (var k=0; k < hns[j][a].length; k++) {
+                // if hostname contains room#
+                //   add to printout hostname line
+                //   add corresponding ip
+                //console.log("JN-Debug: Hostname", hns[j][a][k])
+                if(hns[j][a][k].includes(pad(rooms[j], 4))) {
+                    printHostnames += pad(hns[j][a][k], 15, " ") + "|";
+                    printIps       += pad(ips[j][a][k], 15, " ") + "|";
+                }
+            }
+        }
+        updateConsole("Hostnames: " + printHostnames);
+        updateConsole("IP's     : " + printIps);
+        graphBool.push(tmpBool)
+    }
+    // we got it 
+    postJNVis2(hns, ips, building);
 
     return rms;
 }
@@ -364,6 +428,7 @@ async function runSearch() {
     // get user-selection
     const building = await getSelectedBuilding();
     const devices  = getSelectedDevices();
+    const deviceNames = getSelDevNames(devices);
 
     // Variables
     let totalNumDevices =  0; // count
@@ -375,14 +440,14 @@ async function runSearch() {
     var bdl = [];
 
     // tell the user what they did
-    updateConsole("Selected Devices:\n" + devices);
+    updateConsole("Selected Devices:\n" + deviceNames);
     updateConsole("Searching " + building);
     // updateConsole("Total Devices:\n" + totalNumDevices);
 
     // Check All Buildings Flag
     if (building == "All Buildings") {
         bdl = await getBuildingList();
-        // STOP THE USER HERE AND ASK ARE YOU SURE.
+        // TODO: STOP THE USER HERE AND ASK ARE YOU SURE.
         // await abPrompt();
     } else {
         bdl = [building];
@@ -392,7 +457,15 @@ async function runSearch() {
     for (var i = 0; i < bdl.length; i++) {
         updateConsole("=-+-+-+-=\n Now Searching " + bdl[i] + "\n=-+-+-+-=");
         pingResult = await pingpong(devices, bdl[i]);
-        let rms    = await printPingResult(pingResult, bdl[i]);
+        // Expect the structure of ping result to change.
+        console.log("JN-PingResult: ", pingResult);
+        // We will need to introduce a series of functions to handle
+        //  this new structure.
+        let formPR = fixPR(pingResult, devices); 
+        // temp: eventually pingResult will return as this form
+        //let rms    = await printPingResult(pingResult, bdl[i]);
+        let rms   = await printPR2(formPR, bdl[i]);
+
         f_rms = f_rms.concat(rms);
         f_hns = f_hns.concat(pingResult[0]);
         f_ips = f_ips.concat(pingResult[1]);
@@ -426,6 +499,132 @@ async function runSearch() {
 
     return;
 };
+
+// TODO - StructureChange
+/*
+This takes the form from [[hostnames], [ips]]
+to [[hn-dev1],[hn2-dev1, hn2-dev2]],[],[hn4-dev1]][room2]
+This is a nested array where each element is a nested array of device types.
+Strategy:
+ 1. Create a number of slices based on number of rooms.
+    - Find the first element containing a new room.
+    - go through entire array and get out [[room1],[room2],...]
+ 2. Create a number of slices from device types in room.
+    - for each room take turn into [[dev1],[dev2],...]
+ 3. Append above output to output.
+*/
+// NOTE: Additional inputs are required in the event that a device does not exist in the room
+//   but was still one of the selected devices. Meaning, each room has an array for each selected
+//   device.
+// Could adjust this to make sure we get an empty nested array for empty rooms
+//  planning on just leaving such cases out of the visualizer. But when we are receiving responses in this format we will cut this function out and need to add that functionality.
+function fixPR(pingRequest,devices) {
+    output = [];
+    tmpHN = [];
+    tmpIP = []
+    //Init the first room number
+    tmpRoom = pingRequest[0][0].split('-')[1];
+    tmpIndex = 0;
+    devCount = 0;
+    // Number of rooms
+    const N = pingRequest[0].length; // Number of hostnames/Ips
+    // Iterate over hostnames
+    for(var i = 1; i < N; i++) {
+        // Slice inbetween the two '-' signs.
+        if (tmpRoom != pingRequest[0][i].split('-')[1]) {
+            newRoomElement_HN = pingRequest[0].slice(tmpIndex, i);
+            newRoomElement_IP = pingRequest[1].slice(tmpIndex, i);
+            tmpHN.push(newRoomElement_HN);
+            tmpIP.push(newRoomElement_IP)
+            tmpIndex = i;
+            tmpRoom = pingRequest[0][i].split('-')[1];
+        }
+        else if(i == N-1) {
+            newRoomElement_HN = pingRequest[0].slice(tmpIndex, N);
+            newRoomElement_IP = pingRequest[1].slice(tmpIndex, N);
+            tmpHN.push(newRoomElement_HN);
+            tmpIP.push(newRoomElement_IP);
+        }
+        //console.log("JN-PingResultReformat:tmpIndex", tmpIndex);
+    }
+    //console.log("JN-PingResultReformat:tmpHN", tmpHN);
+    //console.log("JN-PingResultReformat:tmpIP", tmpIP);
+
+    outputHN = [];
+    outputIP = [];
+    // Iterate over each room in tmpHN
+    for(var j = 0; j < tmpHN.length; j++) {
+        tmpRoomHN = [];
+        tmpRoomIP = [];
+        //iterate through devices Booleans
+        for(var x = 0; x < devices.length; x++) {
+            // If we are looking for a device
+            if(devices[x]) {
+                tmpDevHN = [];
+                tmpDevIP = [];
+                // Iterate through each item in a room in tmpHN
+                for(var k = 0; k < tmpHN[j].length; k++) {
+                    // Get current hostname device type
+                    tmpIndex = tmpHN[j][k].split('-').pop().slice(0,-1); // ie: PROC
+                    //console.log("JN-DEBUG: Looking at ", tmpHN[j][k],"indexes(j,x,k): ", j,x,k, "tmpIndex: ", tmpIndex);
+                    switch(x) {
+                        case 0: //Processor and so on
+                            if(tmpIndex == "PROC") {
+                                //console.log("Pushing Proc HN/IP");
+                                tmpDevHN.push(tmpHN[j][k]);
+                                tmpDevIP.push(tmpIP[j][k]);
+                            }
+                            break;
+                        case 1:
+                            if(tmpIndex == ("PROJ" || "PJ")) {
+                                //console.log("Pushing Projector HN/IP");
+                                tmpDevHN.push(tmpHN[j][k]);
+                                tmpDevIP.push(tmpIP[j][k]);
+                            }
+                            break;
+                        case 2:
+                            if(tmpIndex == "DISP") {
+                                tmpDevHN.push(tmpHN[j][k]);
+                                tmpDevIP.push(tmpIP[j][k]);
+                            }
+                            break;
+                        case 3:
+                            if(tmpIndex == "WS") {
+                                tmpDevHN.push(tmpHN[j][k]);
+                                tmpDevIP.push(tmpIP[j][k]);
+                            }
+                            break;
+                        case 4:
+                            if(tmpIndex == "TP") {
+                                tmpDevHN.push(tmpHN[j][k]);
+                                tmpDevIP.push(tmpIP[j][k]);
+                            }
+                            break;
+                        case 5:
+                            if(tmpIndex == "CMIX") {
+                                tmpDevHN.push(tmpHN[j][k]);
+                                tmpDevIP.push(tmpIP[j][k]);
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                    //console.log("JN-Debug: Current tmpDevHN: ", tmpDevHN);
+                }
+                // Add array of devices found in room (could be empty)
+                tmpRoomHN.push(tmpDevHN);
+                tmpRoomIP.push(tmpDevIP);
+            }
+        }
+        outputHN.push(tmpRoomHN);
+        outputIP.push(tmpRoomIP);
+    }
+    // Bring it all together
+    output.push(outputHN);
+    output.push(outputIP);
+    console.log("JN-Request Reformat Output: ", output);
+    return output;
+}
 
 /*
 $$\   $$\ $$$$$$$$\ $$\      $$\ $$\       
@@ -463,21 +662,28 @@ function updateConsole(text) {
     return;
 };
 
-// add a building tile
+// add a building visualization tile
+// TODO - Replace this function w/ new better system
 async function postJNVis(graphBool, building) {
+    // Init Visualizer Tile
     let vis_container = document.createElement('div');
     vis_container.classList.add('vis_container');
+    // !--! List of rooms/devices in newly pinged building 
+    let rooms      = await getRooms(building);
+    const devices  = getSelDevNames(await getSelectedDevices());
+    // EX: devices -> ["Processors", "Ceiling Mics"]
+    console.log("JN-Visualizing building (OLD): ", building, " for ", devices);
+    //console.log("JN-GraphBool: ", graphBool)
 
-    //vis_container.innerHTML = `<p class=visHeader> ${building} </p>`;
-    // !! get list of rooms in the building 
-    let rooms   = await getRooms(building);
-
-    const devices  = await getSelectedDevices();
-    let numDevices = devices.length; // NEEDS TO BE CORRECT AND DYNAMIC
+    let numDevices = devices.length;
+    // Where is num Devices used?
 
     let HTML_visList = `<p class=visHeader> ${building} </p>`;
 
     let HTML_tmp_visTile = `<div class=visTile>`;
+
+    //TODO - create div class = visIndex
+    //   Contains <ul>Index<li>devices[1]</li><\ul>
 
     for (var i = 0; i < graphBool.length; i++) { // iterating room
         HTML_tmp_visTile += `<ul class=rmColumn> ${rooms[i]}`;
@@ -498,6 +704,149 @@ async function postJNVis(graphBool, building) {
     vis_container.innerHTML = HTML_visList;
     //vis_container.innerHTML += `</p>`;
 
+    let progGuts = document.querySelector('.program_board .program_guts');
+    progGuts.append(vis_container);
+    return;
+}
+// Helpers
+function closeVisTab(tabID) {
+    // get document select by ID.
+    // remove from dom. see clear console button function
+    let visObj = document.getElementById("tile"+tabID)
+    visObj.remove();
+    return;
+}
+
+function minimizeVisTab(tabID) {
+    // minimze tab
+    // add a tag to the element with the class name "visTile"
+    let visObj = document.getElementById(tabID);
+    if (visObj.classList.contains("hideVisTile")) {
+        visObj.classList.remove("hideVisTile");
+        // closeIcon.style.display = "none";
+        // menuIcon.style.display = "block";
+    } else {
+        visObj.classList.add("hideVisTile");
+        // closeIcon.style.display = "block";
+        // menuIcon.style.display = "none";
+    }
+    return;
+}
+
+// TODO - Make this unique
+function genTileID(building, devices) {
+    return building;
+}
+// Rewrite for visualizer
+// Takes a nested array(rooms) of nested arrays(deviceType) for hns and ips
+// This is where we post some visualizations
+// Put together visualizer information
+// TO-DO:
+    /*      GOAL:
+                            * BUILDING *         |x| |
+                                ---                  |
+        ROOOOM |#1 |#2 |#3|     ...     #9999        |
+        ---------------------------------------------
+          proc |o  |o  |o |                          |
+            pj |x o|   |  |                          |
+          disp |   |o o|o |                          |
+            ws |x  |o  |  |                          |
+            tp |o  |o  |o |                          |
+        ---------------------------------------------
+        Need some nested booleans array for each room
+        ie: 
+        TODO - Format graphBool and handling of it here.
+        graphBool:
+            [[1],[0,1],[],[0],[1]],
+            [[1],[],[1,1],[1],[1]],
+            [[1],[],[1],[],[1]],
+             ...]
+        building: AG
+    */
+// Note, instead of booleans, I want the full object so I can implement an on hover show hostname/ip
+// Note: I do not believe rooms w/o devices will appear. This is because the temp struct
+//  change does not include it (can't easily find rooms that are not in the response).
+//  However, they will be included in the incoming updated response, make sure that is
+//  accounted for.
+async function postJNVis2(hns, ips, building) {
+    // Init Visualizer Tile
+    let vis_container = document.createElement('div');
+    vis_container.classList.add('vis_container2');
+    
+    // !--! List of rooms/devices in newly pinged building 
+    let rooms           = await getRooms(building);
+    const devicesNames  = getSelDevNames(await getSelectedDevices());
+    // What are we doing right now?
+    console.log("JN-Visualizing building: ", building, " for ", devicesNames);
+    // - Build our tile HTML block 
+    //          TODO- Add tag for vis container
+    // hash - building name/results back/time.
+    //   Give this as an ID,
+    let tileID = genTileID(building, devicesNames);
+    vis_container.id = "tile" + tileID;
+    //  - TODO - Add minimize and close buttons
+    /*
+    Need two new new buttons and the close will need a unique identifier for each tab. see tag/ID todo above
+    */
+    
+    let HTML_visHeader = `<div class="visHeader2"> ${building} <button class="visButton" onclick="closeVisTab(\'${tileID}\')"> x </button><button class="visButton" onclick="minimizeVisTab(\'${tileID}\')"> _ </button></div>`;
+
+    // - Build an index section/left hand side, lists all devices searched for.
+    let HTML_visIndex = `<ul class="visIndex"> <li class="visIndexItemHead"> Room # </li>`;
+    for(var i = 0; i < devicesNames.length; i++) {
+        HTML_visIndex += `<li class="visIndexItem"> ${devicesNames[i]} </li>`;
+    }
+    HTML_visIndex += `</ul>`;
+    // - Build each room collumn. Nested ul.
+    /*  BUILDING THIS HTML BLOCK
+    <ul class=visRooms> ROOM#
+        <ul class = visRoomDeviceList>
+            <li class=visRoomDeviceItem>0</li>   : + OnHover "Hostname: {}\n IP: {}"
+        </ul>
+        <ul class=visRoomDeviceList>
+            <li>...</li>
+        </ul>
+        ...
+    </ul>
+    */
+    let bool_ipFound = true;
+    let HTML_visRooms = `<ul class="visTile"  id=\"${tileID}\">`;
+    HTML_visRooms += `<li>` + HTML_visIndex + `</li>`;
+    let HTML_visRoomEntry = ``;
+    // For each room in hn
+    for(var j = 0; j < hns.length; j++) {
+        HTML_visRoomEntry = `<li><ul class=visRooms> <li class="visRoomHead"><p class=visRoomHeadText>${rooms[j][0] == 0 ? rooms[j].slice(1) : rooms[j]}</p></li>`;
+        // For each device type in a room
+        for(var a = 0; a < hns[j].length; a++) {
+            HTML_visRoomEntry += `<li class="visRoomDevice"><ul class="visRoomDeviceList">`
+            // for each hostname in each kind of type
+            for(var k = 0; k < hns[j][a].length; k++) {
+                // Did we find it?
+                if(ips[j][a][k] == "x") {
+                    bool_ipFound = false;
+                } else {
+                    bool_ipFound = true;
+                }
+                // Positive Hit
+                if (bool_ipFound) {
+                    HTML_visRoomEntry += `<li class="visRoomDeviceItem visTrue" title="Hostname: ${hns[j][a][k]}\n            IP: ${ips[j][a][k]}"> _ </li>`;
+                } else { // Negative Hit
+                    HTML_visRoomEntry += `<li class="visRoomDeviceItem visFalse" title="${hns[j][a][k]} not found"> _ </li>`;
+                }
+            }
+            // If there are no hostnames
+            if (hns[j][a].length == 0) {
+                HTML_visRoomEntry += `<li class="visRoomDeviceItem" title="No Device in Inventory">_</li>`;
+            }
+            HTML_visRoomEntry += `</ul></li>`;
+        }
+        HTML_visRoomEntry += `</ul></li>`;
+        HTML_visRooms += HTML_visRoomEntry;
+    }
+    HTML_visRooms += `</ul>`;
+    // Put it all together
+    vis_container.innerHTML = HTML_visHeader + HTML_visRooms;
+    // Put it on the page
     let progGuts = document.querySelector('.program_board .program_guts');
     progGuts.append(vis_container);
     return;
@@ -600,7 +949,7 @@ async function setJackNet() {
         <fieldset class="jn_fieldset">
             <legend> 
                 Console Output: </legend>
-            <textarea readonly rows="30" cols ="75" class="innerConsole" name="consoleOutput" spellcheck="false"> 
+            <textarea readonly rows="15" cols ="75" class="innerConsole" name="consoleOutput" spellcheck="false"> 
                 Console: JackNet Example
             </textarea>
         </fieldset>`;
