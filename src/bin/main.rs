@@ -682,9 +682,28 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 
 */
 
+/*
+execute_ping()
+--
+NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
+      CAMPUS_STR -> "html-css-js/campus.json"
+
+TO-DO:
+   [ ] - Consider returning a building as follows
+        [[[room1-proc],[room1-pj1,room1-pj2],[],[room1-tp]],
+        [[room2-proc],[],[room2-disp1, room2-disp2],[room2-tp]]]
+          The hashmap will utilize this structure to some extent. 
+          The structure of this return is important.
+          It is currently returning a massive list of every hostname
+          and ip within a building. This will turn it into a nested
+          vector of nested vectors. The front-end (jacknet.js) is
+          not written to handle this structure and will need
+          to be able to.
+*/
 // call ping_this executible here
 fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<u8> {
     // Prep Request into Struct
+<<<<<<< api
     let pr: PingRequest = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
         .expect("Fatal Error 2: Failed to parse ping request");
 
@@ -705,6 +724,31 @@ fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<
         for hn_group in 0..rooms_to_ping[rm].hostnames.len() { // make this ping
             hn_ips.push(Vec::new());
             if dev_map[hn_group] == 0 {
+=======
+    let buff_copy = process_buffer(buffer);
+
+    let pr: PingRequest = serde_json::from_str(&buff_copy)
+        .expect("Fatal Error 2: Failed to parse ping request");
+
+    let bs: BuildingData = serde_json::from_str(CAMPUS_STR)
+        .expect("Fatal Error: Failed to build building data structs");
+
+    // NEED TO PULL HOSTNAMES FROM DATABASE NOW
+    // make array of room names -> [AB 104, AB 105, ...]
+    //    USING BuildingData Struct / front-end request info.
+    // AB -> [AB 104 , AB 105 , ... ]
+    let rooms_to_ping: Vec<String> = gen_rooms(pr.building.clone(), bs);
+    //debug!("JackNet: DevicePingBoolean Array - {:?}", pr.devices);
+    let mut hostnames: Vec<String> = Vec::new();
+    let mut hn_ips: Vec<String> = Vec::new();
+    let mut room_vec: Vec<Vec<String>> = Vec::new();
+
+    //
+    for rm in rooms_to_ping {
+        let rm_info = rooms.get_mut(&rm).expect("error");
+        for hn_group in 0..rm_info.hostnames.len() { // make this ping
+            if pr.devices[hn_group] == 0 {
+>>>>>>> cache
                 continue;
             }
             for hn in &rooms_to_ping[rm].hostnames[hn_group] {
