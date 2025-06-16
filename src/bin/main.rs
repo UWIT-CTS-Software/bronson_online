@@ -8,18 +8,15 @@
 
 Backend
     - main()
-    - clone_map(source: HashMap) -> HashMap
-    - handle_connection(stream: TcpStream, cookie_jar: Arc<Jar>, rooms: HashMap) -> Option
+    - handle_connection(stream: TcpStream, cookie_jar: Arc<Jar>, buildings: HashMap) -> Option
     - process_buffer(buffer: mut [u8]) -> String
     - find_enclosed(s: String, delimeters: (char,char), include_delim: bool) -> String
-    - print_type_of<T>(_: &T)
 
 JackNet
-    - execute_ping(buffer: mut [u8]) -> String
-    - gen_hostnames(sel_devs: Vec<String?, sel_b: String, bd: BuildingData) -> Vec<String>
+    - execute_ping(body: Vec<u8>) -> String
 
 ChkrBrd
-    - construct_headers() -> HeaderMap
+    - construct_headers(call_type: &str, keys: Keys) -> HeaderMap
     - check_schedule(room: Room) -> String
     - check_lsm(room: Room) -> String
 
@@ -30,28 +27,28 @@ CamCode
     - is_this_dir(path: &str) -> bool
     - find_files(building: String, rm: String) -> Vec<String>
     - get_dir_contents(path: &str) -> Vec<String>
-    - get_origin(buffer: mut [u8]) -> String
+    - get_origin(req: Request) -> String
 -- Handlers -----------------------------
-    - cfm_build_dir(buffer: mut [u8]) -> String
-    - cfm_build_rm(buffer: mut [u8]) -> String
-    - get_cfm(buffer: mut [u8]) -> String
-    - get_cfm_file(buffer: mut [u8]) -> String
-    - get_cfm_dir(buffer: mut [u8]) -> String
+    - cfm_build_dir() -> Vec<u8>
+    - cfm_build_rm(body: Vec<u8>) -> String
+    - get_cfm(body: Vec<u8>) -> String
+    - get_cfm_file(body: Vec<u8>) -> String
+    - get_cfm_dir(body: Vec<u8>) -> String
 
 Wiki
-    - w_build_articles(buffer: mut [u8]) -> String
+    - w_build_articles() -> String
 */
 
 // dependencies
 // ----------------------------------------------------------------------------
 use server_lib::{
     Keys,
-    ThreadPool, BuildingData, PingRequest, 
-    Room, ZoneRequest,  
+    ThreadPool, PingRequest, 
+    Room, Building, ZoneRequest, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
-    ZONE_1, ZONE_1_SHORT, ZONE_2, ZONE_2_SHORT, ZONE_3, ZONE_3_SHORT, ZONE_4, ZONE_4_SHORT,
-    CAMPUS_STR, CFM_DIR, WIKI_DIR, ROOM_CSV, CAMPUS_CSV, KEYS,
+    ZONE_1, ZONE_1_SHORT, ZONE_2, ZONE_2_SHORT, ZONE_3, ZONE_3_SHORT, ZONE_4, ZONE_4_SHORT, ABBREV_TO_NAME,
+    CFM_DIR, WIKI_DIR, ROOM_CSV, CAMPUS_CSV, KEYS,
     Request, Response, STATUS_200, STATUS_303, STATUS_404,
 };
 use getopts::Options;
@@ -65,18 +62,14 @@ use std::{
     },
     time::{ Duration, SystemTime },
     string::{ String, },
-    borrow::{ Borrow, },
     clone::{ Clone, },
     option::{ Option, },
     collections::{ HashMap, },
-    hash::{ Hash, },
-    fmt::{ Debug, },
-    convert::{ TryFrom, },
 };
 use reqwest::{ 
     header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
-use log::{ debug, error, info, trace, warn, };
+use log::{ debug, info, }; // error, trace, warn, };
 use cookie::{ Cookie, };
 use csv::{ Reader, };
 use local_ip_address::{ local_ip, };
@@ -116,6 +109,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(m) => { m }
         Err(f) => { panic!("{}", f.to_string()) }
     };
+    
     if matches.opt_present("d") {
         init_logger("debug")?;
     } else {
@@ -123,7 +117,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // generate rooms HashMap
-    let rooms = gen_hashmap();
+    let buildings = gen_building_map();
     
     // set TcpListener and initalize
     // ------------------------------------------------------------------------
@@ -153,11 +147,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
-        let clone_rooms = clone_map(&rooms);
+        let clone_bldg = buildings.clone();
         let clone_keys = keys.clone();
 
         pool.execute(move || {
-            handle_connection(stream, clone_rooms, clone_keys);
+            handle_connection(stream, clone_bldg, clone_keys);
         });
     }
 
@@ -190,8 +184,15 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
     return Ok(());
 }
 
-fn gen_hashmap() -> HashMap<String, Room> {
+fn gen_building_map() -> HashMap<String, Building> {
     let room_filter = Regex::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
+    let abbrev_map: HashMap<String, Vec<String>> = {
+        let mut map: HashMap<String, Vec<String>> = HashMap::new();
+        for entry in ABBREV_TO_NAME {
+            map.insert(String::from(entry.0), vec![String::from(entry.1), String::from(entry.2)]);
+        }
+        map
+    };
 
     let mut schedules: HashMap<String, Vec<String>> = HashMap::new();
     let schedule_data = File::open(ROOM_CSV).unwrap();
@@ -212,67 +213,64 @@ fn gen_hashmap() -> HashMap<String, Room> {
             schedules.insert(room, schedule);
         }
     }
-    let mut rooms: HashMap<String, Room> = HashMap::new();
+
+    let mut buildings: HashMap<String, Building> = HashMap::new();
     let room_data = File::open(CAMPUS_CSV).unwrap();
     let mut room_rdr = Reader::from_reader(room_data);
     for result in room_rdr.records() {
         let record = result.unwrap();
-        if room_filter.is_match(record.get(0).expect("Empty")) {
+        let room_name = record.get(0).expect("Empty");
+        if room_filter.is_match(room_name) {
             let mut item_vec: Vec<u8> = Vec::new();
-            for i in 1..7 { // Packing item_vec from csv file
+            for i in 1..7 {
                 item_vec.push(record.get(i).expect("-1").parse().unwrap());
             }
 
-            let schedule = if schedules.get(&String::from(record.get(0).expect("Empty"))) == None {
-                Vec::new()
-            } else {
-                schedules.get(&String::from(record.get(0).expect("Empty"))).unwrap().to_vec()
+            let schedule = match schedules.get(&String::from(room_name)) {
+                Some(x) => x.clone(),
+                _       => Vec::<String>::new(),
             };
-
-            // Need to set room hostnames here.
-            // add hostnames and ip addr (empty at first) attributes
-            // function that gen hostnames here
-            let hn_vec = gen_hn(String::from(record.get(0).expect("Empty")), item_vec.clone());
-
+            let hn_vec = gen_hn(String::from(room_name), item_vec.clone());
             let ip_vec = gen_ip(item_vec);
-            // let duration = Duration::from_secs(1_000_000);
-            // let s_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).expect("s_time bad");
 
             let room = Room {
-                name: String::from(record.get(0).expect("Empty")),
+                name: String::from(room_name),
                 hostnames: hn_vec,
                 ips: ip_vec,
                 gp: record.get(7).expect("-1").parse().unwrap(),
-                checked: String::from("2000-01-01T00:00:00Z"),
-                // jn_checked: s_time - duration,
-                schedule: schedule,
+                checked: String::from("2000-01-01"),
+                needs_checked: 1,
+                schedule: schedule.to_vec(),
+                available: 0,
+                until: String::from("Tomorrow")
             };
 
-            rooms.insert(String::from(&room.name), room);
+            let bldg_abbrev = String::from(room_name.split(" ").collect::<Vec<_>>()[0]);
+            let mut building = match buildings.get(&bldg_abbrev) {
+                Some(x) => x.clone(),
+                _       => Building {
+                            name: abbrev_map.get(&bldg_abbrev).unwrap()[0].clone(),
+                            lsm_name: abbrev_map.get(&bldg_abbrev).unwrap()[1].clone(),
+                            abbrev: bldg_abbrev.clone(),
+                            rooms: Vec::<Room>::new()
+                        },
+            };
+
+            building.rooms.push(room);
+            buildings.insert(bldg_abbrev, building.clone());
         }
     }
 
-    return rooms;
-}
+    //debug!("{:?}", buildings);
 
-fn clone_map<
-    'a, String: Eq + Hash + Debug + Clone, 
-    Room: Clone + Debug
-> (
-    source: &'a HashMap<String, Room>
-) -> HashMap<String, Room> where String: Borrow<String> {
-    let mut target: HashMap<String, Room> = HashMap::new();
-    for (k, v) in source.iter() {
-        target.insert(String::from(k.clone()), v.clone());
-    }
-    return target;
+    return buildings;
 }
 
 #[tokio::main]
 #[allow(unused_assignments)]
 async fn handle_connection(
-    mut stream: TcpStream, 
-    mut rooms: HashMap<String, Room>,
+    mut stream: TcpStream,
+    mut buildings: HashMap<String, Building>,
     keys: Keys,
 ) -> Option<()> {
     let mut buffer = [0; 1024];
@@ -375,7 +373,7 @@ async fn handle_connection(
             let contents = json!({
                 "body": "[+] All updated successfully."
             }).to_string().into();
-            rooms = gen_hashmap();
+            buildings = gen_building_map();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -390,7 +388,7 @@ async fn handle_connection(
             let contents = json!({
                 "body": "[+] Map updated successfully."
             }).to_string().into();
-            rooms = gen_hashmap();
+            buildings = gen_building_map();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -421,7 +419,7 @@ async fn handle_connection(
         // login
         "POST /login HTTP/1.1"          => {
             let credential_search = Regex::new(r"uname=(?<user>.*)&psw=(?<pass>[\d\w%]*)").unwrap();
-            let Some(credentials) = credential_search.captures(str::from_utf8(&buffer).expect("Empty")) else { return Option::Some(()) };
+            let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Option::Some(()) };
             let user = String::from(credentials["user"].to_string().into_boxed_str());
             let pass = String::from(credentials["pass"].to_string().into_boxed_str());
             let mut found_user: bool = false;
@@ -450,7 +448,7 @@ async fn handle_connection(
         },
         "POST /bugreport HTTP/1.1"      => {
             let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
-            let Some(credentials) = credential_search.captures(str::from_utf8(&buffer).expect("Empty")) else { return Option::Some(()) };
+            let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Option::Some(()) };
             let encoded_title = String::from(credentials["title"].to_string().into_boxed_str());
             let mut encoded_desc = String::from(credentials["desc"].to_string().into_boxed_str());
             if encoded_desc == String::from("") {
@@ -492,7 +490,7 @@ async fn handle_connection(
         },
         // Jacknet
         "POST /ping HTTP/1.1"           => {
-            let contents = execute_ping(&mut buffer, &mut rooms); // JN
+            let contents = execute_ping(req.body, buildings); // JN
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -500,40 +498,39 @@ async fn handle_connection(
         "POST /run_cb HTTP/1.1"         => {
             // get zone selection from request and store
             // ----------------------------------------------------------------
-            let buff_string = process_buffer(&mut buffer);
-            let zone_selection: ZoneRequest = serde_json::from_str(&buff_string)
+            let zone_selection: ZoneRequest = serde_json::from_str(String::from_utf8(req.body).unwrap().as_str())
                 .expect("Fatal Error 2: Failed to parse ping request");
 
-            let mut buildings: Vec<&str> = Vec::new();
+            let mut building_names: Vec<&str> = Vec::new();
             let mut parent_locations: Vec<&str> = Vec::new();
             if zone_selection.zones.clone().into_iter().find(|x| x == "1") == Some("1".to_string()) {
-                buildings.extend(&ZONE_1_SHORT);
+                building_names.extend(&ZONE_1_SHORT);
                 parent_locations.extend(&ZONE_1);
             }
             if zone_selection.zones.clone().into_iter().find(|x| x == "2") == Some("2".to_string()) {
-                buildings.extend(&ZONE_2_SHORT);
+                building_names.extend(&ZONE_2_SHORT);
                 parent_locations.extend(&ZONE_2);
             }
             if zone_selection.zones.clone().into_iter().find(|x| x == "3") == Some("3".to_string()) {
-                buildings.extend(&ZONE_3_SHORT);
+                building_names.extend(&ZONE_3_SHORT);
                 parent_locations.extend(&ZONE_3);
             }
             if zone_selection.zones.clone().into_iter().find(|x| x == "4") == Some("4".to_string()) {
-                buildings.extend(&ZONE_4_SHORT);
+                building_names.extend(&ZONE_4_SHORT);
                 parent_locations.extend(&ZONE_4);
             }
             // ----------------------------------------------------------------
             // call for roomchecks in LSM and store
             // ----------------------------------------------------------------
-            for parent_location in parent_locations.into_iter() {
+            let mut return_body: Vec<Building> = Vec::new();
+            for building in building_names.clone().into_iter() {
                 let clone_keys = keys.clone();
                 let url = format!(
-                    r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last7days%22%2CParentLocation%3A%22{}%22%7D", 
-                    parent_location
+                    r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", 
+                    buildings.get(building).unwrap().lsm_name.as_str()
                 );
                 let req = reqwest::Client::builder()
                     .cookie_store(true)
-                    // .cookie_provider(Arc::clone(&cookie_jar))
                     .user_agent("server_lib/1.1.0")
                     .default_headers(construct_headers("lsm", clone_keys))
                     .timeout(Duration::from_secs(15))
@@ -551,38 +548,36 @@ async fn handle_connection(
                               .expect("[-] PAYLOAD ERROR");
 
                 let v: Value = serde_json::from_str(&body).expect("Empty");
+                let mut check_map: HashMap<String, String> = HashMap::new();
                 if v["count"].as_i64() > Some(0) {
-                    for i in 0..v["count"].as_i64().unwrap() {
-                        let check = v["data"].as_array().unwrap()[usize::try_from(i).unwrap()].as_object().unwrap();
-                        if rooms.contains_key(check["LocationName"].as_str().unwrap()) {
-                            let room = rooms.get_mut(&String::from(check["LocationName"].as_str().unwrap()));
-                            room.expect("Empty")
-                                .update_checked(String::from(check["CompletedOn"].as_str().unwrap()));
-                        }
+                    let num_entries = v["count"].as_i64().unwrap();
+                    let checks: &mut Vec<Value> = &mut v["data"].as_array().unwrap().to_vec();
+                    checks.reverse();
+                    for i in 0..num_entries {
+                        let check = checks[i as usize].as_object().unwrap();
+                        check_map.insert(String::from(check["LocationName"].as_str().unwrap()), String::from(check["CompletedOn"].as_str().unwrap()));
                     }
                 }
+
+                for room in &mut buildings.get_mut(building).unwrap().rooms {
+                    if check_map.contains_key(&room.name) {
+                        room.checked = String::from(check_map.get(&room.name).unwrap().split("T").collect::<Vec<&str>>()[0]);
+                        room.needs_checked = check_lsm(room.clone());
+                    }
+                    let schedule_params = check_schedule(room.clone());
+                    room.available = schedule_params.0;
+                    room.until = schedule_params.1;
+                }
+
+                return_body.push(buildings.get(building).unwrap().clone());
             }
             // ----------------------------------------------------------------
 
             // parse rooms map to load statuses for return
             // ----------------------------------------------------------------
-            let mut return_str: String = String::new();
-            let mut return_vec = Vec::new();
-            for (name, room) in rooms.into_iter() {
-                if buildings.iter().any(|e| name.starts_with(e)) {
-                    let available = check_schedule(room.clone());
-                    let checked   = check_lsm(room.clone());
-                    return_str.clear();
-                    return_str.push_str(&name);
-                    return_str.push_str(&checked);
-                    return_str.push_str(&available);
-                    return_vec.push(return_str.clone());
-
-                }
-            }
 
             let json_return = json!({
-                "rooms": return_vec,
+                "cb_body": return_body,
             });
             
             let contents = json_return.to_string().into();
@@ -593,27 +588,27 @@ async fn handle_connection(
         // CamCode
         //  - CamCode - CFM Requests
         "POST /cfm_build HTTP/1.1"      => {
-            let contents = cfm_build_dir(&mut buffer);
+            let contents = cfm_build_dir();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "POST /cfm_build_r HTTP/1.1"    => {
-            let contents = cfm_build_rm(&mut buffer);
+            let contents = cfm_build_rm(req.body);
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "POST /cfm_c_dir HTTP/1.1"      => {
-            let contents = get_cfm(&mut buffer);
+            let contents = get_cfm(req.body);
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "POST /cfm_dir HTTP/1.1"        => {
-            let contents = get_cfm_dir(&mut buffer);
+            let contents = get_cfm_dir(req.body);
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "POST /cfm_file HTTP/1.1"       => {
-            let contents = get_cfm_file(&mut buffer);
+            let contents = get_cfm_file(req.body);
             let mut f = File::open(contents.clone()).unwrap();
             
             let mut file_buffer = Vec::new();
@@ -627,7 +622,7 @@ async fn handle_connection(
         },
         // Wiki
         "POST /w_build HTTP/1.1"        => {
-            let contents = w_build_articles(&mut buffer);
+            let contents = w_build_articles();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -641,31 +636,6 @@ async fn handle_connection(
     stream.flush().unwrap();
     stdout().flush().unwrap();
     return Option::Some(());
-}
-
-// Preps the Buffer to be parsed as json string
-fn process_buffer(buffer: &mut [u8]) -> String {
-    let buff_copy: String = String::from_utf8_lossy(&buffer[..])
-        .to_string();
-
-    // functon that returns first '{' index location and it's '}' location
-    let in_curls = find_enclosed(&buff_copy, (r"\{", r"}"), true);
-    return in_curls;
-}
-
-// used to trim excess info off of the buffer
-fn find_enclosed(s: &String, delimiters: (&str,&str), include_delim: bool) -> String {
-    let search_rule;
-    if include_delim {
-        let search_setup = format!("(?<search_return>{}.*{})", delimiters.0, delimiters.1);
-        search_rule = Regex::new(search_setup.as_str()).unwrap();
-    } else {
-        search_rule = Regex::new(format!("{}(?<search_return>.*){}", delimiters.0, delimiters.1).as_str()).unwrap();
-    }
-
-    let Some(returned_text) = search_rule.captures(s) else { return "Empty".to_string() };
-
-    return returned_text["search_return"].to_string();
 }
 
 #[allow(dead_code)]
@@ -731,8 +701,30 @@ TO-DO:
           to be able to.
 */
 // call ping_this executible here
-fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> Vec<u8> {
+fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<u8> {
     // Prep Request into Struct
+<<<<<<< api
+    let pr: PingRequest = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
+        .expect("Fatal Error 2: Failed to parse ping request");
+
+    // BuildingData Struct
+    //   NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
+    //         CAMPUS_STR -> "html-css-js/campus.json" 
+
+    let rooms_to_ping: &mut Vec<Room> = &mut buildings.get_mut(&pr.building.clone()).unwrap().rooms;
+    let mut hn_ips: Vec<Vec<String>> = Vec::new();
+
+    for rm in 0..rooms_to_ping.len() {
+        let dev_map; 
+        if pr.devices.iter().sum::<u8>() == 0 {
+            dev_map = vec![1,1,1,1,1,1];
+        } else {
+            dev_map = pr.devices.clone();
+        }
+        for hn_group in 0..rooms_to_ping[rm].hostnames.len() { // make this ping
+            hn_ips.push(Vec::new());
+            if dev_map[hn_group] == 0 {
+=======
     let buff_copy = process_buffer(buffer);
 
     let pr: PingRequest = serde_json::from_str(&buff_copy)
@@ -756,46 +748,24 @@ fn execute_ping(buffer: &mut [u8], rooms: &mut HashMap<String, Room>) -> Vec<u8>
         let rm_info = rooms.get_mut(&rm).expect("error");
         for hn_group in 0..rm_info.hostnames.len() { // make this ping
             if pr.devices[hn_group] == 0 {
+>>>>>>> cache
                 continue;
             }
-            for hn in &rm_info.hostnames[hn_group] {
+            for hn in &rooms_to_ping[rm].hostnames[hn_group] {
                 let hn_ip = ping_this(hn.to_string());
-                hn_ips.push(hn_ip);
-                hostnames.push(hn.to_string());
+                hn_ips[hn_group].push(hn_ip);
             }
         }
-        room_vec.push(hostnames.clone());
-        room_vec.push(hn_ips.clone());
         
-        let _ = &rm_info.update_ips(hn_ips);
-
-        hostnames = Vec::new();
+        rooms_to_ping[rm].ips = hn_ips;
         hn_ips = Vec::new();
     }
 
-    // format data into json using serde
-    // Final Prep
-    let mut f_hn = Vec::new();
-    let mut f_ip = Vec::new();
+    buildings.get_mut(&pr.building.clone()).unwrap().rooms = rooms_to_ping.to_vec();
 
-    let room_vec_len = room_vec.len();
-
-    for i in 0..room_vec_len {
-        if i % 2 == 0 {
-            f_hn.append(&mut room_vec[i].clone());
-        } else {
-            f_ip.append(&mut room_vec[i].clone());
-        }
-    }
-
-    // [ ] TODO - Save output / Cache, filter return to only be selected devices
     let json_return = json!({
-        "building": pr.building,
-        "hostnames": f_hn,
-        "ips": f_ip
+        "jn_body": buildings.get(&pr.building.clone()).unwrap(),
     });
-
-    // convert to string and return it
     // Return JSON with ping results
     return json_return.to_string().into();
 }
@@ -839,43 +809,21 @@ fn gen_hn(
             tmp_hn = String::new();
         };
     };
-    debug!("Generated hostnames: {:?}", hostnames);
     return hostnames;
 }
 
 // helper function for packing x's into the hashmap on init
-fn gen_ip(item_vec: Vec<u8>) -> Vec<String> {
+fn gen_ip(item_vec: Vec<u8>) -> Vec<Vec<String>> {
     let mut ips = Vec::new();
-    let mut count = 0;
-    for i in item_vec{
-        count += i;
-    };
-    for _ in 0..count{
-        ips.push("x".to_string());
-    };
-    return ips;
-}
-
-// TODO (AG -> [AG 1, AG 2, ...])
-fn gen_rooms(
-    sel_b: String,
-    bd: BuildingData) -> Vec<String> {
-    // open campus.csv take each record that begins with respective abbreviation. In the event of 'All Buildings' Take the entirty of collumn 1 (Ignore the first row / header). CAMPUS_CSV.
-    let mut rooms = Vec::new();
-    let mut tmp = String::new();
-
-    for item in bd.buildingData { //  For each building in the data
-        if (sel_b == item.name) || (sel_b == "All Buildings") {
-            for j in item.rooms {  // iterate through rooms
-                tmp.push_str(&item.abbrev.clone());
-                tmp.push(' ');
-                tmp.push_str(&j);
-                rooms.push(tmp);
-                tmp = String::new();
-            }
+    let mut ip_groups = Vec::new();
+    for i in item_vec {
+        for _ in 0..i {
+            ips.push("x".to_string());
         }
-    }
-    return rooms;
+        ip_groups.push(ips.clone());
+        ips = Vec::new();
+    };
+    return ip_groups;
 }
 
 /*
@@ -903,7 +851,10 @@ fn construct_headers(call_type: &str, keys: Keys) -> HeaderMap {
     return header_map;
 }
 
-fn check_schedule(room: Room) -> String {
+fn check_schedule(room: Room) -> (u8, String) {
+    let mut available: u8 = 1;
+    let mut until: String = String::from("TOMORROW");
+
     let now = Local::now();
     let day_of_week = match now.date_naive().weekday() {
         Weekday::Mon => "M",
@@ -913,7 +864,6 @@ fn check_schedule(room: Room) -> String {
         Weekday::Fri => "F",
         _            => "?",
     };
-    let return_string = String::from(" | [+] AVAILABLE   | UNTIL TOMORROW");
     let now_str = now.to_string();
     let time_filter = Regex::new(r"(?<hours>[0-9]{2}):(?<minutes>[0-9]{2})").unwrap();
     let time = time_filter.captures(&now_str).unwrap();
@@ -927,36 +877,41 @@ fn check_schedule(room: Room) -> String {
         let adjusted_start: u16 = block_vec[1].parse().unwrap();
         let adjusted_end: u16 = block_vec[2].parse().unwrap();
         if block_vec[0].contains(day_of_week) {
-            let mut f = Vec::new();
             if adjusted_time < adjusted_start {
-                write!(&mut f, " | [+] AVAILABLE   | UNTIL {}:{}", adjusted_start / 100, pad_zero((adjusted_start % 100).to_string(), 2)).unwrap();
-                return String::from_utf8(f).expect("EMPTY");
+                available = 1;
+                until = pad_zero((adjusted_start % 100).to_string(), 2);
+                return (available, until);
             } else if (adjusted_start <= adjusted_time) && (adjusted_time <= adjusted_end) {
-                write!(&mut f, " | [-] UNAVAILABLE | UNTIL {}:{}", adjusted_end / 100, pad_zero((adjusted_end % 100).to_string(), 2)).unwrap();
-                return String::from_utf8(f).expect("EMPTY");
+                available = 0;
+                until = pad_zero((adjusted_end % 100).to_string(), 2);
+                return (available, until);
             }
         }
     }
 
-    return return_string;
+    return (available, until);
 }
 
-fn check_lsm(room: Room) -> String {
+fn check_lsm(room: Room) -> u8 {
+    let needs_checked;
+
     let parsed_checked: DateTime<Local> = room.checked.parse().unwrap();
-    let chopped_checked: Vec<&str> = room.checked.split('T').collect();
     let time_diff: TimeDelta = Local::now() - parsed_checked;
-    let mut d = Vec::new();
     if room.gp == 1 {
         if time_diff.num_seconds() >= 604800 {
-            write!(&mut d, " | [-] NEEDS CHECKED | LAST CHECKED {}", chopped_checked[0]).unwrap();
+            needs_checked = 1;
         } else {
-            write!(&mut d, " | [+] CHECKED       | LAST CHECKED {}", chopped_checked[0]).unwrap();
+            needs_checked = 0;
         }
     } else {
-        write!(&mut d, "--- UNDER CONSTRUCTION ---").unwrap();
+        if time_diff.num_days() >= 30 {
+            needs_checked = 1;
+        } else {
+            needs_checked = 0;
+        }
     }
 
-    return String::from_utf8(d).expect("Empty");
+    return needs_checked;
 }
 
 /*
@@ -1021,9 +976,8 @@ fn get_dir_contents(path: &str) -> Vec<String> {
     return strings;
 }
 
-fn get_origin(buffer: &mut [u8]) -> String {
-    let buff_copy: String = String::from_utf8_lossy(&buffer[..])
-        .to_string();
+fn get_origin(body: Vec<u8>) -> String {
+    let buff_copy: String = String::from_utf8_lossy(&body).to_string();
 
     let bytes = buff_copy.as_bytes();
     let mut ir: usize = 0;
@@ -1063,7 +1017,7 @@ fn get_origin(buffer: &mut [u8]) -> String {
 */
                                              
 //   cfm_build_dir() - post BUILDING dropdown
-fn cfm_build_dir(_buffer: &mut [u8]) -> Vec<u8> {
+fn cfm_build_dir() -> Vec<u8> {
     // Vars
     let mut final_dirs: Vec<String> = Vec::new();
     // Check for CFM_Code Directory
@@ -1092,7 +1046,7 @@ fn cfm_build_dir(_buffer: &mut [u8]) -> Vec<u8> {
 }
 
 // cfm_build_rm() - post ROOM dropdown
-fn cfm_build_rm(buffer: &mut [u8]) -> Vec<u8> {
+fn cfm_build_rm(body: Vec<u8>) -> Vec<u8> {
     let mut final_dirs: Vec<String> = Vec::new();
 
     // Check for CFM_Code Directory
@@ -1101,8 +1055,7 @@ fn cfm_build_rm(buffer: &mut [u8]) -> Vec<u8> {
 
     // Prep buffer into Room List Request Struct
     //     - building
-    let buff_copy: String = process_buffer(buffer);
-    let cfm_rms: CFMRoomRequest = serde_json::from_str(&buff_copy)
+    let cfm_rms: CFMRoomRequest = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
         .expect("Fatal Error 39: Failed to parse cfm room request.");
     
     // Build Directory
@@ -1132,12 +1085,11 @@ fn cfm_build_rm(buffer: &mut [u8]) -> Vec<u8> {
 }
 
 // get_cfm - generate code (Sends list of files to user)
-fn get_cfm(buffer: &mut [u8]) -> Vec<u8> {
+fn get_cfm(body: Vec<u8>) -> Vec<u8> {
     // crestron file manager request (CFMR)
     //   - building
     //   - rm
-    let buff_copy: String = process_buffer(buffer);
-    let cfmr: CFMRequest = serde_json::from_str(&buff_copy)
+    let cfmr: CFMRequest = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
         .expect("Fatal Error 3: Failed to parse cfm request");
     
     // Check CFM_Code Directory
@@ -1159,17 +1111,15 @@ fn get_cfm(buffer: &mut [u8]) -> Vec<u8> {
 // TODO:
 //    [ ] - store selected file as bytes ?
 //    [ ] - send in json as usual ?
-fn get_cfm_file(buffer: &mut [u8]) -> String {
+fn get_cfm_file(body: Vec<u8>) -> String {
     // RequstFile
     //    - filename
 
     // let gr: GeneralRequest = serde_json::from_str(&buff_copy1)
     //     .expect("Fatal Error 49: general Request Failed");
-    let _gr_origin: String = get_origin(buffer);
+    let _gr_origin: String = get_origin(body.clone());
 
-    
-    let buff_copy: String = process_buffer(buffer);
-    let cfmr_f: CFMRequestFile = serde_json::from_str(&buff_copy)
+    let cfmr_f: CFMRequestFile = serde_json::from_str(String::from_utf8(body.clone()).unwrap().as_str())
         .expect("Fatal Error 38: failed to parse filename");
     
     if dir_exists(CFM_DIR) {
@@ -1198,12 +1148,11 @@ fn get_cfm_file(buffer: &mut [u8]) -> String {
 // TODO:
 //    [ ] - store selected file as bytes ?
 //    [ ] - send in json as usual ?
-fn get_cfm_dir(buffer: &mut [u8]) -> Vec<u8> {
+fn get_cfm_dir(body: Vec<u8>) -> Vec<u8> {
     // RequstFile
     //    - filename
     let mut strings = Vec::new();
-    let buff_copy: String = process_buffer(buffer);
-    let cfmr_d: CFMRequestFile = serde_json::from_str(&buff_copy)
+    let cfmr_d: CFMRequestFile = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
         .expect("Fatal Error 38: failed to parse filename");
 
     if dir_exists(CFM_DIR) {
@@ -1242,7 +1191,7 @@ $$  /   \$$ |$$ |$$ | \$$\ $$ |
 \__/     \__|\__|\__|  \__|\__|
 */
 
-fn w_build_articles(_buffer: &mut [u8]) -> Vec<u8> {
+fn w_build_articles() -> Vec<u8> {
     // Vars
     let mut article_vec: Vec<String> = Vec::new();
 
