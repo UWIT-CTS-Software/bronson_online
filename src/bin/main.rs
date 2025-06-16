@@ -702,10 +702,15 @@ TO-DO:
 */
 // call ping_this executible here
 fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<u8> {
+    // debug!("JacknetClientRequest: {:?}", String::from_utf8(body.clone()));
+    let tmp = String::from_utf8(body.clone()).expect("Err, invalid UTF-8");
+    let tmp = tmp.trim_matches(char::from(0));
+    debug!("JacknetClientRequest: {:?}", tmp);
     // Prep Request into Struct
-    let pr: PingRequest = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
+    let pr: PingRequest = serde_json::from_str(tmp)
         .expect("Fatal Error 2: Failed to parse ping request");
 
+    debug!("JacknetPingRequest: {:?}", pr);
     // BuildingData Struct
     //   NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
     //         CAMPUS_STR -> "html-css-js/campus.json" 

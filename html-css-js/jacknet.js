@@ -289,6 +289,7 @@ runSearch()
 */
 
 // Requests ping with device list and building.
+//  jn_body.rooms[i].hostnames
 async function pingpong(devices, building) {
     return await fetch('ping', {
         method: 'POST',
@@ -298,7 +299,7 @@ async function pingpong(devices, building) {
         })
     })
     .then((response) => response.json())
-    .then((json) => {return [json.hostnames, json.ips];});
+    .then((json) => {return json;});
 }
 
 // printPingResult(
@@ -456,12 +457,15 @@ async function runSearch() {
     // do the ping
     for (var i = 0; i < bdl.length; i++) {
         updateConsole("=-+-+-+-=\n Now Searching " + bdl[i] + "\n=-+-+-+-=");
-        pingResult = await pingpong(devices, bdl[i]);
+        b_abbrev = await getAbbrev(bdl[i]);
+        // TODO [ ] - UPDATE PINGPONG TO RETURN HN/IP array
+        pingResult = await pingpong(devices, b_abbrev);
         // Expect the structure of ping result to change.
         console.log("JN-PingResult: ", pingResult);
         // We will need to introduce a series of functions to handle
-        //  this new structure.
-        let formPR = fixPR(pingResult, devices); 
+        //  this new structure. (TRIM THIS)
+        let formPR = formatPingPong(pingResult, devices);
+        //let formPR = fixPR(pingResult, devices); 
         // temp: eventually pingResult will return as this form
         //let rms    = await printPingResult(pingResult, bdl[i]);
         let rms   = await printPR2(formPR, bdl[i]);
@@ -499,6 +503,43 @@ async function runSearch() {
 
     return;
 };
+
+function formatPingPong(PingPongJSON, devices) {
+    // tmp
+    let tmp_hn = [];
+    let tmp_ip = [];
+    let index_weight = 0;
+    // out
+    let out_hn = [];
+    let out_ip = [];
+    //
+    let inner_body = PingPongJSON['jn_body'];
+    let room_list = inner_body['rooms'];
+    for(var i = 0; i < room_list.length; i++) {
+        index_weight = 0;
+        // get hn/ip and trim uncalled devices
+        tmp_hn = room_list[i]['hostnames'];
+        tmp_ip = room_list[i]['ips'];
+        // iterate through devices and if 0, slice
+        for(var j = 0; j < devices.length; j++) {
+            if (!devices[j]) {
+                //console.log("JN-Removing uncalled device type");
+                tmp_hn.splice(j - index_weight, 1);
+                tmp_ip.splice(j - index_weight, 1);
+                index_weight++;
+            }
+        }
+        // push to output arrays
+        out_hn.push(tmp_hn);
+        out_ip.push(tmp_ip);
+    }
+    // check output
+    console.log(out_hn);
+    console.log(out_ip);
+    // output
+    let new_PR = [out_hn, out_ip];
+    return new_PR;
+}
 
 // TODO - StructureChange
 /*
