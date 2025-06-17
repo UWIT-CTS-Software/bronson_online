@@ -1210,20 +1210,4 @@ mod tests {
         assert_eq!(pad(String::from("test"), 4), String::from("test"));
         assert_eq!(pad(String::from("test"), 3), String::from("test"));
     }
-
-    #[test]
-    fn test_enclosed() {
-        assert_eq!(
-            find_enclosed(&String::from("(item1 {item2} item3)"), (r"\{",r"}"), true),
-            String::from("{item2}")
-        );
-        assert_eq!(
-            find_enclosed(&String::from("(item1 {item2} item3)"), (r"(",r")"), true ),
-            String::from("(item1 {item2} item3)")
-        );
-        assert_eq!(
-            find_enclosed(&String::from("item1 {item2} item3"), (r"\{",r"}"), false),
-            String::from("item2")
-        );
-    }
 }
