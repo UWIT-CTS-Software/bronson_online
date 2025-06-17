@@ -25,7 +25,7 @@ class Cookie {
 // we need a way to get a list of rooms in a zone to do
 // so.
 async function getCheckerboardByZone(zone_array) {
-    await fetch('run_cb', {
+    return await fetch('run_cb', {
         method: "POST",
         body: JSON.stringify({
             zones: zone_array,
@@ -41,41 +41,65 @@ async function getCheckerboardByZone(zone_array) {
 //   the change here would simply be it not being a for loop.
 function printCBResponse(JSON) {
     let rooms = [];
-    // HTML
-    let consoleObj = document.querySelector('.cb_console');
     // 
+    let consoleObj = document.querySelector('.cb_console');
+    //
+    let innerHTML = `<fieldset class="cb_fieldset">
+            <legend>
+                Console Output: </legend>`;
+    //
     let buildings = JSON['cb_body'];
+    // Start building output
+    let cbVisContainer = document.createElement('div');
+    cbVisContainer.classList.add('cbVisContainer');
     // Iterating through each building
     for(var i = 0; i < buildings.length; i++) {
-        // Start building output
-        let cbContainter = document.createElement('div');
-        cbContainter.classList.add('cbVisContainer');
+        //cbVisContainer = `<div class=cb>`;
         // Building Name
         HTML_cbBuildingHeader = `<div class="cbVisHeader"> ${buildings[i]['name']} (${buildings[i]['abbrev']}) </div>`;
         console.log(buildings[i]);
         // Start the room processing
         let rooms = buildings[i]['rooms'];
-        let HTML_cbVisRooms = ``;
-        let HTML_cbVisRoomTmp = ``;
+        let HTML_cbVisRooms = `<ul class="cbVisRooms">`;
+        //let HTML_cbVisRoomTmp = ``;
         // Iterating through each room in a building
         for(var j = 0; j < rooms.length; j++) {
-            let cbRoomEntry = document.createElement('div');
-            cbRoomEntry.classList.add('cbVisRoomName');
+            // let cbRoomEntry = document.createElement('div');
+            // cbRoomEntry.classList.add('cbVisRoom');
+            let cbRoomEntry = `<li class=cbVisRoom>`;
             // Maybe add some generalPool/DepartmentShared indicator
-            cbRoomEntry.innerHTML = `${rooms[j]['name']}`;
+            cbRoomEntry += `<p class="cbVisRoomName">${rooms[j]['name']} </p>`;
+            //  - ROOM ATTRIBUTES
+            cbRoomEntry += `<ul class="cbVisRoomAttributes">`
             // Does it need checked?
             //  NOTE: end of day but pick up from here.
+            let check_date = rooms[j]['checked'].split('T')[0];
             if(rooms[j]['needs_checked']) {
-                console.log("room needs checked")
+                //console.log("room needs checked");
+                cbRoomEntry += `<li><span class="cbVisNotChecked"> Room Needs Checked! (${check_date})</span></li>`;
+            } else {
+                cbRoomEntry += `<li><span class="cbVisChecked"> Recently Checked! (${check_date})</span></li>`;
             }
             // Is available ?
             if(rooms[j]['available']) {
-                console.log("room is available");
+                //console.log("room is available");
+                cbRoomEntry += `<li><span class="cbVisAvailable"> Available Until ${rooms[j]['until']} </span></li>`;
+            } else { 
+                cbRoomEntry += `<li><span class="cbVisNotAvailable"> Unavailable Until ${rooms[j]['until']} </span></li>`;
             }
+            cbRoomEntry += `</ul>`;
+            cbRoomEntry += `</li>`;
+            HTML_cbVisRooms += cbRoomEntry;
         }
+        HTML_cbVisRooms += `</ul>`;
         // Send a processed building to the page
-        // FUNC
+        // FUNC (?)
+        // HTML
+        cbVisContainer.innerHTML += HTML_cbBuildingHeader + HTML_cbVisRooms
     }
+    innerHTML += cbVisContainer.innerHTML
+    innerHTML += `</fieldset>`;
+    consoleObj.innerHTML = innerHTML;
     return;
 }
 

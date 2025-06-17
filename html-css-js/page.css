@@ -822,6 +822,45 @@ img.background {
     color: rgb(236, 200, 101);
 }
 
+/* New classes from checkerboard overhaul*/ 
+.cbVisContainer {
+
+}
+
+.cbVisHeader { 
+/* BUILDING NAME */
+}
+
+.cbVisRooms {
+    /* CONTAINS ALL ROOMS, maybe should be a list, not sure */
+}
+
+.cbVisRoom {
+/* CONTAINS A ROOM IN A BUILDING */
+}
+
+.cbVisRoomName {
+
+}
+/* CB room spans */
+.cbVisNotChecked {
+    
+}
+
+.cbVisChecked {
+
+}
+
+.cbVisAvailable {
+
+}
+
+.cbVisNotAvailable {
+
+}
+
+
+
 /* CamCode Defifnitions 
    _____                 _____          _      
   / ____|               / ____|        | |     

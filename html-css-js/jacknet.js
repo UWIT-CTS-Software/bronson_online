@@ -559,113 +559,113 @@ Strategy:
 //   device.
 // Could adjust this to make sure we get an empty nested array for empty rooms
 //  planning on just leaving such cases out of the visualizer. But when we are receiving responses in this format we will cut this function out and need to add that functionality.
-function fixPR(pingRequest,devices) {
-    output = [];
-    tmpHN = [];
-    tmpIP = []
-    //Init the first room number
-    tmpRoom = pingRequest[0][0].split('-')[1];
-    tmpIndex = 0;
-    devCount = 0;
-    // Number of rooms
-    const N = pingRequest[0].length; // Number of hostnames/Ips
-    // Iterate over hostnames
-    for(var i = 1; i < N; i++) {
-        // Slice inbetween the two '-' signs.
-        if (tmpRoom != pingRequest[0][i].split('-')[1]) {
-            newRoomElement_HN = pingRequest[0].slice(tmpIndex, i);
-            newRoomElement_IP = pingRequest[1].slice(tmpIndex, i);
-            tmpHN.push(newRoomElement_HN);
-            tmpIP.push(newRoomElement_IP)
-            tmpIndex = i;
-            tmpRoom = pingRequest[0][i].split('-')[1];
-        }
-        else if(i == N-1) {
-            newRoomElement_HN = pingRequest[0].slice(tmpIndex, N);
-            newRoomElement_IP = pingRequest[1].slice(tmpIndex, N);
-            tmpHN.push(newRoomElement_HN);
-            tmpIP.push(newRoomElement_IP);
-        }
-        //console.log("JN-PingResultReformat:tmpIndex", tmpIndex);
-    }
-    //console.log("JN-PingResultReformat:tmpHN", tmpHN);
-    //console.log("JN-PingResultReformat:tmpIP", tmpIP);
+// function fixPR(pingRequest,devices) {
+//     output = [];
+//     tmpHN = [];
+//     tmpIP = []
+//     //Init the first room number
+//     tmpRoom = pingRequest[0][0].split('-')[1];
+//     tmpIndex = 0;
+//     devCount = 0;
+//     // Number of rooms
+//     const N = pingRequest[0].length; // Number of hostnames/Ips
+//     // Iterate over hostnames
+//     for(var i = 1; i < N; i++) {
+//         // Slice inbetween the two '-' signs.
+//         if (tmpRoom != pingRequest[0][i].split('-')[1]) {
+//             newRoomElement_HN = pingRequest[0].slice(tmpIndex, i);
+//             newRoomElement_IP = pingRequest[1].slice(tmpIndex, i);
+//             tmpHN.push(newRoomElement_HN);
+//             tmpIP.push(newRoomElement_IP);
+//             tmpIndex = i;
+//             tmpRoom = pingRequest[0][i].split('-')[1];
+//         }
+//         else if(i == N-1) {
+//             newRoomElement_HN = pingRequest[0].slice(tmpIndex, N);
+//             newRoomElement_IP = pingRequest[1].slice(tmpIndex, N);
+//             tmpHN.push(newRoomElement_HN);
+//             tmpIP.push(newRoomElement_IP);
+//         }
+//         //console.log("JN-PingResultReformat:tmpIndex", tmpIndex);
+//     }
+//     //console.log("JN-PingResultReformat:tmpHN", tmpHN);
+//     //console.log("JN-PingResultReformat:tmpIP", tmpIP);
 
-    outputHN = [];
-    outputIP = [];
-    // Iterate over each room in tmpHN
-    for(var j = 0; j < tmpHN.length; j++) {
-        tmpRoomHN = [];
-        tmpRoomIP = [];
-        //iterate through devices Booleans
-        for(var x = 0; x < devices.length; x++) {
-            // If we are looking for a device
-            if(devices[x]) {
-                tmpDevHN = [];
-                tmpDevIP = [];
-                // Iterate through each item in a room in tmpHN
-                for(var k = 0; k < tmpHN[j].length; k++) {
-                    // Get current hostname device type
-                    tmpIndex = tmpHN[j][k].split('-').pop().slice(0,-1); // ie: PROC
-                    //console.log("JN-DEBUG: Looking at ", tmpHN[j][k],"indexes(j,x,k): ", j,x,k, "tmpIndex: ", tmpIndex);
-                    switch(x) {
-                        case 0: //Processor and so on
-                            if(tmpIndex == "PROC") {
-                                //console.log("Pushing Proc HN/IP");
-                                tmpDevHN.push(tmpHN[j][k]);
-                                tmpDevIP.push(tmpIP[j][k]);
-                            }
-                            break;
-                        case 1:
-                            if(tmpIndex == ("PROJ" || "PJ")) {
-                                //console.log("Pushing Projector HN/IP");
-                                tmpDevHN.push(tmpHN[j][k]);
-                                tmpDevIP.push(tmpIP[j][k]);
-                            }
-                            break;
-                        case 2:
-                            if(tmpIndex == "DISP") {
-                                tmpDevHN.push(tmpHN[j][k]);
-                                tmpDevIP.push(tmpIP[j][k]);
-                            }
-                            break;
-                        case 3:
-                            if(tmpIndex == "WS") {
-                                tmpDevHN.push(tmpHN[j][k]);
-                                tmpDevIP.push(tmpIP[j][k]);
-                            }
-                            break;
-                        case 4:
-                            if(tmpIndex == "TP") {
-                                tmpDevHN.push(tmpHN[j][k]);
-                                tmpDevIP.push(tmpIP[j][k]);
-                            }
-                            break;
-                        case 5:
-                            if(tmpIndex == "CMIX") {
-                                tmpDevHN.push(tmpHN[j][k]);
-                                tmpDevIP.push(tmpIP[j][k]);
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-                    //console.log("JN-Debug: Current tmpDevHN: ", tmpDevHN);
-                }
-                // Add array of devices found in room (could be empty)
-                tmpRoomHN.push(tmpDevHN);
-                tmpRoomIP.push(tmpDevIP);
-            }
-        }
-        outputHN.push(tmpRoomHN);
-        outputIP.push(tmpRoomIP);
-    }
-    // Bring it all together
-    output.push(outputHN);
-    output.push(outputIP);
-    console.log("JN-Request Reformat Output: ", output);
-    return output;
-}
+//     outputHN = [];
+//     outputIP = [];
+//     // Iterate over each room in tmpHN
+//     for(var j = 0; j < tmpHN.length; j++) {
+//         tmpRoomHN = [];
+//         tmpRoomIP = [];
+//         //iterate through devices Booleans
+//         for(var x = 0; x < devices.length; x++) {
+//             // If we are looking for a device
+//             if(devices[x]) {
+//                 tmpDevHN = [];
+//                 tmpDevIP = [];
+//                 // Iterate through each item in a room in tmpHN
+//                 for(var k = 0; k < tmpHN[j].length; k++) {
+//                     // Get current hostname device type
+//                     tmpIndex = tmpHN[j][k].split('-').pop().slice(0,-1); // ie: PROC
+//                     //console.log("JN-DEBUG: Looking at ", tmpHN[j][k],"indexes(j,x,k): ", j,x,k, "tmpIndex: ", tmpIndex);
+//                     switch(x) {
+//                         case 0: //Processor and so on
+//                             if(tmpIndex == "PROC") {
+//                                 //console.log("Pushing Proc HN/IP");
+//                                 tmpDevHN.push(tmpHN[j][k]);
+//                                 tmpDevIP.push(tmpIP[j][k]);
+//                             }
+//                             break;
+//                         case 1:
+//                             if(tmpIndex == ("PROJ" || "PJ")) {
+//                                 //console.log("Pushing Projector HN/IP");
+//                                 tmpDevHN.push(tmpHN[j][k]);
+//                                 tmpDevIP.push(tmpIP[j][k]);
+//                             }
+//                             break;
+//                         case 2:
+//                             if(tmpIndex == "DISP") {
+//                                 tmpDevHN.push(tmpHN[j][k]);
+//                                 tmpDevIP.push(tmpIP[j][k]);
+//                             }
+//                             break;
+//                         case 3:
+//                             if(tmpIndex == "WS") {
+//                                 tmpDevHN.push(tmpHN[j][k]);
+//                                 tmpDevIP.push(tmpIP[j][k]);
+//                             }
+//                             break;
+//                         case 4:
+//                             if(tmpIndex == "TP") {
+//                                 tmpDevHN.push(tmpHN[j][k]);
+//                                 tmpDevIP.push(tmpIP[j][k]);
+//                             }
+//                             break;
+//                         case 5:
+//                             if(tmpIndex == "CMIX") {
+//                                 tmpDevHN.push(tmpHN[j][k]);
+//                                 tmpDevIP.push(tmpIP[j][k]);
+//                             }
+//                             break;
+//                         default:
+//                             break;
+//                     }
+//                     //console.log("JN-Debug: Current tmpDevHN: ", tmpDevHN);
+//                 }
+//                 // Add array of devices found in room (could be empty)
+//                 tmpRoomHN.push(tmpDevHN);
+//                 tmpRoomIP.push(tmpDevIP);
+//             }
+//         }
+//         outputHN.push(tmpRoomHN);
+//         outputIP.push(tmpRoomIP);
+//     }
+//     // Bring it all together
+//     output.push(outputHN);
+//     output.push(outputIP);
+//     console.log("JN-Request Reformat Output: ", output);
+//     return output;
+// }
 
 /*
 $$\   $$\ $$$$$$$$\ $$\      $$\ $$\       
@@ -703,52 +703,52 @@ function updateConsole(text) {
     return;
 };
 
-// add a building visualization tile
-// TODO - Replace this function w/ new better system
-async function postJNVis(graphBool, building) {
-    // Init Visualizer Tile
-    let vis_container = document.createElement('div');
-    vis_container.classList.add('vis_container');
-    // !--! List of rooms/devices in newly pinged building 
-    let rooms      = await getRooms(building);
-    const devices  = getSelDevNames(await getSelectedDevices());
-    // EX: devices -> ["Processors", "Ceiling Mics"]
-    console.log("JN-Visualizing building (OLD): ", building, " for ", devices);
-    //console.log("JN-GraphBool: ", graphBool)
+// // add a building visualization tile
+// // TODO - Replace this function w/ new better system
+// async function postJNVis(graphBool, building) {
+//     // Init Visualizer Tile
+//     let vis_container = document.createElement('div');
+//     vis_container.classList.add('vis_container');
+//     // !--! List of rooms/devices in newly pinged building 
+//     let rooms      = await getRooms(building);
+//     const devices  = getSelDevNames(await getSelectedDevices());
+//     // EX: devices -> ["Processors", "Ceiling Mics"]
+//     console.log("JN-Visualizing building (OLD): ", building, " for ", devices);
+//     //console.log("JN-GraphBool: ", graphBool)
 
-    let numDevices = devices.length;
-    // Where is num Devices used?
+//     let numDevices = devices.length;
+//     // Where is num Devices used?
 
-    let HTML_visList = `<p class=visHeader> ${building} </p>`;
+//     let HTML_visList = `<p class=visHeader> ${building} </p>`;
 
-    let HTML_tmp_visTile = `<div class=visTile>`;
+//     let HTML_tmp_visTile = `<div class=visTile>`;
 
-    //TODO - create div class = visIndex
-    //   Contains <ul>Index<li>devices[1]</li><\ul>
+//     //TODO - create div class = visIndex
+//     //   Contains <ul>Index<li>devices[1]</li><\ul>
 
-    for (var i = 0; i < graphBool.length; i++) { // iterating room
-        HTML_tmp_visTile += `<ul class=rmColumn> ${rooms[i]}`;
-        for (var j = 0; (j < graphBool[i].length); j++){ // iterating devices
-            if (graphBool[i][j] == 0) {
-                HTML_tmp_visTile += `<li class=devVisFalse> ${graphBool[i][j]} </li>`;
-            } else{
-                HTML_tmp_visTile += `<li class=devVisTrue> ${graphBool[i][j]} </li>`;
-            }
-        }
-        HTML_tmp_visTile += `</ul></div>`;
-        HTML_visList += HTML_tmp_visTile;
-        HTML_tmp_visTile = `<div class=visTile>`;
-    }
+//     for (var i = 0; i < graphBool.length; i++) { // iterating room
+//         HTML_tmp_visTile += `<ul class=rmColumn> ${rooms[i]}`;
+//         for (var j = 0; (j < graphBool[i].length); j++){ // iterating devices
+//             if (graphBool[i][j] == 0) {
+//                 HTML_tmp_visTile += `<li class=devVisFalse> ${graphBool[i][j]} </li>`;
+//             } else{
+//                 HTML_tmp_visTile += `<li class=devVisTrue> ${graphBool[i][j]} </li>`;
+//             }
+//         }
+//         HTML_tmp_visTile += `</ul></div>`;
+//         HTML_visList += HTML_tmp_visTile;
+//         HTML_tmp_visTile = `<div class=visTile>`;
+//     }
 
-    HTML_visList += `</p>`;
+//     HTML_visList += `</p>`;
     
-    vis_container.innerHTML = HTML_visList;
-    //vis_container.innerHTML += `</p>`;
+//     vis_container.innerHTML = HTML_visList;
+//     //vis_container.innerHTML += `</p>`;
 
-    let progGuts = document.querySelector('.program_board .program_guts');
-    progGuts.append(vis_container);
-    return;
-}
+//     let progGuts = document.querySelector('.program_board .program_guts');
+//     progGuts.append(vis_container);
+//     return;
+// }
 // Helpers
 function closeVisTab(tabID) {
     // get document select by ID.
