@@ -238,7 +238,8 @@ fn gen_building_map() -> HashMap<String, Building> {
                 hostnames: hn_vec,
                 ips: ip_vec,
                 gp: record.get(7).expect("-1").parse().unwrap(),
-                checked: String::from("2000-01-01"),
+                //checked: String::from("2000-01-01"), // Switched this to DateTime Friendly
+                checked: String::from("2000-01-01T00:00:00Z"),
                 needs_checked: 1,
                 schedule: schedule.to_vec(),
                 available: 0,
@@ -498,8 +499,13 @@ async fn handle_connection(
         "POST /run_cb HTTP/1.1"         => {
             // get zone selection from request and store
             // ----------------------------------------------------------------
-            let zone_selection: ZoneRequest = serde_json::from_str(String::from_utf8(req.body).unwrap().as_str())
-                .expect("Fatal Error 2: Failed to parse ping request");
+            let tmp = String::from_utf8(req.body.clone()).expect("CamCode Err, invalid UTF-8");
+            let tmp = tmp.trim_matches(char::from(0));
+            //
+            let zone_selection: ZoneRequest = serde_json::from_str(tmp)
+                .expect("Failed to build zone request struct");
+            //let zone_selection: ZoneRequest = serde_json::from_str(String::from_utf8(req.body).unwrap().as_str())
+            //    .expect("Fatal Error 2: Failed to parse ping request");
 
             let mut building_names: Vec<&str> = Vec::new();
             let mut parent_locations: Vec<&str> = Vec::new();
@@ -525,9 +531,19 @@ async fn handle_connection(
             let mut return_body: Vec<Building> = Vec::new();
             for building in building_names.clone().into_iter() {
                 let clone_keys = keys.clone();
+                // attempt to fix buildings.get
+                let building_LSMName: &str = &mut buildings.get_mut(building)
+                    .unwrap()
+                    .lsm_name
+                    .as_str();
+                debug!("Checkerboard Debug - building LSM Name:\n{:?}",building_LSMName);
+                // let url = format!(
+                //     r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", 
+                //     buildings.get(building).unwrap().lsm_name.as_str()
+                // );
                 let url = format!(
                     r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", 
-                    buildings.get(building).unwrap().lsm_name.as_str()
+                    building_LSMName
                 );
                 let req = reqwest::Client::builder()
                     .cookie_store(true)
@@ -561,7 +577,11 @@ async fn handle_connection(
 
                 for room in &mut buildings.get_mut(building).unwrap().rooms {
                     if check_map.contains_key(&room.name) {
-                        room.checked = String::from(check_map.get(&room.name).unwrap().split("T").collect::<Vec<&str>>()[0]);
+                        // checked Date format may need changed here
+                        debug!("Checkerboard Debug - checked value: \n{:?}", String::from(check_map.get(&room.name).unwrap()));
+                        //room.checked = String::from(check_map.get(&room.name).unwrap().split("T").collect::<Vec<&str>>()[0]);
+                        room.checked = String::from(check_map.get(&room.name).unwrap());
+                        debug!("Checkerboard Debug - Room struct: \n{:?}", room.clone());
                         room.needs_checked = check_lsm(room.clone());
                     }
                     let schedule_params = check_schedule(room.clone());
@@ -682,12 +702,34 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 
 */
 
+/*
+execute_ping()
+--
+NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
+      CAMPUS_STR -> "html-css-js/campus.json"
+
+TO-DO:
+   [ ] - Consider returning a building as follows
+        [[[room1-proc],[room1-pj1,room1-pj2],[],[room1-tp]],
+        [[room2-proc],[],[room2-disp1, room2-disp2],[room2-tp]]]
+          The hashmap will utilize this structure to some extent. 
+          The structure of this return is important.
+          It is currently returning a massive list of every hostname
+          and ip within a building. This will turn it into a nested
+          vector of nested vectors. The front-end (jacknet.js) is
+          not written to handle this structure and will need
+          to be able to.
+*/
 // call ping_this executible here
 fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<u8> {
+    let tmp = String::from_utf8(body.clone()).expect("Err, invalid UTF-8");
+    let tmp = tmp.trim_matches(char::from(0));
+    debug!("JacknetClientRequest: {:?}", tmp);
     // Prep Request into Struct
-    let pr: PingRequest = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
+    let pr: PingRequest = serde_json::from_str(tmp)
         .expect("Fatal Error 2: Failed to parse ping request");
 
+    debug!("JacknetPingRequest: {:?}", pr);
     // BuildingData Struct
     //   NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
     //         CAMPUS_STR -> "html-css-js/campus.json" 
@@ -850,7 +892,7 @@ fn check_schedule(room: Room) -> (u8, String) {
 
 fn check_lsm(room: Room) -> u8 {
     let needs_checked;
-
+    // Line below produces -> ParseError(TooShort)
     let parsed_checked: DateTime<Local> = room.checked.parse().unwrap();
     let time_diff: TimeDelta = Local::now() - parsed_checked;
     if room.gp == 1 {
@@ -1011,9 +1053,13 @@ fn cfm_build_rm(body: Vec<u8>) -> Vec<u8> {
 
     // Prep buffer into Room List Request Struct
     //     - building
-    let cfm_rms: CFMRoomRequest = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
-        .expect("Fatal Error 39: Failed to parse cfm room request.");
-    
+    let tmp = String::from_utf8(body.clone()).expect("CamCode Err, invalid UTF-8");
+    let tmp = tmp.trim_matches(char::from(0));
+    //let cfm_rms: CFMRoomRequest = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
+    //    .expect("Fatal Error 39: Failed to parse cfm room request.");
+    let cfm_rms: CFMRoomRequest = serde_json::from_str(tmp)
+        .expect("Failed to build CamCode Room Request Struct");
+
     // Build Directory
     let mut path = String::from(CFM_DIR);
     path.push('/');
@@ -1045,9 +1091,13 @@ fn get_cfm(body: Vec<u8>) -> Vec<u8> {
     // crestron file manager request (CFMR)
     //   - building
     //   - rm
-    let cfmr: CFMRequest = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
-        .expect("Fatal Error 3: Failed to parse cfm request");
-    
+
+    //let cfmr: CFMRequest = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
+    //    .expect("Fatal Error 3: Failed to parse cfm request");
+    let tmp = String::from_utf8(body.clone()).expect("CamCode Err, invalid UTF-8");
+    let tmp = tmp.trim_matches(char::from(0));
+    let cfmr: CFMRequest = serde_json::from_str(tmp)
+        .expect("Failed to build cfm request");
     // Check CFM_Code Directory
     if dir_exists(CFM_DIR) {
     }
@@ -1074,9 +1124,14 @@ fn get_cfm_file(body: Vec<u8>) -> String {
     // let gr: GeneralRequest = serde_json::from_str(&buff_copy1)
     //     .expect("Fatal Error 49: general Request Failed");
     let _gr_origin: String = get_origin(body.clone());
-
-    let cfmr_f: CFMRequestFile = serde_json::from_str(String::from_utf8(body.clone()).unwrap().as_str())
-        .expect("Fatal Error 38: failed to parse filename");
+    //
+    let tmp = String::from_utf8(body.clone()).expect("CamCode Err, invalid UTF-8");
+    let tmp = tmp.trim_matches(char::from(0));
+    //
+    let cfmr_f: CFMRequestFile = serde_json::from_str(tmp)
+        .expect("CamCode Err, Failed to grab file");
+    //let cfmr_f: CFMRequestFile = serde_json::from_str(String::from_utf8(body.clone()).unwrap().as_str())
+    //    .expect("Fatal Error 38: failed to parse filename");
     
     if dir_exists(CFM_DIR) {
         // Error handling that never got implemented?
@@ -1108,8 +1163,14 @@ fn get_cfm_dir(body: Vec<u8>) -> Vec<u8> {
     // RequstFile
     //    - filename
     let mut strings = Vec::new();
-    let cfmr_d: CFMRequestFile = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
-        .expect("Fatal Error 38: failed to parse filename");
+    //
+    let tmp = String::from_utf8(body.clone()).expect("CamCode Err, invalid UTF-8");
+    let tmp = tmp.trim_matches(char::from(0));
+    //
+    let cfmr_d: CFMRequestFile = serde_json::from_str(tmp)
+        .expect("CamCode Err, Failed to get dir struct");
+    //let cfmr_d: CFMRequestFile = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
+    //    .expect("Fatal Error 38: failed to parse filename");
 
     if dir_exists(CFM_DIR) {
         // Error handling
