@@ -74,15 +74,19 @@ function setCSVExport(hns, ips, rms) {
 
 // - - -- --- - - CMAPUS.JSON GET INFO FUNCTIONS
 // copy this to extract info from ping response
-async function getData() {
-    return fetch('campus.json')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("HTTP error " + response.status);
-            }
-            return response.json();
-    });
+function getData() {
+    let campJSON = localStorage.getItem("campusJSON");
+    return JSON.parse(campJSON);
 }
+// async function getDataOld() {
+//     return fetch('campus.json')
+//         .then(response => {
+//             if (!response.ok) {
+//                 throw new Error("HTTP error " + response.status);
+//             }
+//             return response.json();
+//     });
+// }
 
 // Returns a list of buildings
 async function getBuildingList() {
