@@ -14,6 +14,7 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
   </head><!-- Javascript  -->
+  <script src="bronson-manager.js" type="text/javascript" charset="utf-8"></script>
   <script src="checkerboard.js" type="text/javascript" charset="utf-8"></script>
   <script src="camcode.js" type="text/javascript" charset="utf-8"></script>
   <script src="cc-altmode.js" type="text/javascript" charset="utf-8"></script>
@@ -96,8 +97,12 @@
       main_container.appendChild(db_container);
       main_container.classList.add('program_guts');
       prog_guts.replaceWith(main_container);
+      // Init sessionStorage
+      initSessionStorage();
       return;
     }
+
+    
 
     // Bug Report form
     function initForm() {

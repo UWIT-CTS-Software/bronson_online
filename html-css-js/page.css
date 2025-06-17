@@ -824,39 +824,69 @@ img.background {
 
 /* New classes from checkerboard overhaul*/ 
 .cbVisContainer {
-
+    margin-bottom:0px;
+    padding-bottom:0px;
 }
 
 .cbVisHeader { 
 /* BUILDING NAME */
+    margin-bottom:0px;
+    padding-bottom:0px;
+    border:#37343e inset 1px;
 }
 
 .cbVisRooms {
     /* CONTAINS ALL ROOMS, maybe should be a list, not sure */
+    margin-top:0px;
+    margin-bottom:0px;
+    padding-top:0px;
+    padding-bottom:0px;
 }
 
 .cbVisRoom {
 /* CONTAINS A ROOM IN A BUILDING */
+    margin:0px;
+    padding:0px;
 }
 
 .cbVisRoomName {
+    margin: 0px;
+    padding:0px;
+}
 
+.cbVisRoomAttributes {
+    margin: 0px;
+    padding:0px;
+    padding-left:5%;
+    color:rgb(224, 191, 100);
 }
 /* CB room spans */
 .cbVisNotChecked {
-    
+    padding-right:6px;
+    background-color: rgb(102, 53, 54);
+    border: rgb(94, 46, 17) inset 2px;
+    border-radius: 5px;
 }
 
 .cbVisChecked {
-
+    padding-right:6px;
+    background-color: rgb(67, 102, 65);
+    border: rgb(33, 39, 33) inset 2px;
+    border-radius: 5px;
 }
 
 .cbVisAvailable {
-
+    padding-right:6px;
+    background-color: rgb(57, 125, 54);
+    border: rgb(33, 39, 33) inset 2px;
+    border-radius: 5px;
 }
 
 .cbVisNotAvailable {
-
+    padding-right:6px;
+    background-color: rgb(139,24,27);
+    border: rgb(94, 46, 17) inset 2px;
+    border-radius: 5px;
 }
 
 

@@ -297,74 +297,84 @@ async fn handle_connection(
     match req.start_line.as_str() {
         // Page Content
         // --------------------------------------------------------------------
-        "GET / HTTP/1.1"                => {
+        "GET / HTTP/1.1"                   => {
             res.status(STATUS_200);
             res.send_file(user_homepage);
         },
-        "GET /page.css HTTP/1.1"        => {
+        "GET /page.css HTTP/1.1"           => {
             res.status(STATUS_200);
             res.send_file("html-css-js/page.css");
         },
-        "GET /index.html HTTP/1.1"      => {
+        "GET /index.html HTTP/1.1"         => {
             res.status(STATUS_200);
             res.send_file("html-css-js/index.html");
         },
-    
-        "GET /camcode.js HTTP/1.1"      => {
+        // Javascript Files
+        "GET /bronson-manager.js HTTP/1.1" => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/bronson-manager.js");
+        },
+        "GET /camcode.js HTTP/1.1"         => {
             res.status(STATUS_200);
             res.send_file("html-css-js/camcode.js");
         },
-        "GET /cc-altmode.js HTTP/1.1"   => {
+        "GET /cc-altmode.js HTTP/1.1"      => {
             res.status(STATUS_200);
             res.send_file("html-css-js/cc-altmode.js");
         },
-        "GET /checkerboard.js HTTP/1.1" => {
+        "GET /checkerboard.js HTTP/1.1"    => {
             res.status(STATUS_200);
             res.send_file("html-css-js/checkerboard.js");
         },
-        "GET /jacknet.js HTTP/1.1"      => {
+        "GET /jacknet.js HTTP/1.1"         => {
             res.status(STATUS_200);
             res.send_file("html-css-js/jacknet.js");
         },
-        "GET /wiki.js HTTP/1.1"         => {
+        "GET /wiki.js HTTP/1.1"            => {
             res.status(STATUS_200);
             res.send_file("html-css-js/wiki.js");
         },
-        "GET /cc-altmode HTTP/1.1"      => {
+        // Tool Homepage Stuff
+        "GET /cc-altmode HTTP/1.1"         => {
             res.status(STATUS_200);
             res.send_file(user_homepage);
             res.insert_onload("setCamcode()");
         },
-        "GET /checkerboard HTTP/1.1"    => {
+        "GET /checkerboard HTTP/1.1"       => {
             res.status(STATUS_200);
             res.send_file(user_homepage);
             res.insert_onload("setChecker()");
         },
-        "GET /jacknet HTTP/1.1"         => {
+        "GET /jacknet HTTP/1.1"            => {
             res.status(STATUS_200);
             res.send_file(user_homepage);
             res.insert_onload("setJackNet()");
         },
-        "GET /wiki HTTP/1.1"            => {
+        "GET /wiki HTTP/1.1"               => {
             res.status(STATUS_200);
             res.send_file(user_homepage);
             res.insert_onload("setWiki()");
         },
-    
-        "GET /campus.json HTTP/1.1"     => {
+        // Data Requests
+        "GET /campus.json HTTP/1.1"        => {
             res.status(STATUS_200);
             res.send_file("data/campus.json");
         },
-    
-        "GET /favicon.ico HTTP/1.1"     => {
+        "POST /zoneData HTTP/1.1" => { // NEW: returns data in lib.rs as json
+            let contents = get_zone_data();
+            res.status(STATUS_200);
+            res.send_contents(contents);
+        },
+        // Assets
+        "GET /favicon.ico HTTP/1.1"        => {
             res.status(STATUS_200);
             res.send_file("assets/logo_main.png");
         },
-        "GET /logo.png HTTP/1.1"        => {
+        "GET /logo.png HTTP/1.1"           => {
             res.status(STATUS_200);
             res.send_file("assets/logo.png");
         },
-        "GET /logo-2-line.png HTTP/1.1" => {
+        "GET /logo-2-line.png HTTP/1.1"    => {
             res.status(STATUS_200);
             res.send_file("assets/logo-2-line.png");
         },
@@ -683,6 +693,30 @@ fn pad_zero(raw_in: String, length: usize) -> String {
     } else {
         return String::from(raw_in);
     }
+}
+
+fn get_zone_data() -> Vec<u8> {
+    let json_return = json!({
+        "zones":[ 
+                {
+                    "name": 1,
+                    "building_list": ZONE_1_SHORT, 
+                },
+                {
+                    "name": 2,
+                    "building_list": ZONE_2_SHORT,
+                },
+                {
+                    "name": 3,
+                    "building_list": ZONE_3_SHORT,
+                },
+                {
+                    "name": 4,
+                    "building_list": ZONE_4_SHORT,
+                }
+            ]
+        });
+    return json_return.to_string().into();
 }
 
 /*
