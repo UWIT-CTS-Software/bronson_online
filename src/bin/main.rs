@@ -507,64 +507,40 @@ async fn handle_connection(
         },
         // Checkerboard
         "POST /run_cb HTTP/1.1"         => {
+            //// --- REWRITE OF RUN_CB, NOW TAKES ONE BUILDING ABBREVIATION ---
             // get zone selection from request and store
             // ----------------------------------------------------------------
             let tmp = String::from_utf8(req.body.clone()).expect("CamCode Err, invalid UTF-8");
-            let tmp = tmp.trim_matches(char::from(0));
-            //
-            let zone_selection: ZoneRequest = serde_json::from_str(tmp)
-                .expect("Failed to build zone request struct");
-            //let zone_selection: ZoneRequest = serde_json::from_str(String::from_utf8(req.body).unwrap().as_str())
-            //    .expect("Fatal Error 2: Failed to parse ping request");
-
-            let mut building_names: Vec<&str> = Vec::new();
-            let mut parent_locations: Vec<&str> = Vec::new();
-            if zone_selection.zones.clone().into_iter().find(|x| x == "1") == Some("1".to_string()) {
-                building_names.extend(&ZONE_1_SHORT);
-                parent_locations.extend(&ZONE_1);
-            }
-            if zone_selection.zones.clone().into_iter().find(|x| x == "2") == Some("2".to_string()) {
-                building_names.extend(&ZONE_2_SHORT);
-                parent_locations.extend(&ZONE_2);
-            }
-            if zone_selection.zones.clone().into_iter().find(|x| x == "3") == Some("3".to_string()) {
-                building_names.extend(&ZONE_3_SHORT);
-                parent_locations.extend(&ZONE_3);
-            }
-            if zone_selection.zones.clone().into_iter().find(|x| x == "4") == Some("4".to_string()) {
-                building_names.extend(&ZONE_4_SHORT);
-                parent_locations.extend(&ZONE_4);
-            }
+            let building_sel = tmp.trim_matches(char::from(0));
+            // An Abbreviaition 
+            //let building_selection: String = serde_json::from_str(tmp)
+            //    .expect("Failed to build zone request struct");
+            debug!("Checkerboard Debug: building selection {:?}", building_sel);
             // ----------------------------------------------------------------
             // call for roomchecks in LSM and store
             // ----------------------------------------------------------------
             let mut return_body: Vec<Building> = Vec::new();
-            for building in building_names.clone().into_iter() {
-                let clone_keys = keys.clone();
-                // attempt to fix buildings.get
-                let building_LSMName: &str = &mut buildings.get_mut(building)
-                    .unwrap()
-                    .lsm_name
-                    .as_str();
-                debug!("Checkerboard Debug - building LSM Name:\n{:?}",building_LSMName);
-                // let url = format!(
-                //     r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", 
-                //     buildings.get(building).unwrap().lsm_name.as_str()
-                // );
-                let url = format!(
-                    r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", 
-                    building_LSMName
-                );
-                let req = reqwest::Client::builder()
-                    .cookie_store(true)
-                    .user_agent("server_lib/1.1.0")
-                    .default_headers(construct_headers("lsm", clone_keys))
-                    .timeout(Duration::from_secs(15))
-                    .build()
-                    .ok()?
-                ;
-    
-                let body = req.get(url)
+            let clone_keys = keys.clone();
+            // attempt to fix buildings.get
+            let building_LSMName: &str = &mut buildings.get_mut(building_sel)
+                .unwrap()
+                .lsm_name
+                .as_str();
+            debug!("Checkerboard Debug - building LSM Name:\n{:?}",building_LSMName);
+            let url = format!(
+                r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", 
+                building_LSMName
+            );
+            let req = reqwest::Client::builder()
+                .cookie_store(true)
+                .user_agent("server_lib/1.1.0")
+                .default_headers(construct_headers("lsm", clone_keys))
+                .timeout(Duration::from_secs(15))
+                .build()
+                .ok()?
+            ;
+
+            let body = req.get(url)
                               .timeout(Duration::from_secs(15))
                               .send()
                               .await
@@ -573,34 +549,33 @@ async fn handle_connection(
                               .await
                               .expect("[-] PAYLOAD ERROR");
 
-                let v: Value = serde_json::from_str(&body).expect("Empty");
-                let mut check_map: HashMap<String, String> = HashMap::new();
-                if v["count"].as_i64() > Some(0) {
-                    let num_entries = v["count"].as_i64().unwrap();
-                    let checks: &mut Vec<Value> = &mut v["data"].as_array().unwrap().to_vec();
-                    checks.reverse();
-                    for i in 0..num_entries {
-                        let check = checks[i as usize].as_object().unwrap();
-                        check_map.insert(String::from(check["LocationName"].as_str().unwrap()), String::from(check["CompletedOn"].as_str().unwrap()));
-                    }
+            let v: Value = serde_json::from_str(&body).expect("Empty");
+            let mut check_map: HashMap<String, String> = HashMap::new();
+            if v["count"].as_i64() > Some(0) {
+                let num_entries = v["count"].as_i64().unwrap();
+                let checks: &mut Vec<Value> = &mut v["data"].as_array().unwrap().to_vec();
+                checks.reverse();
+                for i in 0..num_entries {
+                    let check = checks[i as usize].as_object().unwrap();
+                    check_map.insert(String::from(check["LocationName"].as_str().unwrap()), String::from(check["CompletedOn"].as_str().unwrap()));
                 }
-
-                for room in &mut buildings.get_mut(building).unwrap().rooms {
-                    if check_map.contains_key(&room.name) {
-                        // checked Date format may need changed here
-                        debug!("Checkerboard Debug - checked value: \n{:?}", String::from(check_map.get(&room.name).unwrap()));
-                        //room.checked = String::from(check_map.get(&room.name).unwrap().split("T").collect::<Vec<&str>>()[0]);
-                        room.checked = String::from(check_map.get(&room.name).unwrap());
-                        debug!("Checkerboard Debug - Room struct: \n{:?}", room.clone());
-                        room.needs_checked = check_lsm(room.clone());
-                    }
-                    let schedule_params = check_schedule(room.clone());
-                    room.available = schedule_params.0;
-                    room.until = schedule_params.1;
-                }
-
-                return_body.push(buildings.get(building).unwrap().clone());
             }
+
+            for room in &mut buildings.get_mut(building_sel).unwrap().rooms {
+                if check_map.contains_key(&room.name) {
+                    // checked Date format may need changed here
+                    debug!("Checkerboard Debug - checked value: \n{:?}", String::from(check_map.get(&room.name).unwrap()));
+                    //room.checked = String::from(check_map.get(&room.name).unwrap().split("T").collect::<Vec<&str>>()[0]);
+                    room.checked = String::from(check_map.get(&room.name).unwrap());
+                    debug!("Checkerboard Debug - Room struct: \n{:?}", room.clone());
+                    room.needs_checked = check_lsm(room.clone());
+                }
+                let schedule_params = check_schedule(room.clone());
+                room.available = schedule_params.0;
+                room.until = schedule_params.1;
+            }
+
+            return_body.push(buildings.get(building_sel).unwrap().clone());
             // ----------------------------------------------------------------
 
             // parse rooms map to load statuses for return
@@ -915,7 +890,7 @@ fn check_schedule(room: Room) -> (u8, String) {
                 return (available, until);
             } else if (adjusted_start <= adjusted_time) && (adjusted_time <= adjusted_end) {
                 available = 0;
-                until = pad_zero((adjusted_end % 100).to_string(), 2);
+                until = pad_zero((adjusted_end).to_string(), 4);
                 return (available, until);
             }
         }
