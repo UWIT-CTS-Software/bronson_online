@@ -297,74 +297,93 @@ async fn handle_connection(
     match req.start_line.as_str() {
         // Page Content
         // --------------------------------------------------------------------
-        "GET / HTTP/1.1"                => {
+        "GET / HTTP/1.1"                   => {
             res.status(STATUS_200);
             res.send_file(user_homepage);
         },
-        "GET /page.css HTTP/1.1"        => {
+        "GET /page.css HTTP/1.1"           => {
             res.status(STATUS_200);
             res.send_file("html-css-js/page.css");
         },
-        "GET /index.html HTTP/1.1"      => {
+        "GET /index.html HTTP/1.1"         => {
             res.status(STATUS_200);
             res.send_file("html-css-js/index.html");
         },
-    
-        "GET /camcode.js HTTP/1.1"      => {
+        // Javascript Files
+        "GET /bronson-manager.js HTTP/1.1" => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/bronson-manager.js");
+        },
+        "GET /camcode.js HTTP/1.1"         => {
             res.status(STATUS_200);
             res.send_file("html-css-js/camcode.js");
         },
-        "GET /cc-altmode.js HTTP/1.1"   => {
+        "GET /cc-altmode.js HTTP/1.1"      => {
             res.status(STATUS_200);
             res.send_file("html-css-js/cc-altmode.js");
         },
-        "GET /checkerboard.js HTTP/1.1" => {
+        "GET /checkerboard.js HTTP/1.1"    => {
             res.status(STATUS_200);
             res.send_file("html-css-js/checkerboard.js");
         },
-        "GET /jacknet.js HTTP/1.1"      => {
+        "GET /jacknet.js HTTP/1.1"         => {
             res.status(STATUS_200);
             res.send_file("html-css-js/jacknet.js");
         },
-        "GET /wiki.js HTTP/1.1"         => {
+        "GET /wiki.js HTTP/1.1"            => {
             res.status(STATUS_200);
             res.send_file("html-css-js/wiki.js");
         },
-        "GET /cc-altmode HTTP/1.1"      => {
+        // Tool Homepage Stuff
+        "GET /cc-altmode HTTP/1.1"         => {
             res.status(STATUS_200);
             res.send_file(user_homepage);
             res.insert_onload("setCamcode()");
         },
-        "GET /checkerboard HTTP/1.1"    => {
+        "GET /checkerboard HTTP/1.1"       => {
             res.status(STATUS_200);
             res.send_file(user_homepage);
             res.insert_onload("setChecker()");
         },
-        "GET /jacknet HTTP/1.1"         => {
+        "GET /jacknet HTTP/1.1"            => {
             res.status(STATUS_200);
             res.send_file(user_homepage);
             res.insert_onload("setJackNet()");
         },
-        "GET /wiki HTTP/1.1"            => {
+        "GET /wiki HTTP/1.1"               => {
             res.status(STATUS_200);
             res.send_file(user_homepage);
             res.insert_onload("setWiki()");
         },
-    
-        "GET /campus.json HTTP/1.1"     => {
+        // Data Requests
+        "GET /campus.json HTTP/1.1"        => {
             res.status(STATUS_200);
             res.send_file("data/campus.json");
+        },// --- TODO: Replace campus.json with this call.
+        // "POST /campusData HTTP/1.1"        => {
+        //     let contents = json!({
+        //         "hm_body": buildings.clone().unwrap(),
+        //     });
+        //     res.status(STATUS_200);
+        //     res.send_contents(contents);
+        // },
+        "POST /zoneData HTTP/1.1" => { // NEW: returns data in lib.rs as json
+            let contents = get_zone_data();
+            res.status(STATUS_200);
+            res.send_contents(contents);
         },
-    
-        "GET /favicon.ico HTTP/1.1"     => {
+        // --- TODO: Has the hashmap been updated? If true return the changed pieces
+        //        (caching)
+        // Assets
+        "GET /favicon.ico HTTP/1.1"        => {
             res.status(STATUS_200);
             res.send_file("assets/logo_main.png");
         },
-        "GET /logo.png HTTP/1.1"        => {
+        "GET /logo.png HTTP/1.1"           => {
             res.status(STATUS_200);
             res.send_file("assets/logo.png");
         },
-        "GET /logo-2-line.png HTTP/1.1" => {
+        "GET /logo-2-line.png HTTP/1.1"    => {
             res.status(STATUS_200);
             res.send_file("assets/logo-2-line.png");
         },
@@ -497,34 +516,15 @@ async fn handle_connection(
         },
         // Checkerboard
         "POST /run_cb HTTP/1.1"         => {
+            //// --- REWRITE OF RUN_CB, NOW TAKES ONE BUILDING ABBREVIATION ---
             // get zone selection from request and store
             // ----------------------------------------------------------------
             let tmp = String::from_utf8(req.body.clone()).expect("CamCode Err, invalid UTF-8");
-            let tmp = tmp.trim_matches(char::from(0));
-            //
-            let zone_selection: ZoneRequest = serde_json::from_str(tmp)
-                .expect("Failed to build zone request struct");
-            //let zone_selection: ZoneRequest = serde_json::from_str(String::from_utf8(req.body).unwrap().as_str())
-            //    .expect("Fatal Error 2: Failed to parse ping request");
-
-            let mut building_names: Vec<&str> = Vec::new();
-            let mut parent_locations: Vec<&str> = Vec::new();
-            if zone_selection.zones.clone().into_iter().find(|x| x == "1") == Some("1".to_string()) {
-                building_names.extend(&ZONE_1_SHORT);
-                parent_locations.extend(&ZONE_1);
-            }
-            if zone_selection.zones.clone().into_iter().find(|x| x == "2") == Some("2".to_string()) {
-                building_names.extend(&ZONE_2_SHORT);
-                parent_locations.extend(&ZONE_2);
-            }
-            if zone_selection.zones.clone().into_iter().find(|x| x == "3") == Some("3".to_string()) {
-                building_names.extend(&ZONE_3_SHORT);
-                parent_locations.extend(&ZONE_3);
-            }
-            if zone_selection.zones.clone().into_iter().find(|x| x == "4") == Some("4".to_string()) {
-                building_names.extend(&ZONE_4_SHORT);
-                parent_locations.extend(&ZONE_4);
-            }
+            let building_sel = tmp.trim_matches(char::from(0));
+            // An Abbreviaition 
+            //let building_selection: String = serde_json::from_str(tmp)
+            //    .expect("Failed to build zone request struct");
+            debug!("Checkerboard Debug: building selection {:?}", building_sel);
             // ----------------------------------------------------------------
             // call for roomchecks in LSM and store
             // ----------------------------------------------------------------
@@ -574,22 +574,21 @@ async fn handle_connection(
                     }
                 }
 
-                for room in &mut buildings.get_mut(building).unwrap().rooms {
-                    if check_map.contains_key(&room.name) {
-                        // checked Date format may need changed here
-                        debug!("Checkerboard Debug - checked value: \n{:?}", String::from(check_map.get(&room.name).unwrap()));
-                        //room.checked = String::from(check_map.get(&room.name).unwrap().split("T").collect::<Vec<&str>>()[0]);
-                        room.checked = String::from(check_map.get(&room.name).unwrap());
-                        debug!("Checkerboard Debug - Room struct: \n{:?}", room.clone());
-                        room.needs_checked = check_lsm(room.clone());
-                    }
-                    let schedule_params = check_schedule(room.clone());
-                    room.available = schedule_params.0;
-                    room.until = schedule_params.1;
+            for room in &mut buildings.get_mut(building_sel).unwrap().rooms {
+                if check_map.contains_key(&room.name) {
+                    // checked Date format may need changed here
+                    debug!("Checkerboard Debug - checked value: \n{:?}", String::from(check_map.get(&room.name).unwrap()));
+                    //room.checked = String::from(check_map.get(&room.name).unwrap().split("T").collect::<Vec<&str>>()[0]);
+                    room.checked = String::from(check_map.get(&room.name).unwrap());
+                    debug!("Checkerboard Debug - Room struct: \n{:?}", room.clone());
+                    room.needs_checked = check_lsm(room.clone());
                 }
-
-                return_body.push(buildings.get(building).unwrap().clone());
+                let schedule_params = check_schedule(room.clone());
+                room.available = schedule_params.0;
+                room.until = schedule_params.1;
             }
+
+            return_body.push(buildings.get(building_sel).unwrap().clone());
             // ----------------------------------------------------------------
 
             // parse rooms map to load statuses for return
@@ -683,6 +682,39 @@ fn pad_zero(raw_in: String, length: usize) -> String {
         return String::from(raw_in);
     }
 }
+
+fn get_zone_data() -> Vec<u8> {
+    let json_return = json!({
+        "zones":[ 
+                {
+                    "name": 1,
+                    "building_list": ZONE_1_SHORT, 
+                },
+                {
+                    "name": 2,
+                    "building_list": ZONE_2_SHORT,
+                },
+                {
+                    "name": 3,
+                    "building_list": ZONE_3_SHORT,
+                },
+                {
+                    "name": 4,
+                    "building_list": ZONE_4_SHORT,
+                }
+            ]
+        });
+    return json_return.to_string().into();
+}
+
+// fn get_campus_data() -> Vec<u8> {
+//     let buildings: Vec<Building>;
+//     //
+//     let json_return = json!({
+//         "buildings": buildings;
+//     })
+//     return json_return.to_string().into();
+// }
 
 /*
    $$$$$\                     $$\       $$\   $$\            $$\     
@@ -876,11 +908,11 @@ fn check_schedule(room: Room) -> (u8, String) {
         if block_vec[0].contains(day_of_week) {
             if adjusted_time < adjusted_start {
                 available = 1;
-                until = pad_zero((adjusted_start % 100).to_string(), 2);
+                until = pad_zero((adjusted_start % 100).to_string(), 4);
                 return (available, until);
             } else if (adjusted_start <= adjusted_time) && (adjusted_time <= adjusted_end) {
                 available = 0;
-                until = pad_zero((adjusted_end % 100).to_string(), 2);
+                until = pad_zero((adjusted_end).to_string(), 4);
                 return (available, until);
             }
         }
