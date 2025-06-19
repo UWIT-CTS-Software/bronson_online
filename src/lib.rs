@@ -273,6 +273,11 @@ impl Request {
 			body.extend_from_slice(&body_line);
 		}
 
+		let first_null_char = body.iter().position(|&x| x == 0);
+		if first_null_char.is_some() {
+			let _ = body.split_off(first_null_char.unwrap());
+		}
+
 		return Request{start_line, headers, body: body.to_vec()};
 	}
 }
@@ -495,7 +500,7 @@ pub const ZONE_4: [&'static str; 8] = [
 ];
 
 pub const ZONE_1_SHORT: [&'static str; 9] = [
-    "SI", "GE", "HS", "STEM", "BC", "EERB", "AN", "ES", "EIC",
+    "SI", "GE", "HS", "ST", "BC", "EERB", "AN", "ES", "EIC",
 ];
 pub const ZONE_2_SHORT: [&'static str; 8] = [
     "EN", "AG", "ED", "HI", "HA", "BU", "CL", "EA",

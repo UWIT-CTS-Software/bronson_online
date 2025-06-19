@@ -532,18 +532,18 @@ async fn handle_connection(
             for building in building_names.clone().into_iter() {
                 let clone_keys = keys.clone();
                 // attempt to fix buildings.get
-                let building_LSMName: &str = &mut buildings.get_mut(building)
+                let building_lsm_name: &str = &mut buildings.get(building)
                     .unwrap()
                     .lsm_name
                     .as_str();
-                debug!("Checkerboard Debug - building LSM Name:\n{:?}",building_LSMName);
+                debug!("Checkerboard Debug - building LSM Name:\n{:?}",building_lsm_name);
                 // let url = format!(
                 //     r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", 
                 //     buildings.get(building).unwrap().lsm_name.as_str()
                 // );
                 let url = format!(
                     r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", 
-                    building_LSMName
+                    building_lsm_name
                 );
                 let req = reqwest::Client::builder()
                     .cookie_store(true)
@@ -568,7 +568,6 @@ async fn handle_connection(
                 if v["count"].as_i64() > Some(0) {
                     let num_entries = v["count"].as_i64().unwrap();
                     let checks: &mut Vec<Value> = &mut v["data"].as_array().unwrap().to_vec();
-                    checks.reverse();
                     for i in 0..num_entries {
                         let check = checks[i as usize].as_object().unwrap();
                         check_map.insert(String::from(check["LocationName"].as_str().unwrap()), String::from(check["CompletedOn"].as_str().unwrap()));
