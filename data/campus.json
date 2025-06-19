@@ -188,6 +188,15 @@
             ]
         },
         {
+            "name": "Earth Sciences",
+            "abbrev": "ES",
+            "rooms": [
+                "1004",
+                "1006",
+                "1038"
+            ]
+        },
+        {
             "name": "Education Annex",
             "abbrev": "EA",
             "rooms": [
@@ -222,6 +231,14 @@
                 "0251",
                 "0255",
                 "0350"
+            ]
+        },
+        {
+            "name": "Energy Innovation Center",
+            "abbrev": "EIC",
+            "rooms": [
+                "0201",
+                "0209"
             ]
         },
         {
