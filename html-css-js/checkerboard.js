@@ -18,72 +18,20 @@ class Cookie {
 
     getCookie() { return this.value; }
 }
-// New Functions (6/16/2025) -jn
 
-// I would like to use a function to call by building.
-// this would allow us to do procedural printing but 
-// we need a way to get a list of rooms in a zone to do
-// so.
-async function getCheckerboardByZone(zone_array) {
-    await fetch('run_cb', {
+// Run Checkerboard
+async function getCheckerboardByBuilding(build_ab) {
+    return await fetch('run_cb', {
         method: "POST",
-        body: JSON.stringify({
-            zones: zone_array,
-        })
+        body: build_ab
     })
     .then((response) => response.json())
     .then((json) => {return json;});
 }
 
-// takes the response, cb_body, which is a list of buildings and
-// prints the output as it goes through.
-// Note: If we can get a getCheckerboardByBuilding() system made,
-//   the change here would simply be it not being a for loop.
-function printCBResponse(JSON) {
-    let rooms = [];
-    // HTML
-    let consoleObj = document.querySelector('.cb_console');
-    // 
-    let buildings = JSON['cb_body'];
-    // Iterating through each building
-    for(var i = 0; i < buildings.length; i++) {
-        // Start building output
-        let cbContainter = document.createElement('div');
-        cbContainter.classList.add('cbVisContainer');
-        // Building Name
-        HTML_cbBuildingHeader = `<div class="cbVisHeader"> ${buildings[i]['name']} (${buildings[i]['abbrev']}) </div>`;
-        console.log(buildings[i]);
-        // Start the room processing
-        let rooms = buildings[i]['rooms'];
-        let HTML_cbVisRooms = ``;
-        let HTML_cbVisRoomTmp = ``;
-        // Iterating through each room in a building
-        for(var j = 0; j < rooms.length; j++) {
-            let cbRoomEntry = document.createElement('div');
-            cbRoomEntry.classList.add('cbVisRoomName');
-            // Maybe add some generalPool/DepartmentShared indicator
-            cbRoomEntry.innerHTML = `${rooms[j]['name']}`;
-            // Does it need checked?
-            //  NOTE: end of day but pick up from here.
-            if(rooms[j]['needs_checked']) {
-                console.log("room needs checked")
-            }
-            // Is available ?
-            if(rooms[j]['available']) {
-                console.log("room is available");
-            }
-        }
-        // Send a processed building to the page
-        // FUNC
-    }
-    return;
-}
-
 async function run() {
     let zones = document.getElementsByName('cb_dev');
     let zone_array = [];
-
-    cb_fetchAlertConsole();
 
     for (var i=0; i<zones.length; i++) {
         if (zones[i].checked) {
@@ -91,15 +39,29 @@ async function run() {
         }
     }
 
-    // TODO - getCheckerboardByBuilding(buildingAbbrev);
-    // Ideally, would want a call to get a list of buildings in a given zone
-    // then make a call using those building names iteratively.
-    let cbJSON = await getCheckerboardByZone(zone_array);
+    // Clear cbVisContainer (??)
+    clearVisContainer();
 
-    console.log(cbJSON);
+    // Get selected zone building list
+    //console.log(zone_array);
+    buildStarterTopper(zone_array);
 
-    printCBResponse(cbJSON);
-    //cb_updateConsole(response);
+    // iterativly go through buildings
+    // compile a hit list
+    let buildingsToCheck = [];
+    for(var i = 0; i < zone_array.length; i++) {
+        buildingsToCheck.push(... getBuildingAbbrevsFromZone(zone_array[i]));
+    }
+    //console.log("cbDebug-BuildingsToCheck: ", buildingsToCheck);
+    // Iterating through building hitlist
+    let cbTotalBuildingResponse = [];
+    for(var i = 0; i < buildingsToCheck.length; i++) {
+        let cbBuildingResponse = await getCheckerboardByBuilding(buildingsToCheck[i]);
+        printCBResponse(cbBuildingResponse);
+        cbTotalBuildingResponse.push(JSON.stringify(cbBuildingResponse));
+    }
+
+    storeCBResponse(cbTotalBuildingResponse);
 
     return;
 }
@@ -115,86 +77,123 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 \__|  \__|   \__|   \__|     \__|\________|
 */
 
-// 6/6/2025 - JN
-// Updating this display to be a bit more information.
-// Alex will be updating the rust response to include
-// general pool inclusion, once that is present we will 
-// include some indicater within the record inside the console.
-//  TODO Filters:
-//     - Include two new filter behaviors
-//          - "Show Unavailable Rooms"
-//          - "Show Recently Checked Rooms"
-//       This will allow for zones to become smaller.
-//       We can also create an additional message when a zone
-//       is completely checked and upto date.
-function cb_updateConsole(array) {
-    let consoleObj = document.querySelector('.cb_console');
-    let html_str = `
-        <fieldset class="cb_fieldset">
-            <legend>
-                Console Output: </legend>
-            <ul>`;
-    console.log(array);
-    for (row in array) {
-        let split_str = array[row].split(' | ');
-        let span_str = '';
-        switch (split_str[0].length) {
-            case 7:
-                span_str = `<li>&nbsp;&nbsp;&nbsp;&nbsp;${split_str[0]} | `;
-                break;
-            case 8:
-                span_str = `<li>&nbsp;&nbsp;${split_str[0]} | `;
-                break;
-            case 6:
-                span_str = `<li>&nbsp;&nbsp;&nbsp;&nbsp;${split_str[0]}&nbsp;&nbsp; | `;
-                break;
-            default:
-                span_str = `<li>${split_str[0]} | `;
-                break;
+// The top of the page we have a pesudo table of contents
+//  that allows users to jump around the page quickly
+//  One of the challenges here is that I will not have some location info
+// This is why this is a 'starter', when a zone is ran, this is a preallocated space,
+// when a building completes and returns, we update it's spot in the topper.
+//  --- Zone 1 -----------
+//  Building1 Name / percent checked {#######---------}
+//  ...
 
+function buildStarterTopper(zone_array) {
+    let topperContainer = document.querySelector(".cbTopperContainer");
+    // Iterate through selected zones
+    let HTML_cbTopperContainer = ``;
+    for(var i = 0; i < zone_array.length; i++) {
+        let buildingNames = getBuildingNamesFromZone(zone_array[i]);
+        let buildingAbbrev = getBuildingAbbrevsFromZone(zone_array[i]);
+        // Make HTML for zone Header
+        let HTML_cbTopperZone = `<div class ="cbTopperZoneHeader"> Zone ${zone_array[i]} </div>`;
+        let HTML_cbTopperBuildings = `<ul class="cbTopperBuildingList">`;
+        // Iterate through buildings in a given zone
+        for (var j = 0; j < buildingNames.length; j++) {
+            // Note, would be cool if this could be animated triple dot...
+            let HTML_tmp = `<li class=cbTopperBuilding id="cbTopper_${buildingAbbrev[j]}" onclick="cbJumpTo(\'cbVis_${buildingAbbrev[j]}\')"> Loading ${buildingNames[j]} ...</li>`;
+            HTML_cbTopperBuildings += HTML_tmp;
         }
-
-        if (split_str[1].includes("[+]")) {
-            span_str += `<span class="cb_green">${split_str[1]}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> | ${split_str[2]} | `;
-        } else if (split_str[1].includes("[-]")) {
-            span_str += `<span class="cb_red">${split_str[1]}&nbsp;&nbsp;</span> | ${split_str[2]} | `;
-        }
-
-        if (split_str[3].includes("[+]")) {
-            span_str += `<span class="cb_green">${split_str[3]}&nbsp;&nbsp;&nbsp;&nbsp;</span>&nbsp;| ${split_str[4]}`;
-        } else if (split_str[3].includes("[-]")) {
-            span_str += `<span class="cb_red"">${split_str[3]}&nbsp;&nbsp;</span>&nbsp;| ${split_str[4]}`;
-        }
-        span_str += `</li>`;
-        html_str += span_str;
+        HTML_cbTopperBuildings += `</ul>`;
+        HTML_cbTopperZone += HTML_cbTopperBuildings;
+        HTML_cbTopperContainer += HTML_cbTopperZone;
     }
-    html_str += `</ul></fieldset>`;
-    consoleObj.innerHTML = html_str;
-    
+    //HTML_cbTopperContainer += `</div>`;
+    //console.log(HTML_cbTopperContainer);
+    topperContainer.innerHTML = HTML_cbTopperContainer;
     return;
 }
 
-function cb_fetchAlertConsole() {
-    let consoleObj = document.querySelector('.cb_console');
-    consoleObj.innerHTML = `
-        <fieldset class="cb_fieldset" name="innerConsole">
-            <legend>
-                Console Output: </legend>
-            <p class="cfm_text">Fetching rooms...</p>
-        </fieldset>`;
-
+async function updateTopperElement(topperID, buildingName, numberChecked, numberRooms) {
+    let percent = 100*((numberChecked/numberRooms).toFixed(5));
+    let topperEntry = document.getElementById(topperID);
+    topperEntry.innerText = `${buildingName} - Rooms Checked: ${numberChecked} / ${numberRooms} (${percent}%)`;
     return;
 }
 
-function cb_clearConsole() {
-    let consoleObj = document.querySelector('.cb_console');
-    consoleObj.innerHTML = `
-        <fieldset class="cb_fieldset" name="innerConsole">
-            <legend>
-                Console Output: </legend>
-            <p class="cfm_text">Select Zone(s) and click Run to run search.</p>
-        </fieldset>`;
+function clearVisContainer() {
+    let visCon = document.querySelector('.cbVisContainer');
+    visCon.innerHTML = ``;
+    return;
+}
 
+// Re-written to handle a response from a building call instead of a entire zone
+async function printCBResponse(JSON) {
+    let consoleObj = document.querySelector('.cbVisContainer');
+
+    let building = JSON['cb_body'][0];
+    // Information
+    let numberChecked = 0;
+    //console.log("CheckerboardDebug - returned building:\n", building);
+    let numberRooms = building['rooms'].length;
+
+    // Start building output
+    let cbVisContainer = document.createElement('div');
+    cbVisContainer.classList.add('cbVisBuildingEntry');
+    // Building Name
+    //  Note: this id is intended to be used to identify where to jump in the toppper
+    //   redirect.
+    HTML_cbBuildingHeader = `
+    <div class="cbVisHeader" id="cbVis_${building['abbrev']}"> 
+        ${building['name']} (${building['abbrev']}) 
+        <button class="visButton" onclick="cbJumpTo(\'cbTopID\')"> Jump to Top </button>
+    </div>`;
+    //console.log(building);
+    // Start the room processing
+    let rooms = building['rooms'];
+    let HTML_cbVisRooms = `<ul class="cbVisRooms">`;
+    // Iterating through each room in a building
+    for(var j = 0; j < rooms.length; j++) {
+        let cbRoomEntry = `<li class=cbVisRoom>`;
+        // Maybe add some generalPool/DepartmentShared indicator
+        cbRoomEntry += `<p class="cbVisRoomName">${rooms[j]['name']} </p>`;
+        //  - ROOM ATTRIBUTES
+        cbRoomEntry += `<ul class="cbVisRoomAttributes">`
+        let check_date = rooms[j]['checked'].split('T')[0];
+        if(rooms[j]['needs_checked']) {
+            cbRoomEntry += `<li><span class="cbVisNotChecked"> Room Needs Checked! (${check_date})</span></li>`;
+        } else {
+            cbRoomEntry += `<li><span class="cbVisChecked"> Recently Checked! (${check_date})</span></li>`;
+            numberChecked++;
+        }
+        // Is available ?
+        console.log("cbDebug- until field ", rooms[j]['until'])
+        if(rooms[j]['available']) {
+            cbRoomEntry += `<li><span class="cbVisAvailable"> Available Until ${rooms[j]['until']} </span></li>`;
+        } else { 
+            cbRoomEntry += `<li><span class="cbVisNotAvailable"> Unavailable Until ${rooms[j]['until']} </span></li>`;
+        }
+        cbRoomEntry += `</ul>`;
+        cbRoomEntry += `</li>`;
+        HTML_cbVisRooms += cbRoomEntry;
+    }
+    HTML_cbVisRooms += `</ul>`;
+    // Send a processed building to the page
+    // FUNC (?)
+    // HTML
+    cbVisContainer.innerHTML += HTML_cbBuildingHeader + HTML_cbVisRooms;
+
+    consoleObj.append(cbVisContainer);
+
+    //update topper entry
+    let checkedPercent = 100 * (numberChecked / numberRooms);
+    let topperID = `cbTopper_${building['abbrev']}`;
+    await updateTopperElement(topperID, building['name'], numberChecked, numberRooms);
+    return;
+}
+
+// TODO
+function cbJumpTo(entryID) {
+    let target = document.getElementById(entryID);
+    target.scrollIntoView({behavior: 'smooth'});
     return;
 }
 
@@ -272,7 +271,11 @@ function setChecker() {
         <fieldset class="cb_fieldset" >
             <legend>
                 Console Output: </legend>
-            <p class="cfm_text">Select Zone(s) and click Run to run search.</p>
+            <div class="cbTopperContainer" id="cbTopID">
+                <p class="cfm_text">Select Zone(s) and click Run to run search.</p>
+            </div>
+            <div class="cbVisContainer">
+            </div>
         </fieldset>`;
 
     main_container.append(map_select);
