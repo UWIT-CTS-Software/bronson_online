@@ -359,12 +359,21 @@ async fn handle_connection(
         "GET /campus.json HTTP/1.1"        => {
             res.status(STATUS_200);
             res.send_file("data/campus.json");
-        },
+        },// --- TODO: Replace campus.json with this call.
+        // "POST /campusData HTTP/1.1"        => {
+        //     let contents = json!({
+        //         "hm_body": buildings.clone().unwrap(),
+        //     });
+        //     res.status(STATUS_200);
+        //     res.send_contents(contents);
+        // },
         "POST /zoneData HTTP/1.1" => { // NEW: returns data in lib.rs as json
             let contents = get_zone_data();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
+        // --- TODO: Has the hashmap been updated? If true return the changed pieces
+        //        (caching)
         // Assets
         "GET /favicon.ico HTTP/1.1"        => {
             res.status(STATUS_200);
@@ -554,7 +563,7 @@ async fn handle_connection(
             if v["count"].as_i64() > Some(0) {
                 let num_entries = v["count"].as_i64().unwrap();
                 let checks: &mut Vec<Value> = &mut v["data"].as_array().unwrap().to_vec();
-                checks.reverse();
+                //checks.reverse();
                 for i in 0..num_entries {
                     let check = checks[i as usize].as_object().unwrap();
                     check_map.insert(String::from(check["LocationName"].as_str().unwrap()), String::from(check["CompletedOn"].as_str().unwrap()));
@@ -693,6 +702,15 @@ fn get_zone_data() -> Vec<u8> {
         });
     return json_return.to_string().into();
 }
+
+// fn get_campus_data() -> Vec<u8> {
+//     let buildings: Vec<Building>;
+//     //
+//     let json_return = json!({
+//         "buildings": buildings;
+//     })
+//     return json_return.to_string().into();
+// }
 
 /*
    $$$$$\                     $$\       $$\   $$\            $$\     
@@ -886,7 +904,7 @@ fn check_schedule(room: Room) -> (u8, String) {
         if block_vec[0].contains(day_of_week) {
             if adjusted_time < adjusted_start {
                 available = 1;
-                until = pad_zero((adjusted_start % 100).to_string(), 2);
+                until = pad_zero((adjusted_start % 100).to_string(), 4);
                 return (available, until);
             } else if (adjusted_start <= adjusted_time) && (adjusted_time <= adjusted_end) {
                 available = 0;

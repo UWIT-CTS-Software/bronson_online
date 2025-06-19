@@ -495,7 +495,7 @@ pub const ZONE_4: [&'static str; 8] = [
 ];
 
 pub const ZONE_1_SHORT: [&'static str; 9] = [
-    "SI", "GE", "HS", "STEM", "BC", "EERB", "AN", "ES", "EIC",
+    "SI", "GE", "HS", "ST", "BC", "EERB", "AN", "ES", "EIC",
 ];
 pub const ZONE_2_SHORT: [&'static str; 8] = [
     "EN", "AG", "ED", "HI", "HA", "BU", "CL", "EA",

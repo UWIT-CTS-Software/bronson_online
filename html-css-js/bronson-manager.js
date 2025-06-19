@@ -35,7 +35,23 @@ async function getCampusJSON() {
                 throw new Error("HTTP error " + response.status);
             }
             return response.json();
-    });
+        }
+    );
+}
+
+// TODO (also on the backend) 
+// - this should replace campus.json in it's entirety, 
+//    should be structured like the hashmap (should be an 
+//    array of clones of each building entry in it). 
+async function getCampusData() {
+    return fetch('campusData')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("HTTP error " + response.status);
+            }
+            return response.json();
+        }
+    );
 }
 
 async function getZoneData() {
