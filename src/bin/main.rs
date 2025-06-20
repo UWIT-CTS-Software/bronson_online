@@ -360,13 +360,11 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_file("data/campus.json");
         },// --- TODO: Replace campus.json with this call.
-        // "POST /campusData HTTP/1.1"        => {
-        //     let contents = json!({
-        //         "hm_body": buildings.clone().unwrap(),
-        //     });
-        //     res.status(STATUS_200);
-        //     res.send_contents(contents);
-        // },
+        "POST /campusData HTTP/1.1"        => {
+            let contents = get_campus_data(buildings);
+            res.status(STATUS_200);
+            res.send_contents(contents);
+        },
         "POST /zoneData HTTP/1.1" => { // NEW: returns data in lib.rs as json
             let contents = get_zone_data();
             res.status(STATUS_200);
@@ -524,21 +522,21 @@ async fn handle_connection(
             // An Abbreviaition 
             //let building_selection: String = serde_json::from_str(tmp)
             //    .expect("Failed to build zone request struct");
-            debug!("Checkerboard Debug: building selection {:?}", building_sel);
+            //debug!("Checkerboard Debug: building selection {:?}", building_sel);
             // ----------------------------------------------------------------
             // call for roomchecks in LSM and store
             // ----------------------------------------------------------------
             let mut return_body: Vec<Building> = Vec::new();
             let clone_keys = keys.clone();
             // attempt to fix buildings.get
-            let building_LSMName: &str = &mut buildings.get_mut(building_sel)
+            let building_lsm_name: &str = &mut buildings.get_mut(building_sel)
                 .unwrap()
                 .lsm_name
                 .as_str();
-            debug!("Checkerboard Debug - building LSM Name:\n{:?}",building_LSMName);
+            debug!("Checkerboard Debug - building LSM Name:\n{:?}",building_lsm_name);
             let url = format!(
                 r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", 
-                building_LSMName
+                building_lsm_name
             );
             let req = reqwest::Client::builder()
                 .cookie_store(true)
@@ -703,14 +701,18 @@ fn get_zone_data() -> Vec<u8> {
     return json_return.to_string().into();
 }
 
-// fn get_campus_data() -> Vec<u8> {
-//     let buildings: Vec<Building>;
-//     //
-//     let json_return = json!({
-//         "buildings": buildings;
-//     })
-//     return json_return.to_string().into();
-// }
+fn get_campus_data(buildings: HashMap<String, Building>) -> Vec<u8> {
+    let mut output_vec: Vec<Building> = vec![];
+    // pack buildings
+    for blding in buildings.clone().into_iter() {
+        output_vec.push(blding.1);
+    }
+    //pack the json
+    let json_return = json!({
+        "buildings": output_vec,
+    });
+    return json_return.to_string().into();
+}
 
 /*
    $$$$$\                     $$\       $$\   $$\            $$\     
@@ -765,7 +767,7 @@ fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<
     let mut hn_ips: Vec<Vec<String>> = Vec::new();
 
     for rm in 0..rooms_to_ping.len() {
-        let dev_map; 
+        let dev_map;
         if pr.devices.iter().sum::<u8>() == 0 {
             dev_map = vec![1,1,1,1,1,1];
         } else {
