@@ -17,8 +17,6 @@
 //  - Zone Building list array of room names for each zone
 //  - Campus.json used for various things in jacknet
 async function initLocalStorage() {
-    let campJSON = await getCampusData();
-    localStorage.setItem("campusJSON", JSON.stringify(campJSON));
     // Need to make a function on the backend that handles this request.
     // Campus Data (Effectively a clone of the hashmap)
     let campData = await getCampusData();
@@ -47,7 +45,7 @@ async function getCampusJSON() {
 //    array of clones of each building entry in it). 
 async function getCampusData() {
     return await fetch('campusData', {
-        method: 'POST',
+        method: 'GET',
     })
     .then(response => {
         if (!response.ok) {
@@ -82,7 +80,7 @@ function storeJNResponse(jnBody) {
 //  of it.
 // Copy this to extract info from ping response
 function getLocalCampusData() {
-    let campJSON = localStorage.getItem("campusJSON");
+    let campJSON = localStorage.getItem("campData");
     return JSON.parse(campJSON);
 }
 
