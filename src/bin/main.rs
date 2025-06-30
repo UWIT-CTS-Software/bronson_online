@@ -523,7 +523,7 @@ async fn handle_connection(
             // An Abbreviaition 
             //let building_selection: String = serde_json::from_str(tmp)
             //    .expect("Failed to build zone request struct");
-            debug!("Checkerboard Debug: building selection {:?}", building_sel);
+            //debug!("Checkerboard Debug: building selection {:?}", building_sel);
             // ----------------------------------------------------------------
             // call for roomchecks in LSM and store
             // ----------------------------------------------------------------
@@ -712,14 +712,18 @@ fn get_zone_data(buildings: HashMap<String, Building>) -> Vec<u8> {
     return json_return.to_string().into();
 }
 
-// fn get_campus_data() -> Vec<u8> {
-//     let buildings: Vec<Building>;
-//     //
-//     let json_return = json!({
-//         "buildings": buildings;
-//     })
-//     return json_return.to_string().into();
-// }
+fn get_campus_data(buildings: HashMap<String, Building>) -> Vec<u8> {
+    let mut output_vec: Vec<Building> = vec![];
+    // pack buildings
+    for blding in buildings.clone().into_iter() {
+        output_vec.push(blding.1);
+    }
+    //pack the json
+    let json_return = json!({
+        "buildings": output_vec,
+    });
+    return json_return.to_string().into();
+}
 
 /*
    $$$$$\                     $$\       $$\   $$\            $$\     
