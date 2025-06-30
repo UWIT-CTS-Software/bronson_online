@@ -313,18 +313,22 @@ async function runSearch() {
         // TODO [ ] - UPDATE PINGPONG TO RETURN HN/IP array
         pingResult = await pingpong(devices, b_abbrev);
         // Expect the structure of ping result to change.
-        // We will need to introduce a series of functions to handle
-        //  this new structure. (TRIM THIS)
         let formPR = formatPingPong(pingResult, devices);
-        //let formPR = fixPR(pingResult, devices); 
+        // console.log("JackNet Debug - formPR:\n", formPR);
         // temp: eventually pingResult will return as this form
         let rms   = await printPR(formPR, bdl[i]);
+        // console.log("JackNet Debug - rms@printPR:\n", rms);
 
+        // These are broken now.
+        // TODO - Update printPR to give the numbers that these are used to get.
+        //   rather than returning rms, Export CSV Depends on these.
         f_rms = f_rms.concat(rms);
-        f_hns = f_hns.concat(pingResult[0]);
-        f_ips = f_ips.concat(pingResult[1]);
+        f_hns = f_hns.concat(formPR[0].flat(3));
+        f_ips = f_ips.concat(formPR[1].flat(3));
     }
 
+    // console.log("JackNet Debug - f_hns:\n",f_hns);
+    // console.log("JackNet Debug - f_ips:\n",f_ips);
     updateConsole("====--------------------========--------------------====");
 
     // Double check operation
@@ -354,6 +358,18 @@ async function runSearch() {
     return;
 };
 
+// Takes the 'jn_body' response and turns it into a nested array of nested arrays, (could be revised)
+// INPUT: 'jn_body' (Hashmap from backend)
+// OUTPUT:
+//   [
+//     [[ROOM1-DEV1-1, ROOM1-DEV1-2],[ROOM1-DEV2-1],[]],
+//     [[ROOM2-DEV1-1, ROOM2-DEV1-2],[ROOM2-DEV2-1],[ROOM2-DEV3-1]],
+//     [[...],[...]]
+//   ],
+//   [
+//      [[IP-ADDRS],[...],[...]],
+//      [[...],[...],[...]]
+//   ]
 function formatPingPong(PingPongJSON, devices) {
     // tmp
     let tmp_hn = [];
@@ -383,7 +399,6 @@ function formatPingPong(PingPongJSON, devices) {
         out_hn.push(tmp_hn);
         out_ip.push(tmp_ip);
     }
-    // check output
     // output
     let new_PR = [out_hn, out_ip];
     return new_PR;
@@ -402,7 +417,7 @@ async function printPR(formPing, building) {
     let rms = [];
 
     let rooms   = await getRooms(building);
-    let bAbbrev = await getAbbrev(building);
+    //let bAbbrev = await getAbbrev(building);
     
     // Iterate over each room in hns
     for (var j = 0; j < hns.length; j++) {
@@ -410,8 +425,12 @@ async function printPR(formPing, building) {
         printIps       = "";
         tmpBool = [];
         updateConsole("---------");
-        updateConsole(bAbbrev + " " + rooms[j]);
-        rms.push(bAbbrev + " " + rooms[j]);
+        updateConsole(rooms[j].name);
+        // ROOM NUMBER
+        roomNum = rooms[j].name.split(" ")[1];
+        rms.push(rooms[j].name);
+        //rms.push(roomNum);
+        
         // Iterate over the device type in each room in each hn
         for (var a=0; a < hns[j].length; a++) {
             // Iterate over each hostname in a given device type
@@ -420,7 +439,7 @@ async function printPR(formPing, building) {
                 //   add to printout hostname line
                 //   add corresponding ip
                 //console.log("JN-Debug: Hostname", hns[j][a][k])
-                if(hns[j][a][k].includes(pad(rooms[j], 4))) {
+                if(hns[j][a][k].includes(pad(roomNum, 4))) {
                     printHostnames += pad(hns[j][a][k], 15, " ") + "|";
                     printIps       += pad(ips[j][a][k], 15, " ") + "|";
                 }
@@ -430,7 +449,7 @@ async function printPR(formPing, building) {
         updateConsole("IP's     : " + printIps);
         graphBool.push(tmpBool)
     }
-    // we got it 
+    // we got it, send to visualizer
     postJNVis(hns, ips, building);
 
     return rms;
@@ -527,11 +546,7 @@ function genTileID(building, devices) {
              ...]
         building: AG
     */
-// Note, instead of booleans, I want the full object so I can implement an on hover show hostname/ip
-// Note: I do not believe rooms w/o devices will appear. This is because the temp struct
-//  change does not include it (can't easily find rooms that are not in the response).
-//  However, they will be included in the incoming updated response, make sure that is
-//  accounted for.
+// Note: May revise this to be a proper grid rather than a mishmash of lists
 async function postJNVis(hns, ips, building) {
     // Init Visualizer Tile
     let vis_container = document.createElement('div');
@@ -577,7 +592,10 @@ async function postJNVis(hns, ips, building) {
     let HTML_visRoomEntry = ``;
     // For each room in hn
     for(var j = 0; j < hns.length; j++) {
-        HTML_visRoomEntry = `<li><ul class=visRooms> <li class="visRoomHead"><p class=visRoomHeadText>${rooms[j].name}</p></li>`;
+        // Formatting room[j].name to just a number (preceding zeros removed)
+        let roomNumber = rooms[j].name.split(" ")[1];
+        roomNumber = parseInt(roomNumber);
+        HTML_visRoomEntry = `<li><ul class=visRooms> <li class="visRoomHead"><p class=visRoomHeadText>${roomNumber}</p></li>`;
         // For each device type in a room
         for(var a = 0; a < hns[j].length; a++) {
             HTML_visRoomEntry += `<li class="visRoomDevice"><ul class="visRoomDeviceList">`
