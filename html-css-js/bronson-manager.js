@@ -20,6 +20,10 @@ async function initLocalStorage() {
     let campJSON = await getCampusData();
     localStorage.setItem("campusJSON", JSON.stringify(campJSON));
     // Need to make a function on the backend that handles this request.
+    // Campus Data (Effectively a clone of the hashmap)
+    let campData = await getCampusData();
+    console.log(campData);
+    localStorage.setItem("campData", JSON.stringify(campData));
     // Zone Arrays
     let zoneData = await getZoneData();
     localStorage.setItem("zoneData", JSON.stringify(zoneData));
@@ -42,11 +46,13 @@ async function getCampusJSON() {
 //    should be structured like the hashmap (should be an 
 //    array of clones of each building entry in it). 
 async function getCampusData() {
-    return fetch('campusData')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("HTTP error " + response.status);
-            }
+    return await fetch('campusData', {
+        method: 'POST',
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("HTTP error " + response.status);
+        }
             return response.json();
         }
     );
