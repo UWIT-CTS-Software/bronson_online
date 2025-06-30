@@ -164,6 +164,7 @@ pub struct Building {
 	pub lsm_name: String,
 	pub abbrev: String,
 	pub rooms: Vec<Room>,
+	pub zone: u8,
 }
 
 impl Building {
@@ -181,7 +182,8 @@ impl<'a> Clone for Building {
 			name: String::from(new_name),
 			lsm_name: String::from(new_lsm_name),
 			abbrev: String::from(new_abbrev),
-			rooms: (&self.rooms).to_vec()
+			rooms: (&self.rooms).to_vec(),
+			zone: self.zone.clone(),
 		}
 	}
 }
@@ -206,6 +208,13 @@ impl Room {
 	}
 	pub fn update_ips(&mut self, val: Vec<Vec<String>>) {
 		self.ips = val;
+	}
+	pub fn get_hostnames(&self) -> Vec<Vec<String>> {
+		let mut out_vec = Vec::new();
+		for hn_group in &self.hostnames {
+			out_vec.push(hn_group.to_vec());
+		}
+		return out_vec;
 	}
 }
 impl<'a> Clone for Room {
@@ -465,6 +474,7 @@ pub struct GeneralRequest {
 	pub buffer: String
 }
 
+pub static BLDG_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/buildings.json");
 pub static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.json"));
 pub static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
 pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
@@ -475,78 +485,3 @@ pub static STATUS_200: &str = "HTTP/1.1 200 OK";
 pub static STATUS_303: &str = "HTTP/1.1 303 See Other";
 pub static STATUS_404: &str = "HTTP/1.1 404 Not Found";
 pub static STATUS_500: &str = "HTTP/1.1 500 Internal Server Error";
-
-pub const ZONE_1: [&'static str; 9] = [
-    "Science%20Initiative%20Building%20(SI)", "Geology%20(GE)", "Health%20Sciences%20(HS)", 
-    "Michael%20B.%20Enzi%20STEM%20(STEM)", "Berry%20Center%20(BC)",
-    "Engineering%20Education%20and%20Research%20Building%20(EERB)", "Anthropology%20(AN)", 
-    "Earth%20Sciences%20Building%20(ESB)", "Energy%20Innovation%20Center%20(EIC)", 
-];
-pub const ZONE_2: [&'static str; 8] = [
-    "Engineering%20(EN)", "Agriculture%20(AG)", "Education%20(ED)", "History%20(HI)", 
-    "Half%20Acre%20(HA)", "Business%20(BU)", "Coe%20Library%20(CL)", "Education%20Annex%20(EA)", 
-];
-pub const ZONE_3: [&'static str; 11] = [
-    "Physical%20Sciences%20(PS)", "Classroom%20Building%20(CR)", 
-    "Arts%20%26%20Sciences%20(AS)", "Aven%20Nelson%20(AV)", "Biological%20Sciences%20(BS)", 
-    "Native%20American%20Ed%20Research%20%26%20Culteral%20Center%20(NA)", "Ross%20Hall%20(RH)", 
-    "Hoyt%20Hall%20(HO)", "Guthrie%20House%20(GH)", "Cheney%20International%20Center%20(CIC)",
-	"Knight%20Hall%20(KH)"
-];
-pub const ZONE_4: [&'static str; 8] = [
-    "IT%20Center%20(ITC)", "Corbett%20(CB)", "Law%20School%20(LS)", "Beta%20House%20(BH)", 
-    "Buchanan%20Center%20for%20Performing%20Arts%20(PA)", "Visual%20Arts%20(VA)", 
-    "Animal%20Science/Molecular%20Biology%20(AB)", "American%20Heritage%20Center%20(AC)", 
-];
-
-pub const ZONE_1_SHORT: [&'static str; 9] = [
-    "SI", "GE", "HS", "ST", "BC", "EERB", "AN", "ES", "EIC",
-];
-pub const ZONE_2_SHORT: [&'static str; 8] = [
-    "EN", "AG", "ED", "HI", "HA", "BU", "CL", "EA",
-];
-pub const ZONE_3_SHORT: [&'static str; 11] = [
-    "PS", "CR", "AS", "AV", "BS", "NAC", "RH", "HO", "GH", "CI", "KH" // Add to ZONE_3
-];
-pub const ZONE_4_SHORT: [&'static str; 8] = [
-    "IT", "CB", "LS", "BH", "PA", "VA", "AB", "AC",
-];
-
-pub const ABBREV_TO_NAME: [(&'static str, &'static str, &'static str); 36] = [
-	("SI",   "Science Initiative",          "Science%20Initiative%20Building%20(SI)"),
-	("GE",   "Geology",                     "Geology%20(GE)"),
-	("HS",   "Health Sciences",             "Health%20Sciences%20(HS)"),
-	("ST",   "Enzi STEM",                   "Michael%20B.%20Enzi%20STEM%20(STEM)"),
-	("BC",   "Berry Center",                "Berry%20Center%20(BC)"),
-	("EERB", "EERB",                        "Engineering%20Education%20and%20Research%20Building%20(EERB)"),
-	("AN",   "Anthropology",                "Anthropology%20(AN)"),
-	("ES",   "Earth Sciences",              "Earth%20Sciences%20Building%20(ESB)"),
-	("EIC",  "Energy Innovation Center",    "Energy%20Innovation%20Center%20(EIC)"),
-	("EN",   "Engineering",                 "Engineering%20(EN)"),
-	("AG",   "Agriculture",                 "Agriculture%20(AG)"),
-	("ED",   "Education",                   "Education%20(ED)"),
-	("HI",   "History",                     "History%20(HI)"),
-	("HA",   "Half Acre",                   "Half%20Acre%20(HA)"),
-	("BU",   "Business",                    "Business%20(BU)"),
-	("CL",   "Coe Library",                 "Coe%20Library%20(CL)"),
-	("EA",   "Education Annex",             "Education%20Annex%20(EA)"),
-	("PS",   "Physical Sciences",           "Physical%20Sciences%20(PS)"),
-	("CR",   "Classroom Building",          "Classroom%20Building%20(CR)"),
-	("AS",   "Arts and Sciences",           "Arts%20%26%20Sciences%20(AS)"),
-	("AV",   "Aven Nelson",                 "Aven%20Nelson%20(AV)"),
-	("BS",   "Biological Sciences",         "Biological%20Sciences%20(BS)"),
-	("NAC",  "Native American Center",      "Native%20American%20Ed%20Research%20%26%20Culteral%20Center%20(NA)"),
-	("RH",   "Ross Hall",                   "Ross%20Hall%20(RH)"),
-	("HO",   "Hoyt Hall",                   "Hoyt%20Hall%20(HO)"),
-	("GH",   "Guthrie House",               "Guthrie%20House%20(GH)"),
-	("CI",   "Cheney International Center", "Cheney%20International%20Center%20(CIC)"),
-	("IT",   "IT Center",                   "IT%20Center%20(ITC)"),
-	("CB",   "Corbett",                     "Corbett%20(CB)"),
-	("LS",   "Law School",                  "Law%20School%20(LS)"),
-	("BH",   "Beta House",                  "Beta%20House%20(BH)"),
-	("PA",   "Performing Arts",             "Buchanan%20Center%20for%20Performing%20Arts%20(PA)"),
-	("VA",   "Visual Arts",                 "Visual%20Arts%20(VA)"),
-	("AB",   "Animal Sciences",             "Animal%20Science/Molecular%20Biology%20(AB)"),
-	("AC",   "American Heritage Center",    "American%20Heritage%20Center%20(AC)"),
-	("KH",   "Knight Hall",                 "Knight%20Hall%20(KH)")
-];
