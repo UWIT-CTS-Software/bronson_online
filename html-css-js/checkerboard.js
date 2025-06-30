@@ -165,7 +165,6 @@ async function printCBResponse(JSON) {
             numberChecked++;
         }
         // Is available ?
-        console.log("cbDebug- until field ", rooms[j]['until'])
         if(rooms[j]['available']) {
             cbRoomEntry += `<li><span class="cbVisAvailable"> Available Until ${rooms[j]['until']} </span></li>`;
         } else { 
@@ -209,7 +208,6 @@ function setChecker() {
     // let active_tab_header = document.querySelector('.active_tab_header');
     // active_tab_header.innerHTML = 'Checkerboard';
     let current = document.getElementsByClassName("selected");
-    console.log(current);
     if (current.length != 0) {
         current[0].classList.remove("selected");
         // current[0].classList.remove("active");
@@ -221,7 +219,6 @@ function setChecker() {
 
     history.pushState("test", "CheckerBoard", "/checkerboard");
 
-    console.log('Switching to checkerboard');
     let prog_guts = document.querySelector('.program_board .program_guts');
 
     let main_container = document.createElement("div");

@@ -44,20 +44,20 @@ Wiki
 use server_lib::{
     Keys,
     ThreadPool, PingRequest, 
-    Room, Building, ZoneRequest, 
+    Room, Building, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
-    ZONE_1, ZONE_1_SHORT, ZONE_2, ZONE_2_SHORT, ZONE_3, ZONE_3_SHORT, ZONE_4, ZONE_4_SHORT, ABBREV_TO_NAME,
-    CFM_DIR, WIKI_DIR, ROOM_CSV, CAMPUS_CSV, KEYS,
+    BLDG_JSON, ROOM_CSV, CAMPUS_CSV, KEYS, 
+    CFM_DIR, WIKI_DIR, 
     Request, Response, STATUS_200, STATUS_303, STATUS_404,
 };
 use getopts::Options;
 use std::{
     str, env,
     io::{ prelude::*, Read, stdout, },
-    net::{ TcpStream, TcpListener, },
+    net::{ TcpListener, },
     fs::{
-        read_dir, metadata,
+        read_to_string, read_dir, metadata,
         File,
     },
     time::{ Duration, SystemTime },
@@ -118,6 +118,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // generate rooms HashMap
     let buildings = gen_building_map();
+    let dash_contents = &mut String::from("Welcome to Bronson!");
     
     // set TcpListener and initalize
     // ------------------------------------------------------------------------
@@ -141,18 +142,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     debug!("Server mounted!");
 
     let pool = ThreadPool::new(6);
+    let mut buffer = [0; 1024];
 
     // ----------------------------------------------------------------------
     stdout().flush().unwrap();
 
     for stream in listener.incoming() {
-        let stream = stream.unwrap();
-        let clone_bldg = buildings.clone();
+        let mut stream = stream.unwrap();
+        let clone_bldg = buildings.clone().expect("MAP_ERR: Building not cloned.");
         let clone_keys = keys.clone();
+        let mut clone_dash = dash_contents.clone();
+
+        stream.read(&mut buffer).unwrap();
+        let req = Request::build(buffer.clone());
 
         pool.execute(move || {
-            handle_connection(stream, clone_bldg, clone_keys);
+            let mut res = handle_connection(req, clone_bldg, clone_keys, &mut clone_dash).unwrap();
+            stream.write(&res.build()).unwrap();
+            stream.flush().unwrap();
+            stdout().flush().unwrap();
         });
+
+        buffer = [0; 1024];
     }
 
     return Ok(());
@@ -184,15 +195,8 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
     return Ok(());
 }
 
-fn gen_building_map() -> HashMap<String, Building> {
+fn gen_building_map() -> Option<HashMap<String, Building>> {
     let room_filter = Regex::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
-    let abbrev_map: HashMap<String, Vec<String>> = {
-        let mut map: HashMap<String, Vec<String>> = HashMap::new();
-        for entry in ABBREV_TO_NAME {
-            map.insert(String::from(entry.0), vec![String::from(entry.1), String::from(entry.2)]);
-        }
-        map
-    };
 
     let mut schedules: HashMap<String, Vec<String>> = HashMap::new();
     let schedule_data = File::open(ROOM_CSV).unwrap();
@@ -214,7 +218,8 @@ fn gen_building_map() -> HashMap<String, Building> {
         }
     }
 
-    let mut buildings: HashMap<String, Building> = HashMap::new();
+    let bldg_file: String = read_to_string(BLDG_JSON).ok()?;
+    let mut buildings: HashMap<String, Building> = serde_json::from_str(bldg_file.as_str()).ok()?;
     let room_data = File::open(CAMPUS_CSV).unwrap();
     let mut room_rdr = Reader::from_reader(room_data);
     for result in room_rdr.records() {
@@ -247,40 +252,25 @@ fn gen_building_map() -> HashMap<String, Building> {
             };
 
             let bldg_abbrev = String::from(room_name.split(" ").collect::<Vec<_>>()[0]);
-            let mut building = match buildings.get(&bldg_abbrev) {
-                Some(x) => x.clone(),
-                _       => Building {
-                            name: abbrev_map.get(&bldg_abbrev).unwrap()[0].clone(),
-                            lsm_name: abbrev_map.get(&bldg_abbrev).unwrap()[1].clone(),
-                            abbrev: bldg_abbrev.clone(),
-                            rooms: Vec::<Room>::new()
-                        },
-            };
+            let building: &mut Building = buildings.get_mut(&bldg_abbrev).unwrap();
 
             building.rooms.push(room);
-            buildings.insert(bldg_abbrev, building.clone());
         }
     }
 
-    //debug!("{:?}", buildings);
-
-    return buildings;
+    return Some(buildings);
 }
 
 #[tokio::main]
 #[allow(unused_assignments)]
 async fn handle_connection(
-    mut stream: TcpStream,
+    req: Request,
     mut buildings: HashMap<String, Building>,
     keys: Keys,
-) -> Option<()> {
-    let mut buffer = [0; 1024];
-
-    stream.read(&mut buffer).unwrap();
+    dash_contents: &mut String,
+) -> Option<Response> {
     
     let mut user_homepage: &str = "html-css-js/login.html";
-    let req = Request::build(buffer.clone());
-    let mut res: Response = Response::new();
     if req.headers.contains_key("Cookie") {
         let username_search = Regex::new("user=(?<username>admin|guest)").unwrap();
         let Some(username) = username_search.captures(&req.headers.get("Cookie").unwrap()) else { panic!("Empty") };
@@ -293,6 +283,7 @@ async fn handle_connection(
 
     // Handle requests
     // ------------------------------------------------------------------------
+    let mut res: Response = Response::new();
 
     match req.start_line.as_str() {
         // Page Content
@@ -355,21 +346,6 @@ async fn handle_connection(
             res.send_file(user_homepage);
             res.insert_onload("setWiki()");
         },
-        // Data Requests
-        "GET /campus.json HTTP/1.1"        => {
-            res.status(STATUS_200);
-            res.send_file("data/campus.json");
-        },// --- TODO: Replace campus.json with this call.
-        "POST /campusData HTTP/1.1"        => {
-            let contents = get_campus_data(buildings);
-            res.status(STATUS_200);
-            res.send_contents(contents);
-        },
-        "POST /zoneData HTTP/1.1" => { // NEW: returns data in lib.rs as json
-            let contents = get_zone_data();
-            res.status(STATUS_200);
-            res.send_contents(contents);
-        },
         // --- TODO: Has the hashmap been updated? If true return the changed pieces
         //        (caching)
         // Assets
@@ -385,38 +361,56 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_file("assets/logo-2-line.png");
         },
-        // Terminal
-        // --------------------------------------------------------------------
-        "GET /refresh/all HTTP/1.1"     => {
-            let contents = json!({
-                "body": "[+] All updated successfully."
-            }).to_string().into();
-            buildings = gen_building_map();
+        // Data Requests
+        "GET /campusData HTTP/1.1"         => {
+            let contents = json!(buildings.clone()).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "GET /refresh/threads HTTP/1.1" => {
+        "GET /zoneData HTTP/1.1"           => { // NEW: returns data in lib.rs as json
+            let contents = get_zone_data(buildings);
+            res.status(STATUS_200);
+            res.send_contents(contents);
+        },
+        "GET /dashContents HTTP/1.1"       => {
+            let contents = json!({
+                "contents": dash_contents
+            }).to_string().into();
+            res.status(STATUS_200);
+            res.send_contents(contents);
+        },
+        // Terminal
+        // --------------------------------------------------------------------
+        "GET /refresh/all HTTP/1.1"        => {
+            let contents = json!({
+                "body": "[+] All updated successfully."
+            }).to_string().into();
+            buildings = gen_building_map().expect("MAP_ERR: Building map failed.");
+            res.status(STATUS_200);
+            res.send_contents(contents);
+        },
+        "GET /refresh/threads HTTP/1.1"    => {
             let contents = json!({
                 "body": "[!] Feature not implemented."
             }).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "GET /refresh/map HTTP/1.1"     => {
+        "GET /refresh/map HTTP/1.1"        => {
             let contents = json!({
                 "body": "[+] Map updated successfully."
             }).to_string().into();
-            buildings = gen_building_map();
+            buildings = gen_building_map().expect("MAP_ERR: Building map failed.");
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "GET /get/PLACEHOLDER HTTP/1.1" => {
+        "GET /get/PLACEHOLDER HTTP/1.1"    => {
             debug!("test!");
             debug!("{:?}", req.body);
             res.status(STATUS_200);
             res.send_contents("".into());
         },
-        "GET /get/log HTTP/1.1"         => {
+        "GET /get/log HTTP/1.1"            => {
             let mut f = File::open("/home/beth-c137/Desktop/UWIT/bronson_online/output.log").unwrap();
             
             let mut file_buffer = Vec::new();
@@ -428,16 +422,24 @@ async fn handle_connection(
             res.insert_header("Content-Disposition", &filename);
             res.send_contents(file_buffer);
         },
-        "POST /add/user HTTP/1.1"       => {
+        "POST /add/user HTTP/1.1"          => {
             
-        }      
+        },
+        "POST /update/dash HTTP/1.1"       => {
+            let update_search = Regex::new(r#".*contents":"(?<contents>.*)""#).unwrap();
+            let contents = update_search.captures(str::from_utf8(&req.body).expect("Empty")).unwrap();
+            let new_contents = contents["contents"].to_string();
+            *dash_contents = new_contents;
+            res.status(STATUS_200);
+            res.send_contents("".into());
+        },
         // --------------------------------------------------------------------
         // make calls to backend functionality
         // --------------------------------------------------------------------
         // login
-        "POST /login HTTP/1.1"          => {
+        "POST /login HTTP/1.1"             => {
             let credential_search = Regex::new(r"uname=(?<user>.*)&psw=(?<pass>[\d\w%]*)").unwrap();
-            let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Option::Some(()) };
+            let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Option::Some(res) };
             let user = String::from(credentials["user"].to_string().into_boxed_str());
             let pass = String::from(credentials["pass"].to_string().into_boxed_str());
             let mut found_user: bool = false;
@@ -464,9 +466,9 @@ async fn handle_connection(
                 res.send_file(user_homepage);
             }
         },
-        "POST /bugreport HTTP/1.1"      => {
+        "POST /bugreport HTTP/1.1"         => {
             let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
-            let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Option::Some(()) };
+            let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Option::Some(res) };
             let encoded_title = String::from(credentials["title"].to_string().into_boxed_str());
             let mut encoded_desc = String::from(credentials["desc"].to_string().into_boxed_str());
             if encoded_desc == String::from("") {
@@ -486,7 +488,7 @@ async fn handle_connection(
             let req = reqwest::Client::builder()
                 .cookie_store(true)
                 // .cookie_provider(Arc::clone(&cookie_jar))
-                .user_agent("server_lib/1.1.0")
+                .user_agent("server_lib/1.10.1")
                 .default_headers(construct_headers("gh", clone_keys))
                 .timeout(Duration::from_secs(15))
                 .build()
@@ -507,18 +509,17 @@ async fn handle_connection(
             res.send_file(user_homepage);
         },
         // Jacknet
-        "POST /ping HTTP/1.1"           => {
+        "POST /ping HTTP/1.1"              => {
             let contents = execute_ping(req.body, buildings); // JN
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         // Checkerboard
-        "POST /run_cb HTTP/1.1"         => {
+        "POST /run_cb HTTP/1.1"            => {
             //// --- REWRITE OF RUN_CB, NOW TAKES ONE BUILDING ABBREVIATION ---
             // get zone selection from request and store
             // ----------------------------------------------------------------
-            let tmp = String::from_utf8(req.body.clone()).expect("CamCode Err, invalid UTF-8");
-            let building_sel = tmp.trim_matches(char::from(0));
+            let building_sel = String::from_utf8(req.body.clone()).expect("CamCode Err, invalid UTF-8");
             // An Abbreviaition 
             //let building_selection: String = serde_json::from_str(tmp)
             //    .expect("Failed to build zone request struct");
@@ -529,7 +530,7 @@ async fn handle_connection(
             let mut return_body: Vec<Building> = Vec::new();
             let clone_keys = keys.clone();
             // attempt to fix buildings.get
-            let building_lsm_name: &str = &mut buildings.get_mut(building_sel)
+            let building_lsm_name: &str = &mut buildings.get_mut(&building_sel.clone())
                 .unwrap()
                 .lsm_name
                 .as_str();
@@ -540,7 +541,7 @@ async fn handle_connection(
             );
             let req = reqwest::Client::builder()
                 .cookie_store(true)
-                .user_agent("server_lib/1.1.0")
+                .user_agent("server_lib/1.10.1")
                 .default_headers(construct_headers("lsm", clone_keys))
                 .timeout(Duration::from_secs(15))
                 .build()
@@ -561,14 +562,14 @@ async fn handle_connection(
             if v["count"].as_i64() > Some(0) {
                 let num_entries = v["count"].as_i64().unwrap();
                 let checks: &mut Vec<Value> = &mut v["data"].as_array().unwrap().to_vec();
-                //checks.reverse();
+                checks.reverse();
                 for i in 0..num_entries {
                     let check = checks[i as usize].as_object().unwrap();
                     check_map.insert(String::from(check["LocationName"].as_str().unwrap()), String::from(check["CompletedOn"].as_str().unwrap()));
                 }
             }
 
-            for room in &mut buildings.get_mut(building_sel).unwrap().rooms {
+            for room in &mut buildings.get_mut(&building_sel.clone()).unwrap().rooms {
                 if check_map.contains_key(&room.name) {
                     // checked Date format may need changed here
                     debug!("Checkerboard Debug - checked value: \n{:?}", String::from(check_map.get(&room.name).unwrap()));
@@ -582,7 +583,7 @@ async fn handle_connection(
                 room.until = schedule_params.1;
             }
 
-            return_body.push(buildings.get(building_sel).unwrap().clone());
+            return_body.push(buildings.get(&building_sel.clone()).unwrap().clone());
             // ----------------------------------------------------------------
 
             // parse rooms map to load statuses for return
@@ -599,27 +600,27 @@ async fn handle_connection(
         },
         // CamCode
         //  - CamCode - CFM Requests
-        "POST /cfm_build HTTP/1.1"      => {
+        "POST /cfm_build HTTP/1.1"         => {
             let contents = cfm_build_dir();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "POST /cfm_build_r HTTP/1.1"    => {
+        "POST /cfm_build_r HTTP/1.1"       => {
             let contents = cfm_build_rm(req.body);
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "POST /cfm_c_dir HTTP/1.1"      => {
+        "POST /cfm_c_dir HTTP/1.1"         => {
             let contents = get_cfm(req.body);
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "POST /cfm_dir HTTP/1.1"        => {
+        "POST /cfm_dir HTTP/1.1"           => {
             let contents = get_cfm_dir(req.body);
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "POST /cfm_file HTTP/1.1"       => {
+        "POST /cfm_file HTTP/1.1"          => {
             let contents = get_cfm_file(req.body);
             let mut f = File::open(contents.clone()).unwrap();
             
@@ -633,21 +634,18 @@ async fn handle_connection(
             res.send_contents(file_buffer);
         },
         // Wiki
-        "POST /w_build HTTP/1.1"        => {
+        "POST /w_build HTTP/1.1"           => {
             let contents = w_build_articles();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        &_                              => {
+        &_                                 => {
             res.status(STATUS_404);
             res.send_file("html-css-js/404.html");
         }
     };
     
-    stream.write(&res.build()).unwrap();
-    stream.flush().unwrap();
-    stdout().flush().unwrap();
-    return Option::Some(());
+    return Some(res);
 }
 
 #[allow(dead_code)]
@@ -677,24 +675,37 @@ fn pad_zero(raw_in: String, length: usize) -> String {
     }
 }
 
-fn get_zone_data() -> Vec<u8> {
+fn get_zone_data(buildings: HashMap<String, Building>) -> Vec<u8> {
+    let mut zone_1: Vec<String> = Vec::new();
+    let mut zone_2: Vec<String> = Vec::new();
+    let mut zone_3: Vec<String> = Vec::new();
+    let mut zone_4: Vec<String> = Vec::new();
+    for (abbrev, building) in buildings.iter() {
+        match building.zone {
+            1               => zone_1.push(abbrev.clone()),
+            2               => zone_2.push(abbrev.clone()),
+            3               => zone_3.push(abbrev.clone()),
+            4               => zone_4.push(abbrev.clone()),
+            0 | 5..=u8::MAX => (),
+        }
+    }
     let json_return = json!({
         "zones":[ 
                 {
                     "name": 1,
-                    "building_list": ZONE_1_SHORT, 
+                    "building_list": zone_1, 
                 },
                 {
                     "name": 2,
-                    "building_list": ZONE_2_SHORT,
+                    "building_list": zone_2,
                 },
                 {
                     "name": 3,
-                    "building_list": ZONE_3_SHORT,
+                    "building_list": zone_3,
                 },
                 {
                     "name": 4,
-                    "building_list": ZONE_4_SHORT,
+                    "building_list": zone_4,
                 }
             ]
         });
@@ -752,10 +763,9 @@ TO-DO:
 // call ping_this executible here
 fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<u8> {
     let tmp = String::from_utf8(body.clone()).expect("Err, invalid UTF-8");
-    let tmp = tmp.trim_matches(char::from(0));
     debug!("JacknetClientRequest: {:?}", tmp);
     // Prep Request into Struct
-    let pr: PingRequest = serde_json::from_str(tmp)
+    let pr: PingRequest = serde_json::from_str(&tmp)
         .expect("Fatal Error 2: Failed to parse ping request");
 
     debug!("JacknetPingRequest: {:?}", pr);
@@ -764,10 +774,11 @@ fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<
     //         CAMPUS_STR -> "html-css-js/campus.json" 
 
     let rooms_to_ping: &mut Vec<Room> = &mut buildings.get_mut(&pr.building.clone()).unwrap().rooms;
-    let mut hn_ips: Vec<Vec<String>> = Vec::new();
+    let mut hn_ips: Vec<Vec<String>>;
 
     for rm in 0..rooms_to_ping.len() {
-        let dev_map;
+        hn_ips = Vec::new();
+        let dev_map; 
         if pr.devices.iter().sum::<u8>() == 0 {
             dev_map = vec![1,1,1,1,1,1];
         } else {
@@ -778,14 +789,11 @@ fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<
             if dev_map[hn_group] == 0 {
                 continue;
             }
-            for hn in &rooms_to_ping[rm].hostnames[hn_group] {
-                let hn_ip = ping_this(hn.to_string());
-                hn_ips[hn_group].push(hn_ip);
-            }
+            let hns = &rooms_to_ping[rm].get_hostnames()[hn_group];
+            hn_ips[hn_group] = ping_room(hns.to_vec());
         }
         
         rooms_to_ping[rm].ips = hn_ips;
-        hn_ips = Vec::new();
     }
 
     buildings.get_mut(&pr.building.clone()).unwrap().rooms = rooms_to_ping.to_vec();
@@ -795,6 +803,24 @@ fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<
     });
     // Return JSON with ping results
     return json_return.to_string().into();
+}
+
+fn ping_room(hn_group: Vec<String>) -> Vec<String> {
+    let mut ips: HashMap<String, String> = HashMap::new();
+    for hn in 0..hn_group.len() {
+        std::thread::scope(|s| {
+            s.spawn(|| {
+                ips.insert(hn_group[hn].to_string(), ping_this(&hn_group[hn].to_string()));
+            });
+        });
+    }
+
+    let mut ips_vec = hn_group.clone();
+    for ip in 0..ips_vec.len() {
+        ips_vec[ip] = ips.get(&ips_vec[ip]).unwrap().to_string();
+    }
+
+    return ips_vec;
 }
 
 // Generate Hostnames
@@ -1003,36 +1029,6 @@ fn get_dir_contents(path: &str) -> Vec<String> {
     return strings;
 }
 
-fn get_origin(body: Vec<u8>) -> String {
-    let buff_copy: String = String::from_utf8_lossy(&body).to_string();
-
-    let bytes = buff_copy.as_bytes();
-    let mut ir: usize = 0;
-    let mut ir_end: usize = 0;
-
-    let mut newline:     bool = false;
-    let mut origin_line: bool = false;
-
-    for (i, &item) in bytes.iter().enumerate() {
-        if item == b'O'{ // newline isnt real
-            newline = true;
-        }
-        if newline {
-            if item == b'r' {
-                ir = i;
-                origin_line = true;
-            }
-        }
-        if origin_line {
-            if item == b'C' {
-                ir_end = i;
-                return buff_copy[ir+10..ir_end-3].to_string();
-            }
-        }
-    }
-    return buff_copy[ir..ir_end].to_string();
-}
-
 /*                             
 ,,                 |\   ,,                   
 ||      _           \\  ||                   
@@ -1049,6 +1045,7 @@ fn cfm_build_dir() -> Vec<u8> {
     let mut final_dirs: Vec<String> = Vec::new();
     // Check for CFM_Code Directory
     if dir_exists(CFM_DIR) {
+
     }
     let cfm_dirs = get_dir_contents(CFM_DIR);
     // iterate over cfm_dirs and snip ../CFM_Code/
@@ -1083,10 +1080,7 @@ fn cfm_build_rm(body: Vec<u8>) -> Vec<u8> {
     // Prep buffer into Room List Request Struct
     //     - building
     let tmp = String::from_utf8(body.clone()).expect("CamCode Err, invalid UTF-8");
-    let tmp = tmp.trim_matches(char::from(0));
-    //let cfm_rms: CFMRoomRequest = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
-    //    .expect("Fatal Error 39: Failed to parse cfm room request.");
-    let cfm_rms: CFMRoomRequest = serde_json::from_str(tmp)
+    let cfm_rms: CFMRoomRequest = serde_json::from_str(&tmp)
         .expect("Failed to build CamCode Room Request Struct");
 
     // Build Directory
@@ -1120,15 +1114,12 @@ fn get_cfm(body: Vec<u8>) -> Vec<u8> {
     // crestron file manager request (CFMR)
     //   - building
     //   - rm
-
-    //let cfmr: CFMRequest = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
-    //    .expect("Fatal Error 3: Failed to parse cfm request");
     let tmp = String::from_utf8(body.clone()).expect("CamCode Err, invalid UTF-8");
-    let tmp = tmp.trim_matches(char::from(0));
-    let cfmr: CFMRequest = serde_json::from_str(tmp)
+    let cfmr: CFMRequest = serde_json::from_str(&tmp)
         .expect("Failed to build cfm request");
     // Check CFM_Code Directory
     if dir_exists(CFM_DIR) {
+
     }
     
     let cfm_files = find_files(cfmr.building, cfmr.rm);
@@ -1147,20 +1138,10 @@ fn get_cfm(body: Vec<u8>) -> Vec<u8> {
 //    [ ] - store selected file as bytes ?
 //    [ ] - send in json as usual ?
 fn get_cfm_file(body: Vec<u8>) -> String {
-    // RequstFile
-    //    - filename
-
-    // let gr: GeneralRequest = serde_json::from_str(&buff_copy1)
-    //     .expect("Fatal Error 49: general Request Failed");
-    let _gr_origin: String = get_origin(body.clone());
-    //
     let tmp = String::from_utf8(body.clone()).expect("CamCode Err, invalid UTF-8");
-    let tmp = tmp.trim_matches(char::from(0));
     //
-    let cfmr_f: CFMRequestFile = serde_json::from_str(tmp)
+    let cfmr_f: CFMRequestFile = serde_json::from_str(&tmp)
         .expect("CamCode Err, Failed to grab file");
-    //let cfmr_f: CFMRequestFile = serde_json::from_str(String::from_utf8(body.clone()).unwrap().as_str())
-    //    .expect("Fatal Error 38: failed to parse filename");
     
     if dir_exists(CFM_DIR) {
         // Error handling that never got implemented?
@@ -1194,9 +1175,8 @@ fn get_cfm_dir(body: Vec<u8>) -> Vec<u8> {
     let mut strings = Vec::new();
     //
     let tmp = String::from_utf8(body.clone()).expect("CamCode Err, invalid UTF-8");
-    let tmp = tmp.trim_matches(char::from(0));
     //
-    let cfmr_d: CFMRequestFile = serde_json::from_str(tmp)
+    let cfmr_d: CFMRequestFile = serde_json::from_str(&tmp)
         .expect("CamCode Err, Failed to get dir struct");
     //let cfmr_d: CFMRequestFile = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
     //    .expect("Fatal Error 38: failed to parse filename");
@@ -1299,21 +1279,5 @@ mod tests {
         assert_eq!(pad(String::from("test"), 6), String::from("  test"));
         assert_eq!(pad(String::from("test"), 4), String::from("test"));
         assert_eq!(pad(String::from("test"), 3), String::from("test"));
-    }
-
-    #[test]
-    fn test_enclosed() {
-        assert_eq!(
-            find_enclosed(&String::from("(item1 {item2} item3)"), (r"\{",r"}"), true),
-            String::from("{item2}")
-        );
-        assert_eq!(
-            find_enclosed(&String::from("(item1 {item2} item3)"), (r"(",r")"), true ),
-            String::from("(item1 {item2} item3)")
-        );
-        assert_eq!(
-            find_enclosed(&String::from("item1 {item2} item3"), (r"\{",r"}"), false),
-            String::from("item2")
-        );
     }
 }

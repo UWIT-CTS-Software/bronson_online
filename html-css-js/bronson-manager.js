@@ -17,8 +17,7 @@
 //  - Zone Building list array of room names for each zone
 //  - Campus.json used for various things in jacknet
 async function initLocalStorage() {
-    let campJSON = await getCampusJSON();
-    console.log(campJSON);
+    let campJSON = await getCampusData();
     localStorage.setItem("campusJSON", JSON.stringify(campJSON));
     // Need to make a function on the backend that handles this request.
     // Campus Data (Effectively a clone of the hashmap)
@@ -27,7 +26,6 @@ async function initLocalStorage() {
     localStorage.setItem("campData", JSON.stringify(campData));
     // Zone Arrays
     let zoneData = await getZoneData();
-    console.log(zoneData);
     localStorage.setItem("zoneData", JSON.stringify(zoneData));
     return;
 }
@@ -61,9 +59,7 @@ async function getCampusData() {
 }
 
 async function getZoneData() {
-    return await fetch('zoneData', {
-        method: 'POST',
-    })
+    return await fetch('zoneData')
     .then((response) => response.json())
     .then((json) => {return json;});
 }
@@ -93,11 +89,9 @@ function getLocalCampusData() {
 // Returns a list of buildings
 async function getBuildingList() {
     let data = await getLocalCampusData();
-    data = JSON.stringify(data);
-    let buildingData = JSON.parse(data).buildingData;
     let bl = [];
-    for(var i = 0; i < buildingData.length; i++) {
-        bl[i] = buildingData[i].name;
+    for(const abbrev in data) {
+        bl.push(data[abbrev].name);
     }
 
     return bl.sort();
@@ -105,38 +99,27 @@ async function getBuildingList() {
 
 // Returns a list of rooms given a building name
 async function getRooms(buildingName) {
-    let data = await getLocalCampusData();
-    //data = JSON.stringify(data);
-    //let buildingData = JSON.parse(data).buildingData;
-    let buildingData = data.buildingData;
-    for(var i = 0; i < buildingData.length; i++) {
-        if(buildingData[i].name == buildingName) {
-            return buildingData[i].rooms.sort();
+    let buildingData = await getLocalCampusData();
+    for(abbrev in buildingData) {
+        if(buildingData[abbrev].name == buildingName) {
+            return buildingData[abbrev].rooms.sort();
         }
     }
 }
 
 // Returns a building abbreviation given a building name
 async function getAbbrev(buildingName) {
-    let data = await getLocalCampusData();
-    //data = JSON.stringify(data);
-    //let buildingData = JSON.parse(data).buildingData;
-    let buildingData = data.buildingData;
-    for(var i = 0; i < buildingData.length; i++) {
-        if(buildingData[i].name == buildingName) {
-            return buildingData[i].abbrev;
+    let buildingData = await getLocalCampusData();
+    for(abbrev in buildingData) {
+        if(buildingData[abbrev].name == buildingName) {
+            return abbrev;
         }
     }
 }
 
 function getBuildingName(buildingAbbrev) {
-    let data = getLocalCampusData();
-    let buildingData = data.buildingData;
-    for (var i = 0; i < buildingData.length; i++) {
-        if(buildingData[i].abbrev == buildingAbbrev) {
-            return buildingData[i].name;
-        }
-    }
+    let buildingData = getLocalCampusData();
+    return buildingData[buildingAbbrev].name;
 }
 
 // -- - - --- - Zone Data

@@ -186,7 +186,6 @@ function runExport() {
     // updateConsole(hostnames[0]);
     // updateConsole(rms);
     // updateConsole("DEBUG: Values:\n" + values);
-    console.log(values);
 
     var hii      = 0;
     let hostBuff = [headers[0]];
@@ -314,7 +313,6 @@ async function runSearch() {
         // TODO [ ] - UPDATE PINGPONG TO RETURN HN/IP array
         pingResult = await pingpong(devices, b_abbrev);
         // Expect the structure of ping result to change.
-        console.log("JN-PingResult: ", pingResult);
         // We will need to introduce a series of functions to handle
         //  this new structure. (TRIM THIS)
         let formPR = formatPingPong(pingResult, devices);
@@ -386,8 +384,6 @@ function formatPingPong(PingPongJSON, devices) {
         out_ip.push(tmp_ip);
     }
     // check output
-    console.log(out_hn);
-    console.log(out_ip);
     // output
     let new_PR = [out_hn, out_ip];
     return new_PR;
@@ -544,8 +540,6 @@ async function postJNVis(hns, ips, building) {
     // !--! List of rooms/devices in newly pinged building 
     let rooms           = await getRooms(building);
     const devicesNames  = getSelDevNames(await getSelectedDevices());
-    // What are we doing right now?
-    console.log("JN-Visualizing building: ", building, " for ", devicesNames);
     // - Build our tile HTML block 
     //          TODO- Add tag for vis container
     // hash - building name/results back/time.
@@ -583,7 +577,7 @@ async function postJNVis(hns, ips, building) {
     let HTML_visRoomEntry = ``;
     // For each room in hn
     for(var j = 0; j < hns.length; j++) {
-        HTML_visRoomEntry = `<li><ul class=visRooms> <li class="visRoomHead"><p class=visRoomHeadText>${rooms[j][0] == 0 ? rooms[j].slice(1) : rooms[j]}</p></li>`;
+        HTML_visRoomEntry = `<li><ul class=visRooms> <li class="visRoomHead"><p class=visRoomHeadText>${rooms[j].name}</p></li>`;
         // For each device type in a room
         for(var a = 0; a < hns[j].length; a++) {
             HTML_visRoomEntry += `<li class="visRoomDevice"><ul class="visRoomDeviceList">`
@@ -644,7 +638,6 @@ async function setJackNet() {
     newCurrent.classList.add("selected");
 
     history.pushState("test", "JackNet", "/jacknet");
-    console.log('Switching to jacknet');
 
     let progGuts = document.querySelector('.program_board .program_guts');
     let jn_container = document.createElement('div');

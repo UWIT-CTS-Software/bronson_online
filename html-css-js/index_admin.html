@@ -69,7 +69,7 @@ test   : test VALUE
             switch (resource) {
               case "log":
                 this.echo("log called.");
-                await fetch("http://127.0.0.1:7878/get/log", {
+                await fetch("get/log", {
                   method: "GET",
                   headers: {
                     "Content-Type": "application/json"
@@ -87,10 +87,65 @@ test   : test VALUE
                 break;
               default:
                 this.echo("usage: get [log]");
+                break;
             }
           },
           update: async function(...args) {
-            this.echo("Hello!");
+            switch (args[0]) {
+              case "dashboard":
+                switch (args[1]) {
+                  case "append":
+                    if (args[2] == "" || args[2] == undefined) {
+                      this.echo("usage: update dashboard append [STRING]");
+                    } else {
+                      // Update dash append HTTP request here
+                    }
+                    break;
+                  case "replace":
+                    if (args[2] == "" || args[2] == undefined) {
+                      this.echo("usage: update dashboard replace [STRING]");
+                    } else {
+                      // Update dash replace HTTP request here
+                      fetch("/update/dash", {
+                        method: "POST",
+                        body: JSON.stringify({
+                          contents: args[2]
+                        })
+                      })
+                    }
+                    break;
+                  case "upload":
+                    this.echo("update dashboard upload");
+                    break;
+                  default:
+                    this.echo("usage: update dashboard [append|replace|upload] [text]*");
+                    break;
+                }
+                break;
+              case "-h":
+              case "--help":
+                this.echo(
+`usage: update [RESOURCE] [METHOD] [ARGS]*
+update a resource (either by replacing or by appending) from some source.
+Example: update dashboard append "\r\nHello, world!"
+
+Resource options:
+dashboard          The home dashboard feed.
+
+Methods:
+replace            Replace the existing contents.
+append             Extend the current resource.
+upload               Upload a file of which the contents will replace the existing resource.
+
+Method arguments:
+"String literal"   A string literal is required for the replace and append methods.
+`
+                )
+                break;
+              default:
+                this.echo("Error: please see \"update -h\" for help.");
+                break;
+            }
           },
           test: async function(value) {
             this.echo(`Hello, ${value}!`);

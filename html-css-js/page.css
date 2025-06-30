@@ -387,10 +387,17 @@ button:-webkit-details-marker {
     grid-template-columns: repeat(7,1fr);
     gap: 10px;
     grid-auto-rows: minmax(20px, auto);
+    float: left;
 }
 
 .db_console {
     grid-column: 2 / 7;
+    grid-row: 1 / 2;
+    width: 70%;
+}
+
+.db_leader {
+    grid-column: 6 / 7;
     grid-row: 1 / 2;
 }
 

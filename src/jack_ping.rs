@@ -11,7 +11,7 @@ Simple implementation of ICMP ping
 pub mod jp {
     // ping this, takes a hostname and returns it's IP or an exit code
     //   exit code indicates not found or some other issue.
-    pub fn ping_this(hostname: String) -> String {
+    pub fn ping_this(hostname: &String) -> String {
         use pinger::PingResult;
         use regex::Regex;
         // let mut response = String::from("x");
@@ -25,12 +25,12 @@ pub mod jp {
                 ping_response = resp.recv().unwrap(); 
                 },
             Err(_) => {
-                println!("Error Pinging {}", hostname);
-                 return String::from("x");
+                //println!("Error Pinging {}", hostname);
+                return String::from("x");
                 },
         }
 
-        let mut pong_string = String::from("");
+        let pong_string: String;
 
         match ping_response {
             PingResult::Pong(_dur, string) => { 
@@ -41,7 +41,10 @@ pub mod jp {
                 println!("Timeout:\n{}", string);
                 return String::from("x");
             },
-            PingResult::Unknown(string) => println!("Unknown:\n{}",string),
+            PingResult::Unknown(string) => {
+                println!("Unknown:\n{}",string);
+                return String::from("x"); 
+            },
             PingResult::PingExited(_es, string) => {
                 println!("Ping Failed Exit:\n{}", string);
                 return String::from("x");
