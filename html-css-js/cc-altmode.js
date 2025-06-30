@@ -70,7 +70,6 @@ async function getCFMF(filename, classtype) {
         let files = await getCFM_Dir(cmff);
         //update filebrowser
 
-        console.log(files);
         // Need a variant function for populating 
         for (var i in files) {
             files[i] = files[i].split(cmff + '/')[1];
@@ -126,7 +125,6 @@ function cfmGetBuildingRoom(){
 
 function getCurrentHeader() {
     let fs = document.querySelector('.cfm_text');
-    console.log(fs.innerText);
     return fs.innerText;
 }
 
@@ -198,7 +196,6 @@ async function updateRoomList() {
     let cfmDirList   = await getCFM_BuildDirs();
     
     let new_rl = await getCFM_BuildRooms(cfmDirList[sel_building]);
-    console.log(new_rl);
   
     let set_inner_html = `
         <select id="room_list">
@@ -229,7 +226,6 @@ async function setCrestronFile() {
     // let active_tab_header = document.querySelector('.active_tab_header');
     // active_tab_header.innerHTML = 'CamCode';
     let current = document.getElementsByClassName("selected");
-    console.log(current);
     if (current.length != 0) {
         // current[0].classList.remove("active");
         current[0].classList.remove("selected");
@@ -240,11 +236,9 @@ async function setCrestronFile() {
 
 
     history.pushState("test", "CamCode-CFM", "/cc-altmode");
-    console.log('switching to camcode-cfm');
   
     // Pull List of Directories
     let cfmDirList = await getCFM_BuildDirs();
-    console.log(cfmDirList);
   
     let progGuts = document.querySelector('.program_board .program_guts');
 

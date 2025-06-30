@@ -25,7 +25,6 @@
   <!-- <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> -->
   <script>
     window.addEventListener("popstate", () => {
-      console.log(location.href);
       if (location.pathname == "/checker") {
         setChecker();
       } else if (location.pathname == "/jacknet") {
@@ -59,14 +58,13 @@
     /* setDashboard()
           Places the dashboard page, pretty baren at the moment.
     */
-    function setDashboard() {
+    async function setDashboard() {
       // History and init
       document.title = "Dashboard - Bronson";
       history.pushState({}, "Dashboard", "/");
 
       // remove currently active status, mark tab has active.
       let current = document.getElementsByClassName("selected");
-      console.log(current);
       if (current.length != 0) {
           current[0].classList.remove("selected");
       }
@@ -82,16 +80,33 @@
       // Dashboard Contents
       let consoleOutput = document.createElement("div");
       consoleOutput.classList.add('db_console');
-      consoleOutput.innerHTML = `
-        <fieldset>
-            <legend> 
-                Messages: </legend>
-            <textarea readonly rows="20" cols ="75" class="innerConsole" name="consoleOutput" spellcheck="false"> 
-                Welcome to Bronson!
-            </textarea>
-        </fieldset>`;
+      await fetch("/dashContents")
+        .then((response) => response.json())
+        .then((json) => {
+          consoleOutput.innerHTML = `
+            <fieldset>
+                <legend> 
+                    Messages: </legend>
+                <textarea readonly rows="20" cols ="65" class="innerConsole" name="consoleOutput" spellcheck="false"> 
+                    ${json["contents"]}
+                </textarea>
+            </fieldset>`;
+        });
   
+      let leaderboard = document.createElement("div");
+      leaderboard.classList.add("db_leader");
+      leaderboard.innerHTML = `
+        <fieldset>
+          <legend>
+            Leaderboard: </legend>
+          <textarea readonly rows="20" cols="55" class="innerConsole" name="leaderboard" spellcheck="false">
+            Leaderboard
+          </textarea>
+        </fieldset>
+      `;
+
       db_container.appendChild(consoleOutput);
+      db_container.appendChild(leaderboard);
 
       let main_container = document.createElement('div');
       main_container.appendChild(db_container);
