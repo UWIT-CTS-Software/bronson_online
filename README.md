@@ -43,11 +43,16 @@ Utilizes LSM RoomCheck history through their API and looks at C.T.S. Technician 
 
 ### JackNet
 
+![image](https://github.com/user-attachments/assets/5a70753c-4f27-476c-8a53-dfd2434629bc)
+
+
 JackNet is a diagnostic tool to monitor the systems on campus. This tool will use a precompiled json file to pull information about each building on campus and which rooms we have systems in. JackNet will use this information to build a database of hostnames defined by our organization's system (ie: a processor example would be EN-1055-PROC1). Then return the user a comprehensive list/csv of all devices that are online and configured correctly. 
 
 This can be used to find rooms that are not online that we did not know about. With some tinkering you can also utilize this to find specific devices in specific buildings that we are looking to remove/find.
 
 ### CamCode
+
+![image](https://github.com/user-attachments/assets/a6a269c8-a9c2-443a-9c3d-c7a1b713da71)
 
 A classroom programming helper. Given a specific set of parameters describing a specific room configuration, CamCode will present the user with files to be uploaded to the system to expedite configuration time.
 
