@@ -39,6 +39,8 @@ From there, access the ip:port address that is outputted in the previous step in
 
 ### Checkerboard
 
+![image](https://github.com/user-attachments/assets/8a28300e-639c-4506-9e1a-8bd4aa92752a)
+
 Utilizes LSM RoomCheck history through their API and looks at C.T.S. Technician Schedules and classroom schedules to point techs to open rooms in need of checkups during their shift
 
 ### JackNet
