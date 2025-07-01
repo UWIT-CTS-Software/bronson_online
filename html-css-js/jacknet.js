@@ -430,7 +430,6 @@ async function printPR(formPing, building) {
         roomNum = rooms[j].name.split(" ")[1];
         rms.push(rooms[j].name);
         //rms.push(roomNum);
-        
         // Iterate over the device type in each room in each hn
         for (var a=0; a < hns[j].length; a++) {
             // Iterate over each hostname in a given device type
@@ -451,7 +450,6 @@ async function printPR(formPing, building) {
     }
     // we got it, send to visualizer
     postJNVis(hns, ips, building);
-
     return rms;
 }
 
@@ -516,116 +514,105 @@ function minimizeVisTab(tabID) {
     return;
 }
 
-// TODO - Make this unique
+// TODO - Make this more unique
 function genTileID(building, devices) {
     return building;
 }
-// Rewrite for visualizer
+
 // Takes a nested array(rooms) of nested arrays(deviceType) for hns and ips
 // This is where we post some visualizations
 // Put together visualizer information
-// TO-DO:
-    /*      GOAL:
-                            * BUILDING *         |x| |
-                                ---                  |
-        ROOOOM |#1 |#2 |#3|     ...     #9999        |
-        ---------------------------------------------
-          proc |o  |o  |o |                          |
-            pj |x o|   |  |                          |
-          disp |   |o o|o |                          |
-            ws |x  |o  |  |                          |
-            tp |o  |o  |o |                          |
-        ---------------------------------------------
-        Need some nested booleans array for each room
-        ie: 
-        TODO - Format graphBool and handling of it here.
-        graphBool:
-            [[1],[0,1],[],[0],[1]],
-            [[1],[],[1,1],[1],[1]],
-            [[1],[],[1],[],[1]],
-             ...]
-        building: AG
-    */
-// Note: May revise this to be a proper grid rather than a mishmash of lists
+/*      GOAL:
+                        * BUILDING *         |x| |
+                            ---                  |
+    ROOOOM |#1 |#2 |#3|     ...     #9999        |
+    ---------------------------------------------
+        proc |o  |o  |o |                          |
+        pj |x o|   |  |                          |
+        disp |   |o o|o |                          |
+        ws |x  |o  |  |                          |
+        tp |o  |o  |o |                          |
+    ---------------------------------------------
+*/
 async function postJNVis(hns, ips, building) {
     // Init Visualizer Tile
     let vis_container = document.createElement('div');
-    vis_container.classList.add('vis_container2');
-    
+    vis_container.classList.add('vis_container');
     // !--! List of rooms/devices in newly pinged building 
     let rooms           = await getRooms(building);
     const devicesNames  = getSelDevNames(await getSelectedDevices());
     // - Build our tile HTML block 
-    //          TODO- Add tag for vis container
-    // hash - building name/results back/time.
     //   Give this as an ID,
     let tileID = genTileID(building, devicesNames);
     vis_container.id = "tile" + tileID;
-    //  - TODO - Add minimize and close buttons
-    /*
-    Need two new new buttons and the close will need a unique identifier for each tab. see tag/ID todo above
-    */
-    
-    let HTML_visHeader = `<div class="visHeader2"> ${building} <button class="visButton" onclick="closeVisTab(\'${tileID}\')"> x </button><button class="visButton" onclick="minimizeVisTab(\'${tileID}\')"> _ </button></div>`;
-
-    // - Build an index section/left hand side, lists all devices searched for.
-    let HTML_visIndex = `<ul class="visIndex"> <li class="visIndexItemHead"> Room # </li>`;
-    for(var i = 0; i < devicesNames.length; i++) {
-        HTML_visIndex += `<li class="visIndexItem"> ${devicesNames[i]} </li>`;
-    }
-    HTML_visIndex += `</ul>`;
-    // - Build each room collumn. Nested ul.
-    /*  BUILDING THIS HTML BLOCK
-    <ul class=visRooms> ROOM#
-        <ul class = visRoomDeviceList>
-            <li class=visRoomDeviceItem>0</li>   : + OnHover "Hostname: {}\n IP: {}"
-        </ul>
-        <ul class=visRoomDeviceList>
-            <li>...</li>
-        </ul>
-        ...
-    </ul>
-    */
-    let bool_ipFound = true;
-    let HTML_visRooms = `<ul class="visTile"  id=\"${tileID}\">`;
-    HTML_visRooms += `<li>` + HTML_visIndex + `</li>`;
-    let HTML_visRoomEntry = ``;
-    // For each room in hn
-    for(var j = 0; j < hns.length; j++) {
-        // Formatting room[j].name to just a number (preceding zeros removed)
-        let roomNumber = rooms[j].name.split(" ")[1];
+    let bAbbrev = await getAbbrev(building);
+    // TODO - add a percentage in the header?
+    let HTML_visHeader = `<div class="visHeader"> ${building} (${bAbbrev}) <button class="visButton" onclick="closeVisTab(\'${tileID}\')"> x </button><button class="visButton" onclick="minimizeVisTab(\'${tileID}\')"> _ </button></div>`;
+    // Compile lists...
+    // Tables are row based instead of column, making this a little different
+    //  than the ul list like before.
+    tableHeaders = ["Room #:"];
+    for(var i = 0; i < rooms.length; i++) {
+        let roomNumber = rooms[i].name.split(" ")[1];
         roomNumber = parseInt(roomNumber);
-        HTML_visRoomEntry = `<li><ul class=visRooms> <li class="visRoomHead"><p class=visRoomHeadText>${roomNumber}</p></li>`;
-        // For each device type in a room
-        for(var a = 0; a < hns[j].length; a++) {
-            HTML_visRoomEntry += `<li class="visRoomDevice"><ul class="visRoomDeviceList">`
-            // for each hostname in each kind of type
-            for(var k = 0; k < hns[j][a].length; k++) {
+        tableHeaders.push(`<p class=visRoomHeadText>${roomNumber}</p>`);
+    }
+    // Device Lists
+    //  More complicated due to a dynamic number of rows.
+    //  iterating through device lists, creating a nested array
+    let deviceRows = [];
+    for(devName in devicesNames) {
+        let tmpRow = [String(devicesNames[devName])];
+        // iterate through hostnames/ips by ROOM
+        for(var j = 0; j < hns.length; j++) {
+            let HTML_visRoomEntry = `<ul class="visRoomDeviceList">`;
+            // Looking at a specific device
+            for(var a = 0; a < hns[j][devName].length; a++) {
+                // for each hostname in each kind of type
                 // Did we find it?
-                if(ips[j][a][k] == "x") {
+                if(ips[j][devName][a] == "x") {
                     bool_ipFound = false;
                 } else {
                     bool_ipFound = true;
                 }
-                // Positive Hit
-                if (bool_ipFound) {
-                    HTML_visRoomEntry += `<li class="visRoomDeviceItem visTrue" title="Hostname: ${hns[j][a][k]}\n            IP: ${ips[j][a][k]}"> _ </li>`;
+                if (bool_ipFound) { // Positive Hit
+                    HTML_visRoomEntry += `<li class="visRoomDeviceItem visTrue" title="Hostname: ${hns[j][devName][a]}\n            IP: ${ips[j][devName][a]}"> _ </li>`;
                 } else { // Negative Hit
-                    HTML_visRoomEntry += `<li class="visRoomDeviceItem visFalse" title="${hns[j][a][k]} not found"> _ </li>`;
+                    HTML_visRoomEntry += `<li class="visRoomDeviceItem visFalse" title="${hns[j][devName][a]} not found"> _ </li>`;
                 }
             }
             // If there are no hostnames
-            if (hns[j][a].length == 0) {
+            if (hns[j][devName].length == 0) {
                 HTML_visRoomEntry += `<li class="visRoomDeviceItem" title="No Device in Inventory">_</li>`;
             }
-            HTML_visRoomEntry += `</ul></li>`;
+            HTML_visRoomEntry += `</ul>`;
+            tmpRow.push(HTML_visRoomEntry);
         }
-        HTML_visRoomEntry += `</ul></li>`;
-        HTML_visRooms += HTML_visRoomEntry;
+        deviceRows.push(tmpRow);
     }
-    HTML_visRooms += `</ul>`;
+    // Put it together
+    //  Headers
+    let HTML_table = `<table class="visTile"  id=\"${tileID}\"> <tr>`;
+    for(header in tableHeaders) {
+        HTML_table += `<th class="visRoomHead"> ${tableHeaders[header]} </th>`;
+    }
+    HTML_table += `</tr>`;
+    //  Device Rows
+    for(row in deviceRows) {
+        HTML_table += `<tr>`;
+        console.log(row);
+        for(hostname in deviceRows[row]) {
+            if (hostname == 0) {
+                HTML_table += `<td class="visIndexItem">${deviceRows[row][hostname]} </td>`
+            } else {
+                HTML_table += `<td class="visRoomDevice"> ${deviceRows[row][hostname]} </td>`;
+            }
+        }
+        HTML_table += `</tr>`;
+    }
+    HTML_table += `</table>`;
     // Put it all together
-    vis_container.innerHTML = HTML_visHeader + HTML_visRooms;
+    vis_container.innerHTML = HTML_visHeader + HTML_table;
     // Put it on the page
     let progGuts = document.querySelector('.program_board .program_guts');
     progGuts.append(vis_container);
