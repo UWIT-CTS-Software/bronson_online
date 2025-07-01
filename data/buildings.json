@@ -1,0 +1,254 @@
+{
+    "AB": {
+        "name"    : "Animal Sciences and Microbiology",
+        "lsm_name": "Animal%20Science/Molecular%20Biology%20(AB)",
+        "abbrev"  : "AB",
+        "zone"    : 4,
+        "rooms"   : []
+    },
+    "AC": {
+        "name"    : "American Heritage Center",
+        "lsm_name": "American%20Heritage%20Center%20(AC)",
+        "abbrev"  : "AC",
+        "zone"    : 4,
+        "rooms"   : []
+    },
+    "AG": {
+        "name"    : "Agriculture",
+        "lsm_name": "Agriculture%20(AG)",
+        "abbrev"  : "AG",
+        "zone"    : 2,
+        "rooms"   : []
+    },
+    "AN": {
+        "name"    : "Anthropology",
+        "lsm_name": "Anthropology%20(AN)",
+        "abbrev"  : "AN",
+        "zone"    : 1,
+        "rooms"   : []
+    },
+    "AS": {
+        "name"    : "Arts and Sciences",
+        "lsm_name": "Arts%20%26%20Sciences%20(AS)",
+        "abbrev"  : "AS",
+        "zone"    : 3,
+        "rooms"   : []
+    },
+    "AV": {
+        "name"    : "Aven Nelson",
+        "lsm_name": "Aven%20Nelson%20(AV)",
+        "abbrev"  : "AV",
+        "zone"    : 3,
+        "rooms"   : []
+    },
+    "BC": {
+        "name"    : "Berry Center",
+        "lsm_name": "Berry%20Center%20(BC)",
+        "abbrev"  : "BC",
+        "zone"    : 1,
+        "rooms"   : []
+    },
+    "BH": {
+        "name"    : "Beta House",
+        "lsm_name": "Beta%20House%20(BH)",
+        "abbrev"  : "BH",
+        "zone"    : 4,
+        "rooms"   : []
+    },
+    "BS": {
+        "name"    : "Biological Sciences",
+        "lsm_name": "Biological%20Sciences%20(BS)",
+        "abbrev"  : "BS",
+        "zone"    : 3,
+        "rooms"   : []
+    },
+    "BU": {
+        "name"    : "Business",
+        "lsm_name": "Business%20(BU)",
+        "abbrev"  : "BU",
+        "zone"    : 2,
+        "rooms"   : []
+    },
+    "CB": {
+        "name"    : "Corbett",
+        "lsm_name": "Corbett%20(CB)",
+        "abbrev"  : "CB",
+        "zone"    : 4,
+        "rooms"   : []
+    },
+    "CI": {
+        "name"    : "Cheney International Center",
+        "lsm_name": "Cheney%20International%20Center%20(CI)",
+        "abbrev"  : "CI",
+        "zone"    : 3,
+        "rooms"   : []
+    },
+    "CL": {
+        "name"    : "Coe Library",
+        "lsm_name": "Coe%20Library%20(CL)",
+        "abbrev"  : "CL",
+        "zone"    : 2,
+        "rooms"   : []
+    },
+    "CR": {
+        "name"    : "Classroom Building",
+        "lsm_name": "Classroom%20Building%20(CR)",
+        "abbrev"  : "CR",
+        "zone"    : 3,
+        "rooms"   : []
+    },
+    "EA": {
+        "name"    : "Education Annex",
+        "lsm_name": "Education%20Annex%20(EA)",
+        "abbrev"  : "EA",
+        "zone"    : 2,
+        "rooms"   : []
+    },
+    "ED": {
+        "name"    : "Education",
+        "lsm_name": "Education%20(ED)",
+        "abbrev"  : "ED",
+        "zone"    : 2,
+        "rooms"   : []
+    },
+    "EERB": {
+        "name"    : "EERB",
+        "lsm_name": "Engineering%20Education%20and%20Research%20Building%20(EERB)",
+        "abbrev"  : "EERB",
+        "zone"    : 1,
+        "rooms"   : []
+    },
+    "EIC": {
+        "name"    : "Energy Innovation Center",
+        "lsm_name": "Energy%20Innovation%20Center%20(EIC)",
+        "abbrev"  : "EIC",
+        "zone"    : 1,
+        "rooms"   : []
+    },
+    "EN": {
+        "name"    : "Engineering",
+        "lsm_name": "Engineering%20(EN)",
+        "abbrev"  : "EN",
+        "zone"    : 2,
+        "rooms"   : []
+    },
+    "ES": {
+        "name"    : "Earth Sciences",
+        "lsm_name": "Earth%20Sciences%20Building%20(ESB)",
+        "abbrev"  : "ES",
+        "zone"    : 1,
+        "rooms"   : []
+    },
+    "GE": {
+        "name"    : "Geology",
+        "lsm_name": "Geology%20(GE)",
+        "abbrev"  : "GE",
+        "zone"    : 1,
+        "rooms"   : []
+    },
+    "GH": {
+        "name"    : "Guthrie House",
+        "lsm_name": "Guthrie%20House%20(GH)",
+        "abbrev"  : "GH",
+        "zone"    : 3,
+        "rooms"   : []
+    },
+    "HA": {
+        "name"    : "Half Acre",
+        "lsm_name": "Half%20Acre%20(HA)",
+        "abbrev"  : "HA",
+        "zone"    : 2,
+        "rooms"   : []
+    },
+    "HI": {
+        "name"    : "History",
+        "lsm_name": "History%20(HI)",
+        "abbrev"  : "HI",
+        "zone"    : 2,
+        "rooms"   : []
+    },
+    "HO": {
+        "name"    : "Hoyt Hall",
+        "lsm_name": "Hoyt%20Hall%20(HO)",
+        "abbrev"  : "HO",
+        "zone"    : 3,
+        "rooms"   : []
+    },
+    "HS": {
+        "name"    : "Health Sciences",
+        "lsm_name": "Health%20Sciences%20(HS)",
+        "abbrev"  : "HS",
+        "zone"    : 1,
+        "rooms"   : []
+    },
+    "IT": {
+        "name"    : "IT Center",
+        "lsm_name": "IT%20Center%20(ITC)",
+        "abbrev"  : "IT",
+        "zone"    : 4,
+        "rooms"   : []
+    },
+    "KH": {
+        "name"    : "Knight Hall",
+        "lsm_name": "Knight%20Hall%20(KH)",
+        "abbrev"  : "KH",
+        "zone"    : 3,
+        "rooms"   : []
+    },
+    "LS": {
+        "name"    : "Law School",
+        "lsm_name": "Law%20School%20(LS)",
+        "abbrev"  : "LS",
+        "zone"    : 4,
+        "rooms"   : []
+    },
+    "NAC": {
+        "name"    : "Native American Center",
+        "lsm_name": "Native%20American%20Ed%20Research%20%26%20Culteral%20Center%20(NA)",
+        "abbrev"  : "NAC",
+        "zone"    : 3,
+        "rooms"   : []
+    },
+    "PA": {
+        "name"    : "Performing Arts",
+        "lsm_name": "Buchanan%20Center%20for%20Performing%20Arts%20(PA)",
+        "abbrev"  : "PA",
+        "zone"    : 4,
+        "rooms"   : []
+    },
+    "PS": {
+        "name"    : "Physical Sciences",
+        "lsm_name": "Physical%20Sciences%20(PS)",
+        "abbrev"  : "PS",
+        "zone"    : 3,
+        "rooms"   : []
+    },
+    "RH": {
+        "name"    : "Ross Hall",
+        "lsm_name": "Ross%20Hall%20(RH)",
+        "abbrev"  : "RH",
+        "zone"    : 3,
+        "rooms"   : []
+    },
+    "SI": {
+        "name"    : "Science Initiative",
+        "lsm_name": "Science%20Initiative%20Building%20(SI)",
+        "abbrev"  : "SI",
+        "zone"    : 1,
+        "rooms"   : []
+    },
+    "ST": {
+        "name"    : "Enzi STEM",
+        "lsm_name": "Michael%20B.%20Enzi%20STEM%20(STEM)",
+        "abbrev"  : "ST",
+        "zone"    : 1,
+        "rooms"  : []
+    },
+    "VA": {
+        "name"    : "Visual Arts",
+        "lsm_name": "Visual%20Arts%20(VA)",
+        "abbrev"  : "VA",
+        "zone"    : 4,
+        "rooms"   : []
+    }
+}

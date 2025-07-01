@@ -193,6 +193,13 @@ button:-webkit-details-marker {
     transform: translate(-100px , 24px);
 }
 
+.leader {
+    margin: -20px 0px 25px 14px;
+    padding: 0px 0px 0px 100px;
+    width: 350px;
+    display: flex;
+}
+
 .toolTab {
     margin: 0px -6px;
     /* display: inline-block;
@@ -254,7 +261,23 @@ button:-webkit-details-marker {
     z-index: 3;
 }
 
-.dbTab:active, .chTab:active, .jnTab:active, .ccTab:active {
+.weekTab {
+    grid-column: auto;
+    z-index: 0;
+    width: 55px;
+}
+.monthTab {
+    grid-column: auto;
+    z-index: 1;
+    width: 55px;
+}
+.semesterTab {
+    grid-column: auto;
+    z-index: 2;
+    width: 55px;
+}
+
+.dbTab:active, .chTab:active, .jnTab:active, .ccTab:active .weekTab:active .monthTab:active .semesterTab:active{
     background: transparent;
     border-bottom: 39px solid #8f513e;
     transform: translateY(0px);
@@ -266,6 +289,12 @@ button:-webkit-details-marker {
     transition-duration: 0.1s;
     border-bottom: 29px solid #7c1919;
     
+}
+
+.weekTab.leader_selected, .monthTab.leader_selected, .semesterTab.leader_selected {
+    transform: translateY(10px);
+    transition-duration: 0.1s;
+    border-bottom: 29px solid #7c1919;
 }
  
 /*
@@ -387,11 +416,20 @@ button:-webkit-details-marker {
     grid-template-columns: repeat(7,1fr);
     gap: 10px;
     grid-auto-rows: minmax(20px, auto);
+    float: left;
 }
 
 .db_console {
-    grid-column: 2 / 7;
+    grid-column: 2 / 10;
     grid-row: 1 / 2;
+    width: 59%;
+}
+
+.db_leader {
+    grid-column: 6 / 10;
+    grid-row: 1 / 2;
+    margin-left: -20%;
+    width: 60%;
 }
 
 input[type=text], input[type=password] {
@@ -566,66 +604,126 @@ img.background {
     border:4px outset rgb(144, 118, 26)
 }
 /* Visualizer Stuff */
-.vis_container{
-    position: relative;
-    background-color: rgb(50, 50, 50);
+/*
+                            * BUILDING *         |x| |
+                                ---                  |
+        ROOOOM |#1 |#2 |#3|     ...     #9999        |
+        ---------------------------------------------
+          proc |o  |o  |o |                          |
+            pj |x o|   |  |                          |
+          disp |   |o o|o |                          |
+            ws |x  |o  |  |                          |
+            tp |o  |o  |o |                          |
+        ---------------------------------------------
+*/
+.vis_container {
     display: grid;
-    grid-template-columns: repeat(21,1fr);
-    gap: 0px;
-    grid-auto-rows: minmax(20px, auto);
-    border: 4px outset rgb(144, 118, 26);
-    overflow: hidden;
+    gap: 0rem;
+    padding: 1rem 0rem 0rem 0rem;
+    /* width: 90%; */
+    margin: 0rem 20% 0rem 20%;
 }
 
-.visHeader{
+/* Visualizer Tile Header, a Building */
+.visHeader {
+    /* grid-column: 1 / -1; */
+    padding: 1rem;
+    background-color:#24292E;
     color: rgb(205, 177, 99);
-    text-align: center;
-    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
-    grid-column: 1 / 22;
+    border-bottom:2px inset #94742e;
+}
+/* list of every list / the space they occupy */
+.visTile {
+    display:flex;
+    margin: 0rem;
+    padding: 1rem;
+    background-color: #37343e;
+    gap: .2rem;
+    overflow-x: auto;
 }
 
-.visTile{
-    margin: 0px;
-    margin-bottom: -8px;
-    border: 4px inset rgb(144, 118, 26);
-    /* grid-area: 2; */
-    overflow: hidden;
-    height: 100%;
-    width: 100%;
+.hideVisTile {
+    display: none;
 }
 
-.rmColumn {
+.visButton {
+    float: right;
+}
+
+.visTile > li {
+    gap:.5rem;
+}
+
+/* ul / Index / row title / "Proc\n pj\n disp\n ... */
+.visIndex {
     color: rgb(205, 177, 99);
-    text-align: center;
-    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
-    grid-auto-columns: auto;
-    -ms-grid-column-span: 10;
-    grid-row-start: auto;
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
+    display: contents;
 }
 
-.devVisFalse {
-    background-color: rgb(184, 92, 101);
-    color: rgb(236, 200, 101);
+/* li / Device Title */
+.visIndexItemHead {
+    background-color:#302f35;
+    color: rgb(168, 140, 64);
+    border-right:2px inset #94742e;
+    border-bottom:2px inset #94742e;
+    display: flex;
+    padding:.25rem;
+    text-align: center;
+}
+.visIndexItem {
+    background-color:#232128;
+    color: rgb(168, 140, 64);
+    border-bottom:2px inset #94742e;
+    border-right:2px inset #94742e;
+    display: flex;
+    padding: .5rem;
+}
+
+.visRoomHead {
+    background-color:#302f35;
+    color: rgb(168, 140, 64);
+    border-bottom:2px inset #a5a29c;
+    padding:.15rem;
+    justify-content: center;
+}
+
+.visRoomHeadText {
+    text-align: center;
+    margin:0rem;
+    /* margin-right: .5rem; */
+}
+
+.visRoomDevice {
+    justify-content: left;
+}
+
+/* List of Devices in a room, Needs to be horizontal*/
+.visRoomDeviceList {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    padding: 0.25rem;
+    border:1px outset #64603d;
     border-radius: 4px;
-    border: 2px inset rgb(144, 118, 26);
-    text-align: left;
-    padding: 5px;
-    margin: 0px 0;
+    margin: 0px 0px 0px 0px;
 }
 
-.devVisTrue {
+/* Hostname Blocks */
+.visRoomDeviceItem {
+    padding: 0.25rem;
+    border-radius:2px;
+}
+.visRoomDeviceItem:hover {
+    transition-delay: 0s;
+}
+
+.visTrue {
     background-color: rgb(120, 184, 92);
-    color: rgb(236, 200, 101);
-    border-radius: 4px;
-    border: 2px inset rgb(144, 118, 26);
-    text-align: left;
-    padding: 5px;
-    margin: 0px 0;
 }
 
+.visFalse {
+    background-color: rgb(184, 92, 101);
+}
 
 /* checkerboard Defifnitions 
    _____ _     _         _             _ 
@@ -682,6 +780,75 @@ img.background {
     background-color: rgb(139,24,27);
     color: rgb(236, 200, 101);
 }
+
+/* New classes from checkerboard overhaul*/ 
+.cbVisContainer {
+    margin-bottom:0px;
+    padding-bottom:0px;
+}
+
+.cbVisHeader { 
+/* BUILDING NAME */
+    margin-bottom:0px;
+    padding-bottom:0px;
+    border:#37343e inset 1px;
+}
+
+.cbVisRooms {
+    /* CONTAINS ALL ROOMS, maybe should be a list, not sure */
+    margin-top:0px;
+    margin-bottom:0px;
+    padding-top:0px;
+    padding-bottom:0px;
+}
+
+.cbVisRoom {
+/* CONTAINS A ROOM IN A BUILDING */
+    margin:0px;
+    padding:0px;
+}
+
+.cbVisRoomName {
+    margin: 0px;
+    padding:0px;
+}
+
+.cbVisRoomAttributes {
+    margin: 0px;
+    padding:0px;
+    padding-left:5%;
+    color:rgb(224, 191, 100);
+}
+/* CB room spans */
+.cbVisNotChecked {
+    padding-right:6px;
+    background-color: rgb(102, 53, 54);
+    border: rgb(94, 46, 17) inset 2px;
+    border-radius: 5px;
+}
+
+.cbVisChecked {
+    padding-right:6px;
+    background-color: rgb(67, 102, 65);
+    border: rgb(33, 39, 33) inset 2px;
+    border-radius: 5px;
+}
+
+.cbVisAvailable {
+    padding-right:6px;
+    background-color: rgb(57, 125, 54);
+    border: rgb(33, 39, 33) inset 2px;
+    border-radius: 5px;
+}
+
+.cbVisNotAvailable {
+    padding-right:6px;
+    background-color: rgb(139,24,27);
+    border: rgb(94, 46, 17) inset 2px;
+    border-radius: 5px;
+}
+
+
 
 /* CamCode Defifnitions 
    _____                 _____          _      

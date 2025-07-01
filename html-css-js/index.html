@@ -14,6 +14,7 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
   </head><!-- Javascript  -->
+  <script src="bronson-manager.js" type="text/javascript" charset="utf-8"></script>
   <script src="checkerboard.js" type="text/javascript" charset="utf-8"></script>
   <script src="camcode.js" type="text/javascript" charset="utf-8"></script>
   <script src="cc-altmode.js" type="text/javascript" charset="utf-8"></script>
@@ -24,7 +25,6 @@
   <!-- <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> -->
   <script>
     window.addEventListener("popstate", () => {
-      console.log(location.href);
       if (location.pathname == "/checker") {
         setChecker();
       } else if (location.pathname == "/jacknet") {
@@ -58,14 +58,13 @@
     /* setDashboard()
           Places the dashboard page, pretty baren at the moment.
     */
-    function setDashboard() {
+    async function setDashboard() {
       // History and init
       document.title = "Dashboard - Bronson";
       history.pushState({}, "Dashboard", "/");
 
       // remove currently active status, mark tab has active.
       let current = document.getElementsByClassName("selected");
-      console.log(current);
       if (current.length != 0) {
           current[0].classList.remove("selected");
       }
@@ -81,22 +80,103 @@
       // Dashboard Contents
       let consoleOutput = document.createElement("div");
       consoleOutput.classList.add('db_console');
-      consoleOutput.innerHTML = `
-        <fieldset>
-            <legend> 
-                Messages: </legend>
-            <textarea readonly rows="20" cols ="75" class="innerConsole" name="consoleOutput" spellcheck="false"> 
-                Welcome to Bronson!
-            </textarea>
-        </fieldset>`;
+      await fetch("/dashContents")
+        .then((response) => response.json())
+        .then((json) => {
+          consoleOutput.innerHTML = `
+            <fieldset>
+                <legend> 
+                    Messages: </legend>
+                <textarea readonly rows="20" cols ="65" class="innerConsole" name="consoleOutput" spellcheck="false"> 
+                    ${json["contents"]}
+                </textarea>
+            </fieldset>`;
+        });
   
+      let leaderboard = document.createElement("div");
+      leaderboard.classList.add("db_leader");
+        leaderboard.innerHTML = `
+        <fieldset>
+          <legend>
+            Leaderboard: 
+          </legend>
+          <div class="tab_row leader">
+            <button id="WeekButton" onclick="setLeaderWeek()" type="button" class="toolTab weekTab"><span>
+              Last 7 days </span></button>
+            <button id="MonthButton" onclick="setLeaderMonth()" type="button" class="toolTab monthTab"><span>
+              Last 30 days </span></button>
+            <button id="SemesterButton" onclick="setLeaderSemester()" type="button" class="toolTab semesterTab"><span> 
+              Last 90 days </span></button>
+          </div>
+          <textarea readonly rows="17" cols="35" class="innerConsole" id="leaderboard" spellcheck="false">
+          </textarea>
+        </fieldset>
+      `;
+
       db_container.appendChild(consoleOutput);
+      db_container.appendChild(leaderboard);
 
       let main_container = document.createElement('div');
       main_container.appendChild(db_container);
       main_container.classList.add('program_guts');
       prog_guts.replaceWith(main_container);
+      // Init sessionStorage
+      initLocalStorage();
       return;
+    }
+
+    function setLeaderWeek() {
+      let current = document.getElementsByClassName("leader_selected");
+      if (current.length != 0) {
+          current[0].classList.remove("leader_selected");
+      }
+      let newCurrent = document.getElementById("WeekButton");
+      newCurrent.classList.add("leader_selected");
+
+      let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["7days"];
+      let leaderString = "";
+      for (let i=0; i<weekLeader.length; i++) {
+        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+      }
+
+      let leaderboard = document.getElementById("leaderboard");
+      leaderboard.innerHTML = leaderString;
+    }
+
+    function setLeaderMonth() {
+      let current = document.getElementsByClassName("leader_selected");
+      if (current.length != 0) {
+          current[0].classList.remove("leader_selected");
+      }
+      let newCurrent = document.getElementById("MonthButton");
+      newCurrent.classList.add("leader_selected");
+
+      let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["30days"];
+      let leaderString = "";
+      for (let i=0; i<weekLeader.length; i++) {
+        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+      }
+
+      let leaderboard = document.getElementById("leaderboard");
+      leaderboard.innerHTML = leaderString;
+    }
+
+    function setLeaderSemester() {
+      let current = document.getElementsByClassName("leader_selected");
+      if (current.length != 0) {
+          current[0].classList.remove("leader_selected");
+      }
+      let newCurrent = document.getElementById("SemesterButton");
+      newCurrent.classList.add("leader_selected");
+
+      let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["90days"];
+      let leaderString = "";
+      for (let i=0; i<weekLeader.length; i++) {
+        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+      }
+
+      let leaderboard = document.getElementById("leaderboard");
+      leaderboard.innerHTML = leaderString;
     }
 
     // Bug Report form
