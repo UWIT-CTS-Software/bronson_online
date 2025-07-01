@@ -313,18 +313,22 @@ async function runSearch() {
         // TODO [ ] - UPDATE PINGPONG TO RETURN HN/IP array
         pingResult = await pingpong(devices, b_abbrev);
         // Expect the structure of ping result to change.
-        // We will need to introduce a series of functions to handle
-        //  this new structure. (TRIM THIS)
         let formPR = formatPingPong(pingResult, devices);
-        //let formPR = fixPR(pingResult, devices); 
+        // console.log("JackNet Debug - formPR:\n", formPR);
         // temp: eventually pingResult will return as this form
         let rms   = await printPR(formPR, bdl[i]);
+        // console.log("JackNet Debug - rms@printPR:\n", rms);
 
+        // These are broken now.
+        // TODO - Update printPR to give the numbers that these are used to get.
+        //   rather than returning rms, Export CSV Depends on these.
         f_rms = f_rms.concat(rms);
-        f_hns = f_hns.concat(pingResult[0]);
-        f_ips = f_ips.concat(pingResult[1]);
+        f_hns = f_hns.concat(formPR[0].flat(3));
+        f_ips = f_ips.concat(formPR[1].flat(3));
     }
 
+    // console.log("JackNet Debug - f_hns:\n",f_hns);
+    // console.log("JackNet Debug - f_ips:\n",f_ips);
     updateConsole("====--------------------========--------------------====");
 
     // Double check operation
@@ -354,6 +358,18 @@ async function runSearch() {
     return;
 };
 
+// Takes the 'jn_body' response and turns it into a nested array of nested arrays, (could be revised)
+// INPUT: 'jn_body' (Hashmap from backend)
+// OUTPUT:
+//   [
+//     [[ROOM1-DEV1-1, ROOM1-DEV1-2],[ROOM1-DEV2-1],[]],
+//     [[ROOM2-DEV1-1, ROOM2-DEV1-2],[ROOM2-DEV2-1],[ROOM2-DEV3-1]],
+//     [[...],[...]]
+//   ],
+//   [
+//      [[IP-ADDRS],[...],[...]],
+//      [[...],[...],[...]]
+//   ]
 function formatPingPong(PingPongJSON, devices) {
     // tmp
     let tmp_hn = [];
@@ -383,7 +399,6 @@ function formatPingPong(PingPongJSON, devices) {
         out_hn.push(tmp_hn);
         out_ip.push(tmp_ip);
     }
-    // check output
     // output
     let new_PR = [out_hn, out_ip];
     return new_PR;
@@ -402,7 +417,7 @@ async function printPR(formPing, building) {
     let rms = [];
 
     let rooms   = await getRooms(building);
-    let bAbbrev = await getAbbrev(building);
+    //let bAbbrev = await getAbbrev(building);
     
     // Iterate over each room in hns
     for (var j = 0; j < hns.length; j++) {
@@ -410,8 +425,11 @@ async function printPR(formPing, building) {
         printIps       = "";
         tmpBool = [];
         updateConsole("---------");
-        updateConsole(bAbbrev + " " + rooms[j]);
-        rms.push(bAbbrev + " " + rooms[j]);
+        updateConsole(rooms[j].name);
+        // ROOM NUMBER
+        roomNum = rooms[j].name.split(" ")[1];
+        rms.push(rooms[j].name);
+        //rms.push(roomNum);
         // Iterate over the device type in each room in each hn
         for (var a=0; a < hns[j].length; a++) {
             // Iterate over each hostname in a given device type
@@ -420,7 +438,7 @@ async function printPR(formPing, building) {
                 //   add to printout hostname line
                 //   add corresponding ip
                 //console.log("JN-Debug: Hostname", hns[j][a][k])
-                if(hns[j][a][k].includes(pad(rooms[j], 4))) {
+                if(hns[j][a][k].includes(pad(roomNum, 4))) {
                     printHostnames += pad(hns[j][a][k], 15, " ") + "|";
                     printIps       += pad(ips[j][a][k], 15, " ") + "|";
                 }
@@ -430,9 +448,8 @@ async function printPR(formPing, building) {
         updateConsole("IP's     : " + printIps);
         graphBool.push(tmpBool)
     }
-    // we got it 
+    // we got it, send to visualizer
     postJNVis(hns, ips, building);
-
     return rms;
 }
 
@@ -497,117 +514,105 @@ function minimizeVisTab(tabID) {
     return;
 }
 
-// TODO - Make this unique
+// TODO - Make this more unique
 function genTileID(building, devices) {
     return building;
 }
-// Rewrite for visualizer
+
 // Takes a nested array(rooms) of nested arrays(deviceType) for hns and ips
 // This is where we post some visualizations
 // Put together visualizer information
-// TO-DO:
-    /*      GOAL:
-                            * BUILDING *         |x| |
-                                ---                  |
-        ROOOOM |#1 |#2 |#3|     ...     #9999        |
-        ---------------------------------------------
-          proc |o  |o  |o |                          |
-            pj |x o|   |  |                          |
-          disp |   |o o|o |                          |
-            ws |x  |o  |  |                          |
-            tp |o  |o  |o |                          |
-        ---------------------------------------------
-        Need some nested booleans array for each room
-        ie: 
-        TODO - Format graphBool and handling of it here.
-        graphBool:
-            [[1],[0,1],[],[0],[1]],
-            [[1],[],[1,1],[1],[1]],
-            [[1],[],[1],[],[1]],
-             ...]
-        building: AG
-    */
-// Note, instead of booleans, I want the full object so I can implement an on hover show hostname/ip
-// Note: I do not believe rooms w/o devices will appear. This is because the temp struct
-//  change does not include it (can't easily find rooms that are not in the response).
-//  However, they will be included in the incoming updated response, make sure that is
-//  accounted for.
+/*      GOAL:
+                        * BUILDING *         |x| |
+                            ---                  |
+    ROOOOM |#1 |#2 |#3|     ...     #9999        |
+    ---------------------------------------------
+        proc |o  |o  |o |                          |
+        pj |x o|   |  |                          |
+        disp |   |o o|o |                          |
+        ws |x  |o  |  |                          |
+        tp |o  |o  |o |                          |
+    ---------------------------------------------
+*/
 async function postJNVis(hns, ips, building) {
     // Init Visualizer Tile
     let vis_container = document.createElement('div');
-    vis_container.classList.add('vis_container2');
-    
+    vis_container.classList.add('vis_container');
     // !--! List of rooms/devices in newly pinged building 
     let rooms           = await getRooms(building);
     const devicesNames  = getSelDevNames(await getSelectedDevices());
     // - Build our tile HTML block 
-    //          TODO- Add tag for vis container
-    // hash - building name/results back/time.
     //   Give this as an ID,
     let tileID = genTileID(building, devicesNames);
     vis_container.id = "tile" + tileID;
-    //  - TODO - Add minimize and close buttons
-    /*
-    Need two new new buttons and the close will need a unique identifier for each tab. see tag/ID todo above
-    */
-    
-    let HTML_visHeader = `<div class="visHeader2"> ${building} <button class="visButton" onclick="closeVisTab(\'${tileID}\')"> x </button><button class="visButton" onclick="minimizeVisTab(\'${tileID}\')"> _ </button></div>`;
-
-    // - Build an index section/left hand side, lists all devices searched for.
-    let HTML_visIndex = `<ul class="visIndex"> <li class="visIndexItemHead"> Room # </li>`;
-    for(var i = 0; i < devicesNames.length; i++) {
-        HTML_visIndex += `<li class="visIndexItem"> ${devicesNames[i]} </li>`;
+    let bAbbrev = await getAbbrev(building);
+    // TODO - add a percentage in the header?
+    let HTML_visHeader = `<div class="visHeader"> ${building} (${bAbbrev}) <button class="visButton" onclick="closeVisTab(\'${tileID}\')"> x </button><button class="visButton" onclick="minimizeVisTab(\'${tileID}\')"> _ </button></div>`;
+    // Compile lists...
+    // Tables are row based instead of column, making this a little different
+    //  than the ul list like before.
+    tableHeaders = ["Room #:"];
+    for(var i = 0; i < rooms.length; i++) {
+        let roomNumber = rooms[i].name.split(" ")[1];
+        roomNumber = parseInt(roomNumber);
+        tableHeaders.push(`<p class=visRoomHeadText>${roomNumber}</p>`);
     }
-    HTML_visIndex += `</ul>`;
-    // - Build each room collumn. Nested ul.
-    /*  BUILDING THIS HTML BLOCK
-    <ul class=visRooms> ROOM#
-        <ul class = visRoomDeviceList>
-            <li class=visRoomDeviceItem>0</li>   : + OnHover "Hostname: {}\n IP: {}"
-        </ul>
-        <ul class=visRoomDeviceList>
-            <li>...</li>
-        </ul>
-        ...
-    </ul>
-    */
-    let bool_ipFound = true;
-    let HTML_visRooms = `<ul class="visTile"  id=\"${tileID}\">`;
-    HTML_visRooms += `<li>` + HTML_visIndex + `</li>`;
-    let HTML_visRoomEntry = ``;
-    // For each room in hn
-    for(var j = 0; j < hns.length; j++) {
-        HTML_visRoomEntry = `<li><ul class=visRooms> <li class="visRoomHead"><p class=visRoomHeadText>${rooms[j].name}</p></li>`;
-        // For each device type in a room
-        for(var a = 0; a < hns[j].length; a++) {
-            HTML_visRoomEntry += `<li class="visRoomDevice"><ul class="visRoomDeviceList">`
-            // for each hostname in each kind of type
-            for(var k = 0; k < hns[j][a].length; k++) {
+    // Device Lists
+    //  More complicated due to a dynamic number of rows.
+    //  iterating through device lists, creating a nested array
+    let deviceRows = [];
+    for(devName in devicesNames) {
+        let tmpRow = [String(devicesNames[devName])];
+        // iterate through hostnames/ips by ROOM
+        for(var j = 0; j < hns.length; j++) {
+            let HTML_visRoomEntry = `<ul class="visRoomDeviceList">`;
+            // Looking at a specific device
+            for(var a = 0; a < hns[j][devName].length; a++) {
+                // for each hostname in each kind of type
                 // Did we find it?
-                if(ips[j][a][k] == "x") {
+                if(ips[j][devName][a] == "x") {
                     bool_ipFound = false;
                 } else {
                     bool_ipFound = true;
                 }
-                // Positive Hit
-                if (bool_ipFound) {
-                    HTML_visRoomEntry += `<li class="visRoomDeviceItem visTrue" title="Hostname: ${hns[j][a][k]}\n            IP: ${ips[j][a][k]}"> _ </li>`;
+                if (bool_ipFound) { // Positive Hit
+                    HTML_visRoomEntry += `<li class="visRoomDeviceItem visTrue" title="Hostname: ${hns[j][devName][a]}\n            IP: ${ips[j][devName][a]}"> _ </li>`;
                 } else { // Negative Hit
-                    HTML_visRoomEntry += `<li class="visRoomDeviceItem visFalse" title="${hns[j][a][k]} not found"> _ </li>`;
+                    HTML_visRoomEntry += `<li class="visRoomDeviceItem visFalse" title="${hns[j][devName][a]} not found"> _ </li>`;
                 }
             }
             // If there are no hostnames
-            if (hns[j][a].length == 0) {
+            if (hns[j][devName].length == 0) {
                 HTML_visRoomEntry += `<li class="visRoomDeviceItem" title="No Device in Inventory">_</li>`;
             }
-            HTML_visRoomEntry += `</ul></li>`;
+            HTML_visRoomEntry += `</ul>`;
+            tmpRow.push(HTML_visRoomEntry);
         }
-        HTML_visRoomEntry += `</ul></li>`;
-        HTML_visRooms += HTML_visRoomEntry;
+        deviceRows.push(tmpRow);
     }
-    HTML_visRooms += `</ul>`;
+    // Put it together
+    //  Headers
+    let HTML_table = `<table class="visTile"  id=\"${tileID}\"> <tr>`;
+    for(header in tableHeaders) {
+        HTML_table += `<th class="visRoomHead"> ${tableHeaders[header]} </th>`;
+    }
+    HTML_table += `</tr>`;
+    //  Device Rows
+    for(row in deviceRows) {
+        HTML_table += `<tr>`;
+        console.log(row);
+        for(hostname in deviceRows[row]) {
+            if (hostname == 0) {
+                HTML_table += `<td class="visIndexItem">${deviceRows[row][hostname]} </td>`
+            } else {
+                HTML_table += `<td class="visRoomDevice"> ${deviceRows[row][hostname]} </td>`;
+            }
+        }
+        HTML_table += `</tr>`;
+    }
+    HTML_table += `</table>`;
     // Put it all together
-    vis_container.innerHTML = HTML_visHeader + HTML_visRooms;
+    vis_container.innerHTML = HTML_visHeader + HTML_table;
     // Put it on the page
     let progGuts = document.querySelector('.program_board .program_guts');
     progGuts.append(vis_container);

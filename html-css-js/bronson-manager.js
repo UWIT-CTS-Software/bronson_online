@@ -19,6 +19,11 @@
 async function initLocalStorage() {
     let campJSON = await getCampusData();
     localStorage.setItem("campusJSON", JSON.stringify(campJSON));
+    // Need to make a function on the backend that handles this request.
+    // Campus Data (Effectively a clone of the hashmap)
+    let campData = await getCampusData();
+    console.log(campData);
+    localStorage.setItem("campData", JSON.stringify(campData));
     // Zone Arrays
     let zoneData = await getZoneData();
     localStorage.setItem("zoneData", JSON.stringify(zoneData));
@@ -80,7 +85,7 @@ function storeJNResponse(jnBody) {
 //  of it.
 // Copy this to extract info from ping response
 function getLocalCampusData() {
-    let campJSON = localStorage.getItem("campusJSON");
+    let campJSON = localStorage.getItem("campData");
     return JSON.parse(campJSON);
 }
 
