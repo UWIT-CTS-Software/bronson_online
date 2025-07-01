@@ -585,18 +585,17 @@ img.background {
             tp |o  |o  |o |                          |
         ---------------------------------------------
 */
-.vis_container2 {
+.vis_container {
     display: grid;
-    /* grid-template-columns: auto repeat(auto-fit, minmax(200px, 1fr)); */
     gap: 0rem;
-    padding: 1rem;
-    width: 90%;
-    /* overflow-x: auto; */
+    padding: 1rem 0rem 0rem 0rem;
+    /* width: 90%; */
+    margin: 0rem 20% 0rem 20%;
 }
 
 /* Visualizer Tile Header, a Building */
-.visHeader2 {
-    grid-column: 1 / -1;
+.visHeader {
+    /* grid-column: 1 / -1; */
     padding: 1rem;
     background-color:#24292E;
     color: rgb(205, 177, 99);
@@ -646,23 +645,7 @@ img.background {
     border-bottom:2px inset #94742e;
     border-right:2px inset #94742e;
     display: flex;
-    padding: .75rem;
-}
-
-/* List of device lists, first entry is a room number (list header)*/
-.visRooms {
-    display:contents;
-    color: rgb(205, 177, 99);
-    width: 100%;
-}
-
-.visRooms > li {
-    display: flex;
-    margin:0.25rem;
-    border-right:1px outset #889087;
-    padding-right: 0rem;
-    padding-left: 0rem;
-    width: 100%;
+    padding: .5rem;
 }
 
 .visRoomHead {
@@ -691,6 +674,7 @@ img.background {
     padding: 0.25rem;
     border:1px outset #64603d;
     border-radius: 4px;
+    margin: 0px 0px 0px 0px;
 }
 
 /* Hostname Blocks */
@@ -709,69 +693,6 @@ img.background {
 .visFalse {
     background-color: rgb(184, 92, 101);
 }
-/* OLD VISUALIZER STUFF
-  - Delete this once the above definitions look how you want. */
-
-.vis_container{
-    position: relative;
-    background-color: rgb(50, 50, 50);
-    display: grid;
-    grid-template-columns: repeat(21,1fr);
-    gap: 0px;
-    grid-auto-rows: minmax(20px, auto);
-    border: 4px outset rgb(144, 118, 26);
-    overflow: hidden;
-}
-
-.visHeader{
-    color: rgb(205, 177, 99);
-    text-align: center;
-    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
-    grid-column: 1 / 22;
-}
-
-/* .visTile{
-    margin: 0px;
-    margin-bottom: -8px;
-    border: 4px inset rgb(144, 118, 26);
-    grid-area: 2;
-    overflow: hidden;
-    height: 100%;
-    width: 100%;
-} */
-
-.rmColumn {
-    color: rgb(205, 177, 99);
-    text-align: center;
-    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
-    grid-auto-columns: auto;
-    -ms-grid-column-span: 10;
-    grid-row-start: auto;
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-}
-
-.devVisFalse {
-    background-color: rgb(184, 92, 101);
-    color: rgb(236, 200, 101);
-    border-radius: 4px;
-    border: 2px inset rgb(144, 118, 26);
-    text-align: left;
-    padding: 5px;
-    margin: 0px 0;
-}
-
-.devVisTrue {
-    background-color: rgb(120, 184, 92);
-    color: rgb(236, 200, 101);
-    border-radius: 4px;
-    border: 2px inset rgb(144, 118, 26);
-    text-align: left;
-    padding: 5px;
-    margin: 0px 0;
-}
-
 
 /* checkerboard Defifnitions 
    _____ _     _         _             _ 
