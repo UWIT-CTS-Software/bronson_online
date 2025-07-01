@@ -19,28 +19,16 @@
 async function initLocalStorage() {
     let campJSON = await getCampusData();
     localStorage.setItem("campusJSON", JSON.stringify(campJSON));
-    // Need to make a function on the backend that handles this request.
     // Zone Arrays
     let zoneData = await getZoneData();
     localStorage.setItem("zoneData", JSON.stringify(zoneData));
+
+    let leaderboard = await getLeaderboard();
+    localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
     return;
 }
 
-async function getCampusJSON() {
-    return fetch('campus.json')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("HTTP error " + response.status);
-            }
-            return response.json();
-        }
-    );
-}
-
 // TODO (also on the backend) 
-// - this should replace campus.json in it's entirety, 
-//    should be structured like the hashmap (should be an 
-//    array of clones of each building entry in it). 
 async function getCampusData() {
     return fetch('campusData')
         .then(response => {
@@ -54,8 +42,24 @@ async function getCampusData() {
 
 async function getZoneData() {
     return await fetch('zoneData')
-    .then((response) => response.json())
-    .then((json) => {return json;});
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("HTTP error" + response.status);
+            }
+            return response.json();
+        }
+    );
+}
+
+async function getLeaderboard() {
+    return fetch("leaderboard")
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("HTTP error " + response.status);
+            }
+            return response.json();
+        }
+    );
 }
 
 // Session Storage Stuff (Tool Responses)

@@ -379,6 +379,80 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents(contents);
         },
+        "GET /leaderboard HTTP/1.1"        => {
+            let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
+            let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
+            let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
+
+
+            let req = reqwest::Client::builder()
+                .cookie_store(true)
+                .user_agent("server_lib/1.10.1")
+                .default_headers(construct_headers("lsm", keys))
+                .timeout(Duration::from_secs(15))
+                .build()
+                .ok()?
+            ;
+
+            let body_7_days = req.get(url_7_days)
+                              .timeout(Duration::from_secs(15))
+                              .send()
+                              .await
+                              .expect("[-] RESPONSE ERROR")
+                              .text()
+                              .await
+                              .expect("[-] PAYLOAD ERROR");
+
+            let v_7_days: Value = serde_json::from_str(&body_7_days).expect("Empty");
+            let data_7_days: Vec<Value>;
+            if v_7_days["count"].as_i64() > Some(0) {
+                data_7_days = v_7_days["data"].as_array().unwrap().to_vec();
+            } else {
+                data_7_days = Vec::new();
+            }
+
+            let body_30_days = req.get(url_30_days)
+                              .timeout(Duration::from_secs(15))
+                              .send()
+                              .await
+                              .expect("[-] RESPONSE ERROR")
+                              .text()
+                              .await
+                              .expect("[-] PAYLOAD ERROR");
+
+            let v_30_days: Value = serde_json::from_str(&body_30_days).expect("Empty");
+            let data_30_days: Vec<Value>;
+            if v_30_days["count"].as_i64() > Some(0) {
+                data_30_days = v_30_days["data"].as_array().unwrap().to_vec();
+            } else {
+                data_30_days = Vec::new();
+            }
+
+            let body_90_days = req.get(url_90_days)
+                              .timeout(Duration::from_secs(15))
+                              .send()
+                              .await
+                              .expect("[-] RESPONSE ERROR")
+                              .text()
+                              .await
+                              .expect("[-] PAYLOAD ERROR");
+
+            let v_90_days: Value = serde_json::from_str(&body_90_days).expect("Empty");
+            let data_90_days: Vec<Value>;
+            if v_90_days["count"].as_i64() > Some(0) {
+                data_90_days = v_90_days["data"].as_array().unwrap().to_vec();
+            } else {
+                data_90_days = Vec::new();
+            }
+
+            let contents = json!({
+                 "7days": data_7_days,
+                "30days": data_30_days,
+                "90days": data_90_days
+            }).to_string().into();
+            res.status(STATUS_200);
+            res.send_contents(contents);
+        },
         // Terminal
         // --------------------------------------------------------------------
         "GET /refresh/all HTTP/1.1"        => {

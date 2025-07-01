@@ -95,12 +95,20 @@
   
       let leaderboard = document.createElement("div");
       leaderboard.classList.add("db_leader");
-      leaderboard.innerHTML = `
+        leaderboard.innerHTML = `
         <fieldset>
           <legend>
-            Leaderboard: </legend>
-          <textarea readonly rows="20" cols="55" class="innerConsole" name="leaderboard" spellcheck="false">
-            Leaderboard
+            Leaderboard: 
+          </legend>
+          <div class="tab_row leader">
+            <button id="WeekButton" onclick="setLeaderWeek()" type="button" class="toolTab weekTab"><span>
+              Last 7 days </span></button>
+            <button id="MonthButton" onclick="setLeaderMonth()" type="button" class="toolTab monthTab"><span>
+              Last 30 days </span></button>
+            <button id="SemesterButton" onclick="setLeaderSemester()" type="button" class="toolTab semesterTab"><span> 
+              Last 90 days </span></button>
+          </div>
+          <textarea readonly rows="17" cols="35" class="innerConsole" id="leaderboard" spellcheck="false">
           </textarea>
         </fieldset>
       `;
@@ -117,7 +125,59 @@
       return;
     }
 
-    
+    function setLeaderWeek() {
+      let current = document.getElementsByClassName("leader_selected");
+      if (current.length != 0) {
+          current[0].classList.remove("leader_selected");
+      }
+      let newCurrent = document.getElementById("WeekButton");
+      newCurrent.classList.add("leader_selected");
+
+      let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["7days"];
+      let leaderString = "";
+      for (let i=0; i<weekLeader.length; i++) {
+        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+      }
+
+      let leaderboard = document.getElementById("leaderboard");
+      leaderboard.innerHTML = leaderString;
+    }
+
+    function setLeaderMonth() {
+      let current = document.getElementsByClassName("leader_selected");
+      if (current.length != 0) {
+          current[0].classList.remove("leader_selected");
+      }
+      let newCurrent = document.getElementById("MonthButton");
+      newCurrent.classList.add("leader_selected");
+
+      let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["30days"];
+      let leaderString = "";
+      for (let i=0; i<weekLeader.length; i++) {
+        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+      }
+
+      let leaderboard = document.getElementById("leaderboard");
+      leaderboard.innerHTML = leaderString;
+    }
+
+    function setLeaderSemester() {
+      let current = document.getElementsByClassName("leader_selected");
+      if (current.length != 0) {
+          current[0].classList.remove("leader_selected");
+      }
+      let newCurrent = document.getElementById("SemesterButton");
+      newCurrent.classList.add("leader_selected");
+
+      let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["90days"];
+      let leaderString = "";
+      for (let i=0; i<weekLeader.length; i++) {
+        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+      }
+
+      let leaderboard = document.getElementById("leaderboard");
+      leaderboard.innerHTML = leaderString;
+    }
 
     // Bug Report form
     function initForm() {
