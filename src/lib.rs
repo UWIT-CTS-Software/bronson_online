@@ -183,7 +183,7 @@ impl<'a> Clone for Building {
 			lsm_name: String::from(new_lsm_name),
 			abbrev: String::from(new_abbrev),
 			rooms: (&self.rooms).to_vec(),
-			zone: self.zone.clone(),
+			zone: self.zone,
 		}
 	}
 }

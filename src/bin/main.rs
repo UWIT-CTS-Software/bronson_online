@@ -232,10 +232,10 @@ fn gen_building_map() -> Option<HashMap<String, Building>> {
             }
 
             let schedule = match schedules.get(&String::from(room_name)) {
-                Some(x) => x.clone(),
+                Some(x) => x.to_owned(),
                 _       => Vec::<String>::new(),
             };
-            let hn_vec = gen_hn(String::from(room_name), item_vec.clone());
+            let hn_vec = gen_hn(String::from(room_name), &item_vec);
             let ip_vec = gen_ip(item_vec);
 
             let room = Room {
@@ -363,7 +363,7 @@ async fn handle_connection(
         },
         // Data Requests
         "GET /campusData HTTP/1.1"         => {
-            let contents = json!(buildings.clone()).to_string().into();
+            let contents = json!(&buildings).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -544,26 +544,29 @@ async fn handle_connection(
             let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
             let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Option::Some(res) };
             let encoded_title = String::from(credentials["title"].to_string().into_boxed_str());
-            let mut encoded_desc = String::from(credentials["desc"].to_string().into_boxed_str());
-            if encoded_desc == String::from("") {
-                encoded_desc = encoded_title.clone();
-            }
+            let encoded_desc = String::from(credentials["desc"].to_string().into_boxed_str());
+
             let mut decoded_title = decode(&encoded_title).expect("UTF-8");
-            let mut decoded_desc = decode(&encoded_desc).expect("UTF-8");
+            let mut decoded_desc;
+            if encoded_desc == String::from("") {
+                decoded_desc = decode(&encoded_title).expect("UTF-8");
+            } else {
+                decoded_desc = decode(&encoded_desc).expect("UTF-8");
+            }
             decoded_title = decoded_title.replace("+", " ").into();
             decoded_desc = decoded_desc.replace("+", " ").into();
             decoded_desc = decoded_desc.replace("\0", "").into();
+
             let mut arg_map = HashMap::new();
             arg_map.insert("title", decoded_title);
             arg_map.insert("body", decoded_desc);
 
-            let clone_keys = keys.clone();
             let url = "https://api.github.com/repos/UWIT-CTS-Software/bronson_online/issues";
             let req = reqwest::Client::builder()
                 .cookie_store(true)
                 // .cookie_provider(Arc::clone(&cookie_jar))
                 .user_agent("server_lib/1.10.1")
-                .default_headers(construct_headers("gh", clone_keys))
+                .default_headers(construct_headers("gh", keys))
                 .timeout(Duration::from_secs(15))
                 .build()
                 .ok()?
@@ -590,21 +593,14 @@ async fn handle_connection(
         },
         // Checkerboard
         "POST /run_cb HTTP/1.1"            => {
-            //// --- REWRITE OF RUN_CB, NOW TAKES ONE BUILDING ABBREVIATION ---
             // get zone selection from request and store
             // ----------------------------------------------------------------
-            let building_sel = String::from_utf8(req.body.clone()).expect("CamCode Err, invalid UTF-8");
-            // An Abbreviaition 
-            //let building_selection: String = serde_json::from_str(tmp)
-            //    .expect("Failed to build zone request struct");
-            //debug!("Checkerboard Debug: building selection {:?}", building_sel);
-            // ----------------------------------------------------------------
+            let building_sel = String::from_utf8(req.body).expect("CamCode Err, invalid UTF-8");
             // call for roomchecks in LSM and store
             // ----------------------------------------------------------------
             let mut return_body: Vec<Building> = Vec::new();
-            let clone_keys = keys.clone();
             // attempt to fix buildings.get
-            let building_lsm_name: &str = &mut buildings.get_mut(&building_sel.clone())
+            let building_lsm_name: &str = &mut buildings.get_mut(&building_sel)
                 .unwrap()
                 .lsm_name
                 .as_str();
@@ -616,7 +612,7 @@ async fn handle_connection(
             let req = reqwest::Client::builder()
                 .cookie_store(true)
                 .user_agent("server_lib/1.10.1")
-                .default_headers(construct_headers("lsm", clone_keys))
+                .default_headers(construct_headers("lsm", keys))
                 .timeout(Duration::from_secs(15))
                 .build()
                 .ok()?
@@ -643,21 +639,21 @@ async fn handle_connection(
                 }
             }
 
-            for room in &mut buildings.get_mut(&building_sel.clone()).unwrap().rooms {
+            for room in &mut buildings.get_mut(&building_sel).unwrap().rooms {
                 if check_map.contains_key(&room.name) {
                     // checked Date format may need changed here
                     debug!("Checkerboard Debug - checked value: \n{:?}", String::from(check_map.get(&room.name).unwrap()));
                     //room.checked = String::from(check_map.get(&room.name).unwrap().split("T").collect::<Vec<&str>>()[0]);
                     room.checked = String::from(check_map.get(&room.name).unwrap());
-                    debug!("Checkerboard Debug - Room struct: \n{:?}", room.clone());
-                    room.needs_checked = check_lsm(room.clone());
+                    debug!("Checkerboard Debug - Room struct: \n{:?}", room);
+                    room.needs_checked = check_lsm(room);
                 }
-                let schedule_params = check_schedule(room.clone());
+                let schedule_params = check_schedule(room);
                 room.available = schedule_params.0;
                 room.until = schedule_params.1;
             }
 
-            return_body.push(buildings.get(&building_sel.clone()).unwrap().clone());
+            return_body.push(buildings.get(&building_sel).unwrap().clone());
             // ----------------------------------------------------------------
 
             // parse rooms map to load statuses for return
@@ -696,7 +692,7 @@ async fn handle_connection(
         },
         "POST /cfm_file HTTP/1.1"          => {
             let contents = get_cfm_file(req.body);
-            let mut f = File::open(contents.clone()).unwrap();
+            let mut f = File::open(&contents).unwrap();
             
             let mut file_buffer = Vec::new();
             f.read_to_end(&mut file_buffer).unwrap();
@@ -808,22 +804,10 @@ execute_ping()
 --
 NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
       CAMPUS_STR -> "html-css-js/campus.json"
-
-TO-DO:
-   [ ] - Consider returning a building as follows
-        [[[room1-proc],[room1-pj1,room1-pj2],[],[room1-tp]],
-        [[room2-proc],[],[room2-disp1, room2-disp2],[room2-tp]]]
-          The hashmap will utilize this structure to some extent. 
-          The structure of this return is important.
-          It is currently returning a massive list of every hostname
-          and ip within a building. This will turn it into a nested
-          vector of nested vectors. The front-end (jacknet.js) is
-          not written to handle this structure and will need
-          to be able to.
 */
 // call ping_this executible here
 fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<u8> {
-    let tmp = String::from_utf8(body.clone()).expect("Err, invalid UTF-8");
+    let tmp = String::from_utf8(body).expect("Err, invalid UTF-8");
     debug!("JacknetClientRequest: {:?}", tmp);
     // Prep Request into Struct
     let pr: PingRequest = serde_json::from_str(&tmp)
@@ -834,7 +818,7 @@ fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<
     //   NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
     //         CAMPUS_STR -> "html-css-js/campus.json" 
 
-    let rooms_to_ping: &mut Vec<Room> = &mut buildings.get_mut(&pr.building.clone()).unwrap().rooms;
+    let rooms_to_ping: &mut Vec<Room> = &mut buildings.get_mut(&pr.building).unwrap().rooms;
     let mut hn_ips: Vec<Vec<String>>;
 
     for rm in 0..rooms_to_ping.len() {
@@ -851,10 +835,10 @@ fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<
         rooms_to_ping[rm].ips = hn_ips;
     }
 
-    buildings.get_mut(&pr.building.clone()).unwrap().rooms = rooms_to_ping.to_vec();
+    buildings.get_mut(&pr.building).unwrap().rooms = rooms_to_ping.to_vec();
 
     let json_return = json!({
-        "jn_body": buildings.get(&pr.building.clone()).unwrap(),
+        "jn_body": buildings.get(&pr.building).unwrap(),
     });
     // Return JSON with ping results
     return json_return.to_string().into();
@@ -870,7 +854,7 @@ fn ping_room(hn_group: Vec<String>) -> Vec<String> {
         });
     }
 
-    let mut ips_vec = hn_group.clone();
+    let mut ips_vec = hn_group;
     for ip in 0..ips_vec.len() {
         ips_vec[ip] = ips.get(&ips_vec[ip]).unwrap().to_string();
     }
@@ -885,7 +869,7 @@ fn ping_room(hn_group: Vec<String>) -> Vec<String> {
 //          "[ Proc , Pj , Disp , Ws , Tp ]"
 fn gen_hn(
     room_name: String, 
-    item_vec: Vec<u8>
+    item_vec: &Vec<u8>
 ) -> Vec<Vec<String>> {
     let mut hostnames = Vec::new();
     let mut tmp_hn    = String::new();
@@ -959,7 +943,7 @@ fn construct_headers(call_type: &str, keys: Keys) -> HeaderMap {
     return header_map;
 }
 
-fn check_schedule(room: Room) -> (u8, String) {
+fn check_schedule(room: &Room) -> (u8, String) {
     let mut available: u8 = 1;
     let mut until: String = String::from("TOMORROW");
 
@@ -1000,7 +984,7 @@ fn check_schedule(room: Room) -> (u8, String) {
     return (available, until);
 }
 
-fn check_lsm(room: Room) -> u8 {
+fn check_lsm(room: &Room) -> u8 {
     let needs_checked;
     // Line below produces -> ParseError(TooShort)
     let parsed_checked: DateTime<Local> = room.checked.parse().unwrap();
@@ -1134,7 +1118,7 @@ fn cfm_build_rm(body: Vec<u8>) -> Vec<u8> {
 
     // Prep buffer into Room List Request Struct
     //     - building
-    let tmp = String::from_utf8(body.clone()).expect("CamCode Err, invalid UTF-8");
+    let tmp = String::from_utf8(body).expect("CamCode Err, invalid UTF-8");
     let cfm_rms: CFMRoomRequest = serde_json::from_str(&tmp)
         .expect("Failed to build CamCode Room Request Struct");
 
@@ -1169,7 +1153,7 @@ fn get_cfm(body: Vec<u8>) -> Vec<u8> {
     // crestron file manager request (CFMR)
     //   - building
     //   - rm
-    let tmp = String::from_utf8(body.clone()).expect("CamCode Err, invalid UTF-8");
+    let tmp = String::from_utf8(body).expect("CamCode Err, invalid UTF-8");
     let cfmr: CFMRequest = serde_json::from_str(&tmp)
         .expect("Failed to build cfm request");
     // Check CFM_Code Directory
@@ -1193,7 +1177,7 @@ fn get_cfm(body: Vec<u8>) -> Vec<u8> {
 //    [ ] - store selected file as bytes ?
 //    [ ] - send in json as usual ?
 fn get_cfm_file(body: Vec<u8>) -> String {
-    let tmp = String::from_utf8(body.clone()).expect("CamCode Err, invalid UTF-8");
+    let tmp = String::from_utf8(body).expect("CamCode Err, invalid UTF-8");
     //
     let cfmr_f: CFMRequestFile = serde_json::from_str(&tmp)
         .expect("CamCode Err, Failed to grab file");
@@ -1229,7 +1213,7 @@ fn get_cfm_dir(body: Vec<u8>) -> Vec<u8> {
     //    - filename
     let mut strings = Vec::new();
     //
-    let tmp = String::from_utf8(body.clone()).expect("CamCode Err, invalid UTF-8");
+    let tmp = String::from_utf8(body).expect("CamCode Err, invalid UTF-8");
     //
     let cfmr_d: CFMRequestFile = serde_json::from_str(&tmp)
         .expect("CamCode Err, Failed to get dir struct");
