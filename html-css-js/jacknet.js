@@ -105,7 +105,10 @@ function getSelectedDevices() {
             devList.push(0);
         };
     };
-    //console.log("JN Binary Device List:", devList);
+    let sum = devList.reduce((acc, cur) => acc + cur, 0);
+    if (sum == 0) {
+        devList = [1,1,1,1,1,1];
+    }
     return devList;
 }
 
@@ -600,7 +603,6 @@ async function postJNVis(hns, ips, building) {
     //  Device Rows
     for(row in deviceRows) {
         HTML_table += `<tr>`;
-        console.log(row);
         for(hostname in deviceRows[row]) {
             if (hostname == 0) {
                 HTML_table += `<td class="visIndexItem">${deviceRows[row][hostname]} </td>`

@@ -786,19 +786,6 @@ fn get_zone_data(buildings: HashMap<String, Building>) -> Vec<u8> {
     return json_return.to_string().into();
 }
 
-fn get_campus_data(buildings: HashMap<String, Building>) -> Vec<u8> {
-    let mut output_vec: Vec<Building> = vec![];
-    // pack buildings
-    for blding in buildings.clone().into_iter() {
-        output_vec.push(blding.1);
-    }
-    //pack the json
-    let json_return = json!({
-        "buildings": output_vec,
-    });
-    return json_return.to_string().into();
-}
-
 /*
    $$$$$\                     $$\       $$\   $$\            $$\     
    \__$$ |                    $$ |      $$$\  $$ |           $$ |    
@@ -852,15 +839,9 @@ fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<
 
     for rm in 0..rooms_to_ping.len() {
         hn_ips = Vec::new();
-        let dev_map; 
-        if pr.devices.iter().sum::<u8>() == 0 {
-            dev_map = vec![1,1,1,1,1,1];
-        } else {
-            dev_map = pr.devices.clone();
-        }
         for hn_group in 0..rooms_to_ping[rm].hostnames.len() { // make this ping
             hn_ips.push(Vec::new());
-            if dev_map[hn_group] == 0 {
+            if pr.devices[hn_group] == 0 {
                 continue;
             }
             let hns = &rooms_to_ping[rm].get_hostnames()[hn_group];
