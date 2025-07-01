@@ -750,7 +750,50 @@ img.background {
     color: rgb(236, 200, 101);
 }
 
-/* New classes from checkerboard overhaul*/ 
+/* New classes from checkerboard overhaul*/
+/* Topper stuff */
+.cbTopperContainer {
+    margin: 0px 0px 3% 0px;
+}
+
+.cbTopperZoneHeader {
+    font-weight:bold;
+    font-family: "Contrail One", sans-serif;
+}
+
+.cbTopperBuildingList {
+    margin: 0px 0px 0px 0px;
+    padding: 0px 5% 0px 5%;
+}
+
+.cbTopperBuilding {
+    border: rgb(102,53,54) inset 2px;
+    cursor: pointer;
+}
+.cbTopperBuildingNameText {
+    font-family: 'Courier New', Courier, monospace;
+    margin:0px 0px 4px 0px;
+    font-weight: bold;
+}
+
+.cbTopperBuildingStatus {
+    margin:0px 0px 0px 0px;
+    display: flex;
+    justify-content: right;
+}
+
+.cbBStatusText {
+    margin:0px 4% 0px 4%;
+    width: 100%;
+}
+
+.cbProgress {
+    margin: 5px 0px 0px 0px;
+}
+
+.cbProgLabel {
+    margin:0px 6px 0px 3%;
+}
 .cbVisContainer {
     margin-bottom:0px;
     padding-bottom:0px;

@@ -99,7 +99,11 @@ function buildStarterTopper(zone_array) {
         // Iterate through buildings in a given zone
         for (var j = 0; j < buildingNames.length; j++) {
             // Note, would be cool if this could be animated triple dot...
-            let HTML_tmp = `<li class=cbTopperBuilding id="cbTopper_${buildingAbbrev[j]}" onclick="cbJumpTo(\'cbVis_${buildingAbbrev[j]}\')"> Loading ${buildingNames[j]} ...</li>`;
+            //let HTML_tmp = `<li class=cbTopperBuilding id="cbTopper_${buildingAbbrev[j]}" onclick="cbJumpTo(\'cbVis_${buildingAbbrev[j]}\')"> Loading ${buildingNames[j]} ...</li>`;
+            let HTML_tmp = `<li class=cbTopperBuilding id="cbTopper_${buildingAbbrev[j]}" onclick="cbJumpTo(\'cbVis_${buildingAbbrev[j]}\')">
+            <p class="cbTopperBuildingNameText">${buildingNames[j]}</p>
+            <p class="cbTopperBuildingStatus">Loading. .. </p>
+            </li>`;
             HTML_cbTopperBuildings += HTML_tmp;
         }
         HTML_cbTopperBuildings += `</ul>`;
@@ -113,12 +117,21 @@ function buildStarterTopper(zone_array) {
 }
 
 async function updateTopperElement(topperID, buildingName, numberChecked, numberRooms) {
-    let percent = 100*((numberChecked/numberRooms).toFixed(5));
+    let percent = String(100*((numberChecked/numberRooms).toFixed(5))).slice(0,5);
     let topperEntry = document.getElementById(topperID);
-    topperEntry.innerText = `${buildingName} - Rooms Checked: ${numberChecked} / ${numberRooms} (${percent}%)`;
+    // TODO - Make this more fancy
+    //topperEntry.innerText = `${buildingName} - Rooms Checked: ${numberChecked} / ${numberRooms} (${percent}%)`;
+    // Pre-Update HTML
+    /*
+    `<li class=cbTopperBuilding id="cbTopper_${buildingAbbrev[j]}" onclick="cbJumpTo(\'cbVis_${buildingAbbrev[j]}\')"> Loading ${buildingNames[j]} ...</li>`;
+    */
+   // Note this is using pad in jacknet.js
+    topperEntry.innerHTML = `<p class="cbTopperBuildingNameText">${buildingName}</p>
+    <div class="cbTopperBuildingStatus"><p class="cbBStatusText">Rooms Checked: ${pad(numberChecked,3," ")} / ${numberRooms}</p><label class="cbProgLabel" for="${buildingName}_status">${percent}%</label><progress id="${buildingName}_status" class="cbProgress" value="${percent}" max="100"> </progress></div>`;
     return;
 }
 
+// Used to wipe board if there is something there already
 function clearVisContainer() {
     let visCon = document.querySelector('.cbVisContainer');
     visCon.innerHTML = ``;

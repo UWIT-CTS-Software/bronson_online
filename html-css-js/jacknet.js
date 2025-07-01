@@ -600,7 +600,6 @@ async function postJNVis(hns, ips, building) {
     //  Device Rows
     for(row in deviceRows) {
         HTML_table += `<tr>`;
-        console.log(row);
         for(hostname in deviceRows[row]) {
             if (hostname == 0) {
                 HTML_table += `<td class="visIndexItem">${deviceRows[row][hostname]} </td>`
