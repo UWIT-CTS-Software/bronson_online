@@ -709,30 +709,30 @@ img.background {
     color: rgb(236, 200, 101);
     display: grid;
     grid-template-columns: repeat(7,1fr);
-    gap: 10px;
+    gap: 1px;
     grid-auto-rows: minmax(20px, auto);
 }
 
 .cb_mapSelect {
     background-color: rgb(50, 50, 50);
-    grid-column: 2 / 4;
+    grid-column: 2 / 3;
     grid-row: 1;
-    float: center;
+    /* float: center; */
 }
 
 .cb_buttonRow {
     background-color: rgb(50, 50, 50);
-    grid-column: 4 / 7;
-    grid-row: 1;
+    grid-column: 2 / 3;
+    grid-row: 2;
 }
 
 .cb_console {
     background-color: rgb(50, 50, 50);
-    grid-column: 2 / 7;
-    grid-row: 2;
+    grid-column: 3 / 7;
+    grid-row: 1/4;
     font-family:'Courier New', Courier, monospace;
-    text-transform: full-width;
-    letter-spacing: -0.2em;
+    /* text-transform: full-width;
+    letter-spacing: -0.2em; */
 }
 
 .cb_fieldset {
@@ -768,7 +768,10 @@ img.background {
 
 .cbTopperBuilding {
     border: rgb(102,53,54) inset 2px;
+    border-radius: 12px;
     cursor: pointer;
+    padding: .5% 1%;
+    margin-bottom: 3px;
 }
 .cbTopperBuildingNameText {
     font-family: 'Courier New', Courier, monospace;
@@ -788,7 +791,7 @@ img.background {
 }
 
 .cbProgress {
-    margin: 5px 0px 0px 0px;
+    margin: 0px 0px 0px 0px;
 }
 
 .cbProgLabel {
@@ -812,6 +815,15 @@ img.background {
     margin-bottom:0px;
     padding-top:0px;
     padding-bottom:0px;
+    /* Collumn attempt */
+    column-count: 2;
+    column-gap: 10px;
+}
+
+@media (max-width:1500px) {
+    .cbVisRooms {
+        column-count:1;
+    }
 }
 
 .cbVisRoom {
@@ -831,9 +843,15 @@ img.background {
     padding-left:5%;
     color:rgb(224, 191, 100);
 }
+
+.cbVisRoomAttributes > li {
+    margin-bottom:4px;
+}
+
 /* CB room spans */
 .cbVisNotChecked {
     padding-right:6px;
+    padding-left: 3px;
     background-color: rgb(102, 53, 54);
     border: rgb(94, 46, 17) inset 2px;
     border-radius: 5px;
@@ -841,6 +859,7 @@ img.background {
 
 .cbVisChecked {
     padding-right:6px;
+    padding-left: 3px;
     background-color: rgb(67, 102, 65);
     border: rgb(33, 39, 33) inset 2px;
     border-radius: 5px;
@@ -848,6 +867,7 @@ img.background {
 
 .cbVisAvailable {
     padding-right:6px;
+    padding-left: 3px;
     background-color: rgb(57, 125, 54);
     border: rgb(33, 39, 33) inset 2px;
     border-radius: 5px;
@@ -855,6 +875,7 @@ img.background {
 
 .cbVisNotAvailable {
     padding-right:6px;
+    padding-left: 3px;
     background-color: rgb(139,24,27);
     border: rgb(94, 46, 17) inset 2px;
     border-radius: 5px;

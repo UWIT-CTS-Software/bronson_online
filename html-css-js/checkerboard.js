@@ -125,9 +125,8 @@ async function updateTopperElement(topperID, buildingName, numberChecked, number
     /*
     `<li class=cbTopperBuilding id="cbTopper_${buildingAbbrev[j]}" onclick="cbJumpTo(\'cbVis_${buildingAbbrev[j]}\')"> Loading ${buildingNames[j]} ...</li>`;
     */
-   // Note this is using pad in jacknet.js
     topperEntry.innerHTML = `<p class="cbTopperBuildingNameText">${buildingName}</p>
-    <div class="cbTopperBuildingStatus"><p class="cbBStatusText">Rooms Checked: ${pad(numberChecked,3," ")} / ${numberRooms}</p><label class="cbProgLabel" for="${buildingName}_status">${percent}%</label><progress id="${buildingName}_status" class="cbProgress" value="${percent}" max="100"> </progress></div>`;
+    <div class="cbTopperBuildingStatus"><p class="cbBStatusText">Rooms Checked: ${numberChecked}/${numberRooms}</p><label class="cbProgLabel" for="${buildingName}_status">${percent}%</label><progress id="${buildingName}_status" class="cbProgress" value="${percent}" max="100"> </progress></div>`;
     return;
 }
 
