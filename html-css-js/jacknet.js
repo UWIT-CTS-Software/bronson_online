@@ -249,10 +249,7 @@ $$\   $$ |$$   ____|$$  __$$ |$$ |      $$ |      $$ |  $$ |
 
 TODO: 
 [ ] - ? Maybe, combine pingThis() and pingPong
-[ ] - ? Maybe, check ip_addr return for "domain.name (ip_address)"
 runSearch()
-    [ ] - Incorrect (devFound- devNotFound) / totalDev
-    [x] - Export Function Call / Update Object
 */
 
 // Requests ping with device list and building.
@@ -278,6 +275,9 @@ async function pingpong(devices, building) {
 //        [ ] - Add a pop-up when "All Buildings" is selected. Are you sure? This will be computationally very heavy and may take some time to complete.
 async function runSearch() {
     updateConsole("====--------------------========--------------------====");
+    //Disable button - prevents abuse of server
+    const runButton = document.getElementById('run');
+    runButton.disabled = true;
     // get user-selection
     const building = await getSelectedBuilding();
     const devices  = getSelectedDevices();
@@ -310,7 +310,6 @@ async function runSearch() {
     for (var i = 0; i < bdl.length; i++) {
         updateConsole("=-+-+-+-=\n Now Searching " + bdl[i] + "\n=-+-+-+-=");
         b_abbrev = await getAbbrev(bdl[i]);
-        // TODO [ ] - UPDATE PINGPONG TO RETURN HN/IP array
         pingResult = await pingpong(devices, b_abbrev);
         // Expect the structure of ping result to change.
         let formPR = formatPingPong(pingResult, devices);
@@ -318,10 +317,6 @@ async function runSearch() {
         // temp: eventually pingResult will return as this form
         let rms   = await printPR(formPR, bdl[i]);
         // console.log("JackNet Debug - rms@printPR:\n", rms);
-
-        // These are broken now.
-        // TODO - Update printPR to give the numbers that these are used to get.
-        //   rather than returning rms, Export CSV Depends on these.
         f_rms = f_rms.concat(rms);
         f_hns = f_hns.concat(formPR[0].flat(3));
         f_ips = f_ips.concat(formPR[1].flat(3));
@@ -354,12 +349,13 @@ async function runSearch() {
     updateConsole("Search Complete");
     updateConsole("Found " + (totalNumDevices - not_found_count) + "/" + totalNumDevices + " devices.");
     updateConsole("CSV Export Available");
-
+    // re-enable runButton;
+    runButton.disabled = false;
     return;
 };
 
 // Takes the 'jn_body' response and turns it into a nested array of nested arrays, (could be revised)
-// INPUT: 'jn_body' (Hashmap from backend)
+// INPUT: 'jn_body' (Data Hashmap from backend)
 // OUTPUT:
 //   [
 //     [[ROOM1-DEV1-1, ROOM1-DEV1-2],[ROOM1-DEV2-1],[]],
@@ -515,8 +511,10 @@ function minimizeVisTab(tabID) {
 }
 
 // TODO - Make this more unique
-function genTileID(building, devices) {
-    return building;
+function genTileID(building) {
+    let time = Date.now();
+    let outputID = building + String(time);
+    return outputID;
 }
 
 // Takes a nested array(rooms) of nested arrays(deviceType) for hns and ips
@@ -525,14 +523,14 @@ function genTileID(building, devices) {
 /*      GOAL:
                         * BUILDING *         |x| |
                             ---                  |
-    ROOOOM |#1 |#2 |#3|     ...     #9999        |
-    ---------------------------------------------
-        proc |o  |o  |o |                          |
-        pj |x o|   |  |                          |
-        disp |   |o o|o |                          |
-        ws |x  |o  |  |                          |
-        tp |o  |o  |o |                          |
-    ---------------------------------------------
+      ROOOOM |#1 |#2 |#3|   ...     #9999        |
+    ---------------------------------------------|
+        proc |o  |o  |o |                        |
+        pj   |x o|   |  |                        |
+        disp |   |o o|o |                        |
+        ws   |x  |o  |  |                        |
+        tp   |o  |o  |o |                        |
+    ---------------------------------------------|
 */
 async function postJNVis(hns, ips, building) {
     // Init Visualizer Tile
@@ -543,7 +541,7 @@ async function postJNVis(hns, ips, building) {
     const devicesNames  = getSelDevNames(await getSelectedDevices());
     // - Build our tile HTML block 
     //   Give this as an ID,
-    let tileID = genTileID(building, devicesNames);
+    let tileID = genTileID(building);
     vis_container.id = "tile" + tileID;
     let bAbbrev = await getAbbrev(building);
     // TODO - add a percentage in the header?
