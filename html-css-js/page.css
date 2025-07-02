@@ -545,28 +545,28 @@ img.background {
     background-color: rgb(50, 50, 50);
     display: grid;
     grid-template-columns: repeat(7,1fr);
-    gap: 10px;
+    gap: 1px;
     grid-auto-rows: minmax(20px, auto);
 }
 
 .jn_buildSelect {
-    grid-column: 2 / 4;
-    grid-row: 1;
-}
-
-.jn_bottomMenu {
-    grid-column: 4 / 7;
+    grid-column: 2 / 3;
     grid-row: 1;
 }
 
 .jn_devSelect {
-    grid-column: 2 / 7;
+    grid-column: 2 / 3;
     grid-row: 2;
 }
 
-.jn_console {
-    grid-column: 2 / 7;
+.jn_bottomMenu {
+    grid-column: 2 / 3;
     grid-row: 3;
+}
+
+.jn_console {
+    grid-column: 3 / 7;
+    grid-row: 1/4;
 }
 
 .jn_fieldset {
