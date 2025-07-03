@@ -345,9 +345,9 @@ async function runSearch() {
     // set the csv export data
     setCSVExport(f_hns, f_ips, f_rms);
 
-    // Tell user how good the search went :)
-    updateConsole("Search Complete");
-    updateConsole("Found " + (totalNumDevices - not_found_count) + "/" + totalNumDevices + " devices.");
+    // // Tell user how good the search went :)
+    // updateConsole("Search Complete");
+    // updateConsole("Found " + (totalNumDevices - not_found_count) + "/" + totalNumDevices + " devices.");
     updateConsole("CSV Export Available");
     // re-enable runButton;
     runButton.disabled = false;
@@ -412,6 +412,8 @@ async function printPR(formPing, building) {
     let printIps       = "";
     let rms = [];
 
+    let totalNumDevices = 0;
+    let not_found_count = 0;
     let rooms   = await getRooms(building);
     //let bAbbrev = await getAbbrev(building);
     
@@ -429,6 +431,7 @@ async function printPR(formPing, building) {
         // Iterate over the device type in each room in each hn
         for (var a=0; a < hns[j].length; a++) {
             // Iterate over each hostname in a given device type
+            totalNumDevices += hns[j][a].length;
             for (var k=0; k < hns[j][a].length; k++) {
                 // if hostname contains room#
                 //   add to printout hostname line
@@ -437,6 +440,8 @@ async function printPR(formPing, building) {
                 if(hns[j][a][k].includes(pad(roomNum, 4))) {
                     printHostnames += pad(hns[j][a][k], 15, " ") + "|";
                     printIps       += pad(ips[j][a][k], 15, " ") + "|";
+                } if (ips[j][a][k] == "x") {
+                    not_found_count += 1;
                 }
             }
         }
@@ -444,8 +449,12 @@ async function printPR(formPing, building) {
         updateConsole("IP's     : " + printIps);
         graphBool.push(tmpBool)
     }
+    // TO-DO: Move percentage stuff in here.
+    // Tell user how good the search went :)
+    updateConsole("Singular Building Search Complete");
+    updateConsole("Building Report:\n -- Found " + (totalNumDevices - not_found_count) + "/" + totalNumDevices + " devices.");
     // we got it, send to visualizer
-    postJNVis(hns, ips, building);
+    postJNVis(hns, ips, building, totalNumDevices, not_found_count);
     return rms;
 }
 
@@ -465,7 +474,6 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 function clearConsole() {
     let consoleObj = document.querySelector('.innerConsole');
     consoleObj.value = '';
-    // TODO - Clear Visualizer Section
     // remove every div with the class 'vis_container'
     let visObj = document.querySelectorAll('.vis_container').forEach(element =>    {
         element.remove();
@@ -532,9 +540,9 @@ function genTileID(building) {
         tp   |o  |o  |o |                        |
     ---------------------------------------------|
 */
-async function postJNVis(hns, ips, building) {
+async function postJNVis(hns, ips, building, totalDevices, totalNotFound) {
     // Init Visualizer Tile
-    let vis_container = document.createElement('div');
+    let vis_container = document.createElement('li');
     vis_container.classList.add('vis_container');
     // !--! List of rooms/devices in newly pinged building 
     let rooms           = await getRooms(building);
@@ -544,8 +552,9 @@ async function postJNVis(hns, ips, building) {
     let tileID = genTileID(building);
     vis_container.id = "tile" + tileID;
     let bAbbrev = await getAbbrev(building);
+    let totalFound = totalDevices - totalNotFound;
     // TODO - add a percentage in the header?
-    let HTML_visHeader = `<div class="visHeader"> ${building} (${bAbbrev}) <button class="visButton" onclick="closeVisTab(\'${tileID}\')"> x </button><button class="visButton" onclick="minimizeVisTab(\'${tileID}\')"> _ </button></div>`;
+    let HTML_visHeader = `<div class="visHeader"> ${building} (${bAbbrev})<button class="visButton" onclick="closeVisTab(\'${tileID}\')"> x </button><button class="visButton" onclick="minimizeVisTab(\'${tileID}\')"> _ </button><span style="color: rgb(95, 95, 95); margin: 0% 2%;float:right"> ${totalFound}/${totalDevices} Devices Found</span></div>`;
     // Compile lists...
     // Tables are row based instead of column, making this a little different
     //  than the ul list like before.
@@ -611,7 +620,7 @@ async function postJNVis(hns, ips, building) {
     // Put it all together
     vis_container.innerHTML = HTML_visHeader + HTML_table;
     // Put it on the page
-    let progGuts = document.querySelector('.program_board .program_guts');
+    let progGuts = document.querySelector('.program_board .program_guts .jn_visList');
     progGuts.append(vis_container);
     return;
 }
@@ -733,16 +742,21 @@ async function setJackNet() {
                 Clear Console </button>
         </fieldset>`;
 
+    // Empty Visualizer Container
+    let visualizerSection = document.createElement("ul");
+    visualizerSection.classList.add('jn_visList');
+
     // PUT EVERYTHING TOGETHER MAIN_CONTAINER
     jn_container.appendChild(buildingSelect);
     jn_container.appendChild(bottomMenu);
     jn_container.appendChild(devSelect);
     jn_container.appendChild(consoleOutput);
+    
 
     let main_container = document.createElement('div');
     main_container.appendChild(jn_container);
     main_container.classList.add('program_guts');
-
+    main_container.appendChild(visualizerSection);
     progGuts.replaceWith(main_container);
 
     return;
