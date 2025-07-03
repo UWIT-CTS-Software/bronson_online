@@ -585,27 +585,43 @@ img.background {
             tp |o  |o  |o |                          |
         ---------------------------------------------
 */
+.jn_visList {
+    columns: 2;
+    column-gap:1%;
+    margin: 1% 14% 2% 14%;
+    padding-left: 0px;
+}
+
+@media (max-width:1500px) {
+    .jn_visList {
+        column-count:1;
+    }
+}
+
 .vis_container {
-    display: grid;
+    /* display: grid; */
+    break-inside: avoid;
     gap: 0rem;
-    padding: 1rem 0rem 0rem 0rem;
-    /* width: 90%; */
-    margin: 0rem 20% 0rem 20%;
+    padding: 0rem 0rem 0rem 0rem;
+    margin: 0rem 2% 1% 2%;
+    border: rgb(33,66,99) outset 3px;
+    border-radius: 6px;
 }
 
 /* Visualizer Tile Header, a Building */
 .visHeader {
     /* grid-column: 1 / -1; */
-    padding: 1rem;
+    padding: 1% 1% 1% 1%;
     background-color:#24292E;
     color: rgb(205, 177, 99);
     border-bottom:2px inset #94742e;
+    border-radius:5px;
 }
 /* list of every list / the space they occupy */
 .visTile {
     display:flex;
     margin: 0rem;
-    padding: 1rem;
+    padding: 0.4rem;
     background-color: #37343e;
     gap: .2rem;
     overflow-x: auto;
@@ -617,6 +633,9 @@ img.background {
 
 .visButton {
     float: right;
+    padding: 0px 3px;
+    margin: 1px 0px 0px 3px;
+    border-radius:3px;
 }
 
 .visTile > li {
@@ -708,7 +727,7 @@ img.background {
     background-color: rgb(50, 50, 50);
     color: rgb(236, 200, 101);
     display: grid;
-    grid-template-columns: repeat(7,1fr);
+    grid-template-columns: repeat(10,1fr);
     gap: 1px;
     grid-auto-rows: minmax(20px, auto);
 }
@@ -728,7 +747,7 @@ img.background {
 
 .cb_console {
     background-color: rgb(50, 50, 50);
-    grid-column: 3 / 7;
+    grid-column: 3 / 10;
     grid-row: 1/4;
     font-family:'Courier New', Courier, monospace;
     /* text-transform: full-width;
@@ -738,6 +757,10 @@ img.background {
 .cb_fieldset {
     border:4px outset rgb(144, 118, 26);
     float: center;
+}
+
+.cb_zoneSelFieldset {
+    padding: 2px 0px 4px 4px;
 }
 
 .cb_green {
@@ -753,7 +776,7 @@ img.background {
 /* New classes from checkerboard overhaul*/
 /* Topper stuff */
 .cbTopperContainer {
-    margin: 0px 0px 3% 0px;
+    margin: 0px 0px 2% 0px;
 }
 
 .cbTopperZoneHeader {
@@ -764,6 +787,7 @@ img.background {
 .cbTopperBuildingList {
     margin: 0px 0px 0px 0px;
     padding: 0px 5% 0px 5%;
+    column-count: 2;
 }
 
 .cbTopperBuilding {
@@ -772,6 +796,7 @@ img.background {
     cursor: pointer;
     padding: .5% 1%;
     margin-bottom: 3px;
+    break-inside: avoid;
 }
 .cbTopperBuildingNameText {
     font-family: 'Courier New', Courier, monospace;
@@ -804,84 +829,146 @@ img.background {
 
 .cbVisHeader { 
 /* BUILDING NAME */
-    margin-bottom:0px;
-    padding-bottom:0px;
-    border:#37343e inset 1px;
+    margin-bottom:5px;
+    padding-bottom:2px;
+    padding-top: 8px;
+    padding-right: 15px;
+    /* border:#37343e inset 1px; */
+    border-top: rgb(133, 60, 60) outset 2px;
+    border-radius: 15px;
+}
+
+.cbHeaderSpan {
+    padding-left:1%;
+    padding-right: 1%;
+    margin-left: 8%;
+    font-family: "Contrail One", sans-serif;
+    font-size: 20pt;
+    border-bottom: rgb(45,100,100) inset 2px;
+    border-radius: 5px;
 }
 
 .cbVisRooms {
     /* CONTAINS ALL ROOMS, maybe should be a list, not sure */
     margin-top:0px;
-    margin-bottom:0px;
-    padding-top:0px;
-    padding-bottom:0px;
+    margin-bottom:3px;
+    padding-top:3px;
+    padding-bottom:10px;
     /* Collumn attempt */
-    column-count: 2;
+    column-count: 3;
     column-gap: 10px;
-}
-
-@media (max-width:1500px) {
-    .cbVisRooms {
-        column-count:1;
-    }
+    padding-left: 0px;
 }
 
 .cbVisRoom {
 /* CONTAINS A ROOM IN A BUILDING */
-    margin:0px;
-    padding:0px;
+    margin:2px 1px 5px 1px;
+    padding:4px 0px 0px 0px;
+    break-inside: avoid;
+    border: rgb(99, 66, 33) outset 2px;
+    border-radius: 20px;
 }
 
 .cbVisRoomName {
     margin: 0px;
-    padding:0px;
+    padding-left:20px;
+    border-bottom: rgb(99,66,33) inset 2px;
 }
 
 .cbVisRoomAttributes {
     margin: 0px;
     padding:0px;
-    padding-left:5%;
+    /* padding-left:5%; */
     color:rgb(224, 191, 100);
+    column-count: 2;
+    gap:0px;
 }
-
+/* 
 .cbVisRoomAttributes > li {
     margin-bottom:4px;
+} */
+.cbVisNotChecked {
+    background-color: rgb(102, 53, 54);
+    /* border: rgb(94, 46, 17) inset 2px; */
+    border-radius: 0px 0px 0px 18px;
+    border-right:rgb(75,45,15) outset 1px;
 }
 
-/* CB room spans */
-.cbVisNotChecked {
-    padding-right:6px;
-    padding-left: 3px;
-    background-color: rgb(102, 53, 54);
-    border: rgb(94, 46, 17) inset 2px;
-    border-radius: 5px;
-}
+/* .cbVisNotCheckedSpan {
+    padding:0px;
+    margin:0px;
+    display:flex;
+    text-align:center;
+} */
 
 .cbVisChecked {
-    padding-right:6px;
-    padding-left: 3px;
     background-color: rgb(67, 102, 65);
-    border: rgb(33, 39, 33) inset 2px;
-    border-radius: 5px;
+    /* border: rgb(33, 39, 33) inset 2px; */
+    border-radius: 0px 0px 0px 18px;
+    border-right:rgb(75,45,15) outset 1px;
 }
+/* 
+.cbVisCheckedSpan {
+    padding:0px;
+    margin:0px;
+    display:flex;
+    text-align:center;
+} */
 
 .cbVisAvailable {
-    padding-right:6px;
-    padding-left: 3px;
     background-color: rgb(57, 125, 54);
-    border: rgb(33, 39, 33) inset 2px;
-    border-radius: 5px;
+    /* border: rgb(33, 39, 33) inset 2px; */
+    border-radius: 0px 0px 18px 0px;
+    border-left:rgb(90,60,30) inset 1px;
 }
+
+/* .cbVisAvailableSpan {
+   padding:0px;
+    margin:0px;
+    display:flex;
+    text-align:center;
+} */
 
 .cbVisNotAvailable {
-    padding-right:6px;
-    padding-left: 3px;
     background-color: rgb(139,24,27);
-    border: rgb(94, 46, 17) inset 2px;
-    border-radius: 5px;
+    /* border: rgb(94, 46, 17) inset 2px; */
+    border-radius: 0px 0px 18px 0px;
+    border-left:rgb(90,60,30) inset 1px;
+}
+/* .cbVisNotAvailableSpan {
+    padding:0px;
+    margin:0px;
+    display:flex;
+    text-align:center;
+} */
+
+/* Maybe use this instead */
+.cbVisRoomAttributeSpan {
+    padding:0px;
+    margin:0px;
+    display:flex;
+    text-align:center;
+}
+
+/* Window Size column changes */
+@media (max-width:1560px) {
+    .cbTopperBuildingList {
+        column-count:1;
+    }
+}
+
+@media (max-width:1300px) {
+    .cbVisRooms {
+        column-count:2;
+    }
 }
 
 
+@media (max-width:800px) {
+    .cbVisRooms {
+        column-count:1;
+    }
+}
 
 /* CamCode Defifnitions 
    _____                 _____          _      

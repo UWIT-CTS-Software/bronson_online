@@ -155,7 +155,7 @@ async function printCBResponse(JSON) {
     //   redirect.
     HTML_cbBuildingHeader = `
     <div class="cbVisHeader" id="cbVis_${building['abbrev']}"> 
-        ${building['name']} (${building['abbrev']}) 
+        <span class="cbHeaderSpan">${building['name']} (${building['abbrev']}) </span>
         <button class="visButton" onclick="cbJumpTo(\'cbTopID\')"> Jump to Top </button>
     </div>`;
     //console.log(building);
@@ -171,16 +171,20 @@ async function printCBResponse(JSON) {
         cbRoomEntry += `<ul class="cbVisRoomAttributes">`
         let check_date = rooms[j]['checked'].split('T')[0];
         if(rooms[j]['needs_checked']) {
-            cbRoomEntry += `<li><span class="cbVisNotChecked"> Room Needs Checked! (${check_date})</span></li>`;
+            cbRoomEntry += `<li class="cbVisNotChecked"><span class="cbVisRoomAttributeSpan "> Needs Checked! (${check_date})</span></li>`;
         } else {
-            cbRoomEntry += `<li><span class="cbVisChecked"> Recently Checked! (${check_date})</span></li>`;
+            cbRoomEntry += `<li class="cbVisChecked"><span class="cbVisRoomAttributeSpan "> Recently Checked! (${check_date})</span></li>`;
             numberChecked++;
         }
         // Is available ?
         if(rooms[j]['available']) {
-            cbRoomEntry += `<li><span class="cbVisAvailable"> Available Until ${rooms[j]['until']} </span></li>`;
+            // Sometimes, until is 0000, should probably say 'TOMORROW'
+            if (rooms[j]['until'].slice(0,2) == "00") {
+                rooms[j]['until'] = "TOMORROW";
+            }
+            cbRoomEntry += `<li class="cbVisAvailable"><span class="cbVisRoomAttributeSpan "> Available Until \n ${rooms[j]['until']} </span></li>`;
         } else { 
-            cbRoomEntry += `<li><span class="cbVisNotAvailable"> Unavailable Until ${rooms[j]['until']} </span></li>`;
+            cbRoomEntry += `<li class="cbVisNotAvailable"><span class="cbVisRoomAttributeSpan "> Unavailable Until ${rooms[j]['until']} </span></li>`;
         }
         cbRoomEntry += `</ul>`;
         cbRoomEntry += `</li>`;
@@ -240,22 +244,22 @@ function setChecker() {
     let map_select = document.createElement("div");
     map_select.classList.add('cb_mapSelect');
     map_select.innerHTML = `
-        <fieldset class="cb_fieldset">
+        <fieldset class="cb_zoneSelFieldset cb_fieldset">
             <legend>
                 Select Zone: </legend>
-            <input class="cbDev" type ="checkbox" id="1" name="cb_dev" value="Processors"/>
+            <input class="cbDev" type ="checkbox" id="1" name="cb_dev" value="zone1"/>
             <label for="1"> 
                 Zone 1</label>
-            
-            <input class="cbDev" type="checkbox" id="2" name="cb_dev" value="Projectors"/>
+            <br>
+            <input class="cbDev" type="checkbox" id="2" name="cb_dev" value="zone2"/>
             <label for="2">
                 Zone 2</label>
             <br>
-            <input class="cbDev" type="checkbox" id="3" name="cb_dev" value="Wyo Shares"/>
+            <input class="cbDev" type="checkbox" id="3" name="cb_dev" value="zone3"/>
             <label for="3">
                 Zone 3</label>
-            
-            <input class="cbDev" type="checkbox" id="4" name="cb_dev" value="Touch Panels"/>
+            <br>
+            <input class="cbDev" type="checkbox" id="4" name="cb_dev" value="zone4"/>
             <label for="4">
                 Zone 4</label>
             <br>
