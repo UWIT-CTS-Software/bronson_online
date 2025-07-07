@@ -17,19 +17,24 @@
 //  - Zone Building list array of room names for each zone
 //  - Campus.json used for various things in jacknet
 async function initLocalStorage() {
+    let campJSON = await getCampusData();
+    localStorage.setItem("campusJSON", JSON.stringify(campJSON));
     // Need to make a function on the backend that handles this request.
     // Campus Data (Effectively a clone of the hashmap)
     let campData = await getCampusData();
-    console.log(campData);
     localStorage.setItem("campData", JSON.stringify(campData));
     // Zone Arrays
     let zoneData = await getZoneData();
     localStorage.setItem("zoneData", JSON.stringify(zoneData));
+
+    let leaderboard = await getLeaderboard();
+    localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
     return;
 }
 
-async function getCampusJSON() {
-    return fetch('campus.json')
+// TODO (also on the backend) 
+async function getCampusData() {
+    return fetch('campusData')
         .then(response => {
             if (!response.ok) {
                 throw new Error("HTTP error " + response.status);
@@ -39,27 +44,26 @@ async function getCampusJSON() {
     );
 }
 
-// TODO (also on the backend) 
-// - this should replace campus.json in it's entirety, 
-//    should be structured like the hashmap (should be an 
-//    array of clones of each building entry in it). 
-async function getCampusData() {
-    return await fetch('campusData', {
-        method: 'GET',
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error("HTTP error " + response.status);
-        }
+async function getZoneData() {
+    return await fetch('zoneData')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("HTTP error" + response.status);
+            }
             return response.json();
         }
     );
 }
 
-async function getZoneData() {
-    return await fetch('zoneData')
-    .then((response) => response.json())
-    .then((json) => {return json;});
+async function getLeaderboard() {
+    return fetch("leaderboard")
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("HTTP error " + response.status);
+            }
+            return response.json();
+        }
+    );
 }
 
 // Session Storage Stuff (Tool Responses)

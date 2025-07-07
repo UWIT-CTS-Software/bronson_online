@@ -194,6 +194,13 @@ button:-webkit-details-marker {
     transform: translate(-6px, -12px);
 }
 
+.leader {
+    margin: -20px 0px 25px 14px;
+    padding: 0px 0px 0px 100px;
+    width: 350px;
+    display: flex;
+}
+
 .toolTab {
     margin: 0px -6px;
     /* display: inline-block;
@@ -255,7 +262,23 @@ button:-webkit-details-marker {
     z-index: 3;
 }
 
-.dbTab:active, .chTab:active, .jnTab:active, .ccTab:active {
+.weekTab {
+    grid-column: auto;
+    z-index: 0;
+    width: 55px;
+}
+.monthTab {
+    grid-column: auto;
+    z-index: 1;
+    width: 55px;
+}
+.semesterTab {
+    grid-column: auto;
+    z-index: 2;
+    width: 55px;
+}
+
+.dbTab:active, .chTab:active, .jnTab:active, .ccTab:active .weekTab:active .monthTab:active .semesterTab:active{
     background: transparent;
     border-bottom: 39px solid #8f513e;
     transform: translateY(0px);
@@ -267,6 +290,12 @@ button:-webkit-details-marker {
     transition-duration: 0.1s;
     border-bottom: 29px solid #7c1919;
     
+}
+
+.weekTab.leader_selected, .monthTab.leader_selected, .semesterTab.leader_selected {
+    transform: translateY(10px);
+    transition-duration: 0.1s;
+    border-bottom: 29px solid #7c1919;
 }
  
 /*
@@ -392,14 +421,16 @@ button:-webkit-details-marker {
 }
 
 .db_console {
-    grid-column: 2 / 7;
+    grid-column: 2 / 10;
     grid-row: 1 / 2;
-    width: 70%;
+    width: 59%;
 }
 
 .db_leader {
-    grid-column: 6 / 7;
+    grid-column: 6 / 10;
     grid-row: 1 / 2;
+    margin-left: -20%;
+    width: 60%;
 }
 
 input[type=text], input[type=password] {

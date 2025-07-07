@@ -105,7 +105,10 @@ function getSelectedDevices() {
             devList.push(0);
         };
     };
-    //console.log("JN Binary Device List:", devList);
+    let sum = devList.reduce((acc, cur) => acc + cur, 0);
+    if (sum == 0) {
+        devList = [1,1,1,1,1,1];
+    }
     return devList;
 }
 
