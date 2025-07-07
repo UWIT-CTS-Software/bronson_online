@@ -31,6 +31,10 @@ async function getCheckerboardByBuilding(build_ab) {
 
 async function run() {
     let zones = document.getElementsByName('cb_dev');
+    //Disable button - prevents abuse of server
+    const runButton = document.getElementById('cb_run');
+    runButton.disabled = true;
+    //
     let zone_array = [];
 
     for (var i=0; i<zones.length; i++) {
@@ -38,13 +42,15 @@ async function run() {
             zone_array.push(zones[i].id);
         }
     }
-
+    //console.log(zone_array);
     // Clear cbVisContainer (??)
     clearVisContainer();
 
     // Get selected zone building list
     //console.log(zone_array);
     buildStarterTopper(zone_array);
+    // set Session Storage to initial values
+    resetCBDash(zone_array);
 
     // iterativly go through buildings
     // compile a hit list
@@ -52,17 +58,22 @@ async function run() {
     for(var i = 0; i < zone_array.length; i++) {
         buildingsToCheck.push(... getBuildingAbbrevsFromZone(zone_array[i]));
     }
-    //console.log("cbDebug-BuildingsToCheck: ", buildingsToCheck);
-    // Iterating through building hitlist
+    // Iterating through buildings to check
     let cbTotalBuildingResponse = [];
     for(var i = 0; i < buildingsToCheck.length; i++) {
         let cbBuildingResponse = await getCheckerboardByBuilding(buildingsToCheck[i]);
         printCBResponse(cbBuildingResponse);
-        cbTotalBuildingResponse.push(JSON.stringify(cbBuildingResponse));
+        // Caching raw room response
+        cbTotalBuildingResponse.push(cbBuildingResponse);
     }
 
+    // This will store in Session Storage as an array of objects, each one being a building
+    //  in a zone. Gets overwritten frequently. May need to utilize a different kind
+    //  of object in session storage for dashboard information. Hoping to use this when
+    //  refreshing the page.
     storeCBResponse(cbTotalBuildingResponse);
-
+    // Turn run button back on
+    runButton.disabled = false;
     return;
 }
 
@@ -202,10 +213,13 @@ async function printCBResponse(JSON) {
     let checkedPercent = 100 * (numberChecked / numberRooms);
     let topperID = `cbTopper_${building['abbrev']}`;
     await updateTopperElement(topperID, building['name'], numberChecked, numberRooms);
+    // Send an update to session storage;
+    //console.log(building['zone']);
+    await updateCBDashZone(building['zone'], numberChecked, numberRooms);
     return;
 }
 
-// TODO
+
 function cbJumpTo(entryID) {
     let target = document.getElementById(entryID);
     target.scrollIntoView({behavior: 'smooth'});
