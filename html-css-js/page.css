@@ -130,7 +130,7 @@ button:-webkit-details-marker {
     font-family: "Racing Sans One", sans-serif;
     font-weight: 400;
     font-style: normal;
-    grid-column: 1 / 2;
+    grid-column: 1 / 1;
     grid-row: 1;
     margin: 12px auto;
     border:4px double rgb(133, 60, 60);
@@ -154,18 +154,18 @@ button:-webkit-details-marker {
     background-color: rgba(0, 0, 0, 0);
     text-align: left;
     font-family:'Courier New', Courier, monospace;
-    display: grid;
+    display: flex;
     /* grid-area: 2 / 9; */
     grid-column: 2 / 10;
     grid-row: 1;
     /* height: 20px; */
     padding-top: 0px;
-    margin: 1px;
+    margin: 0px;
 }
 
-.middle_test {
+/* .middle_test {
     display: inline-grid;
-}
+} */
 
 .message_header {
     color: rgb(118, 66, 28);
@@ -175,22 +175,23 @@ button:-webkit-details-marker {
     font-weight: 400;
     font-style: normal;
     text-align: left;
-    display: inline-grid;
+    /* display: inline-grid;
     grid-column: 1 / 4;
-    grid-row: 1;
+    grid-row: 1; */
     /* vertical-align: end; */
-    margin: 10px;
+    padding:1%;
+    margin: 0% 0%;
     /* transform: translateX(-3%);*/
 } 
 
 .tab_row {
-    margin: 14px auto;
+    margin: -16px 0px;
     display: inline-grid;
-    padding: 5px 100px;
-    grid-auto-columns: 1fr;
+    padding: 0% 0%;
+    /* grid-auto-columns: 1fr;
     grid-column: 1 / auto;
-    grid-row: 1;
-    transform: translate(-100px , 24px);
+    grid-row: 1; */
+    transform: translate(-6px, -12px);
 }
 
 .toolTab {
@@ -1173,5 +1174,5 @@ textarea:valid {
     height: 20%;
     background-color: rgb(50, 50, 50);
     color: rgb(236, 200, 101);
-    border: 2px none rgb(236, 200, 101);
+    border-top: 2px inset rgb(236, 200, 101);
 }
