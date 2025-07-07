@@ -138,7 +138,7 @@ async function dashCheckerboard() {
     for (item in object["zones"]) {
         if (object["zones"][item]["rooms"] != 0) {
             let percent = object["zones"][item]["checked"] / object["zones"][item]["rooms"];
-            percent = String((percent).toFixed(5)).slice(0,5);
+            percent = String((100*percent).toFixed(5)).slice(0,5);
             cb_dashDivHTML += `<li> <label class="cbProgLabel for="${object["zones"][item]["zone"]}_prog">Zone ${object["zones"][item]["zone"]}:  ${percent}%</label><progress id="${object["zones"][item]["zone"]}_prog"value="${percent}" max="100"></progress></li>`;
         }
     }
@@ -153,6 +153,17 @@ function storeJNResponse(jnBody) {
 }
 
 function dashJackNet() {
+    return;
+}
+
+//preserve tool HTML
+function preserveCurrentTool() {
+    let currentTool = document.title.split(" ")[0];
+    //
+    let currentHTMLObject = document.querySelector('.program_board .program_guts');
+    currentTool += "_html";
+    // console.log("bronson debug: preserving:\n", currentTool);
+    sessionStorage.setItem(currentTool, currentHTMLObject.innerHTML);
     return;
 }
 

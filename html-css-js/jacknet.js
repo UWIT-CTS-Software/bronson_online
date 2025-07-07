@@ -630,13 +630,17 @@ async function postJNVis(hns, ips, building, totalDevices, totalNotFound) {
 
 // SETTING THE HTML DOM
 async function setJackNet() {
+    // 7.7.25 - what is a menuItem?
     const menuItems = document.querySelectorAll(".menuItem");
 
     menuItems.forEach(function(menuItem) {
       menuItem.addEventListener("click", toggleMenu);
     });
 
+    preserveCurrentTool();
+
     document.title = "JackNet - Bronson";
+
     
     // remove currently active status mark tab has active.
     // Update active_tab_header
@@ -654,6 +658,16 @@ async function setJackNet() {
     history.pushState("test", "JackNet", "/jacknet");
 
     let progGuts = document.querySelector('.program_board .program_guts');
+    // Check for preserved space
+    let cached_HTML = sessionStorage.getItem("JackNet_html");
+    if (cached_HTML != null) {
+        progGuts.innerHTML = cached_HTML;
+        const runButton = document.getElementById('run');
+        runButton.disabled = false;
+        return;
+    }
+
+    // Build from scratch
     let jn_container = document.createElement('div');
     jn_container.classList.add('jn_container');
 
