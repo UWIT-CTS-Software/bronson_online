@@ -45,8 +45,7 @@ pub mod jp {
                 println!("Unknown:\n{}",string);
                 return String::from("x"); 
             },
-            PingResult::PingExited(_es, string) => {
-                println!("Ping Failed Exit:\n{}", string);
+            PingResult::PingExited(_es, _string) => {
                 return String::from("x");
             },
         }
