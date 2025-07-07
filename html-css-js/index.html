@@ -60,6 +60,7 @@
     */
     async function setDashboard() {
       // History and init
+      preserveCurrentTool();
       document.title = "Dashboard - Bronson";
       history.pushState({}, "Dashboard", "/");
 

@@ -148,6 +148,8 @@ function clearVisContainer() {
     return;
 }
 
+
+
 // Re-written to handle a response from a building call instead of a entire zone
 async function printCBResponse(JSON) {
     let consoleObj = document.querySelector('.cbVisContainer');
@@ -215,7 +217,7 @@ async function printCBResponse(JSON) {
     await updateTopperElement(topperID, building['name'], numberChecked, numberRooms);
     // Send an update to session storage;
     //console.log(building['zone']);
-    await updateCBDashZone(building['zone'], numberChecked, numberRooms);
+    await updateCBDashZone(building['zone'], numberRooms, numberChecked);
     return;
 }
 
@@ -226,12 +228,24 @@ function cbJumpTo(entryID) {
     return;
 }
 
+function cb_clear() {
+    let consoleObj = document.getElementById("cbTopID");
+    console.log(consoleObj);
+    consoleObj.innerHTML = `
+        <p class="cfm_text">Select Zone(s) and click Run to run search.</p>`;
+    let cbVisContainer = document.getElementById("cbVisConID");
+    cbVisContainer.innerHTML = ``;
+    return;
+}
+
 function setChecker() {
     const menuItems = document.querySelectorAll(".menuItem");
 
     menuItems.forEach(function(menuItem) {
       menuItem.addEventListener("click", toggleMenu);
     });
+
+    preserveCurrentTool();
 
     document.title = "CheckerBoard - Bronson";
     // remove currently active status mark tab has active.
@@ -249,10 +263,20 @@ function setChecker() {
 
     history.pushState("test", "CheckerBoard", "/checkerboard");
 
-    let prog_guts = document.querySelector('.program_board .program_guts');
-
-    let main_container = document.createElement("div");
-    main_container.classList.add("cb_container");
+    let progGuts = document.querySelector('.program_board .program_guts');
+    // Check for preserved space
+    let cached_HTML = sessionStorage.getItem("CheckerBoard_html");
+    if (cached_HTML != null) {
+        progGuts.innerHTML = cached_HTML;
+        // Quickly make sure that run is enabled
+        const runButton = document.getElementById('cb_run');
+        runButton.disabled = false;
+        return;
+    }
+    
+    // Build from scratch
+    let cb_container = document.createElement("div");
+    cb_container.classList.add("cb_container");
 
     // map_select Section
     let map_select = document.createElement("div");
@@ -289,6 +313,8 @@ function setChecker() {
                 Options: </legend>
             <button id="cb_run" onclick="run()" class="headButton">
                 Run!</button>
+            <button id="cb_clear" onclick="cb_clear()" class="headButton">
+                Clear</button>
         </fieldset>`;
 
     // Console Output
@@ -301,16 +327,18 @@ function setChecker() {
             <div class="cbTopperContainer" id="cbTopID">
                 <p class="cfm_text">Select Zone(s) and click Run to run search.</p>
             </div>
-            <div class="cbVisContainer">
+            <div id="cbVisConID" class="cbVisContainer">
             </div>
         </fieldset>`;
 
-    main_container.append(map_select);
-    main_container.append(button_menu);
-    main_container.append(console_output);
+    cb_container.append(map_select);
+    cb_container.append(button_menu);
+    cb_container.append(console_output);
 
+    let main_container = document.createElement('div');
+    main_container.appendChild(cb_container);
     main_container.classList.add('program_guts');
-    prog_guts.replaceWith(main_container);
+    progGuts.replaceWith(main_container);
 
     return;
 }
