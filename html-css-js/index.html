@@ -87,7 +87,7 @@
             <fieldset>
                 <legend> 
                     Messages: </legend>
-                <textarea readonly rows="20" cols ="65" class="innerConsole" name="consoleOutput" spellcheck="false"> 
+                <textarea readonly rows="18" cols ="65" class="db_messages" name="consoleOutput" spellcheck="false"> 
                     ${json["contents"]}
                 </textarea>
             </fieldset>`;
@@ -98,7 +98,7 @@
         leaderboard.innerHTML = `
         <fieldset>
           <legend>
-            Leaderboard: 
+            Room Check Leaderboard: 
           </legend>
           <div class="tab_row leader">
             <button id="WeekButton" onclick="setLeaderWeek()" type="button" class="leaderTab weekTab"><span>
@@ -115,6 +115,13 @@
 
       db_container.appendChild(consoleOutput);
       db_container.appendChild(leaderboard);
+
+      // Check for client-side cached response
+      if(sessionStorage.getItem("cb_body") != null) {
+        db_container.append(await dashCheckerboard());
+      } else if (sessionStorage.getItem("jn_body") != null) {
+        db_container.append(dashJackNet());
+      }
 
       let main_container = document.createElement('div');
       main_container.appendChild(db_container);

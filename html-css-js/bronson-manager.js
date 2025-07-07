@@ -17,8 +17,6 @@
 //  - Zone Building list array of room names for each zone
 //  - Campus.json used for various things in jacknet
 async function initLocalStorage() {
-    let campJSON = await getCampusData();
-    localStorage.setItem("campusJSON", JSON.stringify(campJSON));
     // Need to make a function on the backend that handles this request.
     // Campus Data (Effectively a clone of the hashmap)
     let campData = await getCampusData();
@@ -29,10 +27,13 @@ async function initLocalStorage() {
 
     let leaderboard = await getLeaderboard();
     localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+    // CheckerboardStorage
+    if (sessionStorage.getItem("cb_dash") == null) {
+        initCheckerboardStorage();
+    }
     return;
 }
 
-// TODO (also on the backend) 
 async function getCampusData() {
     return fetch('campusData')
         .then(response => {
@@ -68,12 +69,90 @@ async function getLeaderboard() {
 
 // Session Storage Stuff (Tool Responses)
 function storeCBResponse(cbBody) {
-    sessionStorage.setItem("cb_body", cbBody);
+    sessionStorage.setItem("cb_body", JSON.stringify(cbBody));
     return;
 }
 
+function initCheckerboardStorage() {
+    const initEntry = {zones: [{
+        zone: "1",
+        rooms: 0,
+        checked: 0
+    },{
+        zone: "2",
+        rooms: 0,
+        checked: 0
+    },{
+        zone: "3",
+        rooms: 0,
+        checked: 0
+    },{
+        zone: "4",
+        rooms: 0,
+        checked: 0
+    }]};
+    sessionStorage.setItem("cb_dash", JSON.stringify(initEntry));
+    return;
+}
+
+// sets newly called zones to zero, this is because when calculate the zone percentage,
+// we are adding room numbers to these valus iteratively as they come in.
+function resetCBDash(zoneArray) {
+    let object = JSON.parse(sessionStorage.getItem("cb_dash"));
+    for (item in object["zones"]) {
+        if (object["zones"][item]["zone"] == zoneArray[item]) {
+            object["zones"][item]["rooms"] = 0;
+            object["zones"][item]["checked"] = 0;
+        }
+    }
+    sessionStorage.setItem("cb_dash", JSON.stringify(object));
+    return;
+}
+
+function updateCBDashZone(currentZone, rooms, checked) {
+    let object = JSON.parse(sessionStorage.getItem("cb_dash"));
+    for (item in object["zones"]) {
+        if (object["zones"][item]["zone"] == currentZone) {
+            object["zones"][item]["rooms"] += rooms;
+            object["zones"][item]["checked"] += checked;
+        }
+    }
+    sessionStorage.setItem("cb_dash", JSON.stringify(object));
+    return;
+}
+
+// Maybe will stream line loading dash, unsure.
+// function storeCBZonePercentage(key, percentage) {
+//     sessionStorage.setItem("cbZone1", percentage);
+//     return;
+// }
+
+// If cb_body is loaded when setDashboard() is called,
+//  then this is called to load a HTML snippet detailing
+//  the zones in checkerboard.
+async function dashCheckerboard() {
+    let object = JSON.parse(sessionStorage.getItem("cb_dash"));
+    let cb_dashDiv = document.createElement("div");
+    cb_dashDiv.classList.add("cb_dash");
+    cb_dashDivHTML = `<fieldset><legend>Checkerboard Zone Overview</legend><ul class="cb_dashZones">`;
+    for (item in object["zones"]) {
+        if (object["zones"][item]["rooms"] != 0) {
+            let percent = object["zones"][item]["checked"] / object["zones"][item]["rooms"];
+            percent = String((percent).toFixed(5)).slice(0,5);
+            cb_dashDivHTML += `<li> <label class="cbProgLabel for="${object["zones"][item]["zone"]}_prog">Zone ${object["zones"][item]["zone"]}:  ${percent}%</label><progress id="${object["zones"][item]["zone"]}_prog"value="${percent}" max="100"></progress></li>`;
+        }
+    }
+    cb_dashDivHTML += `</ul></fieldset>`;
+    cb_dashDiv.innerHTML = cb_dashDivHTML;
+    return cb_dashDiv;
+}
+//
 function storeJNResponse(jnBody) {
     sessionStorage.setItem("jn_body", jnBody);
+    return;
+}
+
+function dashJackNet() {
     return;
 }
 

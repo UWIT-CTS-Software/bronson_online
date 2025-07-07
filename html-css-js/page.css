@@ -393,6 +393,18 @@ button:-webkit-details-marker {
     /* float: left; */
 }
 
+.db_messages {
+    margin: auto;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    float: left;
+    color:rgb(205, 205, 205);
+    background-color: rgb(50, 50, 50);
+    border:4px inset rgb(144, 118, 26);
+    padding-bottom:9px;
+}
+
 .db_console {
     grid-column: 2 / 8;
     grid-row: 1 / 2;
@@ -400,10 +412,11 @@ button:-webkit-details-marker {
 }
 
 .db_leader {
-    grid-column: 8 / 10;
+    grid-column: 8 / 11;
     grid-row: 1 / 2;
     /* margin-left: -20%;
     width: 60%; */
+    width:fit-content;
 }
 
 /* .leaderTab {
@@ -447,8 +460,8 @@ button:-webkit-details-marker {
     /* color: #fff; */
 }
 .leaderTab:hover {
-    border-right: 9px solid transparent;
-    border-left: 9px solid transparent;
+    border-right: 12px solid transparent;
+    border-left: 12px solid transparent;
     border-bottom: 29px solid #94742e;
     border-top: 0px solid transparent;
     text-decoration: none;
@@ -481,6 +494,15 @@ button:-webkit-details-marker {
     border-bottom: 26px solid #7c1919;
 }
 
+.cb_dash {
+    grid-column: 1/2;
+    grid-row:1;
+}
+.cb_dashZones {
+    margin: 0px;
+    padding: 0px;
+}
+
 input[type=text], input[type=password] {
     width: 100%;
     padding: 12px 20px;
@@ -511,15 +533,15 @@ img.background {
 
 .container {
     padding: 16px;
-  }
-  
-  span.psw {
+}
+
+span.psw {
     float: right;
     padding-top: 16px;
-  }
-  
-  /* The Modal (background) */
-  .modal {
+}
+
+/* The Modal (background) */
+.modal {
     display: none; /* Hidden by default */
     position: fixed; /* Stay in place */
     z-index: 1; /* Sit on top */
@@ -531,58 +553,74 @@ img.background {
     background-color: rgb(0,0,0); /* Fallback color */
     background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
     padding-top: 60px;
-  }
-  
-  /* Modal Content/Box */
-  .modal-content {
+}
+
+/* Modal Content/Box */
+.modal-content {
     background-color: rgb(50, 50, 50);
     margin: 10% auto 15% auto;
     border: 1px solid rgb(144, 118, 26);
     width: 40%;
-  }
-  
-  /* The Close Button (x) */
-  .close {
+}
+
+/* The Close Button (x) */
+.close {
     position: absolute;
     right: 25px;
     top: 0;
     color: #000;
     font-size: 35px;
     font-weight: bold;
-  }
-  
-  .close:hover,
-  .close:focus {
+}
+
+.close:hover,
+.close:focus {
     color: red;
     cursor: pointer;
-  }
-  
-  /* Add Zoom Animation */
-  .animate {
+}
+
+/* Add Zoom Animation */
+.animate {
     -webkit-animation: animatezoom 0.6s;
     animation: animatezoom 0.6s
-  }
-  
-  @-webkit-keyframes animatezoom {
+}
+
+@-webkit-keyframes animatezoom {
     from {-webkit-transform: scale(0)} 
     to {-webkit-transform: scale(1)}
-  }
-    
-  @keyframes animatezoom {
+}
+
+@keyframes animatezoom {
     from {transform: scale(0)} 
     to {transform: scale(1)}
-  }
-  
-  /* Change styles for span and cancel button on extra small screens */
-  @media screen and (max-width: 300px) {
-    span.psw {
-       display: block;
-       float: none;
+}
+
+/* Change styles for span and cancel button on extra small screens */
+@media screen and (max-width: 300px) {
+span.psw {
+        display: block;
+        float: none;
     }
     .cancelbtn {
-       width: 100%;
+        width: 100%;
     }
-  }
+}
+
+@media (max-width: 950px){
+    /* .cb_dash {
+        grid-column:1/2;
+    }
+    .db_console {
+        grid-column:2/7;
+    }
+    .db_leader {
+        grid-column:7/11;
+    } */
+    .leaderTab {
+        width:20px;
+    }
+}
+
 
 /* JackNet Definitions 
        _            _    _   _      _   
