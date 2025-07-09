@@ -28,6 +28,9 @@ CFMRequestFile
 GeneralRequest
 */
 
+pub mod models;
+pub mod schema;
+
 use std::{
 	str,
 	thread,

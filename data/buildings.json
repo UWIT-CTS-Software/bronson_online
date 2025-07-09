@@ -78,7 +78,7 @@
     },
     "CI": {
         "name"    : "Cheney International Center",
-        "lsm_name": "Cheney%20International%20Center%20(CI)",
+        "lsm_name": "Cheney%20International%20Center%20(CIC)",
         "abbrev"  : "CI",
         "zone"    : 3,
         "rooms"   : []
@@ -204,7 +204,7 @@
     },
     "NAC": {
         "name"    : "Native American Center",
-        "lsm_name": "Native%20American%20Ed%20Research%20%26%20Culteral%20Center%20(NA)",
+        "lsm_name": "Native%20American%20Center%20(NAC)",
         "abbrev"  : "NAC",
         "zone"    : 3,
         "rooms"   : []

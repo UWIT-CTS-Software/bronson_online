@@ -1,42 +1,55 @@
 use diesel::{
     prelude::*,
     sql_types::{
-        SmallInt,
+        Array,
+        Text,
     },
     serialize::{
         ToSql,
-        Result,
         Output,
     },
+    AsExpression,
     backend::Backend,
+    FromSqlRow,
 };
 
-impl<DB> ToSql<SmallInt, DB> for i16
+
+#[derive(Debug, FromSqlRow, AsExpression)]
+#[diesel(sql_type = Array<Array<Text>>)]
+pub struct Db2DArray(pub Vec<Vec<String>>);
+
+impl Into<Db2DArray> for Vec<Vec<String>> {
+    fn into(self) -> Db2DArray {
+        return Db2DArray(self);
+    }
+}
+
+impl<DB, E> ToSql<Array<Array<Text>>, DB> for Db2DArray
     where
         DB: Backend,
-        i16: ToSql<SmallInt, DB>
+        Vec<Vec<String>>: ToSql<Array<Array<Text>>, DB>,
 {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> Result {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> Result<Array<Array<Text>>, E> {
         return self.0.to_sql(out);
     }
 }
 
 
+
 #[allow(non_camel_case_types)]
-#[derive(Debug, Queryable, Selectable, Insertable)]
+#[derive(Debug, PartialEq, Queryable, Selectable, Insertable)]
 #[diesel(table_name = crate::schema::buildings)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct DB_Building {
     pub abbrev: String,
     pub name: String,
     pub lsm_name: String,
-    #[diesel(serialize_as = SmallInt)]
     pub zone: i16,
 }
 
 
 #[allow(non_camel_case_types)]
-#[derive(Queryable, Selectable, Insertable)]
+#[derive(Debug, PartialEq, Queryable, Selectable, Insertable)]
 #[diesel(table_name = crate::schema::rooms)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct DB_Room {
@@ -47,13 +60,15 @@ pub struct DB_Room {
     pub gp: bool,
     pub available: bool,
     pub until: String,
+    #[diesel(serialize_as = Db2DArray)]
     pub hostnames: Vec<Vec<String>>,
+    #[diesel(serialize_as = Db2DArray)]
     pub ips: Vec<Vec<String>>
 }
 
 
 #[allow(non_camel_case_types)]
-#[derive(Queryable, Selectable, Insertable)]
+#[derive(Debug, PartialEq, Queryable, Selectable, Insertable)]
 #[diesel(table_name = crate::schema::admins)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct DB_Admin {
@@ -62,7 +77,7 @@ pub struct DB_Admin {
 
 
 #[allow(non_camel_case_types)]
-#[derive(Queryable, Selectable, Insertable)]
+#[derive(Debug, PartialEq, Queryable, Selectable, Insertable)]
 #[diesel(table_name = crate::schema::data)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct DB_DataElement {
