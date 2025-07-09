@@ -1,12 +1,12 @@
 # Bronson Online
 
+![image](https://github.com/user-attachments/assets/1c128596-5141-4aef-863a-c5369643078f)
+
 `"All I do is eat oysters and speak six languages in three voices." - Action Bronson`
 
 Bronson is a suite of diagnostic tools for the I.T. department. Looking to monitor classroom systems and help technicians organize where needs help today.
 
 The frontend is written in JavaScript and the backend was written in Rust.
-
-![image](https://github.com/user-attachments/assets/1c128596-5141-4aef-863a-c5369643078f)
 
 ---
 
