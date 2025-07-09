@@ -631,6 +631,17 @@ span.psw {
   \____/ \__,_|\___|_|\_\_| \_|\___|\__|
 */
 
+.jn_innerConsole {
+    margin: auto;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    float: left;
+    color:rgb(205, 205, 205);
+    background-color: rgb(50, 50, 50);
+    border:2px inset rgb(144, 118, 26);
+}
+
 .innerConsole {
     margin: auto;
     width: 100%;

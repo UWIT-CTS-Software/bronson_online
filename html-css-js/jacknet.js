@@ -18,18 +18,14 @@ Data
     - getSelDevNames(binaryDevList)
     - getSelectedBuilding()
     - pad(n, width, z)
-
 Export
     - runExport()
     - downloadCsv(data)
-
 Search
     - runSearch()
     - PingPong(devices, building)            - flag: "ping"
     - formatPingPong(PingPongJSON, devices)
     - printPR(formPing, building, deviceNames)
-
-
 HTML
     - clearConsole()
     - updateConsole(text)
@@ -44,12 +40,14 @@ HTML
 there should be an object for the csv export and if a search is ran, it is overwritten. If possible fade the export button until the first search is ran.
 
 TODO:
-    - All Buildings PopUp, "Are You Sure?"
-    - When a response is received add new buttons to the options
+    [ ] - All Buildings PopUp, "Are You Sure?"
+    [ ] - When a response is received add new buttons to the options
         - "collapse all/expand all" 
             when we have all these tiles it may be nice to collapse all of them
-    - change the minimze/exapand button to change depending on state.
+    [ ] - change the minimze/exapand button to change depending on state.
+*/
 
+/*
 $$$$$$$\             $$\               
 $$  __$$\            $$ |              
 $$ |  $$ | $$$$$$\ $$$$$$\    $$$$$$\  
@@ -149,16 +147,10 @@ $$$$$$$$\ $$  /\$$\ $$$$$$$  |\$$$$$$  |$$ |       \$$$$  |
                     $$ |                                   
                     $$ |                                   
                     \__|       
-                    
-TODO:
-
-setCSVExport(hns, ips, rms)
-    [x] - Update the CSV Export Object
-    [ ] - ? Maybe, Set CSV Button Opacity (If first search)
 */
 
 function runExport() {
-    // IDEAL CSV FORMAT
+    // IDEAL CSV FORMAT (from original roomcheck excel sheet)
     // EN 1055
     // Hostname:   en-1055-proc1    en-1055-ws1   ...
     // Ip:           10.10.10.10              x   ...
@@ -235,15 +227,11 @@ $$\   $$ |$$   ____|$$  __$$ |$$ |      $$ |      $$ |  $$ |
 \$$$$$$  |\$$$$$$$\ \$$$$$$$ |$$ |      \$$$$$$$\ $$ |  $$ |
  \______/  \_______| \_______|\__|       \_______|\__|  \__|
 
-TODO: 
-[ ] - ? Maybe, combine pingThis() and pingPong
-runSearch()
 */
 
 // runSearch()
 // runs the search and calls the above functions to do so.
 //     TODO: 
-//        [ ] - Fix "all buildings" export by adding new data structures
 //        [ ] - Add a pop-up when "All Buildings" is selected. Are you sure? This will be computationally very heavy and may take some time to complete.
 async function runSearch() {
     updateConsole("====--------------------========--------------------====");
@@ -415,7 +403,6 @@ async function printPR(formPing, building, deviceNames) {
     let totalNumDevices = 0;
     let not_found_count = 0;
     let rooms   = await getRooms(building);
-    //let bAbbrev = await getAbbrev(building);
     
     // Iterate over each room in hns
     for (var j = 0; j < hns.length; j++) {
@@ -427,7 +414,6 @@ async function printPR(formPing, building, deviceNames) {
         // ROOM NUMBER
         roomNum = rooms[j].name.split(" ")[1];
         rms.push(rooms[j].name);
-        //rms.push(roomNum);
         // Iterate over the device type in each room in each hn
         for (var a=0; a < hns[j].length; a++) {
             // Iterate over each hostname in a given device type
@@ -436,7 +422,6 @@ async function printPR(formPing, building, deviceNames) {
                 // if hostname contains room#
                 //   add to printout hostname line
                 //   add corresponding ip
-                //console.log("JN-Debug: Hostname", hns[j][a][k])
                 if(hns[j][a][k].includes(pad(roomNum, 4))) {
                     printHostnames += pad(hns[j][a][k], 15, " ") + "|";
                     printIps       += pad(ips[j][a][k], 15, " ") + "|";
@@ -449,7 +434,6 @@ async function printPR(formPing, building, deviceNames) {
         updateConsole("IP's     : " + printIps);
         graphBool.push(tmpBool)
     }
-    // TO-DO: Move percentage stuff in here.
     // Tell user how good the search went :)
     updateConsole("Singular Building Search Complete");
     updateConsole("Building Report:\n -- Found " + (totalNumDevices - not_found_count) + "/" + totalNumDevices + " devices.");
@@ -472,7 +456,7 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 // - -- - -- - - - CONSOLE FUNCTIONS
 // Tied to 'Clear Console' button, clears the console
 function clearConsole() {
-    let consoleObj = document.querySelector('.innerConsole');
+    let consoleObj = document.querySelector('.jn_innerConsole');
     consoleObj.value = '';
     // remove every div with the class 'vis_container'
     let visObj = document.querySelectorAll('.vis_container').forEach(element =>    {
@@ -486,7 +470,7 @@ function clearConsole() {
 
 // updates the console by appending an item of text to contents
 function updateConsole(text) {
-    let consoleObj = document.querySelector('.innerConsole');
+    let consoleObj = document.querySelector('.jn_innerConsole');
     const beforeText = consoleObj.value.substring(0, consoleObj.value.length);
     consoleObj.value = beforeText + '\n' + text;
     consoleObj.scrollTop = consoleObj.scrollHeight;
@@ -751,7 +735,7 @@ async function setJackNet() {
         <fieldset class="jn_fieldset">
             <legend> 
                 Console Output: </legend>
-            <textarea readonly rows="15" cols ="75" class="innerConsole" name="consoleOutput" spellcheck="false"> 
+            <textarea readonly rows="15" cols ="75" class="jn_innerConsole" name="consoleOutput" spellcheck="false"> 
                 Console: JackNet Example
             </textarea>
         </fieldset>`;
