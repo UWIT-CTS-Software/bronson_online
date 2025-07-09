@@ -736,7 +736,7 @@ async function setJackNet() {
             <legend> 
                 Console Output: </legend>
             <textarea readonly rows="15" cols ="75" class="jn_innerConsole" name="consoleOutput" spellcheck="false"> 
-                Console: JackNet Example
+            JackNet Console: Responses will be printed here along with some tiles below.
             </textarea>
         </fieldset>`;
 
@@ -753,7 +753,7 @@ async function setJackNet() {
             <button id="export" onclick="runExport()" class="headButton">
                 Export as .csv </button>
             <button id="clearCon" onclick="clearConsole()" class="headButton"> 
-                Clear Console </button>
+                Clear</button>
         </fieldset>`;
 
     // Empty Visualizer Container
