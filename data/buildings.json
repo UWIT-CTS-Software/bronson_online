@@ -6,10 +6,10 @@
         "zone"    : 4,
         "rooms"   : []
     },
-    "AC": {
+    "AHC": {
         "name"    : "American Heritage Center",
         "lsm_name": "American%20Heritage%20Center%20(AC)",
-        "abbrev"  : "AC",
+        "abbrev"  : "AHC",
         "zone"    : 4,
         "rooms"   : []
     },

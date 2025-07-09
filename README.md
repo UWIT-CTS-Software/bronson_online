@@ -1,12 +1,12 @@
 # Bronson Online
 
+![image](https://github.com/user-attachments/assets/1c128596-5141-4aef-863a-c5369643078f)
+
 `"All I do is eat oysters and speak six languages in three voices." - Action Bronson`
 
 Bronson is a suite of diagnostic tools for the I.T. department. Looking to monitor classroom systems and help technicians organize where needs help today.
 
 The frontend is written in JavaScript and the backend was written in Rust.
-
-![image](https://github.com/user-attachments/assets/cfa5f07a-f835-48dc-b6c1-1ede2ec43b15)
 
 ---
 
@@ -108,12 +108,13 @@ From there, access the ip:port address that is outputted in the previous step in
 
 ### Checkerboard
 
+<img width="774" alt="checkerboard screenshot 7 3" src="https://github.com/user-attachments/assets/1f65306e-ea13-46cf-bab7-70528df27b04" />
+
 Utilizes LSM RoomCheck history through their API and looks at C.T.S. Technician Schedules and classroom schedules to point techs to open rooms in need of checkups during their shift
 
 ### JackNet
 
-![image](https://github.com/user-attachments/assets/5a70753c-4f27-476c-8a53-dfd2434629bc)
-
+<img width="566" alt="jacknet screenshot 7 3" src="https://github.com/user-attachments/assets/33d7d781-f638-44f2-a295-f2b3c44372b0" />
 
 JackNet is a diagnostic tool to monitor the systems on campus. This tool will use a precompiled json file to pull information about each building on campus and which rooms we have systems in. JackNet will use this information to build a database of hostnames defined by our organization's system (ie: a processor example would be EN-1055-PROC1). Then return the user a comprehensive list/csv of all devices that are online and configured correctly. 
 
