@@ -60,6 +60,7 @@
     */
     async function setDashboard() {
       // History and init
+      preserveCurrentTool();
       document.title = "Dashboard - Bronson";
       history.pushState({}, "Dashboard", "/");
 
@@ -87,7 +88,7 @@
             <fieldset>
                 <legend> 
                     Messages: </legend>
-                <textarea readonly rows="20" cols ="65" class="innerConsole" name="consoleOutput" spellcheck="false"> 
+                <textarea readonly rows="18" cols ="65" class="db_messages" name="consoleOutput" spellcheck="false"> 
                     ${json["contents"]}
                 </textarea>
             </fieldset>`;
@@ -98,14 +99,14 @@
         leaderboard.innerHTML = `
         <fieldset>
           <legend>
-            Leaderboard: 
+            Room Check Leaderboard: 
           </legend>
           <div class="tab_row leader">
-            <button id="WeekButton" onclick="setLeaderWeek()" type="button" class="toolTab weekTab"><span>
+            <button id="WeekButton" onclick="setLeaderWeek()" type="button" class="leaderTab weekTab"><span>
               Last 7 days </span></button>
-            <button id="MonthButton" onclick="setLeaderMonth()" type="button" class="toolTab monthTab"><span>
+            <button id="MonthButton" onclick="setLeaderMonth()" type="button" class="leaderTab monthTab"><span>
               Last 30 days </span></button>
-            <button id="SemesterButton" onclick="setLeaderSemester()" type="button" class="toolTab semesterTab"><span> 
+            <button id="SemesterButton" onclick="setLeaderSemester()" type="button" class="leaderTab semesterTab"><span> 
               Last 90 days </span></button>
           </div>
           <textarea readonly rows="17" cols="35" class="innerConsole" id="leaderboard" spellcheck="false">
@@ -115,6 +116,13 @@
 
       db_container.appendChild(consoleOutput);
       db_container.appendChild(leaderboard);
+
+      // Check for client-side cached response
+      if(sessionStorage.getItem("cb_body") != null) {
+        db_container.append(await dashCheckerboard());
+      } else if (sessionStorage.getItem("jn_body") != null) {
+        db_container.append(dashJackNet());
+      }
 
       let main_container = document.createElement('div');
       main_container.appendChild(db_container);

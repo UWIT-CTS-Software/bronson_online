@@ -130,7 +130,7 @@ button:-webkit-details-marker {
     font-family: "Racing Sans One", sans-serif;
     font-weight: 400;
     font-style: normal;
-    grid-column: 1 / 2;
+    grid-column: 1 / 1;
     grid-row: 1;
     margin: 12px auto;
     border:4px double rgb(133, 60, 60);
@@ -154,18 +154,18 @@ button:-webkit-details-marker {
     background-color: rgba(0, 0, 0, 0);
     text-align: left;
     font-family:'Courier New', Courier, monospace;
-    display: grid;
+    display: flex;
     /* grid-area: 2 / 9; */
     grid-column: 2 / 10;
     grid-row: 1;
     /* height: 20px; */
     padding-top: 0px;
-    margin: 1px;
+    margin: 0px;
 }
 
-.middle_test {
+/* .middle_test {
     display: inline-grid;
-}
+} */
 
 .message_header {
     color: rgb(118, 66, 28);
@@ -175,29 +175,23 @@ button:-webkit-details-marker {
     font-weight: 400;
     font-style: normal;
     text-align: left;
-    display: inline-grid;
+    /* display: inline-grid;
     grid-column: 1 / 4;
-    grid-row: 1;
+    grid-row: 1; */
     /* vertical-align: end; */
-    margin: 10px;
+    padding:1%;
+    margin: 0% 0%;
     /* transform: translateX(-3%);*/
 } 
 
 .tab_row {
-    margin: 14px auto;
+    margin: -16px 0px;
     display: inline-grid;
-    padding: 5px 100px;
-    grid-auto-columns: 1fr;
+    padding: 0% 0%;
+    /* grid-auto-columns: 1fr;
     grid-column: 1 / auto;
-    grid-row: 1;
-    transform: translate(-100px , 24px);
-}
-
-.leader {
-    margin: -20px 0px 25px 14px;
-    padding: 0px 0px 0px 100px;
-    width: 350px;
-    display: flex;
+    grid-row: 1; */
+    transform: translate(-6px, -12px);
 }
 
 .toolTab {
@@ -261,41 +255,21 @@ button:-webkit-details-marker {
     z-index: 3;
 }
 
-.weekTab {
-    grid-column: auto;
-    z-index: 0;
-    width: 55px;
-}
-.monthTab {
-    grid-column: auto;
-    z-index: 1;
-    width: 55px;
-}
-.semesterTab {
-    grid-column: auto;
-    z-index: 2;
-    width: 55px;
-}
-
-.dbTab:active, .chTab:active, .jnTab:active, .ccTab:active .weekTab:active .monthTab:active .semesterTab:active{
+.toolTab:active, .leaderTab:active {
     background: transparent;
     border-bottom: 39px solid #8f513e;
     transform: translateY(0px);
     /* transform: translateY(-30px); */
 }
 
-.dbTab.selected, .chTab.selected, .jnTab.selected, .ccTab.selected {
+.toolTab.selected {
     transform: translateY(10px);
     transition-duration: 0.1s;
     border-bottom: 29px solid #7c1919;
     
 }
 
-.weekTab.leader_selected, .monthTab.leader_selected, .semesterTab.leader_selected {
-    transform: translateY(10px);
-    transition-duration: 0.1s;
-    border-bottom: 29px solid #7c1919;
-}
+
  
 /*
 ▗▖ ▗▖▗▞▀▜▌▄▄▄▄  ▗▖█  ▐▌ ▄▄▄  ▗▞▀▚▖ ▄▄▄ 
@@ -413,23 +387,120 @@ button:-webkit-details-marker {
     position: relative;
     background-color: rgb(50, 50, 50);
     display: grid;
-    grid-template-columns: repeat(7,1fr);
-    gap: 10px;
+    grid-template-columns: repeat(10,1fr);
+    /* gap: 10px; */
     grid-auto-rows: minmax(20px, auto);
+    /* float: left; */
+}
+
+.db_messages {
+    margin: auto;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
     float: left;
+    color:rgb(205, 205, 205);
+    background-color: rgb(50, 50, 50);
+    border:4px inset rgb(144, 118, 26);
+    padding-bottom:9px;
 }
 
 .db_console {
-    grid-column: 2 / 10;
+    grid-column: 2 / 8;
     grid-row: 1 / 2;
-    width: 59%;
+    /* width: 59%; */
 }
 
 .db_leader {
-    grid-column: 6 / 10;
+    grid-column: 8 / 11;
     grid-row: 1 / 2;
-    margin-left: -20%;
-    width: 60%;
+    /* margin-left: -20%;
+    width: 60%; */
+    width:fit-content;
+}
+
+/* .leaderTab {
+    width:25%;
+} */
+.leader {
+    margin: 6px 0px -12px 0px;
+    padding: 0px 0px 0px 18px;
+    /* width: 350px; */
+    display: flex;
+}
+
+.leaderTab {
+    margin: 0px -6px;
+    /* display: inline-block;
+    vertical-align: middle; */
+    padding: 0px 27px;
+    /* transform: translateY(26px); */
+    /* grid-column: 1 / 12; */
+    opacity: 100%;
+    grid-row: 1;
+    width: 40px;
+    text-align: left;
+    height: 0; 
+    position: relative;
+    border-right: 12px solid transparent;
+    border-left: 12px solid transparent;
+    border-bottom: 30px solid #64603d;
+    border-top: 0px solid transparent;
+    background-color: transparent;
+    box-sizing: content-box;
+    /* This doesnt work because the trapezoid is made from the bottom border */
+    /* box-shadow: rgb(27, 31, 35) 0 1px 0, rgba(255, 255, 255, 0.25) 0 1px 0 inset; */
+}
+
+.leaderTab span { 
+    position: absolute;
+    top: 4px;
+    left: 8px;
+    color: rgb(194, 194, 194);
+    /* color: #fff; */
+}
+.leaderTab:hover {
+    border-right: 12px solid transparent;
+    border-left: 12px solid transparent;
+    border-bottom: 29px solid #94742e;
+    border-top: 0px solid transparent;
+    text-decoration: none;
+    /* font-weight: 500; */
+    transition-duration: 0.1s;
+    transform: scale(1.1);
+    /* z-index: 1; */
+    background: transparent;
+}
+
+.weekTab {
+    grid-column: auto;
+    z-index: 0;
+    /* width: 55px; */
+}
+.monthTab {
+    grid-column: auto;
+    z-index: 1;
+    /* width: 55px; */
+}
+.semesterTab {
+    grid-column: auto;
+    z-index: 2;
+    
+}
+
+.leaderTab.leader_selected {
+    transform: translateY(4px);
+    transition-duration: 0.1s;
+    border-bottom: 26px solid #7c1919;
+}
+
+.cb_dash {
+    grid-column: 1/2;
+    grid-row:1;
+}
+.cb_dashZones {
+    margin: 0px;
+    padding: 0px;
 }
 
 input[type=text], input[type=password] {
@@ -462,15 +533,15 @@ img.background {
 
 .container {
     padding: 16px;
-  }
-  
-  span.psw {
+}
+
+span.psw {
     float: right;
     padding-top: 16px;
-  }
-  
-  /* The Modal (background) */
-  .modal {
+}
+
+/* The Modal (background) */
+.modal {
     display: none; /* Hidden by default */
     position: fixed; /* Stay in place */
     z-index: 1; /* Sit on top */
@@ -482,58 +553,74 @@ img.background {
     background-color: rgb(0,0,0); /* Fallback color */
     background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
     padding-top: 60px;
-  }
-  
-  /* Modal Content/Box */
-  .modal-content {
+}
+
+/* Modal Content/Box */
+.modal-content {
     background-color: rgb(50, 50, 50);
     margin: 10% auto 15% auto;
     border: 1px solid rgb(144, 118, 26);
     width: 40%;
-  }
-  
-  /* The Close Button (x) */
-  .close {
+}
+
+/* The Close Button (x) */
+.close {
     position: absolute;
     right: 25px;
     top: 0;
     color: #000;
     font-size: 35px;
     font-weight: bold;
-  }
-  
-  .close:hover,
-  .close:focus {
+}
+
+.close:hover,
+.close:focus {
     color: red;
     cursor: pointer;
-  }
-  
-  /* Add Zoom Animation */
-  .animate {
+}
+
+/* Add Zoom Animation */
+.animate {
     -webkit-animation: animatezoom 0.6s;
     animation: animatezoom 0.6s
-  }
-  
-  @-webkit-keyframes animatezoom {
+}
+
+@-webkit-keyframes animatezoom {
     from {-webkit-transform: scale(0)} 
     to {-webkit-transform: scale(1)}
-  }
-    
-  @keyframes animatezoom {
+}
+
+@keyframes animatezoom {
     from {transform: scale(0)} 
     to {transform: scale(1)}
-  }
-  
-  /* Change styles for span and cancel button on extra small screens */
-  @media screen and (max-width: 300px) {
-    span.psw {
-       display: block;
-       float: none;
+}
+
+/* Change styles for span and cancel button on extra small screens */
+@media screen and (max-width: 300px) {
+span.psw {
+        display: block;
+        float: none;
     }
     .cancelbtn {
-       width: 100%;
+        width: 100%;
     }
-  }
+}
+
+@media (max-width: 950px){
+    /* .cb_dash {
+        grid-column:1/2;
+    }
+    .db_console {
+        grid-column:2/7;
+    }
+    .db_leader {
+        grid-column:7/11;
+    } */
+    .leaderTab {
+        width:20px;
+    }
+}
+
 
 /* JackNet Definitions 
        _            _    _   _      _   
@@ -543,6 +630,17 @@ img.background {
  | |__| | (_| | (__|   <| |\  |  __/ |_ 
   \____/ \__,_|\___|_|\_\_| \_|\___|\__|
 */
+
+.jn_innerConsole {
+    margin: auto;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    float: left;
+    color:rgb(205, 205, 205);
+    background-color: rgb(50, 50, 50);
+    border:2px inset rgb(144, 118, 26);
+}
 
 .innerConsole {
     margin: auto;
@@ -576,28 +674,28 @@ img.background {
     background-color: rgb(50, 50, 50);
     display: grid;
     grid-template-columns: repeat(7,1fr);
-    gap: 10px;
+    gap: 1px;
     grid-auto-rows: minmax(20px, auto);
 }
 
 .jn_buildSelect {
-    grid-column: 2 / 4;
-    grid-row: 1;
-}
-
-.jn_bottomMenu {
-    grid-column: 4 / 7;
+    grid-column: 2 / 3;
     grid-row: 1;
 }
 
 .jn_devSelect {
-    grid-column: 2 / 7;
+    grid-column: 2 / 3;
     grid-row: 2;
 }
 
-.jn_console {
-    grid-column: 2 / 7;
+.jn_bottomMenu {
+    grid-column: 2 / 3;
     grid-row: 3;
+}
+
+.jn_console {
+    grid-column: 3 / 7;
+    grid-row: 1/4;
 }
 
 .jn_fieldset {
@@ -616,27 +714,43 @@ img.background {
             tp |o  |o  |o |                          |
         ---------------------------------------------
 */
+.jn_visList {
+    columns: 2;
+    column-gap:1%;
+    margin: 1% 14% 2% 14%;
+    padding-left: 0px;
+}
+
+@media (max-width:1500px) {
+    .jn_visList {
+        column-count:1;
+    }
+}
+
 .vis_container {
-    display: grid;
+    /* display: grid; */
+    break-inside: avoid;
     gap: 0rem;
-    padding: 1rem 0rem 0rem 0rem;
-    /* width: 90%; */
-    margin: 0rem 20% 0rem 20%;
+    padding: 0rem 0rem 0rem 0rem;
+    margin: 0rem 2% 1% 2%;
+    border: rgb(33,66,99) outset 3px;
+    border-radius: 6px;
 }
 
 /* Visualizer Tile Header, a Building */
 .visHeader {
     /* grid-column: 1 / -1; */
-    padding: 1rem;
+    padding: 1% 1% 1% 1%;
     background-color:#24292E;
     color: rgb(205, 177, 99);
     border-bottom:2px inset #94742e;
+    border-radius:5px;
 }
 /* list of every list / the space they occupy */
 .visTile {
     display:flex;
     margin: 0rem;
-    padding: 1rem;
+    padding: 0.4rem;
     background-color: #37343e;
     gap: .2rem;
     overflow-x: auto;
@@ -648,6 +762,9 @@ img.background {
 
 .visButton {
     float: right;
+    padding: 0px 3px;
+    margin: 1px 0px 0px 3px;
+    border-radius:3px;
 }
 
 .visTile > li {
@@ -739,36 +856,40 @@ img.background {
     background-color: rgb(50, 50, 50);
     color: rgb(236, 200, 101);
     display: grid;
-    grid-template-columns: repeat(7,1fr);
-    gap: 10px;
+    grid-template-columns: repeat(10,1fr);
+    gap: 1px;
     grid-auto-rows: minmax(20px, auto);
 }
 
 .cb_mapSelect {
     background-color: rgb(50, 50, 50);
-    grid-column: 2 / 4;
+    grid-column: 2 / 3;
     grid-row: 1;
-    float: center;
+    /* float: center; */
 }
 
 .cb_buttonRow {
     background-color: rgb(50, 50, 50);
-    grid-column: 4 / 7;
-    grid-row: 1;
+    grid-column: 2 / 3;
+    grid-row: 2;
 }
 
 .cb_console {
     background-color: rgb(50, 50, 50);
-    grid-column: 2 / 7;
-    grid-row: 2;
+    grid-column: 3 / 10;
+    grid-row: 1/4;
     font-family:'Courier New', Courier, monospace;
-    text-transform: full-width;
-    letter-spacing: -0.2em;
+    /* text-transform: full-width;
+    letter-spacing: -0.2em; */
 }
 
 .cb_fieldset {
     border:4px outset rgb(144, 118, 26);
     float: center;
+}
+
+.cb_zoneSelFieldset {
+    padding: 2px 0px 4px 4px;
 }
 
 .cb_green {
@@ -781,7 +902,55 @@ img.background {
     color: rgb(236, 200, 101);
 }
 
-/* New classes from checkerboard overhaul*/ 
+/* New classes from checkerboard overhaul*/
+/* Topper stuff */
+.cbTopperContainer {
+    margin: 0px 0px 2% 0px;
+}
+
+.cbTopperZoneHeader {
+    font-weight:bold;
+    font-family: "Contrail One", sans-serif;
+}
+
+.cbTopperBuildingList {
+    margin: 0px 0px 0px 0px;
+    padding: 0px 5% 0px 5%;
+    column-count: 2;
+}
+
+.cbTopperBuilding {
+    border: rgb(102,53,54) inset 2px;
+    border-radius: 12px;
+    cursor: pointer;
+    padding: .5% 1%;
+    margin-bottom: 3px;
+    break-inside: avoid;
+}
+.cbTopperBuildingNameText {
+    font-family: 'Courier New', Courier, monospace;
+    margin:0px 0px 4px 0px;
+    font-weight: bold;
+}
+
+.cbTopperBuildingStatus {
+    margin:0px 0px 0px 0px;
+    display: flex;
+    justify-content: right;
+}
+
+.cbBStatusText {
+    margin:0px 4% 0px 4%;
+    width: 100%;
+}
+
+.cbProgress {
+    margin: 0px 0px 0px 0px;
+}
+
+.cbProgLabel {
+    margin:0px 6px 0px 3%;
+}
 .cbVisContainer {
     margin-bottom:0px;
     padding-bottom:0px;
@@ -789,66 +958,146 @@ img.background {
 
 .cbVisHeader { 
 /* BUILDING NAME */
-    margin-bottom:0px;
-    padding-bottom:0px;
-    border:#37343e inset 1px;
+    margin-bottom:5px;
+    padding-bottom:2px;
+    padding-top: 8px;
+    padding-right: 15px;
+    /* border:#37343e inset 1px; */
+    border-top: rgb(133, 60, 60) outset 2px;
+    border-radius: 15px;
+}
+
+.cbHeaderSpan {
+    padding-left:1%;
+    padding-right: 1%;
+    margin-left: 8%;
+    font-family: "Contrail One", sans-serif;
+    font-size: 20pt;
+    border-bottom: rgb(45,100,100) inset 2px;
+    border-radius: 5px;
 }
 
 .cbVisRooms {
     /* CONTAINS ALL ROOMS, maybe should be a list, not sure */
     margin-top:0px;
-    margin-bottom:0px;
-    padding-top:0px;
-    padding-bottom:0px;
+    margin-bottom:3px;
+    padding-top:3px;
+    padding-bottom:10px;
+    /* Collumn attempt */
+    column-count: 3;
+    column-gap: 10px;
+    padding-left: 0px;
 }
 
 .cbVisRoom {
 /* CONTAINS A ROOM IN A BUILDING */
-    margin:0px;
-    padding:0px;
+    margin:2px 1px 5px 1px;
+    padding:4px 0px 0px 0px;
+    break-inside: avoid;
+    border: rgb(99, 66, 33) outset 2px;
+    border-radius: 20px;
 }
 
 .cbVisRoomName {
     margin: 0px;
-    padding:0px;
+    padding-left:20px;
+    border-bottom: rgb(99,66,33) inset 2px;
 }
 
 .cbVisRoomAttributes {
     margin: 0px;
     padding:0px;
-    padding-left:5%;
+    /* padding-left:5%; */
     color:rgb(224, 191, 100);
+    column-count: 2;
+    gap:0px;
 }
-/* CB room spans */
+/* 
+.cbVisRoomAttributes > li {
+    margin-bottom:4px;
+} */
 .cbVisNotChecked {
-    padding-right:6px;
     background-color: rgb(102, 53, 54);
-    border: rgb(94, 46, 17) inset 2px;
-    border-radius: 5px;
+    /* border: rgb(94, 46, 17) inset 2px; */
+    border-radius: 0px 0px 0px 18px;
+    border-right:rgb(75,45,15) outset 1px;
 }
+
+/* .cbVisNotCheckedSpan {
+    padding:0px;
+    margin:0px;
+    display:flex;
+    text-align:center;
+} */
 
 .cbVisChecked {
-    padding-right:6px;
     background-color: rgb(67, 102, 65);
-    border: rgb(33, 39, 33) inset 2px;
-    border-radius: 5px;
+    /* border: rgb(33, 39, 33) inset 2px; */
+    border-radius: 0px 0px 0px 18px;
+    border-right:rgb(75,45,15) outset 1px;
 }
+/* 
+.cbVisCheckedSpan {
+    padding:0px;
+    margin:0px;
+    display:flex;
+    text-align:center;
+} */
 
 .cbVisAvailable {
-    padding-right:6px;
     background-color: rgb(57, 125, 54);
-    border: rgb(33, 39, 33) inset 2px;
-    border-radius: 5px;
+    /* border: rgb(33, 39, 33) inset 2px; */
+    border-radius: 0px 0px 18px 0px;
+    border-left:rgb(90,60,30) inset 1px;
 }
+
+/* .cbVisAvailableSpan {
+   padding:0px;
+    margin:0px;
+    display:flex;
+    text-align:center;
+} */
 
 .cbVisNotAvailable {
-    padding-right:6px;
     background-color: rgb(139,24,27);
-    border: rgb(94, 46, 17) inset 2px;
-    border-radius: 5px;
+    /* border: rgb(94, 46, 17) inset 2px; */
+    border-radius: 0px 0px 18px 0px;
+    border-left:rgb(90,60,30) inset 1px;
+}
+/* .cbVisNotAvailableSpan {
+    padding:0px;
+    margin:0px;
+    display:flex;
+    text-align:center;
+} */
+
+/* Maybe use this instead */
+.cbVisRoomAttributeSpan {
+    padding:0px;
+    margin:0px;
+    display:flex;
+    text-align:center;
+}
+
+/* Window Size column changes */
+@media (max-width:1560px) {
+    .cbTopperBuildingList {
+        column-count:1;
+    }
+}
+
+@media (max-width:1300px) {
+    .cbVisRooms {
+        column-count:2;
+    }
 }
 
 
+@media (max-width:800px) {
+    .cbVisRooms {
+        column-count:1;
+    }
+}
 
 /* CamCode Defifnitions 
    _____                 _____          _      
@@ -1053,5 +1302,5 @@ textarea:valid {
     height: 20%;
     background-color: rgb(50, 50, 50);
     color: rgb(236, 200, 101);
-    border: 2px none rgb(236, 200, 101);
+    border-top: 2px inset rgb(236, 200, 101);
 }

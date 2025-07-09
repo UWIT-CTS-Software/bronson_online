@@ -221,6 +221,8 @@ async function setCrestronFile() {
       menuItem.addEventListener("click", toggleMenu);
     });
 
+    preserveCurrentTool();
+    
     document.title = "CamCode - Bronson";
     // remove currently active status mark tab has active.
     // let active_tab_header = document.querySelector('.active_tab_header');
