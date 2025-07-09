@@ -39,12 +39,14 @@ From there, access the ip:port address that is outputted in the previous step in
 
 ### Checkerboard
 
+![image](https://github.com/user-attachments/assets/e4df4bdf-f15c-476b-9636-fb4559f44d94)
+
+
 Utilizes LSM RoomCheck history through their API and looks at C.T.S. Technician Schedules and classroom schedules to point techs to open rooms in need of checkups during their shift
 
 ### JackNet
 
-![image](https://github.com/user-attachments/assets/5a70753c-4f27-476c-8a53-dfd2434629bc)
-
+![image](https://github.com/user-attachments/assets/0d39fb18-fa28-41a0-ab4a-eff2192a3cfd)
 
 JackNet is a diagnostic tool to monitor the systems on campus. This tool will use a precompiled json file to pull information about each building on campus and which rooms we have systems in. JackNet will use this information to build a database of hostnames defined by our organization's system (ie: a processor example would be EN-1055-PROC1). Then return the user a comprehensive list/csv of all devices that are online and configured correctly. 
 
