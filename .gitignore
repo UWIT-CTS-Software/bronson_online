@@ -9,3 +9,4 @@ output.log
 *.DS_Store
 *.swp
 DAILYLOG.md
+.env
