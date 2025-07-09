@@ -146,13 +146,58 @@ async function dashCheckerboard() {
     cb_dashDiv.innerHTML = cb_dashDivHTML;
     return cb_dashDiv;
 }
-//
-function storeJNResponse(jnBody) {
-    sessionStorage.setItem("jn_body", jnBody);
+
+function stashCheckerboard(checkerboardResponse) {
+    let stash = JSON.parse(sessionStorage.getItem("CheckerBoard_stash"));
+    //let stash = sessionStorage.getItem("CheckerBoard_stash");
+    const newItem = {
+        "checkerboardResponse": checkerboardResponse
+    };
+    //const newItem = checkerboardResponse;
+    if (stash == null) {
+        //sessionStorage.setItem("CheckerBoard_stash", [JSON.stringify(newItem)])
+        sessionStorage.setItem("CheckerBoard_stash", JSON.stringify({"stashList": [newItem]}));
+    } else {
+        stash.stashList.push(newItem);
+        sessionStorage.setItem("CheckerBoard_stash", JSON.stringify(stash));
+    }
+    // add indicator to button
+    let cbButton = document.getElementById("CBButton");
+    cbButton.innerHTML = `<span>CheckerBoard *</span>`;
     return;
 }
 
-function dashJackNet() {
+// Jack Net functions
+function storeJNResponse(jnBody) {
+    sessionStorage.setItem("jn_body", JSON.stringify(jnBody));
+    return;
+}
+
+// Not sure what this would be atm
+// function dashJackNet() {
+//     return;
+// }
+
+// This should only be called when a user clicks off of JackNet BEFORE it completes.
+//  in which the response is routed this way instead of being printed on the tool page.
+//  this allows us to have a queue of things. When someone loads JackNet with things, 
+//  it gets processed and output accordingly.
+function stashJNResponse(formattedPingRequest, buildingName, deviceNames) {
+    let stash = JSON.parse(sessionStorage.getItem("JackNet_stash"));
+    const newItem = {
+        "formattedPingRequest": formattedPingRequest,
+        "buildingName": buildingName,
+        "deviceNames": deviceNames
+    };
+    if (stash == null) {
+        sessionStorage.setItem("JackNet_stash", JSON.stringify({"stashList": [newItem]}));
+    } else {
+        stash["stashList"].push(newItem);
+        sessionStorage.setItem("JackNet_stash", JSON.stringify(stash));
+    }
+    // add indicator to button
+    let jnButton = document.getElementById("JNButton");
+    jnButton.innerHTML = `<span>JackNet *</span>`;
     return;
 }
 

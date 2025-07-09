@@ -43,8 +43,7 @@ there should be an object for the csv export and if a search is ran, it is overw
 
 TODO:
     - All Buildings PopUp, "Are You Sure?"
-    - Individual Room Option (checkbox ?)
-    - Visualizer + Caching
+    - Caching
 
 $$$$$$$\             $$\               
 $$  __$$\            $$ |              
@@ -70,24 +69,6 @@ function setCSVExport(hns, ips, rms) {
 
     return;
 }
-
-// // - - -- --- - - CMAPUS.JSON GET INFO FUNCTIONS
-// // copy this to extract info from ping response
-// function getLocalCampusData() {
-//     let campJSON = localStorage.getItem("campusJSON");
-//     return JSON.parse(campJSON);
-// }
-// async function getDataOld() {
-//     return fetch('campus.json')
-//         .then(response => {
-//             if (!response.ok) {
-//                 throw new Error("HTTP error " + response.status);
-//             }
-//             return response.json();
-//     });
-// }
-
-
 
 // ---- ---- -- -- -  GET USER CONFIG FUNCTIONS
 // getSelectedDevices()
@@ -179,7 +160,7 @@ function runExport() {
     //  ...
     csvRows = [];
     const headers = Object.keys(CSV_EXPORT);
-    const values = Object.values(CSV_EXPORT);
+    const values  = Object.values(CSV_EXPORT);
     // Break values into better variables
     let hostnames = values[0];
     let ips = values[1];
@@ -281,6 +262,9 @@ async function runSearch() {
     //Disable button - prevents abuse of server
     const runButton = document.getElementById('run');
     runButton.disabled = true;
+    // If the user is not on JackNet by the end of the ping,
+    // funny things can happen.
+    let userOnPage = true;
     // get user-selection
     const building = await getSelectedBuilding();
     const devices  = getSelectedDevices();
@@ -317,41 +301,52 @@ async function runSearch() {
         // Expect the structure of ping result to change.
         let formPR = formatPingPong(pingResult, devices);
         // console.log("JackNet Debug - formPR:\n", formPR);
-        // temp: eventually pingResult will return as this form
-        let rms   = await printPR(formPR, bdl[i]);
-        // console.log("JackNet Debug - rms@printPR:\n", rms);
-        f_rms = f_rms.concat(rms);
-        f_hns = f_hns.concat(formPR[0].flat(3));
-        f_ips = f_ips.concat(formPR[1].flat(3));
-    }
-
-    // console.log("JackNet Debug - f_hns:\n",f_hns);
-    // console.log("JackNet Debug - f_ips:\n",f_ips);
-    updateConsole("====--------------------========--------------------====");
-
-    // Double check operation
-    if (f_hns.length != f_ips.length) {
-        updateConsole("FATAL ERROR: Unexpected difference in number of returns.");
-        updateConsole("Number of hostnames\n " + f_hns.length);
-        updateConsole("Number of Ip-Addrs\n " + f_ips.length);
-        updateConsole("Number of rooms\n " + f_rms.length);
-    }
-
-    // Find number of devices not found
-    totalNumDevices = f_hns.length;
-    for (var i = 0; i < f_ips.length; i++) {
-        if(f_ips[i] == "x") {
-            not_found_count += 1;
+        // - maybe
+        // TODO - check document title and if it is not jacknet,
+        //  chuck the response into session storage and when the user 
+        //  goes back to JackNet, continue with everything below
+        if (document.title != "JackNet - Bronson") {
+            console.log("Response from JackNet Received, placing in a queue");
+            userOnPage = false;
+            stashJNResponse(formPR, bdl[i], deviceNames);
+        } else {
+            // temp: eventually pingResult will return as this form
+            let rms   = await printPR(formPR, bdl[i], deviceNames);
+            // COULD STASH THESE TO MAINTAIN THE TOTAL RESPONSE OUTPUT
+            f_rms = f_rms.concat(rms);
+            f_hns = f_hns.concat(formPR[0].flat(3));
+            f_ips = f_ips.concat(formPR[1].flat(3));
         }
     }
+    // If the user is on the page the whole time continue with this.
+    if(userOnPage) {
+        // console.log("JackNet Debug - f_ips:\n",f_ips);
+        updateConsole("====--------------------========--------------------====");
 
-    // set the csv export data
-    setCSVExport(f_hns, f_ips, f_rms);
+        // Double check operation
+        if (f_hns.length != f_ips.length) {
+            updateConsole("FATAL ERROR: Unexpected difference in number of returns.");
+            updateConsole("Number of hostnames\n " + f_hns.length);
+            updateConsole("Number of Ip-Addrs\n " + f_ips.length);
+            updateConsole("Number of rooms\n " + f_rms.length);
+        }
 
-    // // Tell user how good the search went :)
-    // updateConsole("Search Complete");
-    // updateConsole("Found " + (totalNumDevices - not_found_count) + "/" + totalNumDevices + " devices.");
-    updateConsole("CSV Export Available");
+        // Find number of devices not found
+        totalNumDevices = f_hns.length;
+        for (var i = 0; i < f_ips.length; i++) {
+            if(f_ips[i] == "x") {
+                not_found_count += 1;
+            }
+        }
+
+        // set the csv export data
+        setCSVExport(f_hns, f_ips, f_rms);
+
+        // // Tell user how good the search went :)
+        // updateConsole("Search Complete");
+        // updateConsole("Found " + (totalNumDevices - not_found_count) + "/" + totalNumDevices + " devices.");
+        updateConsole("CSV Export Available");
+    }
     // re-enable runButton;
     runButton.disabled = false;
     return;
@@ -404,7 +399,7 @@ function formatPingPong(PingPongJSON, devices) {
 }
 
 // New replacement printPingResult for the new response format
-async function printPR(formPing, building) {
+async function printPR(formPing, building, deviceNames) {
     let hns = formPing[0];
     let ips = formPing[1];
 
@@ -457,7 +452,7 @@ async function printPR(formPing, building) {
     updateConsole("Singular Building Search Complete");
     updateConsole("Building Report:\n -- Found " + (totalNumDevices - not_found_count) + "/" + totalNumDevices + " devices.");
     // we got it, send to visualizer
-    postJNVis(hns, ips, building, totalNumDevices, not_found_count);
+    postJNVis(hns, ips, building, totalNumDevices, not_found_count, deviceNames);
     return rms;
 }
 
@@ -482,7 +477,8 @@ function clearConsole() {
         element.remove();
     }
     );
-
+    // clear html cache
+    sessionStorage.removeItem("JackNet_html");
     return;
 };
 
@@ -543,13 +539,13 @@ function genTileID(building) {
         tp   |o  |o  |o |                        |
     ---------------------------------------------|
 */
-async function postJNVis(hns, ips, building, totalDevices, totalNotFound) {
+async function postJNVis(hns, ips, building, totalDevices, totalNotFound, devicesNames) {
     // Init Visualizer Tile
     let vis_container = document.createElement('li');
     vis_container.classList.add('vis_container');
     // !--! List of rooms/devices in newly pinged building 
     let rooms           = await getRooms(building);
-    const devicesNames  = getSelDevNames(await getSelectedDevices());
+    //const devicesNames  = getSelDevNames(await getSelectedDevices());
     // - Build our tile HTML block 
     //   Give this as an ID,
     let tileID = genTileID(building);
@@ -640,8 +636,6 @@ async function setJackNet() {
     preserveCurrentTool();
 
     document.title = "JackNet - Bronson";
-
-    
     // remove currently active status mark tab has active.
     // Update active_tab_header
     // let active_tab_header = document.querySelector('.active_tab_header');
@@ -664,10 +658,26 @@ async function setJackNet() {
         progGuts.innerHTML = cached_HTML;
         const runButton = document.getElementById('run');
         runButton.disabled = false;
+        let stash = JSON.parse(sessionStorage.getItem("JackNet_stash"));
+        if (stash != null) {
+            console.log("JackNet Stash Found, unloading items");
+            for(response in stash.stashList) {
+                console.log(stash.stashList[response]);
+                let pr = stash.stashList[response]["formattedPingRequest"];
+                let bn = stash.stashList[response]["buildingName"];
+                let dn = stash.stashList[response]["deviceNames"];
+                await printPR(pr, bn, dn);
+            }
+            // reset stash
+            sessionStorage.removeItem("JackNet_stash");
+            // Reset button
+            let jnButton = document.getElementById("JNButton");
+            jnButton.innerHTML = `<span>JackNet</span>`;
+        }
         return;
     }
 
-    // Build from scratch
+    //--- No html cache found, build from scratch
     let jn_container = document.createElement('div');
     jn_container.classList.add('jn_container');
 
