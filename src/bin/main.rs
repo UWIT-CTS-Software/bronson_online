@@ -881,7 +881,7 @@ fn gen_hn(
     for i in 0..6 {
         let dev_type = match i {
             0 => "PROC",
-            1 => "PROJ",
+            1 => "PJ",
             2 => "DISP",
             3 => "WS",
             4 => "TP",

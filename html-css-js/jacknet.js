@@ -8,44 +8,46 @@
   _/ |                               _/ |    
  |__/                               |__/     
 
-This file contains all code relating to jacknet and will manipulate the DOM in index.html accordingly
+This file contains all code relating to jacknet and will manipulate the DOM in index.html accordingly, this file contains calls to the backend to ping devices and all of the handling
+for when it receives a response, such as drawing visualizer tiles.
 
 Data
     - CSV_EXPORT declared
     - setCSVExport(hns, ips, rms)
-    - getLocalCampusData() - MOVED TO bronson-manager.js
-    - getBuildingList()
-    - getRooms(buildingName)
-    - getAbbrev(buildingName)
     - getSelectedDevices()
+    - getSelDevNames(binaryDevList)
     - getSelectedBuilding()
     - pad(n, width, z)
-
 Export
     - runExport()
     - downloadCsv(data)
-
 Search
-    - PingPong(devices, building)            - flag: "ping"
-    - printPingResult(pingResult, building)
     - runSearch()
-
+    - PingPong(devices, building)            - flag: "ping"
+    - formatPingPong(PingPongJSON, devices)
+    - printPR(formPing, building, deviceNames)
 HTML
     - clearConsole()
-    - updateConsole()
+    - updateConsole(text)
+    - closeVisTab(tabID)
+    - minimizeVisTab(tabID)
+    - genTileID(building)
+    - postJNVis(hns, ips, building, totalDevices, totalNotFound, devicesNames)
     - setJackNet()
  
     NOTES
 
-buildingData is a list of dictionaries containing buildings on campus and the rooms within that are being maintained/monitored by CTS
-
 there should be an object for the csv export and if a search is ran, it is overwritten. If possible fade the export button until the first search is ran.
 
 TODO:
-    - All Buildings PopUp, "Are You Sure?"
-    - Individual Room Option (checkbox ?)
-    - Visualizer + Caching
+    [ ] - All Buildings PopUp, "Are You Sure?"
+    [ ] - When a response is received add new buttons to the options
+        - "collapse all/expand all" 
+            when we have all these tiles it may be nice to collapse all of them
+    [ ] - change the minimze/exapand button to change depending on state.
+*/
 
+/*
 $$$$$$$\             $$\               
 $$  __$$\            $$ |              
 $$ |  $$ | $$$$$$\ $$$$$$\    $$$$$$\  
@@ -70,24 +72,6 @@ function setCSVExport(hns, ips, rms) {
 
     return;
 }
-
-// // - - -- --- - - CMAPUS.JSON GET INFO FUNCTIONS
-// // copy this to extract info from ping response
-// function getLocalCampusData() {
-//     let campJSON = localStorage.getItem("campusJSON");
-//     return JSON.parse(campJSON);
-// }
-// async function getDataOld() {
-//     return fetch('campus.json')
-//         .then(response => {
-//             if (!response.ok) {
-//                 throw new Error("HTTP error " + response.status);
-//             }
-//             return response.json();
-//     });
-// }
-
-
 
 // ---- ---- -- -- -  GET USER CONFIG FUNCTIONS
 // getSelectedDevices()
@@ -163,23 +147,17 @@ $$$$$$$$\ $$  /\$$\ $$$$$$$  |\$$$$$$  |$$ |       \$$$$  |
                     $$ |                                   
                     $$ |                                   
                     \__|       
-                    
-TODO:
-
-setCSVExport(hns, ips, rms)
-    [x] - Update the CSV Export Object
-    [ ] - ? Maybe, Set CSV Button Opacity (If first search)
 */
 
 function runExport() {
-    // IDEAL CSV FORMAT
+    // IDEAL CSV FORMAT (from original roomcheck excel sheet)
     // EN 1055
     // Hostname:   en-1055-proc1    en-1055-ws1   ...
     // Ip:           10.10.10.10              x   ...
     //  ...
     csvRows = [];
     const headers = Object.keys(CSV_EXPORT);
-    const values = Object.values(CSV_EXPORT);
+    const values  = Object.values(CSV_EXPORT);
     // Break values into better variables
     let hostnames = values[0];
     let ips = values[1];
@@ -249,38 +227,20 @@ $$\   $$ |$$   ____|$$  __$$ |$$ |      $$ |      $$ |  $$ |
 \$$$$$$  |\$$$$$$$\ \$$$$$$$ |$$ |      \$$$$$$$\ $$ |  $$ |
  \______/  \_______| \_______|\__|       \_______|\__|  \__|
 
-
-TODO: 
-[ ] - ? Maybe, combine pingThis() and pingPong
-[ ] - ? Maybe, check ip_addr return for "domain.name (ip_address)"
-runSearch()
-    [ ] - Incorrect (devFound- devNotFound) / totalDev
-    [x] - Export Function Call / Update Object
 */
-
-// Requests ping with device list and building.
-//  jn_body.rooms[i].hostnames
-async function pingpong(devices, building) {
-    return await fetch('ping', {
-        method: 'POST',
-        body: JSON.stringify({
-            devices: devices,
-            building: building
-        })
-    })
-    .then((response) => response.json())
-    .then((json) => {return json;});
-}
-
-
 
 // runSearch()
 // runs the search and calls the above functions to do so.
 //     TODO: 
-//        [ ] - Fix "all buildings" export by adding new data structures
 //        [ ] - Add a pop-up when "All Buildings" is selected. Are you sure? This will be computationally very heavy and may take some time to complete.
 async function runSearch() {
     updateConsole("====--------------------========--------------------====");
+    //Disable button - prevents abuse of server
+    const runButton = document.getElementById('run');
+    runButton.disabled = true;
+    // If the user is not on JackNet by the end of the ping,
+    // funny things can happen.
+    let userOnPage = true;
     // get user-selection
     const building = await getSelectedBuilding();
     const devices  = getSelectedDevices();
@@ -313,56 +273,77 @@ async function runSearch() {
     for (var i = 0; i < bdl.length; i++) {
         updateConsole("=-+-+-+-=\n Now Searching " + bdl[i] + "\n=-+-+-+-=");
         b_abbrev = await getAbbrev(bdl[i]);
-        // TODO [ ] - UPDATE PINGPONG TO RETURN HN/IP array
         pingResult = await pingpong(devices, b_abbrev);
         // Expect the structure of ping result to change.
         let formPR = formatPingPong(pingResult, devices);
         // console.log("JackNet Debug - formPR:\n", formPR);
-        // temp: eventually pingResult will return as this form
-        let rms   = await printPR(formPR, bdl[i]);
-        // console.log("JackNet Debug - rms@printPR:\n", rms);
-
-        // These are broken now.
-        // TODO - Update printPR to give the numbers that these are used to get.
-        //   rather than returning rms, Export CSV Depends on these.
-        f_rms = f_rms.concat(rms);
-        f_hns = f_hns.concat(formPR[0].flat(3));
-        f_ips = f_ips.concat(formPR[1].flat(3));
-    }
-
-    // console.log("JackNet Debug - f_hns:\n",f_hns);
-    // console.log("JackNet Debug - f_ips:\n",f_ips);
-    updateConsole("====--------------------========--------------------====");
-
-    // Double check operation
-    if (f_hns.length != f_ips.length) {
-        updateConsole("FATAL ERROR: Unexpected difference in number of returns.");
-        updateConsole("Number of hostnames\n " + f_hns.length);
-        updateConsole("Number of Ip-Addrs\n " + f_ips.length);
-        updateConsole("Number of rooms\n " + f_rms.length);
-    }
-
-    // Find number of devices not found
-    totalNumDevices = f_hns.length;
-    for (var i = 0; i < f_ips.length; i++) {
-        if(f_ips[i] == "x") {
-            not_found_count += 1;
+        // - maybe
+        // TODO - check document title and if it is not jacknet,
+        //  chuck the response into session storage and when the user 
+        //  goes back to JackNet, continue with everything below
+        if (document.title != "JackNet - Bronson") {
+            console.log("Response from JackNet Received, placing in a queue");
+            userOnPage = false;
+            stashJNResponse(formPR, bdl[i], deviceNames);
+        } else {
+            // temp: eventually pingResult will return as this form
+            let rms   = await printPR(formPR, bdl[i], deviceNames);
+            // COULD STASH THESE TO MAINTAIN THE TOTAL RESPONSE OUTPUT
+            f_rms = f_rms.concat(rms);
+            f_hns = f_hns.concat(formPR[0].flat(3));
+            f_ips = f_ips.concat(formPR[1].flat(3));
         }
     }
+    // If the user is on the page the whole time continue with this.
+    if(userOnPage) {
+        // console.log("JackNet Debug - f_ips:\n",f_ips);
+        updateConsole("====--------------------========--------------------====");
 
-    // set the csv export data
-    setCSVExport(f_hns, f_ips, f_rms);
+        // Double check operation
+        if (f_hns.length != f_ips.length) {
+            updateConsole("FATAL ERROR: Unexpected difference in number of returns.");
+            updateConsole("Number of hostnames\n " + f_hns.length);
+            updateConsole("Number of Ip-Addrs\n " + f_ips.length);
+            updateConsole("Number of rooms\n " + f_rms.length);
+        }
 
-    // Tell user how good the search went :)
-    updateConsole("Search Complete");
-    updateConsole("Found " + (totalNumDevices - not_found_count) + "/" + totalNumDevices + " devices.");
-    updateConsole("CSV Export Available");
+        // Find number of devices not found
+        totalNumDevices = f_hns.length;
+        for (var i = 0; i < f_ips.length; i++) {
+            if(f_ips[i] == "x") {
+                not_found_count += 1;
+            }
+        }
 
+        // set the csv export data
+        setCSVExport(f_hns, f_ips, f_rms);
+
+        // // Tell user how good the search went :)
+        // updateConsole("Search Complete");
+        // updateConsole("Found " + (totalNumDevices - not_found_count) + "/" + totalNumDevices + " devices.");
+        updateConsole("CSV Export Available");
+    }
+    // re-enable runButton;
+    runButton.disabled = false;
     return;
 };
 
+// Requests ping with device list and building.
+//  jn_body.rooms[i].hostnames
+async function pingpong(devices, building) {
+    return await fetch('ping', {
+        method: 'POST',
+        body: JSON.stringify({
+            devices: devices,
+            building: building
+        })
+    })
+    .then((response) => response.json())
+    .then((json) => {return json;});
+}
+
 // Takes the 'jn_body' response and turns it into a nested array of nested arrays, (could be revised)
-// INPUT: 'jn_body' (Hashmap from backend)
+// INPUT: 'jn_body' (Data Hashmap from backend)
 // OUTPUT:
 //   [
 //     [[ROOM1-DEV1-1, ROOM1-DEV1-2],[ROOM1-DEV2-1],[]],
@@ -408,7 +389,7 @@ function formatPingPong(PingPongJSON, devices) {
 }
 
 // New replacement printPingResult for the new response format
-async function printPR(formPing, building) {
+async function printPR(formPing, building, deviceNames) {
     let hns = formPing[0];
     let ips = formPing[1];
 
@@ -419,8 +400,9 @@ async function printPR(formPing, building) {
     let printIps       = "";
     let rms = [];
 
+    let totalNumDevices = 0;
+    let not_found_count = 0;
     let rooms   = await getRooms(building);
-    //let bAbbrev = await getAbbrev(building);
     
     // Iterate over each room in hns
     for (var j = 0; j < hns.length; j++) {
@@ -432,18 +414,19 @@ async function printPR(formPing, building) {
         // ROOM NUMBER
         roomNum = rooms[j].name.split(" ")[1];
         rms.push(rooms[j].name);
-        //rms.push(roomNum);
         // Iterate over the device type in each room in each hn
         for (var a=0; a < hns[j].length; a++) {
             // Iterate over each hostname in a given device type
+            totalNumDevices += hns[j][a].length;
             for (var k=0; k < hns[j][a].length; k++) {
                 // if hostname contains room#
                 //   add to printout hostname line
                 //   add corresponding ip
-                //console.log("JN-Debug: Hostname", hns[j][a][k])
                 if(hns[j][a][k].includes(pad(roomNum, 4))) {
                     printHostnames += pad(hns[j][a][k], 15, " ") + "|";
                     printIps       += pad(ips[j][a][k], 15, " ") + "|";
+                } if (ips[j][a][k] == "x") {
+                    not_found_count += 1;
                 }
             }
         }
@@ -451,8 +434,11 @@ async function printPR(formPing, building) {
         updateConsole("IP's     : " + printIps);
         graphBool.push(tmpBool)
     }
+    // Tell user how good the search went :)
+    updateConsole("Singular Building Search Complete");
+    updateConsole("Building Report:\n -- Found " + (totalNumDevices - not_found_count) + "/" + totalNumDevices + " devices.");
     // we got it, send to visualizer
-    postJNVis(hns, ips, building);
+    postJNVis(hns, ips, building, totalNumDevices, not_found_count, deviceNames);
     return rms;
 }
 
@@ -470,21 +456,21 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 // - -- - -- - - - CONSOLE FUNCTIONS
 // Tied to 'Clear Console' button, clears the console
 function clearConsole() {
-    let consoleObj = document.querySelector('.innerConsole');
+    let consoleObj = document.querySelector('.jn_innerConsole');
     consoleObj.value = '';
-    // TODO - Clear Visualizer Section
     // remove every div with the class 'vis_container'
     let visObj = document.querySelectorAll('.vis_container').forEach(element =>    {
         element.remove();
     }
     );
-
+    // clear html cache
+    sessionStorage.removeItem("JackNet_html");
     return;
 };
 
 // updates the console by appending an item of text to contents
 function updateConsole(text) {
-    let consoleObj = document.querySelector('.innerConsole');
+    let consoleObj = document.querySelector('.jn_innerConsole');
     const beforeText = consoleObj.value.substring(0, consoleObj.value.length);
     consoleObj.value = beforeText + '\n' + text;
     consoleObj.scrollTop = consoleObj.scrollHeight;
@@ -517,9 +503,11 @@ function minimizeVisTab(tabID) {
     return;
 }
 
-// TODO - Make this more unique
-function genTileID(building, devices) {
-    return building;
+// Makes a unique Tile ID for visualizer tabs
+function genTileID(building) {
+    let time = Date.now();
+    let outputID = building + String(time);
+    return outputID;
 }
 
 // Takes a nested array(rooms) of nested arrays(deviceType) for hns and ips
@@ -528,29 +516,31 @@ function genTileID(building, devices) {
 /*      GOAL:
                         * BUILDING *         |x| |
                             ---                  |
-    ROOOOM |#1 |#2 |#3|     ...     #9999        |
-    ---------------------------------------------
-        proc |o  |o  |o |                          |
-        pj |x o|   |  |                          |
-        disp |   |o o|o |                          |
-        ws |x  |o  |  |                          |
-        tp |o  |o  |o |                          |
-    ---------------------------------------------
+      ROOOOM |#1 |#2 |#3|   ...     #9999        |
+    ---------------------------------------------|
+        proc |o  |o  |o |                        |
+        pj   |x o|   |  |                        |
+        disp |   |o o|o |                        |
+        ws   |x  |o  |  |                        |
+        tp   |o  |o  |o |                        |
+    ---------------------------------------------|
 */
-async function postJNVis(hns, ips, building) {
+// There are alot of inputs here, may want to pass an object (?)
+async function postJNVis(hns, ips, building, totalDevices, totalNotFound, devicesNames) {
     // Init Visualizer Tile
-    let vis_container = document.createElement('div');
+    let vis_container = document.createElement('li');
     vis_container.classList.add('vis_container');
     // !--! List of rooms/devices in newly pinged building 
     let rooms           = await getRooms(building);
-    const devicesNames  = getSelDevNames(await getSelectedDevices());
+    //const devicesNames  = getSelDevNames(await getSelectedDevices());
     // - Build our tile HTML block 
     //   Give this as an ID,
-    let tileID = genTileID(building, devicesNames);
+    let tileID = genTileID(building);
     vis_container.id = "tile" + tileID;
     let bAbbrev = await getAbbrev(building);
+    let totalFound = totalDevices - totalNotFound;
     // TODO - add a percentage in the header?
-    let HTML_visHeader = `<div class="visHeader"> ${building} (${bAbbrev}) <button class="visButton" onclick="closeVisTab(\'${tileID}\')"> x </button><button class="visButton" onclick="minimizeVisTab(\'${tileID}\')"> _ </button></div>`;
+    let HTML_visHeader = `<div class="visHeader"> ${building} (${bAbbrev})<button class="visButton" onclick="closeVisTab(\'${tileID}\')"> x </button><button class="visButton" onclick="minimizeVisTab(\'${tileID}\')"> _ </button><span style="color: rgb(95, 95, 95); margin: 0% 2%;float:right"> ${totalFound}/${totalDevices} Devices Found</span></div>`;
     // Compile lists...
     // Tables are row based instead of column, making this a little different
     //  than the ul list like before.
@@ -616,21 +606,23 @@ async function postJNVis(hns, ips, building) {
     // Put it all together
     vis_container.innerHTML = HTML_visHeader + HTML_table;
     // Put it on the page
-    let progGuts = document.querySelector('.program_board .program_guts');
+    let progGuts = document.querySelector('.program_board .program_guts .jn_visList');
     progGuts.append(vis_container);
     return;
 }
 
 // SETTING THE HTML DOM
 async function setJackNet() {
+    // 7.7.25 - what is a menuItem?
     const menuItems = document.querySelectorAll(".menuItem");
 
     menuItems.forEach(function(menuItem) {
       menuItem.addEventListener("click", toggleMenu);
     });
 
+    preserveCurrentTool();
+
     document.title = "JackNet - Bronson";
-    
     // remove currently active status mark tab has active.
     // Update active_tab_header
     // let active_tab_header = document.querySelector('.active_tab_header');
@@ -647,6 +639,32 @@ async function setJackNet() {
     history.pushState("test", "JackNet", "/jacknet");
 
     let progGuts = document.querySelector('.program_board .program_guts');
+    // Check for preserved space
+    let cached_HTML = sessionStorage.getItem("JackNet_html");
+    if (cached_HTML != null) {
+        progGuts.innerHTML = cached_HTML;
+        const runButton = document.getElementById('run');
+        runButton.disabled = false;
+        let stash = JSON.parse(sessionStorage.getItem("JackNet_stash"));
+        if (stash != null) {
+            console.log("JackNet Stash Found, unloading items");
+            for(response in stash.stashList) {
+                console.log(stash.stashList[response]);
+                let pr = stash.stashList[response]["formattedPingRequest"];
+                let bn = stash.stashList[response]["buildingName"];
+                let dn = stash.stashList[response]["deviceNames"];
+                await printPR(pr, bn, dn);
+            }
+            // reset stash
+            sessionStorage.removeItem("JackNet_stash");
+            // Reset button
+            let jnButton = document.getElementById("JNButton");
+            jnButton.innerHTML = `<span>JackNet</span>`;
+        }
+        return;
+    }
+
+    //--- No html cache found, build from scratch
     let jn_container = document.createElement('div');
     jn_container.classList.add('jn_container');
 
@@ -717,8 +735,8 @@ async function setJackNet() {
         <fieldset class="jn_fieldset">
             <legend> 
                 Console Output: </legend>
-            <textarea readonly rows="15" cols ="75" class="innerConsole" name="consoleOutput" spellcheck="false"> 
-                Console: JackNet Example
+            <textarea readonly rows="15" cols ="75" class="jn_innerConsole" name="consoleOutput" spellcheck="false"> 
+            JackNet Console: Responses will be printed here along with some tiles below.
             </textarea>
         </fieldset>`;
 
@@ -735,19 +753,24 @@ async function setJackNet() {
             <button id="export" onclick="runExport()" class="headButton">
                 Export as .csv </button>
             <button id="clearCon" onclick="clearConsole()" class="headButton"> 
-                Clear Console </button>
+                Clear</button>
         </fieldset>`;
+
+    // Empty Visualizer Container
+    let visualizerSection = document.createElement("ul");
+    visualizerSection.classList.add('jn_visList');
 
     // PUT EVERYTHING TOGETHER MAIN_CONTAINER
     jn_container.appendChild(buildingSelect);
     jn_container.appendChild(bottomMenu);
     jn_container.appendChild(devSelect);
     jn_container.appendChild(consoleOutput);
+    
 
     let main_container = document.createElement('div');
     main_container.appendChild(jn_container);
     main_container.classList.add('program_guts');
-
+    main_container.appendChild(visualizerSection);
     progGuts.replaceWith(main_container);
 
     return;
