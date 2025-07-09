@@ -8,16 +8,14 @@
   _/ |                               _/ |    
  |__/                               |__/     
 
-This file contains all code relating to jacknet and will manipulate the DOM in index.html accordingly
+This file contains all code relating to jacknet and will manipulate the DOM in index.html accordingly, this file contains calls to the backend to ping devices and all of the handling
+for when it receives a response, such as drawing visualizer tiles.
 
 Data
     - CSV_EXPORT declared
     - setCSVExport(hns, ips, rms)
-    - getLocalCampusData() - MOVED TO bronson-manager.js
-    - getBuildingList()
-    - getRooms(buildingName)
-    - getAbbrev(buildingName)
     - getSelectedDevices()
+    - getSelDevNames(binaryDevList)
     - getSelectedBuilding()
     - pad(n, width, z)
 
@@ -26,24 +24,31 @@ Export
     - downloadCsv(data)
 
 Search
-    - PingPong(devices, building)            - flag: "ping"
-    - printPingResult(pingResult, building)
     - runSearch()
+    - PingPong(devices, building)            - flag: "ping"
+    - formatPingPong(PingPongJSON, devices)
+    - printPR(formPing, building, deviceNames)
+
 
 HTML
     - clearConsole()
-    - updateConsole()
+    - updateConsole(text)
+    - closeVisTab(tabID)
+    - minimizeVisTab(tabID)
+    - genTileID(building)
+    - postJNVis(hns, ips, building, totalDevices, totalNotFound, devicesNames)
     - setJackNet()
  
     NOTES
-
-buildingData is a list of dictionaries containing buildings on campus and the rooms within that are being maintained/monitored by CTS
 
 there should be an object for the csv export and if a search is ran, it is overwritten. If possible fade the export button until the first search is ran.
 
 TODO:
     - All Buildings PopUp, "Are You Sure?"
-    - Caching
+    - When a response is received add new buttons to the options
+        - "collapse all/expand all" 
+            when we have all these tiles it may be nice to collapse all of them
+    - change the minimze/exapand button to change depending on state.
 
 $$$$$$$\             $$\               
 $$  __$$\            $$ |              
@@ -230,27 +235,10 @@ $$\   $$ |$$   ____|$$  __$$ |$$ |      $$ |      $$ |  $$ |
 \$$$$$$  |\$$$$$$$\ \$$$$$$$ |$$ |      \$$$$$$$\ $$ |  $$ |
  \______/  \_______| \_______|\__|       \_______|\__|  \__|
 
-
 TODO: 
 [ ] - ? Maybe, combine pingThis() and pingPong
 runSearch()
 */
-
-// Requests ping with device list and building.
-//  jn_body.rooms[i].hostnames
-async function pingpong(devices, building) {
-    return await fetch('ping', {
-        method: 'POST',
-        body: JSON.stringify({
-            devices: devices,
-            building: building
-        })
-    })
-    .then((response) => response.json())
-    .then((json) => {return json;});
-}
-
-
 
 // runSearch()
 // runs the search and calls the above functions to do so.
@@ -351,6 +339,20 @@ async function runSearch() {
     runButton.disabled = false;
     return;
 };
+
+// Requests ping with device list and building.
+//  jn_body.rooms[i].hostnames
+async function pingpong(devices, building) {
+    return await fetch('ping', {
+        method: 'POST',
+        body: JSON.stringify({
+            devices: devices,
+            building: building
+        })
+    })
+    .then((response) => response.json())
+    .then((json) => {return json;});
+}
 
 // Takes the 'jn_body' response and turns it into a nested array of nested arrays, (could be revised)
 // INPUT: 'jn_body' (Data Hashmap from backend)
@@ -517,7 +519,7 @@ function minimizeVisTab(tabID) {
     return;
 }
 
-// TODO - Make this more unique
+// Makes a unique Tile ID for visualizer tabs
 function genTileID(building) {
     let time = Date.now();
     let outputID = building + String(time);
@@ -539,6 +541,7 @@ function genTileID(building) {
         tp   |o  |o  |o |                        |
     ---------------------------------------------|
 */
+// There are alot of inputs here, may want to pass an object (?)
 async function postJNVis(hns, ips, building, totalDevices, totalNotFound, devicesNames) {
     // Init Visualizer Tile
     let vis_container = document.createElement('li');

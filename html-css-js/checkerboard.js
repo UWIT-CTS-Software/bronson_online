@@ -1,7 +1,43 @@
 /*
-checkboard.js
+   _____ _               _             ____                      _   _     
+  / ____| |             | |           |  _ \                    | | (_)    
+ | |    | |__   ___  ___| | _____ _ __| |_) | ___   __ _ _ __ __| |  _ ___ 
+ | |    | '_ \ / _ \/ __| |/ / _ \ '__|  _ < / _ \ / _` | '__/ _` | | / __|
+ | |____| | | |  __/ (__|   <  __/ |  | |_) | (_) | (_| | | | (_| |_| \__ \
+  \_____|_| |_|\___|\___|_|\_\___|_|  |____/ \___/ \__,_|_|  \__,_(_) |___/
+                                                                   _/ |    
+                                                                  |__/     
 
-This file contains all code relating to checkboard and will manipulate the DOM in index.html accordingly
+This file contains all code relating to checkboard and will manipulate the DOM in index.html accordingly. There are some simularities to JackNet and it's visualizer.
+
+TOC:
+    - getCheckerboardByBuilding(build_ab)
+    - run()
+  HTML
+    - FourDigitToTimeFormat(unformattedTime)
+    - buildStarterTopper(zone_array)
+    - updateTopperElement(topperID, buildingName, numberCheckd, numberRooms)
+    - clearVisContainer()
+    - printCBResponse(JSON)
+    - cbJumpTo(entryID)
+    - cb_clear()
+    - setChecker()
+
+Notes:
+I am still not completely satisfied with the look, specifically the topper section, there 
+are things to be desired still.
+
+I think the Time and Cookie classes may be better suited for bronson-manager.js
+
+TODO - 
+    [ ] - minimize collapse functionality on the generated tiles
+    [ ] - filter checked rooms / hide them 
+      for this, I think it be best to add a button (or checkbox) to options fieldset.
+      will need to iterate through all the drawn tiles and add some 'hide' tag/class
+      to remove it from the page and do the same to reverse it.
+    [ ] - all rooms checked special behavior
+      If every room in a building (or zone) is checked, it is an achievement for the tech
+      they should get some kinda special message or confetti when this happens.
 */
 class Time {
     constructor() { this.time = ''; }
@@ -176,8 +212,6 @@ function clearVisContainer() {
     visCon.innerHTML = ``;
     return;
 }
-
-
 
 // Re-written to handle a response from a building call instead of a entire zone
 async function printCBResponse(JSON) {
