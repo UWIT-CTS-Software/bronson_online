@@ -1,6 +1,7 @@
 use diesel::{
     prelude::*,
     sql_types::{
+        Nullable,
         Array,
         Text,
     },
@@ -15,21 +16,21 @@ use diesel::{
 
 
 #[derive(Debug, FromSqlRow, AsExpression)]
-#[diesel(sql_type = Array<Array<Text>>)]
-pub struct Db2DArray(pub Vec<Vec<String>>);
+#[diesel(sql_type = Array<Nullable<Text>>)]
+pub struct Db2DArray(pub Vec<String>);
 
-impl Into<Db2DArray> for Vec<Vec<String>> {
+impl Into<Db2DArray> for Vec<String> {
     fn into(self) -> Db2DArray {
         return Db2DArray(self);
     }
 }
 
-impl<DB, E> ToSql<Array<Array<Text>>, DB> for Db2DArray
+impl<DB> ToSql<Array<Nullable<Text>>, DB> for Db2DArray
     where
         DB: Backend,
-        Vec<Vec<String>>: ToSql<Array<Array<Text>>, DB>,
+        Vec<String>: ToSql<Array<Nullable<Text>>, DB>,
 {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> Result<Array<Array<Text>>, E> {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> Result {
         return self.0.to_sql(out);
     }
 }
@@ -61,9 +62,9 @@ pub struct DB_Room {
     pub available: bool,
     pub until: String,
     #[diesel(serialize_as = Db2DArray)]
-    pub hostnames: Vec<Vec<String>>,
+    pub hostnames: Vec<String>,
     #[diesel(serialize_as = Db2DArray)]
-    pub ips: Vec<Vec<String>>
+    pub ips: Vec<String>
 }
 
 
