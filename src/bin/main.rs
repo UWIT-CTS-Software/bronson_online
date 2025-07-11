@@ -300,6 +300,10 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_file("html-css-js/index.html");
         },
+        "GET /login.html HTTP/1.1"         => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/login.html");
+        },
         // Javascript Files
         "GET /bronson-manager.js HTTP/1.1" => {
             res.status(STATUS_200);
