@@ -206,6 +206,10 @@
       }
     }
 
+    function signOut() {
+
+    }
+
     var modal = document.getElementById('bug_report_modal');
     window.onclick = function(event) {
       if (event.target == modal) {
@@ -226,6 +230,7 @@
             <button class="hb_button" onclick="toggleMenu()">Back</button>
             <button class="hb_button">Help / FAQ </button>
             <button class="hb_button" onclick="initForm()">Report Bug</button>
+            <button class="hb_button" onclick="location.href='login.html'">Sign Out</button>
           </fieldset>
           <fieldset class="ph_fieldset">
             <legend class="ph_legend">
