@@ -361,9 +361,9 @@ async function setChecker() {
     let map_select = document.createElement("div");
     map_select.classList.add('cb_mapSelect');
     map_select.innerHTML = `
-        <fieldset class="cb_zoneSelFieldset cb_fieldset">
+        <fieldset>
             <legend>
-                Select Zone: </legend>
+                Zones: </legend>
             <input class="cbDev" type ="checkbox" id="1" name="cb_dev" value="zone1"/>
             <label for="1"> 
                 Zone 1</label>
@@ -387,7 +387,7 @@ async function setChecker() {
     let button_menu = document.createElement("div");
     button_menu.classList.add('cb_buttonRow');
     button_menu.innerHTML = `
-        <fieldset class="cb_fieldset">
+        <fieldset>
             <legend>
                 Options: </legend>
             <button id="cb_run" onclick="run()" class="headButton">
@@ -400,7 +400,7 @@ async function setChecker() {
     let console_output = document.createElement("div");
     console_output.classList.add('cb_console');
     console_output.innerHTML = `
-        <fieldset class="cb_fieldset" >
+        <fieldset>
             <legend>
                 Console Output: </legend>
             <div class="cbTopperContainer" id="cbTopID">
