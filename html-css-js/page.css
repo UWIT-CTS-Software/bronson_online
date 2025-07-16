@@ -157,7 +157,7 @@ button:-webkit-details-marker {
     position: relative;
     display: grid;
     grid-template-columns: repeat(10,1fr);
-    gap: 10px;
+    gap: 2px;
     grid-auto-rows: minmax(5px, auto);
     border:4px none rgb(133, 118, 60);
     border-style: none double inset double;
@@ -180,7 +180,7 @@ button:-webkit-details-marker {
     cursor: pointer;
     padding-left: 10px;
     padding-right: 10px;
-    margin-left: 5px;
+    margin-left: 15px;
 }
 
 .site_header:hover {
@@ -233,11 +233,11 @@ button:-webkit-details-marker {
     /* grid-auto-columns: 1fr;
     grid-column: 1 / auto;
     grid-row: 1; */
-    transform: translate(-12px,18px);
+    transform: translate(0px,18px);
 }
 
-.toolTab, .leaderTab {
-    margin: -12px -6px;
+.toolTab {
+    margin: -12px -7px;
     opacity: 100%;
     grid-row: 1;
     text-align: center;
@@ -247,7 +247,7 @@ button:-webkit-details-marker {
     box-shadow: none;
 }
 
-.toolTab span, .leaderTab span { 
+.toolTab span { 
     position: absolute;
     top: 3px;
     left: 12px;
@@ -266,24 +266,25 @@ button:-webkit-details-marker {
     transition-duration: .2s;
 }
 
-.toolTab:hover, .leaderTab:hover{
+.toolTab:hover {
     text-decoration: none;
     transition-duration: 0.1s;
-    transform: matrix(1,0,0,1.1,0,-1);
+    transform: matrix(1,0,0,1.1,0,-1.5);
     background: transparent;
     filter: hue-rotate(10deg);
 }
 
-.toolTab:active, .leaderTab:active {
+.toolTab:active {
     background: transparent;
-    transform: matrix(1,0,0,.5,0,6);
+    transform: matrix(1,0,0,.7,0,4);
     transition-duration:.1s;
     filter: hue-rotate(35deg);
     padding-top:0px;
+    box-shadow: none;
     /* border: none; */
 }
 
-.toolTab:active span, .leaderTab:active span {
+.toolTab:active span {
     transform: matrix(1,0,0,1.5,0,-30);
     top: 4px;
     bottom: -3px;
@@ -293,14 +294,14 @@ button:-webkit-details-marker {
     border: none;
 }
 
-.toolTab.selected, .leaderTab.leader_selected {
-    transform: matrix(1, 0, 0, .7, 0, 4);
+.toolTab.selected {
+    transform: matrix(1, 0, 0, .7, 0, 3.5);
     transition-duration: 0.1s;
     filter: hue-rotate(-60deg);
     /* margin: -12px -6px; */
 }
 
-.toolTab.selected span, .leaderTab.leader_selected span {
+.toolTab.selected span {
     /*
     transform: scaleY(1.6);
     top: 0px;
@@ -315,7 +316,7 @@ button:-webkit-details-marker {
     bottom: 5px;
     left:8px;
     padding: 0px 4px 20px 4px;
-    margin: 2px 0px 9px 0px;
+    margin: 2px 0px 8px 0px;
     filter: hue-rotate(20deg);
     /* width:67%; */
 }
@@ -492,46 +493,92 @@ button:-webkit-details-marker {
     width:25%;
 } */
 .leader {
-    margin: 0px 0px 22px 0px;
-    padding: 0px 0px 0px 30px;
+    margin: -6px 0px 22px 0px;
+    padding: 0px 0px 0px 5px;
     /* width: 350px; */
     display: flex;
 }
 
-/*
 .leaderTab {
-    margin: 0px -6px;
-    padding: 0px 27px;
+    margin: -12px -6px;
     opacity: 100%;
     grid-row: 1;
-    width: 40px;
-    text-align: left;
-    height: 0; 
-    position: relative;
-    border-right: 12px solid transparent;
-    border-left: 12px solid transparent;
-    border-bottom: 30px solid #64603d;
-    border-top: 0px solid transparent;
+    text-align: center;
+    border: none;
     background-color: transparent;
     box-sizing: content-box;
-}*/
-
-/* .leaderTab span { 
-    position: absolute;
-    top: 4px;
-    left: 8px;
-    color: rgb(194, 194, 194);
+    box-shadow: none;
 }
-.leaderTab:hover {
-    border-right: 12px solid transparent;
-    border-left: 12px solid transparent;
-    border-bottom: 29px solid #94742e;
-    border-top: 0px solid transparent;
+
+.leaderTab span { 
+    position: absolute;
+    top: 3px;
+    left: 11px;
+    bottom: 0px;
+    color: rgb(180, 142, 79);
+    background: rgb(88,79,51);
+    border: rgb(135,62,9) solid 2px;
+    border-bottom: none;
+    border-radius: 10px;
+    padding: 0px 0px 0px 0px;
+    margin: 2px 0px 10px 0px;
+    font-family: "Racing Sans One", sans-serif;
+    font-size: 14px;
+    text-align: center;
+    width:62px;
+    transition-duration: .2s;
+}
+
+.leaderTab:hover{
     text-decoration: none;
     transition-duration: 0.1s;
-    transform: scale(1.1);
+    transform: matrix(1,0,0,1.1,0,-1.5);
     background: transparent;
-} */
+    filter: hue-rotate(10deg);
+}
+
+.leaderTab:active span {
+    transform: matrix(1,0,0,1.5,0,-30);
+    top: 4px;
+    bottom: -3px;
+    left: 14px;
+    padding: 0px 0px 0px 0px;
+    transition-duration: .1s;
+    border: none;
+}
+
+.leaderTab:active {
+    background: transparent;
+    transform: matrix(1,0,0,.5,0,6);
+    transition-duration:.1s;
+    filter: hue-rotate(35deg);
+    padding-top:0px;
+    box-shadow: none;
+    /* border: none; */
+}
+
+.leaderTab.leader_selected {
+    transform: matrix(1, 0, 0, .7, 0, 3.5);
+    transition-duration: 0.1s;
+    filter: hue-rotate(-60deg);
+    /* margin: -12px -6px; */
+}
+
+.leaderTab.leader_selected span {
+    transform: scaleY(1.6);
+    top: 0px;
+    bottom: 5px;
+    left:6.5px;
+    padding: 0px 4px 20px 4px;
+    margin: 2px 0px 8px 0px;
+    filter: hue-rotate(20deg);
+    /* width:67%; */
+}
+
+.leader_tab_img {
+    width:80px;
+    height:30px;
+}
 
 .weekTab {
     grid-column: auto;
@@ -700,6 +747,7 @@ span.psw {
 .innerConsole {
     box-sizing: border-box;
     border:2px inset rgb(144, 118, 26);
+    border-radius: 5px 5px 15px 15px;
 }
 
 .cbDev {
