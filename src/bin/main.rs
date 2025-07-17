@@ -365,6 +365,14 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_file("assets/logo-2-line.png");
         },
+        "GET /button2.png HTTP/1.1"        => {
+            res.status(STATUS_200);
+            res.send_file("assets/button2.png");
+        },
+        "GET /button2red.png HTTP/1.1"        => {
+            res.status(STATUS_200);
+            res.send_file("assets/button2red.png");
+        },
         // Data Requests
         "GET /campusData HTTP/1.1"         => {
             let contents = json!(&buildings).to_string().into();
