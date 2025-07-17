@@ -252,7 +252,7 @@ async function setCrestronFile() {
     cfm_ParamContainer.classList.add("cfm_ParamContainer");
 
     // BUILDING Directory Dropdown
-    let buildingSelect = document.createElement("Fieldset");
+    let buildingSelect = document.createElement("fieldset");
     buildingSelect.classList.add("bdSelect");
     let set_inner_html = `
         <select id="building_list" onchange="updateRoomList()">
@@ -265,7 +265,7 @@ async function setCrestronFile() {
         ${set_inner_html}`;
   
     // ROOM Directory Dropdown
-    let roomSelect = document.createElement("Fieldset");
+    let roomSelect = document.createElement("fieldset");
     roomSelect.classList.add('rmSelect');
     let rl = await getCFM_BuildRooms(cfmDirList[0]);
     set_inner_html = `
@@ -274,23 +274,21 @@ async function setCrestronFile() {
         </select>`;
     roomSelect.innerHTML = `
         <legend>
-            Rooms(s): 
+            Room(s): 
         </legend> 
         ${set_inner_html}`;
 
     // option buttons
     // [ Generate Files ] [ Clear Console ] [ Reset ]
-    let optionMenu = document.createElement("div");
+    let optionMenu = document.createElement("fieldset");
     optionMenu.classList.add('cfm_optionMenu');
     optionMenu.innerHTML = `
-        <fieldset class="cfm_fieldset">
-            <legend>
-                Options: </legend>
-            <button id="run" onclick="cfmFiles()" class='headButton'> 
-                Generate Files </button>
-            <button id="reset" onclick="setCrestronFile()" class='headButton'> 
-                Reset </button>
-        </fieldset>`;
+        <legend>
+            Options: </legend>
+        <button id="run" onclick="cfmFiles()" class='headButton'> 
+            Generate Files </button>
+        <button id="reset" onclick="setCrestronFile()" class='headButton'> 
+            Reset </button>`;
 
     // End cfm_paramContainer
     cfm_ParamContainer.appendChild(buildingSelect);
