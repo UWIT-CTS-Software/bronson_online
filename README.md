@@ -1,5 +1,7 @@
 # Bronson Online
 
+![image](https://github.com/user-attachments/assets/1c128596-5141-4aef-863a-c5369643078f)
+
 `"All I do is eat oysters and speak six languages in three voices." - Action Bronson`
 
 Bronson is a suite of diagnostic tools for the I.T. department. Looking to monitor classroom systems and help technicians organize where needs help today.
@@ -37,15 +39,21 @@ From there, access the ip:port address that is outputted in the previous step in
 
 ### Checkerboard
 
+<img width="774" alt="checkerboard screenshot 7 3" src="https://github.com/user-attachments/assets/1f65306e-ea13-46cf-bab7-70528df27b04" />
+
 Utilizes LSM RoomCheck history through their API and looks at C.T.S. Technician Schedules and classroom schedules to point techs to open rooms in need of checkups during their shift
 
 ### JackNet
+
+<img width="566" alt="jacknet screenshot 7 3" src="https://github.com/user-attachments/assets/33d7d781-f638-44f2-a295-f2b3c44372b0" />
 
 JackNet is a diagnostic tool to monitor the systems on campus. This tool will use a precompiled json file to pull information about each building on campus and which rooms we have systems in. JackNet will use this information to build a database of hostnames defined by our organization's system (ie: a processor example would be EN-1055-PROC1). Then return the user a comprehensive list/csv of all devices that are online and configured correctly. 
 
 This can be used to find rooms that are not online that we did not know about. With some tinkering you can also utilize this to find specific devices in specific buildings that we are looking to remove/find.
 
 ### CamCode
+
+![image](https://github.com/user-attachments/assets/a6a269c8-a9c2-443a-9c3d-c7a1b713da71)
 
 A classroom programming helper. Given a specific set of parameters describing a specific room configuration, CamCode will present the user with files to be uploaded to the system to expedite configuration time.
 

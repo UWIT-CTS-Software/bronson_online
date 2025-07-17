@@ -159,14 +159,46 @@ impl<'a> Clone for Keys {
 
 // ----------- Custom struct for checkerboard - jn <3
 #[derive(Serialize, Deserialize, Debug)]
+pub struct Building {
+	pub name: String,
+	pub lsm_name: String,
+	pub abbrev: String,
+	pub rooms: Vec<Room>,
+	pub zone: u8,
+}
+
+impl Building {
+	pub fn get_completion(&self) -> f32 {
+		return 1.0;
+	}
+}
+impl<'a> Clone for Building {
+	fn clone(&self) -> Building {
+		let new_name: Box<str> = <String as Clone>::clone(&self.name).into_boxed_str();
+		let new_lsm_name: Box<str> = <String as Clone>::clone(&self.lsm_name).into_boxed_str();
+		let new_abbrev: Box<str> = <String as Clone>::clone(&self.abbrev).into_boxed_str();
+
+		return Building {
+			name: String::from(new_name),
+			lsm_name: String::from(new_lsm_name),
+			abbrev: String::from(new_abbrev),
+			rooms: (&self.rooms).to_vec(),
+			zone: self.zone,
+		}
+	}
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Room {
 	pub name: String,
 	pub hostnames: Vec<Vec<String>>,
-	pub ips: Vec<String>,
+	pub ips: Vec<Vec<String>>,
 	pub gp: u8,
 	pub checked: String,
-	//pub jn_checked: Duration, //
-	pub schedule: Vec<String>
+	pub needs_checked: u8,
+	pub schedule: Vec<String>,
+	pub available: u8,
+	pub until: String
 }
 
 // this is very rag-tag - error handling needs to be built-in
@@ -174,30 +206,33 @@ impl Room {
 	pub fn update_checked(&mut self, val: String) {
 		self.checked = val;
 	}
-	// pub fn update_jn_checked(&mut self) {
-	// 	self.jn_checked = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).expect("Failed to init unchecked time");
-	// }
-	pub fn update_ips(&mut self, val: Vec<String>) {
+	pub fn update_ips(&mut self, val: Vec<Vec<String>>) {
 		self.ips = val;
+	}
+	pub fn get_hostnames(&self) -> Vec<Vec<String>> {
+		let mut out_vec = Vec::new();
+		for hn_group in &self.hostnames {
+			out_vec.push(hn_group.to_vec());
+		}
+		return out_vec;
 	}
 }
 impl<'a> Clone for Room {
 	fn clone(&self) -> Room {
 		let new_name: Box<str> = <String as Clone>::clone(&self.name).into_boxed_str();
 		let new_checked: Box<str> = <String as Clone>::clone(&self.checked).into_boxed_str();
-		// let new_jn_checked = &self.jn_checked;
-		let new_hostnames = &self.hostnames;
-		let new_ips = &self.ips;
-		let new_schedule = &self.schedule;
+		let new_until: Box<str> = <String as Clone>::clone(&self.until).into_boxed_str();
 
 		return Room {
 			name: String::from(new_name),
-			hostnames: (&new_hostnames).to_vec(),
-			ips: (&new_ips).to_vec(),
+			hostnames: (&self.hostnames).to_vec(),
+			ips: (&self.ips).to_vec(),
 			gp: self.gp,
-			// jn_checked: self.jn_checked,
 			checked: String::from(new_checked),
-			schedule:(&new_schedule).to_vec(),
+			needs_checked: self.needs_checked,
+			schedule:(&self.schedule).to_vec(),
+			available: self.available,
+			until: String::from(new_until),
 		};
 	}
 }
@@ -245,6 +280,11 @@ impl Request {
 		let body: &mut Vec<u8> = &mut Vec::new();
 		while let Some(body_line) = iter.next() {
 			body.extend_from_slice(&body_line);
+		}
+
+		let first_null_char = body.iter().position(|&x| x == 0);
+		if first_null_char.is_some() {
+			let _ = body.split_off(first_null_char.unwrap());
 		}
 
 		return Request{start_line, headers, body: body.to_vec()};
@@ -367,15 +407,8 @@ pub struct ZoneRequest {
 	pub zones: Vec<String>,
 }
 
-// ----------- Custom structs for JackNet Requests
-// campus.json format
 #[derive(Serialize, Deserialize, Debug)]
-pub struct BuildingData {
-    pub building_data: Vec<Building>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Building {
+pub struct BuildingJSON {
     pub name: String,
     pub abbrev: String,
     pub rooms: Vec<String>
@@ -384,7 +417,7 @@ pub struct Building {
 // building.get_building_hostnames()
 //   - Could this be a good idea?
 //   - TODO (?)
-// impl Building {
+// impl BuildingJSON {
 //     fn get_building_hostnames(&self) -> Vec<String> {
 //         let mut string_vec: Vec<String> = ["EN-0104-PROC1"];
 //         string_vec
@@ -441,48 +474,14 @@ pub struct GeneralRequest {
 	pub buffer: String
 }
 
-pub static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/campus.json"));
+pub static BLDG_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/buildings.json");
+pub static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.json"));
 pub static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
 pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
-pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/roomConfig_agg.csv");
-pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/html-css-js/campus.csv");
+pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/roomConfig_agg.csv");
+pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.csv");
 pub static KEYS      : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/keys.json");
 pub static STATUS_200: &str = "HTTP/1.1 200 OK";
 pub static STATUS_303: &str = "HTTP/1.1 303 See Other";
 pub static STATUS_404: &str = "HTTP/1.1 404 Not Found";
 pub static STATUS_500: &str = "HTTP/1.1 500 Internal Server Error";
-
-pub const ZONE_1: [&'static str; 11] = [
-    "Science%20Initiative%20Building%20(SI)", "Geology%20(GE)", "Health%20Sciences%20(HS)", 
-    "STEM%201st%20Floor", "STEM%202nd%20Floor", "STEM%203rd%20Floor", "Berry%20Center%20(BC)",
-    "Engineering%20Education%20and%20Research%20Building%20(EERB)", "Anthropology%20(AN)", 
-    "Earth%20Sciences%20Building%20(ESB)", "Energy%20Innovation%20Center%20(EIC)", 
-];
-pub const ZONE_2: [&'static str; 8] = [
-    "Engineering%20(EN)", "Agriculture%20(AG)", "Education%20(ED)", "History%20(HI)", 
-    "Half%20Acre%20(HA)", "Business%20(BU)", "Coe%20Library%20(CL)", "Education%20Annex%20(EA)", 
-];
-pub const ZONE_3: [&'static str; 9] = [
-    "Physical%20Sciences%20(PS)", "Classroom%20Building%20(CR)", 
-    "Arts%20%26%20Sciences%20(AS)", "Aven%20Nelson%20(AV)", "Biological%20Sciences%20(BS)", 
-    "Native%20American%20Ed%20Research%20%26%20Culteral%20Center%20(NA)", "Ross%20Hall%20(RH)", 
-    "Hoyt%20Hall%20(HO)", "Guthrie%20House%20(GH)", 
-];
-pub const ZONE_4: [&'static str; 8] = [
-    "IT%20Center%20(ITC)", "Corbett%20(CB)", "Law%20School%20(LS)", "Beta%20House%20(BH)", 
-    "Buchanan%20Center%20for%20Performing%20Arts%20(PA)", "Visual%20Arts%20(VA)", 
-    "Animal%20Science/Molecular%20Biology%20(AB)", "American%20Heritage%20Center%20(AC)", 
-];
-
-pub const ZONE_1_SHORT: [&'static str; 9] = [
-    "SI", "GE", "HS", "STEM", "BC", "EERB", "AN", "ES", "EIC",
-];
-pub const ZONE_2_SHORT: [&'static str; 8] = [
-    "EN", "AG", "ED", "HI", "HA", "BU", "CL", "EA",
-];
-pub const ZONE_3_SHORT: [&'static str; 10] = [
-    "PS", "CR", "AS", "AV", "BS", "NAC", "RH", "HO", "GH", "CI" // Add to ZONE_3
-];
-pub const ZONE_4_SHORT: [&'static str; 8] = [
-    "IT", "CB", "LS", "BH", "PA", "VA", "AB", "AC",
-];

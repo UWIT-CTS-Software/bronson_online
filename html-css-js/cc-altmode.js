@@ -70,7 +70,6 @@ async function getCFMF(filename, classtype) {
         let files = await getCFM_Dir(cmff);
         //update filebrowser
 
-        console.log(files);
         // Need a variant function for populating 
         for (var i in files) {
             files[i] = files[i].split(cmff + '/')[1];
@@ -126,7 +125,6 @@ function cfmGetBuildingRoom(){
 
 function getCurrentHeader() {
     let fs = document.querySelector('.cfm_text');
-    console.log(fs.innerText);
     return fs.innerText;
 }
 
@@ -198,7 +196,6 @@ async function updateRoomList() {
     let cfmDirList   = await getCFM_BuildDirs();
     
     let new_rl = await getCFM_BuildRooms(cfmDirList[sel_building]);
-    console.log(new_rl);
   
     let set_inner_html = `
         <select id="room_list">
@@ -224,12 +221,13 @@ async function setCrestronFile() {
       menuItem.addEventListener("click", toggleMenu);
     });
 
+    preserveCurrentTool();
+    
     document.title = "CamCode - Bronson";
     // remove currently active status mark tab has active.
     // let active_tab_header = document.querySelector('.active_tab_header');
     // active_tab_header.innerHTML = 'CamCode';
     let current = document.getElementsByClassName("selected");
-    console.log(current);
     if (current.length != 0) {
         // current[0].classList.remove("active");
         current[0].classList.remove("selected");
@@ -240,11 +238,9 @@ async function setCrestronFile() {
 
 
     history.pushState("test", "CamCode-CFM", "/cc-altmode");
-    console.log('switching to camcode-cfm');
   
     // Pull List of Directories
     let cfmDirList = await getCFM_BuildDirs();
-    console.log(cfmDirList);
   
     let progGuts = document.querySelector('.program_board .program_guts');
 
@@ -256,7 +252,7 @@ async function setCrestronFile() {
     cfm_ParamContainer.classList.add("cfm_ParamContainer");
 
     // BUILDING Directory Dropdown
-    let buildingSelect = document.createElement("Fieldset");
+    let buildingSelect = document.createElement("fieldset");
     buildingSelect.classList.add("bdSelect");
     let set_inner_html = `
         <select id="building_list" onchange="updateRoomList()">
@@ -269,7 +265,7 @@ async function setCrestronFile() {
         ${set_inner_html}`;
   
     // ROOM Directory Dropdown
-    let roomSelect = document.createElement("Fieldset");
+    let roomSelect = document.createElement("fieldset");
     roomSelect.classList.add('rmSelect');
     let rl = await getCFM_BuildRooms(cfmDirList[0]);
     set_inner_html = `
@@ -278,23 +274,21 @@ async function setCrestronFile() {
         </select>`;
     roomSelect.innerHTML = `
         <legend>
-            Rooms(s): 
+            Room(s): 
         </legend> 
         ${set_inner_html}`;
 
     // option buttons
     // [ Generate Files ] [ Clear Console ] [ Reset ]
-    let optionMenu = document.createElement("div");
+    let optionMenu = document.createElement("fieldset");
     optionMenu.classList.add('cfm_optionMenu');
     optionMenu.innerHTML = `
-        <fieldset class="cfm_fieldset">
-            <legend>
-                Options: </legend>
-            <button id="run" onclick="cfmFiles()" class='headButton'> 
-                Generate Files </button>
-            <button id="reset" onclick="setCrestronFile()" class='headButton'> 
-                Reset </button>
-        </fieldset>`;
+        <legend>
+            Options: </legend>
+        <button id="run" onclick="cfmFiles()" class='headButton'> 
+            Generate Files </button>
+        <button id="reset" onclick="setCrestronFile()" class='headButton'> 
+            Reset </button>`;
 
     // End cfm_paramContainer
     cfm_ParamContainer.appendChild(buildingSelect);
