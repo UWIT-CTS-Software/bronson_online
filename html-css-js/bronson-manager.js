@@ -311,7 +311,8 @@ function stashCheckerboard(checkerboardResponse) {
     }
     // add indicator to button
     let cbButton = document.getElementById("CBButton");
-    cbButton.innerHTML = `<span>CheckerBoard *</span>`;
+    //cbButton.innerHTML = `<img class="tab_img" src="button2.png"/><span>CheckerBoard *</span>`;
+    cbButton.classList.add("stashed");
     return;
 }
 
@@ -330,7 +331,8 @@ function stashJNResponse(formattedPingRequest, buildingName, deviceNames) {
     }
     // add indicator to button
     let jnButton = document.getElementById("JNButton");
-    jnButton.innerHTML = `<span>JackNet *</span>`;
+    //jnButton.innerHTML = `<img class="tab_img" src="button2.png"/><span>JackNet *</span>`;
+    jnButton.classList.add("stashed");
     return;
 }
 
