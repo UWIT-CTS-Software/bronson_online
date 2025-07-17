@@ -321,6 +321,28 @@ button:-webkit-details-marker {
     /* width:67%; */
 }
 
+.toolTab.stashed span {
+    /* border-color: red; */
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(0,0,0,0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
+    }
+
+    100% {
+        transform: scale(.95);
+        box-shadow: 0 0 0 0 rgba(0,0,0,0.7);
+    }
+}
+
 .tab_img {
     width: 130px;
     height: 30px;
@@ -713,22 +735,6 @@ span.psw {
         width: 100%;
     }
 }
-
-@media (max-width: 950px){
-    /* .cb_dash {
-        grid-column:1/2;
-    }
-    .db_console {
-        grid-column:2/7;
-    }
-    .db_leader {
-        grid-column:7/11;
-    } */
-    .leaderTab {
-        width:20px;
-    }
-}
-
 
 /* JackNet Definitions 
        _            _    _   _      _   
