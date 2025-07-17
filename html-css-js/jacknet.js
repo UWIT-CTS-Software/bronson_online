@@ -659,7 +659,8 @@ async function setJackNet() {
             sessionStorage.removeItem("JackNet_stash");
             // Reset button
             let jnButton = document.getElementById("JNButton");
-            jnButton.innerHTML = `<span>JackNet</span>`;
+            //jnButton.innerHTML = `<img class="tab_img" src="button2.png"/><span>JackNet</span>`;
+            jnButton.classList.remove("stashed");
         }
         return;
     }

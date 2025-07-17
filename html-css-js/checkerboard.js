@@ -348,7 +348,8 @@ async function setChecker() {
             sessionStorage.removeItem("CheckerBoard_stash");
             // Reset button
             let cbButton = document.getElementById("CBButton");
-            cbButton.innerHTML = `<span>CheckerBoard</span>`;
+            //cbButton.innerHTML = `<img class="tab_img" src="button2.png"/><span>CheckerBoard</span>`;
+            cbButton.classList.remove("stashed");
         }
         return;
     }
