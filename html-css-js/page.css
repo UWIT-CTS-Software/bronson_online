@@ -218,7 +218,7 @@ button:-webkit-details-marker {
     text-align: left;
     padding: 5px 5px 5px 5px;
     margin: 0px 0px;
-    width: 100%
+    width: 90%
 } 
 
 .tab_row {
@@ -482,6 +482,12 @@ button:-webkit-details-marker {
     grid-column: 2/6;
 }
 
+#dme_editor {
+    border:2px inset rgb(122,113,45);
+    padding-bottom: 5px;
+    margin-bottom:5px;
+}
+
 /*
   _____            _     _             _ 
  |  __ \          | |   | |           | |
@@ -496,7 +502,7 @@ button:-webkit-details-marker {
     background-color: rgb(50, 50, 50);
     display: grid;
     grid-template-columns: repeat(10,1fr);
-    /* gap: 10px; */
+    gap: 4px;
     grid-auto-rows: minmax(20px, auto);
     /* float: left; */
 }
@@ -527,7 +533,7 @@ button:-webkit-details-marker {
     width:25%;
 } */
 .leader {
-    margin: -6px 0px 22px 0px;
+    margin: -6px 0px 26px 0px;
     padding: 0px 0px 0px 5px;
     /* width: 350px; */
     display: flex;
@@ -637,8 +643,8 @@ button:-webkit-details-marker {
 } */
 
 .cb_dash {
-    grid-column: 1/2;
-    grid-row:1;
+    grid-column:8/10;
+    grid-row:2;
 }
 .cb_dashZones {
     margin: 0px;
