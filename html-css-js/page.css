@@ -321,11 +321,6 @@ button:-webkit-details-marker {
     animation: pulse 2s infinite;
 }
 
-.admin_tabs {
-    float:right;
-    transform: matrix(1,0,0,1,-5,2);
-}
-
 @keyframes pulse {
     0% {
         transform: scale(0.95);
@@ -468,6 +463,23 @@ button:-webkit-details-marker {
     font-family:'Courier New', Courier, monospace;
     margin: 4px;
     margin-left: 136px;
+}
+/* Admin Tools */
+
+.admin_tabs {
+    float:right;
+    transform: matrix(1,0,0,1,-5,2);
+}
+
+.at_container {
+    background-color: rgb(50,50,50);
+    display: grid;
+    grid-template-columns: repeat(10,1fr);
+    grid-auto-rows:minmax(20px, auto);
+}
+
+.at_dme {
+    grid-column: 2/6;
 }
 
 /*
