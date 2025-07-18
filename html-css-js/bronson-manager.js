@@ -358,6 +358,10 @@ function preserveCurrentTool() {
     let currentHTMLObject = document.querySelector('.program_board .program_guts');
     currentTool += "_html";
     // console.log("bronson debug: preserving:\n", currentTool);
-    sessionStorage.setItem(currentTool, currentHTMLObject.innerHTML);
+    if(currentHTMLObject != null) {
+        sessionStorage.setItem(currentTool, currentHTMLObject.innerHTML);
+    } else {
+        console.log("Error, programGuts is null");
+    }
     return;
 }
