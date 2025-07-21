@@ -88,7 +88,7 @@
             <fieldset>
                 <legend> 
                     Messages: </legend>
-                <textarea readonly rows="18" cols ="65" class="db_messages" name="consoleOutput" spellcheck="false"> 
+                <textarea readonly rows="14" cols ="65" class="db_messages" name="consoleOutput" spellcheck="false"> 
                     ${json["contents"]}
                 </textarea>
             </fieldset>`;
@@ -109,7 +109,7 @@
             <button id="SemesterButton" onclick="setLeaderSemester()" type="button" class="leaderTab semesterTab"><img class="leader_tab_img" src="button2.png"/><span> 
               90 days </span></button>
           </div>
-          <textarea readonly rows="17" cols="35" class="innerConsole" id="leaderboard" spellcheck="false">
+          <textarea readonly rows="12" cols="1" class="innerConsole" id="leaderboard" spellcheck="false">
           </textarea>
         </fieldset>
       `;
@@ -252,7 +252,7 @@
           Bronson</h1>
         <!-- Tool Tabs / Middle Section -->
         <div class="middle_section">
-          <div class="middle_test">
+          <div class="middle_test" id="middle">
             <!-- Message -->
             <p class='message_header'>
               <i>Basic Room Observations and Notifications for Status and Operational Needs</i></p>
