@@ -1,0 +1,48 @@
+{
+    "Technicians": [
+        {
+            "Name": "Alex Bryan",
+            "Assignment": "SysEn",
+            "Schedule": {
+                "Monday": "8:00AM - 12:00PM,1:00PM - 5:00PM",
+                "Tuesday": "8:00AM - 12:00PM,1:00PM - 5:00PM",
+                "Wednesday": "8:00AM - 12:00PM,1:00PM - 5:00PM",
+                "Thursday": "8:00AM - 12:00PM,1:00PM - 5:00PM",
+                "Friday": "8:00AM - 12:00PM,1:00PM - 5:00PM"
+            }
+        },
+        {
+            "Name": "Collin Davis",
+            "Assignment": "Zone 2",
+            "Schedule": {
+                "Monday": "9:00AM - 4:30PM",
+                "Tuesday": "9:00AM - 4:30PM",
+                "Wednesday": "9:00AM - 4:30PM",
+                "Thursday": "9:00AM - 4:30PM",
+                "Friday": "9:00AM - 4:30PM"
+            }
+        },
+        {
+            "Name": "Colton Hopster",
+            "Assignment": "Zone 1",
+            "Schedule": {
+                "Monday": "NA",
+                "Tuesday": "9:30AM - 5:00PM",
+                "Wednesday": "9:30AM - 5:00PM",
+                "Thursday": "8:00AM - 12:00PM",
+                "Friday": "NA"
+            }
+        },
+        {
+            "Name": "Jason Vanlandingham",
+            "Assignment": "Zone 4",
+            "Schedule": {
+                "Monday": "9:30AM - 5:00PM",
+                "Tuesday": "9:30AM - 5:00PM",
+                "Wednesday": "9:30AM - 5:00PM",
+                "Thursday": "9:30AM - 5:00PM",
+                "Friday": "9:30AM - 5:00PM"
+            }
+        }
+    ]
+}

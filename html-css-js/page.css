@@ -529,6 +529,11 @@ button:-webkit-details-marker {
     width: 100%;
 }
 
+.db_schedule {
+    grid-column: 2/8;
+    grid-row:2;
+}
+
 /* .leaderTab {
     width:25%;
 } */
@@ -565,7 +570,7 @@ button:-webkit-details-marker {
     font-family: "Racing Sans One", sans-serif;
     font-size: 14px;
     text-align: center;
-    width:62px;
+    width:80px;
     transition-duration: .2s;
 }
 
@@ -616,7 +621,7 @@ button:-webkit-details-marker {
 }
 
 .leader_tab_img {
-    width:80px;
+    width:98px;
     height:30px;
 }
 
