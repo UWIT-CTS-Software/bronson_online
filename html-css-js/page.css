@@ -197,17 +197,16 @@ button:-webkit-details-marker {
     text-align: left;
     font-family:'Courier New', Courier, monospace;
     display: flex;
-    /* grid-area: 2 / 9; */
-    grid-column: 2 / 10;
+    grid-column: 2 / 11;
     grid-row: 1;
-    /* height: 20px; */
     padding-top: 0px;
     margin: 0px;
 }
 
-/* .middle_test {
-    display: inline-grid;
-} */
+.middle_test {
+    width: 100%;
+
+}
 
 .message_header {
     color: rgb(118, 66, 28);
@@ -217,23 +216,19 @@ button:-webkit-details-marker {
     font-weight: 400;
     font-style: normal;
     text-align: left;
-    /* display: inline-grid;
-    grid-column: 1 / 4;
-    grid-row: 1; */
-    /* vertical-align: end; */
-    padding:1%;
-    margin: 0% 0%;
-    width: 100%
+    padding: 9px 5px 1px 5px;
+    margin: 0px 0px;
+    width: 90%
 } 
 
 .tab_row {
-    margin: 6px 0px;
+    margin: 3px 0px;
     display: flex;
     padding: 0% 0%;
     /* grid-auto-columns: 1fr;
     grid-column: 1 / auto;
     grid-row: 1; */
-    transform: translate(0px,18px);
+    transform: translate(0px,22px);
 }
 
 .toolTab {
@@ -469,6 +464,29 @@ button:-webkit-details-marker {
     margin: 4px;
     margin-left: 136px;
 }
+/* Admin Tools */
+
+.admin_tabs {
+    float:right;
+    transform: matrix(1,0,0,1,-5,2);
+}
+
+.at_container {
+    background-color: rgb(50,50,50);
+    display: grid;
+    grid-template-columns: repeat(10,1fr);
+    grid-auto-rows:minmax(20px, auto);
+}
+
+.at_dme {
+    grid-column: 2/6;
+}
+
+#dme_editor {
+    border:2px inset rgb(122,113,45);
+    padding-bottom: 5px;
+    margin-bottom:5px;
+}
 
 /*
   _____            _     _             _ 
@@ -484,7 +502,7 @@ button:-webkit-details-marker {
     background-color: rgb(50, 50, 50);
     display: grid;
     grid-template-columns: repeat(10,1fr);
-    /* gap: 10px; */
+    gap: 4px;
     grid-auto-rows: minmax(20px, auto);
     /* float: left; */
 }
@@ -504,18 +522,18 @@ button:-webkit-details-marker {
 }
 
 .db_leader {
-    grid-column: 8 / 11;
+    grid-column: 8 / 10;
     grid-row: 1 / 2;
     /* margin-left: -20%;
     width: 60%; */
-    width:fit-content;
+    width: 100%;
 }
 
 /* .leaderTab {
     width:25%;
 } */
 .leader {
-    margin: -6px 0px 22px 0px;
+    margin: -6px 0px 26px 0px;
     padding: 0px 0px 0px 5px;
     /* width: 350px; */
     display: flex;
@@ -625,8 +643,8 @@ button:-webkit-details-marker {
 } */
 
 .cb_dash {
-    grid-column: 1/2;
-    grid-row:1;
+    grid-column:8/10;
+    grid-row:2;
 }
 .cb_dashZones {
     margin: 0px;

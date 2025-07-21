@@ -329,6 +329,10 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_file("html-css-js/wiki.js");
         },
+        "GET /admin_tools.js HTTP/1.1"     => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/admin_tools.js");
+        },
         // Tool Homepage Stuff
         "GET /cc-altmode HTTP/1.1"         => {
             res.status(STATUS_200);
@@ -350,6 +354,11 @@ async fn handle_connection(
             res.send_file(user_homepage);
             res.insert_onload("setWiki()");
         },
+        "GET /admintools HTTP/1.1"         => {
+            res.status(STATUS_200);
+            res.send_file(user_homepage);
+            res.insert_onload("setAdminTools()");
+        }
         // --- TODO: Has the hashmap been updated? If true return the changed pieces
         //        (caching)
         // Assets
