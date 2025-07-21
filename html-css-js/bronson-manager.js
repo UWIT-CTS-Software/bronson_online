@@ -76,10 +76,19 @@ async function initLocalStorage() {
     // Leaderboard
     let leaderboard = await getLeaderboard();
     localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+    // Schedule
+    let schedule = await getSchedule();
+    localStorage.setItem("schedule", schedule);
     // CheckerboardStorage
     if (sessionStorage.getItem("cb_dash") == null) {
         initCheckerboardStorage();
     }
+    // Default Dashboard Selections
+    //  Leaderboard: 7-Days
+    //  Schedule: Current-Day
+    setLeaderWeek();
+    // Get Current Day
+    // Set Schedule
     return;
 }
 
@@ -107,6 +116,17 @@ async function getZoneData() {
 
 async function getLeaderboard() {
     return fetch("leaderboard")
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("HTTP error " + response.status);
+            }
+            return response.json();
+        }
+    );
+}
+
+async function getSchedule() {
+    return fetch("techSchedule")
         .then(response => {
             if (!response.ok) {
                 throw new Error("HTTP error " + response.status);

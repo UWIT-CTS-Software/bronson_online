@@ -19,7 +19,6 @@
   <script src="camcode.js" type="text/javascript" charset="utf-8"></script>
   <script src="cc-altmode.js" type="text/javascript" charset="utf-8"></script>
   <script src="jacknet.js" type="text/javascript" charset="utf-8"></script>
-
   <!-- <script src="signing.js" type="text/javascript" charset="utf-8"></script> -->
   <!-- <script src="wiki.js" type="text/javascript" charset="utf-8"></script> -->
   <!-- <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> -->
@@ -37,7 +36,7 @@
         setDashboard();
       }
     },
-    false,
+      false,
     );
 
     function toggleMenu() {
@@ -93,7 +92,7 @@
                 </textarea>
             </fieldset>`;
         });
-  
+      // Dashboard Leaderboard
       let leaderboard = document.createElement("div");
       leaderboard.classList.add("db_leader");
         leaderboard.innerHTML = `
@@ -114,8 +113,43 @@
         </fieldset>
       `;
 
+      // Dashboard Schedule
+      let schedule = document.createElement("div");
+      schedule.classList.add("db_schedule");
+      schedule.innerHTML = `
+        <fieldset>
+          <legend>
+            Schedule
+          </legend>
+          <div class="tab_row schedule">
+            <button id="MondayButton" onclick="setSchedule('MondayButton')" type="button" class="leaderTab">
+              <img class="leader_tab_img" src="button2.png"/>
+              <span>Monday</span>
+            </button>
+            <button id="TuesdayButton" onclick="setSchedule('TuesdayButton')" type="button" class="leaderTab">
+              <img class="leader_tab_img" src="button2.png"/>
+              <span>Tuesday</span>
+            </button>
+            <button id="WednesdayButton" onclick="setSchedule('WednesdayButton')" type="button" class="leaderTab">
+              <img class="leader_tab_img" src="button2.png"/>
+              <span>Wednesday</span>
+            </button>
+            <button id="ThusdayButton" onclick="setSchedule('ThursdayButton')" type="button" class="leaderTab">
+              <img class="leader_tab_img" src="button2.png"/>
+              <span>Thursday</span>
+            </button>
+            <button id="FridayButton" onclick="setSchedule('FridayButton')" type="button" class="leaderTab">
+              <img class="leader_tab_img" src="button2.png"/>
+              <span>Friday</span>
+            </button>
+          </div>
+          <table id="db_schedule_table">
+          </table>
+        </fieldset>`;
+
       db_container.appendChild(consoleOutput);
       db_container.appendChild(leaderboard);
+      db_container.appendChild(schedule);
 
       // Check for client-side cached response
       if(sessionStorage.getItem("cb_body") != null) {
@@ -132,6 +166,24 @@
       initLocalStorage();
       return;
     }
+
+    function setSchedule(buttonID) {
+      console.log(buttonID + " Pressed");
+      return;
+    }
+
+    // Bad Methodology Here
+    // async function buildScheduleTableHTML(tabID) {
+    //   // let scheduleData = JSON.parse(document.getElementById('techData'));
+    //   let scheduleData = JSON.parse(localStorage.getItem("schedule"));
+    //   if(scheduleData == null) {
+    //     let schedule = await getSchedule();
+    //     localStorage.setItem("schedule", JSON.stringify(schedule));
+    //     scheduleData = JSON.parse(schedule);
+    //   }
+    //   console.log(scheduleData);
+    //   return;
+    // }
 
     function setLeaderWeek() {
       let current = document.getElementsByClassName("leader_selected");
