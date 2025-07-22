@@ -1,3 +1,9 @@
+/*
+page.css
+
+This file is a nightmare
+*/
+
 /* Global Definitions */
 body {
     background-color: rgb(50, 50, 50);
@@ -529,10 +535,6 @@ button:-webkit-details-marker {
     width: 100%;
 }
 
-.db_schedule {
-    grid-column: 2/8;
-    grid-row:2;
-}
 
 /* .leaderTab {
     width:25%;
@@ -602,14 +604,14 @@ button:-webkit-details-marker {
     /* border: none; */
 }
 
-.leaderTab.leader_selected {
+.leaderTab.leader_selected, .leaderTab.schedule_selected {
     transform: matrix(1, 0, 0, .7, 0, 3.5);
     transition-duration: 0.1s;
     filter: hue-rotate(-60deg);
     /* margin: -12px -6px; */
 }
 
-.leaderTab.leader_selected span {
+.leaderTab.leader_selected span, .leaderTab.schedule_selected span {
     transform: scaleY(1.6);
     top: 0px;
     bottom: 5px;
@@ -638,8 +640,45 @@ button:-webkit-details-marker {
 .semesterTab {
     grid-column: auto;
     z-index: 2;
-    
 }
+
+/* Schedule Stuff */
+.db_schedule {
+    grid-column: 2/8;
+    grid-row:2;
+}
+
+.schedule {
+    transform: translate(90px, 1px);
+}
+
+#db_schedule_table {
+    font-weight:100;
+    font-size:x-small;
+    font-family:'Courier New', Courier, monospace;
+    border: 1px inset rgb(216, 192, 104);
+    color:rgb(194, 181, 124);
+    border-radius: 4px;
+    padding-bottom: 5px;
+}
+
+#db_schedule_table thead {
+    /* border: 2px outset gold; */
+}
+
+#db_schedule_table th {
+    border: 1px outset rgb(220, 183, 96);
+    font-size: xx-small;
+}
+
+.schdfalse {
+    border:#24292E solid 2px;
+}
+
+.schdtrue {
+    background-color: rgb(49, 125, 64);
+}
+
 
 /* .leaderTab.leader_selected {
     transform: translateY(4px);

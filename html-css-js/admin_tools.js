@@ -2,6 +2,7 @@
 
 // Note, I think it would be good to put the terminal stuff in here that is currently in index_admin.html but it utilizes JQueury in a way that I am not hundred percent sure of so I will not be doing that just yet because I don't want to break anything.
 
+
 function setAdminBronson() {
     // Add Admin Tool Tab
     siteheader = document.getElementById("middle");
