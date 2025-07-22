@@ -59,6 +59,23 @@ These functions are used in both Checkerboard and Jacknet.
 ░▒▓███████▓▒░░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░  ░▒▓█▓▒░░▒▓█▓▒░ 
 */
 
+class Time {
+    constructor() { this.time = ''; }
+
+    setTime(time) { this.time = time; }
+
+    getTime() { return this.time; }
+}
+
+class Cookie {
+    constructor() { this.value = "none"; }
+
+    setCookie(id) { this.value = id; }
+
+    getCookie() { return this.value; }
+}
+
+const Days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 // Sets local strage for data used by the various tools
 //  - Zone Building list array of room names for each zone
 //  - Campus.json used for various things in jacknet
@@ -87,8 +104,21 @@ async function initLocalStorage() {
     //  Leaderboard: 7-Days
     //  Schedule: Current-Day
     setLeaderWeek();
-    // Get Current Day
     // Set Schedule
+    let today = new Date();
+    console.log(`Today is ${today.getDay()}`);
+    // Add today class to today's button
+    let buttons = document.getElementsByClassName("today");
+    for(let i = 0; i< buttons.length; i++) {
+        if (buttons != null) {
+            buttons[i].classList.remove("today");
+        }
+    }
+    let todayButton = Days[today.getDay()]+"Button";
+    let todayButtonObj = document.getElementById(todayButton);
+    todayButtonObj.classList.add("today");
+    // Set Today's Tab
+    setSchedule(todayButton);
     return;
 }
 
@@ -134,6 +164,175 @@ async function getSchedule() {
             return response.json();
         }
     );
+}
+
+// Dashboard Stuff
+// Schedule
+function setSchedule(buttonID) {
+    console.log(buttonID + " Pressed");
+    let current = document.getElementsByClassName("schedule_selected");
+    if (current.length != 0) {
+        current[0].classList.remove("schedule_selected");
+    }
+    let newCurrent = document.getElementById(buttonID);
+    newCurrent.classList.add("schedule_selected");
+    let schdData = JSON.parse(localStorage.getItem('schedule'));
+    if (schdData == null) {
+        console.assert("Error: Schedule Data does not exist here");
+        return;
+    }
+    if (newCurrent.classList.contains('today')) {
+        renderTimeIndicator();
+    }
+    // Build the table
+    let tbody_HTML = `<tbody>`;
+    let today = buttonID.split("Button")[0];
+    console.group(`Technicians`);
+    // Sort Technicians by assignment
+    const priorityList = ["Zone 1", "Zone 2", "Zone 3", "Zone 4"];
+    let zoneTechs = [];
+    let otherTechs = [];
+    for(let i = 0; i < priorityList.length; i++) {
+        // Iterate through techs
+        for(let j = 0; j < schdData.Technicians.length; j++) {
+            if(schdData.Technicians[j].Assignment == priorityList[i]) {
+                zoneTechs.push(schdData.Technicians[j]);
+            }
+        }
+    }
+    // populate otherTechs
+    for(let j = 0; j < schdData.Technicians.length; j++) {
+        if(!priorityList.includes(schdData.Technicians[j].Assignment)) {
+            otherTechs.push(schdData.Technicians[j]);
+        }
+    }
+    let techList = zoneTechs.concat(otherTechs);
+    // Build Table
+    for(let i = 0; i < techList.length; i++) {
+        console.info(techList[i]);
+        tbody_HTML += makeTechSchdRow(techList[i], today);
+    }
+    console.groupEnd(`Technicians`);
+    tbody_HTML += `</tbody>`;
+    let tbody = document.createElement('tbody');
+    tbody.setAttribute("id", "schd_tbody");
+    tbody.innerHTML = tbody_HTML;
+    // append to table
+    let table = document.getElementById("schd_tbody");
+    table.replaceWith(tbody);
+    return;
+}
+
+function makeTechSchdRow(tech, today) {
+    // console.log(today);
+    let html = `
+    <tr>
+        <th scope="row">${tech.Name}</th>`;
+    // get schedule timeblocks
+    let timeBlocks = getTechSchdTimeBlocks();
+    //console.log(timeBlocks);
+    // get techs schedule for the day
+    let timeSwitches = [];
+    let shift = tech.Schedule[today].split(",");
+    for(let i = 0; i < shift.length; i++) {
+        timeSwitches.push(shift[i].split(' - '))
+    }
+    timeSwitches = timeSwitches.flat(2);
+    //console.log("Todays Tech Shift: ", shift);
+    //console.log("timeSwitches", timeSwitches);
+    //console.log("timeBlocks", timeBlocks);
+    let onClock = false;
+    let timeIndex = 0;
+    let startShiftIndex, endShiftIndex = 0;
+    //let techState = "OffClock";
+    // Iterate through 25 time blocks;
+    //console.group("TimeSwitch vs. TimeBlocks");
+    for(let i = 0; i < timeBlocks.length; i++) {
+        //console.info("timeswitch: ", timeSwitches[timeIndex], " Time Block: ", timeBlocks[i]);
+        if(timeBlocks[i] == timeSwitches[timeIndex]) {
+            console.log("Hit a timeSwitch");
+            onClock = !onClock;
+            ++timeIndex;
+            // I want to see when shift ends now
+            startShiftIndex = i;
+            if(onClock) {
+                endShiftIndex = timeBlocks.indexOf(timeSwitches[timeIndex]);
+                i = endShiftIndex - 1;
+            }
+        }
+        if(onClock) {
+            html += `<td class="schd${onClock}" colspan=${endShiftIndex - startShiftIndex}>${tech.Assignment}\t</td>`;
+            startShiftIndex, endShiftIndex = 0;
+            onClock = !onClock;
+            ++timeIndex;
+        } else {
+            html += `<td class="schd${onClock}">\t</td>`;
+        }
+    }
+    //console.groupEnd("TimeSwitch vs. TimeBlocks");
+    html += `</tr>`
+    return html;
+}
+
+function getTechSchdTimeBlocks() {
+    let table_header = document.getElementById("db_tech_times");
+    //console.log(table_header.innerText);
+    let output = table_header.innerText.split("\t");
+    return output.slice(1);
+
+}
+
+// TODO : make a bar that indicates the time that spans the height of the tech schedule
+function renderTimeIndicator() {
+    return;
+}
+// Leaderboard
+function setLeaderWeek() {
+    let current = document.getElementsByClassName("leader_selected");
+    if (current.length != 0) {
+        current[0].classList.remove("leader_selected");
+    }
+    let newCurrent = document.getElementById("WeekButton");
+    newCurrent.classList.add("leader_selected");
+    let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["7days"];
+    let leaderString = "";
+    for (let i=0; i<weekLeader.length; i++) {
+        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+    }
+    let leaderboard = document.getElementById("leaderboard");
+    leaderboard.innerHTML = leaderString;
+}
+
+function setLeaderMonth() {
+    let current = document.getElementsByClassName("leader_selected");
+    if (current.length != 0) {
+        current[0].classList.remove("leader_selected");
+    }
+    let newCurrent = document.getElementById("MonthButton");
+    newCurrent.classList.add("leader_selected");
+    let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["30days"];
+    let leaderString = "";
+    for (let i=0; i<weekLeader.length; i++) {
+        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+    }
+    let leaderboard = document.getElementById("leaderboard");
+    leaderboard.innerHTML = leaderString;
+}
+
+function setLeaderSemester() {
+    let current = document.getElementsByClassName("leader_selected");
+    if (current.length != 0) {
+        current[0].classList.remove("leader_selected");
+    }
+    let newCurrent = document.getElementById("SemesterButton");
+    newCurrent.classList.add("leader_selected");
+    let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["90days"];
+    let leaderString = "";
+    for (let i=0; i<weekLeader.length; i++) {
+        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+    }
+    let leaderboard = document.getElementById("leaderboard");
+    leaderboard.innerHTML = leaderString;
 }
 
 // - - -- --- - - CMAPUS.JSON GET INFO FUNCTIONS
