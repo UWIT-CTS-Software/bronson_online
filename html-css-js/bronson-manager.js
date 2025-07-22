@@ -85,17 +85,25 @@ const Days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 //  change on the backend.
 async function initLocalStorage() {
     // Campus Data (Effectively a clone of the hashmap)
-    let campData = await getCampusData();
-    localStorage.setItem("campData", JSON.stringify(campData));
+    if(localStorage.getItem("campData") == null) {
+        let campData = await getCampusData();
+        localStorage.setItem("campData", JSON.stringify(campData));
+    }
     // Zone Arrays
-    let zoneData = await getZoneData();
-    localStorage.setItem("zoneData", JSON.stringify(zoneData));
+    if (localStorage.getItem("zoneData") == null) {
+        let zoneData = await getZoneData();
+        localStorage.setItem("zoneData", JSON.stringify(zoneData));
+    }
     // Leaderboard
-    let leaderboard = await getLeaderboard();
-    localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+    if (localStorage.getItem("leaderboard") == null) {
+        let leaderboard = await getLeaderboard();
+        localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+    }
     // Schedule
-    let schedule = await getSchedule();
-    localStorage.setItem("schedule", schedule);
+    if (localStorage.getItem("schedule") == null) {
+        let schedule = await getSchedule();
+        localStorage.setItem("schedule", schedule);
+    }
     // CheckerboardStorage
     if (sessionStorage.getItem("cb_dash") == null) {
         initCheckerboardStorage();
@@ -275,17 +283,47 @@ function makeTechSchdRow(tech, today) {
 }
 
 function getTechSchdTimeBlocks() {
-    let table_header = document.getElementById("db_tech_times");
-    //console.log(table_header.innerText);
-    let output = table_header.innerText.split("\t");
-    return output.slice(1);
-
+    if(document.title.includes("Dashboard")) {
+        let table_header = document.getElementById("db_tech_times");
+        //console.log(table_header.innerText);
+        let output = table_header.innerText.split("\t");
+        console.log(output.slice(1));
+        return output.slice(1);
+    } else {
+        return [
+            "7:30AM",
+            "8:00AM",
+            "8:30AM",
+            "9:00AM",
+            "9:30AM",
+            "10:00AM",
+            "10:30AM",
+            "11:00AM",
+            "11:30AM",
+            "12:00PM",
+            "12:30PM",
+            "1:00PM",
+            "1:30PM",
+            "2:00PM",
+            "2:30PM",
+            "3:00PM",
+            "3:30PM",
+            "4:00PM",
+            "4:30PM",
+            "5:00PM",
+            "5:30PM",
+            "6:00PM",
+            "6:30PM",
+            "7:00PM"
+        ];
+    }
 }
 
 // TODO : make a bar that indicates the time that spans the height of the tech schedule
 function renderTimeIndicator() {
     return;
 }
+
 // Leaderboard
 function setLeaderWeek() {
     let current = document.getElementsByClassName("leader_selected");
