@@ -195,7 +195,7 @@ function setSchedule(buttonID) {
     // Build the table
     let tbody_HTML = `<tbody>`;
     let today = buttonID.split("Button")[0];
-    console.group(`Technicians`);
+    //console.group(`Technicians`);
     // Sort Technicians by assignment
     const priorityList = ["Zone 1", "Zone 2", "Zone 3", "Zone 4"];
     let zoneTechs = [];
@@ -217,10 +217,10 @@ function setSchedule(buttonID) {
     let techList = zoneTechs.concat(otherTechs);
     // Build Table
     for(let i = 0; i < techList.length; i++) {
-        console.info(techList[i]);
+        //console.info(techList[i]);
         tbody_HTML += makeTechSchdRow(techList[i], today);
     }
-    console.groupEnd(`Technicians`);
+    //console.groupEnd(`Technicians`);
     tbody_HTML += `</tbody>`;
     let tbody = document.createElement('tbody');
     tbody.setAttribute("id", "schd_tbody");
@@ -229,6 +229,17 @@ function setSchedule(buttonID) {
     let table = document.getElementById("schd_tbody");
     table.replaceWith(tbody);
     return;
+}
+
+function makeTechTableHeader(firstColumn) {
+    let times = getTechSchdTimeBlocks();
+    let html = `<tr>
+        <th scope="col">${firstColumn}</th>`;
+    for(i in times) {
+        html += `<th scope="col">${times[i]}</th>`;
+    }
+    html += '</tr>';
+    return html;
 }
 
 function makeTechSchdRow(tech, today) {
@@ -258,7 +269,7 @@ function makeTechSchdRow(tech, today) {
     for(let i = 0; i < timeBlocks.length; i++) {
         //console.info("timeswitch: ", timeSwitches[timeIndex], " Time Block: ", timeBlocks[i]);
         if(timeBlocks[i] == timeSwitches[timeIndex]) {
-            console.log("Hit a timeSwitch");
+            //console.log("Hit a timeSwitch");
             onClock = !onClock;
             ++timeIndex;
             // I want to see when shift ends now
@@ -283,14 +294,7 @@ function makeTechSchdRow(tech, today) {
 }
 
 function getTechSchdTimeBlocks() {
-    if(document.title.includes("Dashboard")) {
-        let table_header = document.getElementById("db_tech_times");
-        //console.log(table_header.innerText);
-        let output = table_header.innerText.split("\t");
-        console.log(output.slice(1));
-        return output.slice(1);
-    } else {
-        return [
+    return [
             "7:30AM",
             "8:00AM",
             "8:30AM",
@@ -316,7 +320,6 @@ function getTechSchdTimeBlocks() {
             "6:30PM",
             "7:00PM"
         ];
-    }
 }
 
 // TODO : make a bar that indicates the time that spans the height of the tech schedule

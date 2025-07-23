@@ -122,10 +122,7 @@ function setScheduleEditor() {
         console.assert("Error: schedule not found in local storage.");
         return;
     }
-    for(let i = 0; i < scheduleData.Technicians.length; i++) {
-        console.log(scheduleData.Technicians[i]);
-        schedule_editor.appendChild(makeTechEditTable(scheduleData.Technicians[i]));
-    }
+    
     // TODO: Make Buttons
     let buttonFieldset = document.createElement('div');
     buttonFieldset.innerHTML = `
@@ -135,6 +132,12 @@ function setScheduleEditor() {
         <button> Add Technician </button>
     </fieldset>`;
     schedule_editor.appendChild(buttonFieldset);
+    // Make filters (?)
+    // Make Tables
+    for(let i = 0; i < scheduleData.Technicians.length; i++) {
+        //console.log(scheduleData.Technicians[i]);
+        schedule_editor.appendChild(makeTechEditTable(scheduleData.Technicians[i]));
+    }
     // replace admin_internals
     let admin_internals = document.getElementById('admin_internals');
     admin_internals.replaceWith(schedule_editor);
@@ -147,46 +150,133 @@ function makeTechEditTable(techObj) {
     //techTable.innerText = techObj.Name;
     //let techSchedule = techObj.Schedule;
     let tableHTML = `
-        <table>
+        <fieldset>
+        <legend>${techObj.Name}</legend>
+        ${makeTechAssignmentSelect(techObj)}
+        <table id="tech${techObj.Name}" class="adminTechTable">
         <thead>
+            ${makeTechTableHeader("Weekday")}
         </thead>
-            <tr>
-                <th scope="col">Weekday</th>
-                <th scope="col">7:30AM</th>
-                <th scope="col">8:00AM</th>
-                <th scope="col">8:30AM</th>
-                <th scope="col">9:00AM</th>
-                <th scope="col">9:30AM</th>
-                <th scope="col">10:00AM</th>
-                <th scope="col">10:30AM</th>
-                <th scope="col">11:00AM</th>
-                <th scope="col">11:30AM</th>
-                <th scope="col">12:00PM</th>
-                <th scope="col">12:30PM</th>
-                <th scope="col">1:00PM</th>
-                <th scope="col">1:30PM</th>
-                <th scope="col">2:00PM</th>
-                <th scope="col">2:30PM</th>
-                <th scope="col">3:00PM</th>
-                <th scope="col">3:30PM</th>
-                <th scope="col">4:00PM</th>
-                <th scope="col">4:30PM</th>
-                <th scope="col">5:00PM</th>
-                <th scope="col">5:30PM</th>
-                <th scope="col">6:00PM</th>
-                <th scope="col">6:30PM</th>
-                <th scope="col">7:00PM</th>
-            </tr>
         <tbody>
-            ${makeTechSchdRow(techObj, "Monday")}
-            ${makeTechSchdRow(techObj, "Tuesday")}
-            ${makeTechSchdRow(techObj, "Wednesday")}
-            ${makeTechSchdRow(techObj, "Thursday")}
-            ${makeTechSchdRow(techObj, "Friday")}
+            ${makeAdminTechSchdRow(techObj, "Monday")}
+            ${makeAdminTechSchdRow(techObj, "Tuesday")}
+            ${makeAdminTechSchdRow(techObj, "Wednesday")}
+            ${makeAdminTechSchdRow(techObj, "Thursday")}
+            ${makeAdminTechSchdRow(techObj, "Friday")}
         </tbody>
-        </table>`;
+        </table>
+        <fieldset>
+            <button onclick="updateTechSchedule('tech${techObj.Name}')">Save Schedule</button>
+            <button>Remove Technician</button>
+        </fieldset>
+        </fieldset>`;
     techTable.innerHTML = tableHTML;
     return techTable;
+}
+
+// grabs the table for a tech on the page and converts it to schedule time
+// as well as the assignment drop down
+function updateTechSchedule(tableID) {
+    // This will be a post request once the database is implemented.
+    let table = document.getElementById(tableID);
+    let trueCells = table.getElementsByClassName('schdtrue');
+    let timeBlocks = getTechSchdTimeBlocks();
+    let techName = tableID.split("tech")[1];
+    let techLastName = techName.split(" ")[1];
+    console.log(techName);
+    const days = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday"
+    ];
+    let newSchdObj = {
+        "Monday": "NA",
+        "Tuesday": "NA",
+        "Wednesday": "NA",
+        "Thursday": "NA",
+        "Friday": "NA"
+    }
+    console.log(trueCells);
+    console.group('trueCells');
+    let tmpString= '';
+    for(i in days) {
+        console.warn(days[i]);
+        for(let j = 0; j < trueCells.length; j++) {
+            //console.info(trueCells[i])
+            //console.info(trueCells[i].getAttribute('id'));
+            let cellID = trueCells[j].getAttribute('id');
+            if (cellID.includes(days[i])) {
+                console.log(cellID.split('day')[1]);
+            }
+        }
+    }
+    console.groupEnd('trueCells');
+    // get copy of current tech schedules
+    let scheduleData = localStorage.getItem('schedule');
+
+    return;
+}
+
+function makeAdminTechSchdRow(tech, day) {
+    // console.log(today);
+    let html = `
+    <tr>
+        <th scope="row">${day}</th>`;
+    // get schedule timeblocks
+    let timeBlocks = getTechSchdTimeBlocks();
+    //console.log(timeBlocks);
+    // get techs schedule for the day
+    let timeSwitches = [];
+    let shift = tech.Schedule[day].split(",");
+    for(let i = 0; i < shift.length; i++) {
+        timeSwitches.push(shift[i].split(' - '))
+    }
+    timeSwitches = timeSwitches.flat(2);
+
+    let onClock = false;
+    let timeIndex = 0;
+    // Iterate through 24 time blocks;
+    for(let i = 0; i < timeBlocks.length; i++) {
+        //console.info("timeswitch: ", timeSwitches[timeIndex], " Time Block: ", timeBlocks[i]);
+        if(timeBlocks[i] == timeSwitches[timeIndex]) {
+            //console.log("Hit a timeSwitch");
+            onClock = !onClock;
+            ++timeIndex;
+        }
+        let id = tech.Name.split(" ")[1] + day + timeBlocks[i];
+        html += `<td id="${id}" draggable="true" ondragenter="flipTime('${id}')" onclick="flipTime('${id}')" class="schd${onClock}">\t</td>`;
+    }
+    //console.groupEnd("TimeSwitch vs. TimeBlocks");
+    html += `</tr>`
+    return html;
+}
+
+function flipTime(tableElementID) {
+    let element = document.getElementById(tableElementID);
+    if(element.classList.contains("schdtrue")) {
+        element.classList.remove("schdtrue");
+        element.classList.add("schdfalse");
+    } else {
+        element.classList.remove("schdfalse");
+        element.classList.add("schdtrue");
+    }
+    return;
+}
+
+function makeTechAssignmentSelect(techObj) {
+    const assignments = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'SysEn', 'Networking', 'Coding'];
+    let currentAssignment = techObj.Assignment;
+    let otherAssignments = assignments.filter(element => element !== currentAssignment);
+    let html = `
+    <select id="techSelect${techObj.name}">
+        <option value="${currentAssignment}">${currentAssignment}</option>`;
+    for(a in otherAssignments) {
+        html += `<option value="${otherAssignments[a]}">${otherAssignments[a]}</option>`;
+    }
+    html += `</select>`;
+    return html;
 }
 
 // Grabs the contents of the text
