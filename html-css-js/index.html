@@ -88,7 +88,7 @@
             <fieldset>
                 <legend> 
                     Messages: </legend>
-                <textarea readonly rows="18" cols ="65" class="db_messages" name="consoleOutput" spellcheck="false"> 
+                <textarea readonly rows="14" cols ="65" class="db_messages" name="consoleOutput" spellcheck="false"> 
                     ${json["contents"]}
                 </textarea>
             </fieldset>`;
@@ -102,14 +102,14 @@
             Room Check Leaderboard: 
           </legend>
           <div class="tab_row leader">
-            <button id="WeekButton" onclick="setLeaderWeek()" type="button" class="leaderTab weekTab"><span>
-              Last 7 days </span></button>
-            <button id="MonthButton" onclick="setLeaderMonth()" type="button" class="leaderTab monthTab"><span>
-              Last 30 days </span></button>
-            <button id="SemesterButton" onclick="setLeaderSemester()" type="button" class="leaderTab semesterTab"><span> 
-              Last 90 days </span></button>
+            <button id="WeekButton" onclick="setLeaderWeek()" type="button" class="leaderTab weekTab"><img class="leader_tab_img" src="button2.png"/><span>
+              7 days </span></button>
+            <button id="MonthButton" onclick="setLeaderMonth()" type="button" class="leaderTab monthTab"><img class="leader_tab_img" src="button2.png"/><span>
+              30 days </span></button>
+            <button id="SemesterButton" onclick="setLeaderSemester()" type="button" class="leaderTab semesterTab"><img class="leader_tab_img" src="button2.png"/><span> 
+              90 days </span></button>
           </div>
-          <textarea readonly rows="17" cols="35" class="innerConsole" id="leaderboard" spellcheck="false">
+          <textarea readonly rows="12" cols="1" class="innerConsole" id="leaderboard" spellcheck="false">
           </textarea>
         </fieldset>
       `;
@@ -248,23 +248,25 @@
           </fieldset>
         </div>
         <!-- Site Button -->
-        <h1 class='site_header' onclick='toggleMenu()'>
+        <h1 class='site_header' onclick='toggleMenu()' title="Hamburger Menu Toggle">
           Bronson</h1>
         <!-- Tool Tabs / Middle Section -->
         <div class="middle_section">
-          <div class="middle_test">
+          <div class="middle_test" id="middle">
             <!-- Message -->
             <p class='message_header'>
               <i>Basic Room Observations and Notifications for Status and Operational Needs</i></p>
             <!-- Tab Rows -->
             <div class="tab_row">
-              <button id="DBButton" onclick="setDashboard()" type="button" class="toolTab dbTab"><span>
+              <button id="DBButton" onclick="setDashboard()" type="button" class="toolTab dbTab">
+                <img class="tab_img" src="button2.png"/>
+                <span>
                 Dashboard </span></button>
-              <button id="CBButton" onclick="setChecker()" type="button" class="toolTab chTab"><span>
+              <button id="CBButton" onclick="setChecker()" type="button" class="toolTab chTab"><img class="tab_img" src="button2.png"/><span>
                 Checkerboard </span></button>
-              <button id="JNButton" onclick="setJackNet()" type="button" class="toolTab jnTab">
+              <button id="JNButton" onclick="setJackNet()" type="button" class="toolTab jnTab"><img class="tab_img" src="button2.png"/>
                 <span> JackNet </span></button>
-              <button id="CCButton" onclick="setCrestronFile()" type="button" class="toolTab ccTab">
+              <button id="CCButton" onclick="setCrestronFile()" type="button" class="toolTab ccTab"><img class="tab_img" src="button2.png"/>
                 <span> CamCode </span></button>
             </div>
           </div>
