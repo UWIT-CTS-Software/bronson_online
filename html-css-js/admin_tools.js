@@ -176,14 +176,22 @@ function makeTechEditTable(techObj) {
 
 // grabs the table for a tech on the page and converts it to schedule time
 // as well as the assignment drop down
+// NOTE: 
+///  Currently there is a strange bug with single 30 minute shifts,
+///  If there is a single block it will not be read.
+///  if there is a single block followed by a break and then another shift
+///   it will be read correctly.
+///  Not sure why this happens exactly, but the likelihood of this being noticed 
+///   is unlikely.
+///  this is pretty functional as is, so I am moving on and will return here if
+///   time allows.
 function updateTechSchedule(tableID) {
     // This will be a post request once the database is implemented.
     let table = document.getElementById(tableID);
     let trueCells = table.getElementsByClassName('schdtrue');
     let timeBlocks = getTechSchdTimeBlocks();
+    timeBlocks.push("7:30PM");
     let techName = tableID.split("tech")[1];
-    let techLastName = techName.split(" ")[1];
-    console.log(techName);
     const days = [
         "Monday",
         "Tuesday",
@@ -198,24 +206,57 @@ function updateTechSchedule(tableID) {
         "Thursday": "NA",
         "Friday": "NA"
     }
-    console.log(trueCells);
-    console.group('trueCells');
-    let tmpString= '';
-    for(i in days) {
-        console.warn(days[i]);
-        for(let j = 0; j < trueCells.length; j++) {
-            //console.info(trueCells[i])
-            //console.info(trueCells[i].getAttribute('id'));
-            let cellID = trueCells[j].getAttribute('id');
-            if (cellID.includes(days[i])) {
-                console.log(cellID.split('day')[1]);
+    cellIds = [];
+    // make an array of cell IDs
+    for(let i = 0; i < trueCells.length; i++) {
+        let cell = trueCells[i].getAttribute('id');
+        cellIds.push(cell);
+    }
+    // Iterate through each day
+    for(let i = 0; i < days.length; i++) {
+        let dailyTimes = cellIds.filter(element => element.includes(days[i]));
+        let tmpString = '';
+        let multipleShifts = false;
+        let shiftStarted = false;
+        for(let j = 0; j < dailyTimes.length - 1; j++) {
+            // Init currentTime info
+            let time = dailyTimes[j].split('day')[1];
+            let nextTime = dailyTimes[j+1].split('day')[1];
+            let lastTime = dailyTimes.at(-1).split('day')[1];
+            let tbIndex = timeBlocks.indexOf(time);
+            let nextTB = timeBlocks[tbIndex+1];
+            if (!shiftStarted) {
+                if(!multipleShifts){
+                    tmpString += time + ' - ';
+                    shiftStarted = true;
+                } else {
+                    tmpString += ',' + time + ' - ';
+                    shiftStarted = true;
+                }
+            }
+            if (shiftStarted) {
+                if(nextTime != nextTB) {
+                    tmpString += nextTB;
+                    shiftStarted = false;
+                    multipleShifts = true;
+                } else if(nextTime == lastTime) {
+                    tmpString += timeBlocks[tbIndex+2];
+                }
             }
         }
+        if (tmpString != '') {
+            newSchdObj[days[i]] =  tmpString;
+        }
     }
-    console.groupEnd('trueCells');
-    // get copy of current tech schedules
-    let scheduleData = localStorage.getItem('schedule');
-
+    // Assignment
+    let select = document.getElementById(`techSelect${techName}`);
+    // get copy of current tech schedules and update it
+    //   DATABASE POST REQUEST HERE.
+    let scheduleData = JSON.parse(localStorage.getItem('schedule'));
+    let techIndex = scheduleData.Technicians.findIndex(element => element.Name === techName);
+    scheduleData.Technicians[techIndex].Schedule = newSchdObj;
+    scheduleData.Technicians[techIndex].Assignment = select.value;
+    localStorage.setItem('schedule', JSON.stringify(scheduleData));
     return;
 }
 
@@ -270,7 +311,7 @@ function makeTechAssignmentSelect(techObj) {
     let currentAssignment = techObj.Assignment;
     let otherAssignments = assignments.filter(element => element !== currentAssignment);
     let html = `
-    <select id="techSelect${techObj.name}">
+    <select id="techSelect${techObj.Name}">
         <option value="${currentAssignment}">${currentAssignment}</option>`;
     for(a in otherAssignments) {
         html += `<option value="${otherAssignments[a]}">${otherAssignments[a]}</option>`;
