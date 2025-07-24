@@ -231,9 +231,9 @@ function setSchedule(buttonID) {
 function makeTechTableHeader(firstColumn) {
     let times = getTechSchdTimeBlocks();
     let html = `<tr>
-        <th scope="col">${firstColumn}</th>`;
+        <th scope="col" class="schdLeftIndex">${firstColumn}</th>`;
     for(i in times) {
-        html += `<th scope="col">${times[i]}</th>`;
+        html += `<th scope="col" class="timeBlockTable">${times[i]}</th>`;
     }
     html += '</tr>';
     return html;
