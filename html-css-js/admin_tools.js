@@ -2,7 +2,7 @@
 
 // Note, I think it would be good to put the terminal stuff in here that is currently in index_admin.html but it utilizes JQueury in a way that I am not hundred percent sure of so I will not be doing that just yet because I don't want to break anything.
 
-
+// Adds the 'Admin Tools' tab to the program header
 function setAdminBronson() {
     // Add Admin Tool Tab
     siteheader = document.getElementById("middle");
@@ -13,7 +13,7 @@ function setAdminBronson() {
     siteheader.appendChild(adminTabs);
 }
 
-// Set Admin Tool Page
+// Set Admin Tool Page on program guts
 async function setAdminTools() {
     const menuItems = document.querySelectorAll(".menuItem");
 
@@ -75,6 +75,8 @@ async function setAdminTools() {
     return;
 }
 
+// MESSAGE EDITOR
+
 // Set MessageEditor
 // TODO - Check permissions here
 function setMessageEditor() {
@@ -103,6 +105,27 @@ function setMessageEditor() {
     return;
 }
 
+// Grabs the contents of the text
+//  Need to update setDashboard() to check for this
+//  I am waiting on the database to have the correct behavior.
+//  When the pieces are in place, the contents of this editor will
+//  be sent to the back end and be saved in the database and then all
+//  dashboards will pull that value for the dashboard messages content.
+function setDashboardMessage() {
+    let dme = document.getElementById("dme_editor");
+    contents = dme.innerText;
+    localStorage.setItem("DashboardMessage", contents);
+    return;
+}
+
+function clearEditor() {
+    let dme = document.getElementById("dme_editor");
+    dme.innerText = ``;
+    return;
+}
+
+// SCHEDULE EDITOR
+
 function setScheduleEditor() {
     // remove currently active status, mark tab has active.
     let current = document.getElementsByClassName("at_selected");
@@ -125,6 +148,7 @@ function setScheduleEditor() {
     
     // TODO: Make Buttons
     let buttonFieldset = document.createElement('div');
+    buttonFieldset.classList.add("schdEditorButtonsDiv");
     buttonFieldset.innerHTML = `
     <fieldset>
         <legend> Buttons </legend>
@@ -150,41 +174,95 @@ function makeTechEditTable(techObj) {
     //techTable.innerText = techObj.Name;
     //let techSchedule = techObj.Schedule;
     let tableHTML = `
-        <fieldset>
-        <legend>${techObj.Name}</legend>
-        ${makeTechAssignmentSelect(techObj)}
-        <table id="tech${techObj.Name}" class="adminTechTable">
-        <thead>
-            ${makeTechTableHeader("Weekday")}
-        </thead>
-        <tbody>
-            ${makeAdminTechSchdRow(techObj, "Monday")}
-            ${makeAdminTechSchdRow(techObj, "Tuesday")}
-            ${makeAdminTechSchdRow(techObj, "Wednesday")}
-            ${makeAdminTechSchdRow(techObj, "Thursday")}
-            ${makeAdminTechSchdRow(techObj, "Friday")}
-        </tbody>
-        </table>
-        <fieldset>
+        <fieldset id="${techObj.Name.split(" ")[1]}_table" class="techFieldset">
+        <legend>Technician: ${techObj.Name}</legend>
+        <fieldset class="schdTechFields">
+            <label for="techNameEdit${techObj.Name}">Name:</label>
+            <textarea id="techNameEdit${techObj.Name}" spellcheck="false" rows="1" cols="10">${techObj.Name}</textarea><br>
+            ${makeTechAssignmentSelect(techObj)}
             <button onclick="updateTechSchedule('tech${techObj.Name}')">Save Schedule</button>
-            <button>Remove Technician</button>
         </fieldset>
+        <table id="tech${techObj.Name}" class="adminTechTable">
+            <thead>
+                ${makeTechTableHeader("Weekday")}
+            </thead>
+            <tbody>
+                ${makeAdminTechSchdRow(techObj, "Monday")}
+                ${makeAdminTechSchdRow(techObj, "Tuesday")}
+                ${makeAdminTechSchdRow(techObj, "Wednesday")}
+                ${makeAdminTechSchdRow(techObj, "Thursday")}
+                ${makeAdminTechSchdRow(techObj, "Friday")}
+            </tbody>
+        </table>
         </fieldset>`;
     techTable.innerHTML = tableHTML;
     return techTable;
 }
 
+// This function is mainly used to make sure that a tech's current assignment is the current option
+function makeTechAssignmentSelect(techObj) {
+    const assignments = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'SysEn', 'Networking', 'Coding','Unassigned'];
+    let currentAssignment = techObj.Assignment;
+    let otherAssignments = assignments.filter(element => element !== currentAssignment);
+    let html = `
+    <label for="techSelect${techObj.Name}">Assignment: </label>
+    <select id="techSelect${techObj.Name}">
+        <option value="${currentAssignment}">${currentAssignment}</option>`;
+    for(a in otherAssignments) {
+        html += `<option value="${otherAssignments[a]}">${otherAssignments[a]}</option>`;
+    }
+    html += `</select>`;
+    return html;
+}
+
+function makeAdminTechSchdRow(tech, day) {
+    // console.log(today);
+    let html = `
+    <tr>
+        <th scope="row" class="schdLeftIndex">${day}</th>`;
+    // get schedule timeblocks
+    let timeBlocks = getTechSchdTimeBlocks();
+    //console.log(timeBlocks);
+    // get techs schedule for the day
+    let timeSwitches = [];
+    let shift = tech.Schedule[day].split(",");
+    for(let i = 0; i < shift.length; i++) {
+        timeSwitches.push(shift[i].split(' - '))
+    }
+    timeSwitches = timeSwitches.flat(2);
+
+    let onClock = false;
+    let timeIndex = 0;
+    // Iterate through 24 time blocks;
+    for(let i = 0; i < timeBlocks.length; i++) {
+        //console.info("timeswitch: ", timeSwitches[timeIndex], " Time Block: ", timeBlocks[i]);
+        if(timeBlocks[i] == timeSwitches[timeIndex]) {
+            //console.log("Hit a timeSwitch");
+            onClock = !onClock;
+            ++timeIndex;
+        }
+        let id = tech.Name.split(" ")[1] + day + timeBlocks[i];
+        html += `<td id="${id}" draggable="true" ondragenter="flipTime('${id}')" onclick="flipTime('${id}')" class="schd${onClock}">\t</td>`;
+    }
+    //console.groupEnd("TimeSwitch vs. TimeBlocks");
+    html += `</tr>`
+    return html;
+}
+
+function flipTime(tableElementID) {
+    let element = document.getElementById(tableElementID);
+    if(element.classList.contains("schdtrue")) {
+        element.classList.remove("schdtrue");
+        element.classList.add("schdfalse");
+    } else {
+        element.classList.remove("schdfalse");
+        element.classList.add("schdtrue");
+    }
+    return;
+}
+
 // grabs the table for a tech on the page and converts it to schedule time
 // as well as the assignment drop down
-// NOTE: 
-///  Currently there is a strange bug with single 30 minute shifts,
-///  If there is a single block it will not be read.
-///  if there is a single block followed by a break and then another shift
-///   it will be read correctly.
-///  Not sure why this happens exactly, but the likelihood of this being noticed 
-///   is unlikely.
-///  this is pretty functional as is, so I am moving on and will return here if
-///   time allows.
 function updateTechSchedule(tableID) {
     // This will be a post request once the database is implemented.
     let table = document.getElementById(tableID);
@@ -243,7 +321,16 @@ function updateTechSchedule(tableID) {
                     tmpString += timeBlocks[tbIndex+2];
                 }
             }
+            // Last iteration / check for singular 30 minute shift
+            if(nextTime == lastTime) {
+                if(timeBlocks.indexOf(nextTime) > tbIndex+1) {
+                    //console.warn("Singular 30 minute shift detected");
+                    let tbII = timeBlocks.indexOf(nextTime);
+                    tmpString += ',' + nextTime + ' - ' + timeBlocks[tbII + 1];
+                }
+            }
         }
+        //console.log(days[i] +' '+ tmpString);
         if (tmpString != '') {
             newSchdObj[days[i]] =  tmpString;
         }
@@ -257,84 +344,5 @@ function updateTechSchedule(tableID) {
     scheduleData.Technicians[techIndex].Schedule = newSchdObj;
     scheduleData.Technicians[techIndex].Assignment = select.value;
     localStorage.setItem('schedule', JSON.stringify(scheduleData));
-    return;
-}
-
-function makeAdminTechSchdRow(tech, day) {
-    // console.log(today);
-    let html = `
-    <tr>
-        <th scope="row">${day}</th>`;
-    // get schedule timeblocks
-    let timeBlocks = getTechSchdTimeBlocks();
-    //console.log(timeBlocks);
-    // get techs schedule for the day
-    let timeSwitches = [];
-    let shift = tech.Schedule[day].split(",");
-    for(let i = 0; i < shift.length; i++) {
-        timeSwitches.push(shift[i].split(' - '))
-    }
-    timeSwitches = timeSwitches.flat(2);
-
-    let onClock = false;
-    let timeIndex = 0;
-    // Iterate through 24 time blocks;
-    for(let i = 0; i < timeBlocks.length; i++) {
-        //console.info("timeswitch: ", timeSwitches[timeIndex], " Time Block: ", timeBlocks[i]);
-        if(timeBlocks[i] == timeSwitches[timeIndex]) {
-            //console.log("Hit a timeSwitch");
-            onClock = !onClock;
-            ++timeIndex;
-        }
-        let id = tech.Name.split(" ")[1] + day + timeBlocks[i];
-        html += `<td id="${id}" draggable="true" ondragenter="flipTime('${id}')" onclick="flipTime('${id}')" class="schd${onClock}">\t</td>`;
-    }
-    //console.groupEnd("TimeSwitch vs. TimeBlocks");
-    html += `</tr>`
-    return html;
-}
-
-function flipTime(tableElementID) {
-    let element = document.getElementById(tableElementID);
-    if(element.classList.contains("schdtrue")) {
-        element.classList.remove("schdtrue");
-        element.classList.add("schdfalse");
-    } else {
-        element.classList.remove("schdfalse");
-        element.classList.add("schdtrue");
-    }
-    return;
-}
-
-function makeTechAssignmentSelect(techObj) {
-    const assignments = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'SysEn', 'Networking', 'Coding'];
-    let currentAssignment = techObj.Assignment;
-    let otherAssignments = assignments.filter(element => element !== currentAssignment);
-    let html = `
-    <select id="techSelect${techObj.Name}">
-        <option value="${currentAssignment}">${currentAssignment}</option>`;
-    for(a in otherAssignments) {
-        html += `<option value="${otherAssignments[a]}">${otherAssignments[a]}</option>`;
-    }
-    html += `</select>`;
-    return html;
-}
-
-// Grabs the contents of the text
-//  Need to update setDashboard() to check for this
-//  I am waiting on the database to have the correct behavior.
-//  When the pieces are in place, the contents of this editor will
-//  be sent to the back end and be saved in the database and then all
-//  dashboards will pull that value for the dashboard messages content.
-function setDashboardMessage() {
-    let dme = document.getElementById("dme_editor");
-    contents = dme.innerText;
-    localStorage.setItem("DashboardMessage", contents);
-    return;
-}
-
-function clearEditor() {
-    let dme = document.getElementById("dme_editor");
-    dme.innerText = ``;
     return;
 }
