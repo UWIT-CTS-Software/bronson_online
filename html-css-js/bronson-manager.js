@@ -59,21 +59,21 @@ These functions are used in both Checkerboard and Jacknet.
 ░▒▓███████▓▒░░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░  ░▒▓█▓▒░░▒▓█▓▒░ 
 */
 
-class Time {
-    constructor() { this.time = ''; }
+// class Time {
+//     constructor() { this.time = ''; }
 
-    setTime(time) { this.time = time; }
+//     setTime(time) { this.time = time; }
 
-    getTime() { return this.time; }
-}
+//     getTime() { return this.time; }
+// }
 
-class Cookie {
-    constructor() { this.value = "none"; }
+// class Cookie {
+//     constructor() { this.value = "none"; }
 
-    setCookie(id) { this.value = id; }
+//     setCookie(id) { this.value = id; }
 
-    getCookie() { return this.value; }
-}
+//     getCookie() { return this.value; }
+// }
 
 const Days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 // Sets local strage for data used by the various tools
@@ -177,7 +177,7 @@ async function getSchedule() {
 // Dashboard Stuff
 // Schedule
 function setSchedule(buttonID) {
-    console.log(buttonID + " Pressed");
+    //console.log(buttonID + " Pressed");
     let current = document.getElementsByClassName("schedule_selected");
     if (current.length != 0) {
         current[0].classList.remove("schedule_selected");
@@ -195,7 +195,6 @@ function setSchedule(buttonID) {
     // Build the table
     let tbody_HTML = `<tbody>`;
     let today = buttonID.split("Button")[0];
-    //console.group(`Technicians`);
     // Sort Technicians by assignment
     const priorityList = ["Zone 1", "Zone 2", "Zone 3", "Zone 4"];
     let zoneTechs = [];
@@ -217,10 +216,8 @@ function setSchedule(buttonID) {
     let techList = zoneTechs.concat(otherTechs);
     // Build Table
     for(let i = 0; i < techList.length; i++) {
-        //console.info(techList[i]);
         tbody_HTML += makeTechSchdRow(techList[i], today);
     }
-    //console.groupEnd(`Technicians`);
     tbody_HTML += `</tbody>`;
     let tbody = document.createElement('tbody');
     tbody.setAttribute("id", "schd_tbody");
@@ -243,13 +240,12 @@ function makeTechTableHeader(firstColumn) {
 }
 
 function makeTechSchdRow(tech, today) {
-    // console.log(today);
     let html = `
     <tr>
         <th scope="row">${tech.Name}</th>`;
     // get schedule timeblocks
     let timeBlocks = getTechSchdTimeBlocks();
-    //console.log(timeBlocks);
+    timeBlocks.push("7:30PM");
     // get techs schedule for the day
     let timeSwitches = [];
     let shift = tech.Schedule[today].split(",");
@@ -257,19 +253,12 @@ function makeTechSchdRow(tech, today) {
         timeSwitches.push(shift[i].split(' - '))
     }
     timeSwitches = timeSwitches.flat(2);
-    //console.log("Todays Tech Shift: ", shift);
-    //console.log("timeSwitches", timeSwitches);
-    //console.log("timeBlocks", timeBlocks);
     let onClock = false;
     let timeIndex = 0;
     let startShiftIndex, endShiftIndex = 0;
-    //let techState = "OffClock";
-    // Iterate through 25 time blocks;
-    //console.group("TimeSwitch vs. TimeBlocks");
-    for(let i = 0; i < timeBlocks.length; i++) {
-        //console.info("timeswitch: ", timeSwitches[timeIndex], " Time Block: ", timeBlocks[i]);
+    // Iterate through 24 time blocks;
+    for(let i = 0; i < timeBlocks.length-1; i++) {
         if(timeBlocks[i] == timeSwitches[timeIndex]) {
-            //console.log("Hit a timeSwitch");
             onClock = !onClock;
             ++timeIndex;
             // I want to see when shift ends now
@@ -288,38 +277,13 @@ function makeTechSchdRow(tech, today) {
             html += `<td class="schd${onClock}">\t</td>`;
         }
     }
-    //console.groupEnd("TimeSwitch vs. TimeBlocks");
     html += `</tr>`
     return html;
 }
 
+// The headers for scheudles
 function getTechSchdTimeBlocks() {
-    return [
-            "7:30AM",
-            "8:00AM",
-            "8:30AM",
-            "9:00AM",
-            "9:30AM",
-            "10:00AM",
-            "10:30AM",
-            "11:00AM",
-            "11:30AM",
-            "12:00PM",
-            "12:30PM",
-            "1:00PM",
-            "1:30PM",
-            "2:00PM",
-            "2:30PM",
-            "3:00PM",
-            "3:30PM",
-            "4:00PM",
-            "4:30PM",
-            "5:00PM",
-            "5:30PM",
-            "6:00PM",
-            "6:30PM",
-            "7:00PM"
-        ];
+    return ["7:30AM","8:00AM","8:30AM","9:00AM","9:30AM","10:00AM","10:30AM","11:00AM","11:30AM","12:00PM","12:30PM","1:00PM","1:30PM","2:00PM","2:30PM","3:00PM","3:30PM","4:00PM","4:30PM","5:00PM","5:30PM","6:00PM","6:30PM","7:00PM"];
 }
 
 // TODO : make a bar that indicates the time that spans the height of the tech schedule
