@@ -1,55 +1,58 @@
 // @generated automatically by Diesel CLI.
 
-diesel::table! {
-    admins (admin) {
-        #[max_length = 255]
-        admin -> Varchar,
+pub mod bronson {
+    pub mod sql_types {
+        #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+        #[diesel(postgres_type(name = "ip_address", schema = "bronson"))]
+        pub struct IpAddress;
     }
-}
 
-diesel::table! {
-    buildings (abbrev) {
-        #[max_length = 5]
-        abbrev -> Varchar,
-        #[max_length = 255]
-        name -> Varchar,
-        #[max_length = 255]
-        lsm_name -> Varchar,
-        zone -> Int2,
+    diesel::table! {
+        bronson.buildings (abbrev) {
+            abbrev -> Text,
+            name -> Text,
+            lsm_name -> Text,
+            zone -> Int2,
+        }
     }
-}
 
-diesel::table! {
-    data (key) {
-        #[max_length = 255]
-        key -> Varchar,
-        val -> Text,
+    diesel::table! {
+        bronson.data (key) {
+            key -> Text,
+            val -> Text,
+        }
     }
-}
 
-diesel::table! {
-    rooms (abbrev) {
-        #[max_length = 5]
-        abbrev -> Varchar,
-        #[max_length = 10]
-        name -> Varchar,
-        checked -> Bool,
-        #[max_length = 21]
-        last_checked -> Varchar,
-        gp -> Bool,
-        available -> Bool,
-        #[max_length = 9]
-        until -> Varchar,
-        hostnames -> Array<Nullable<Text>>,
-        ips -> Array<Nullable<Text>>,
+    diesel::table! {
+        use diesel::sql_types::*;
+        use super::sql_types::IpAddress;
+
+        bronson.rooms (name) {
+            abbrev -> Text,
+            name -> Text,
+            checked -> Text,
+            needs_checked -> Bool,
+            gp -> Bool,
+            available -> Bool,
+            until -> Text,
+            ping_data -> Array<Nullable<IpAddress>>,
+            schedule -> Array<Nullable<Text>>,
+        }
     }
+
+    diesel::table! {
+        bronson.users (username) {
+            username -> Text,
+            permissions -> Int2,
+        }
+    }
+
+    diesel::joinable!(rooms -> buildings (abbrev));
+
+    diesel::allow_tables_to_appear_in_same_query!(
+        buildings,
+        data,
+        rooms,
+        users,
+    );
 }
-
-diesel::joinable!(rooms -> buildings (abbrev));
-
-diesel::allow_tables_to_appear_in_same_query!(
-    admins,
-    buildings,
-    data,
-    rooms,
-);
