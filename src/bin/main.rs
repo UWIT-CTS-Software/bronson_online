@@ -48,8 +48,13 @@ use server_lib::{
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
     BLDG_JSON, ROOM_CSV, CAMPUS_CSV, KEYS, 
-    CFM_DIR, WIKI_DIR, 
+    CFM_DIR, WIKI_DIR, LOG, 
     Request, Response, STATUS_200, STATUS_303, STATUS_404,
+    Database,
+    models::{
+        DB_Room, DB_Building, DB_User, DB_DataElement,
+        DB_IpAddress, DB_Hostname, 
+    },
 };
 use getopts::Options;
 use std::{
@@ -93,6 +98,9 @@ $$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |  $$ |\$$$$$$$ |
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // debug setting
     env::set_var("RUST_BACKTRACE", "1");
+
+    let mut database = Database::new();
+    database.init_if_empty();
 
     // get keys
     let key_file = File::open(KEYS)
@@ -149,6 +157,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for stream in listener.incoming() {
         let mut stream = stream.unwrap();
+        let clone_db = database.clone();
         let clone_bldg = buildings.clone().expect("MAP_ERR: Building not cloned.");
         let clone_keys = keys.clone();
         let mut clone_dash = dash_contents.clone();
@@ -157,7 +166,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let req = Request::build(buffer.clone());
 
         pool.execute(move || {
-            let mut res = handle_connection(req, clone_bldg, clone_keys, &mut clone_dash).unwrap();
+            let mut res = handle_connection(req, clone_db, clone_bldg, clone_keys, &mut clone_dash).unwrap();
             stream.write(&res.build()).unwrap();
             stream.flush().unwrap();
             stdout().flush().unwrap();
@@ -265,6 +274,7 @@ fn gen_building_map() -> Option<HashMap<String, Building>> {
 #[allow(unused_assignments)]
 async fn handle_connection(
     req: Request,
+    mut database: Database,
     mut buildings: HashMap<String, Building>,
     keys: Keys,
     dash_contents: &mut String,
@@ -367,12 +377,12 @@ async fn handle_connection(
         },
         // Data Requests
         "GET /campusData HTTP/1.1"         => {
-            let contents = json!(&buildings).to_string().into();
+            let contents = json!(&database.get_buildings()).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "GET /zoneData HTTP/1.1"           => { // NEW: returns data in lib.rs as json
-            let contents = get_zone_data(buildings);
+            let contents = get_zone_data(database.get_buildings());
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -463,7 +473,6 @@ async fn handle_connection(
             let contents = json!({
                 "body": "[+] All updated successfully."
             }).to_string().into();
-            buildings = gen_building_map().expect("MAP_ERR: Building map failed.");
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -478,7 +487,6 @@ async fn handle_connection(
             let contents = json!({
                 "body": "[+] Map updated successfully."
             }).to_string().into();
-            buildings = gen_building_map().expect("MAP_ERR: Building map failed.");
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -489,7 +497,7 @@ async fn handle_connection(
             res.send_contents("".into());
         },
         "GET /get/log HTTP/1.1"            => {
-            let mut f = File::open("/home/beth-c137/Desktop/UWIT/bronson_online/output.log").unwrap();
+            let mut f = File::open(LOG).unwrap();
             
             let mut file_buffer = Vec::new();
             f.read_to_end(&mut file_buffer).unwrap();
@@ -591,7 +599,7 @@ async fn handle_connection(
         },
         // Jacknet
         "POST /ping HTTP/1.1"              => {
-            let contents = execute_ping(req.body, buildings); // JN
+            let contents = execute_ping(req.body, database); // JN
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -599,19 +607,15 @@ async fn handle_connection(
         "POST /run_cb HTTP/1.1"            => {
             // get zone selection from request and store
             // ----------------------------------------------------------------
-            let building_sel = String::from_utf8(req.body).expect("CamCode Err, invalid UTF-8");
+            let building_sel = String::from_utf8(req.body).expect("CheckerBoard Err, invalid UTF-8");
             // call for roomchecks in LSM and store
             // ----------------------------------------------------------------
-            let mut return_body: Vec<Building> = Vec::new();
-            // attempt to fix buildings.get
-            let building_lsm_name: &str = &mut buildings.get_mut(&building_sel)
-                .unwrap()
-                .lsm_name
-                .as_str();
-            debug!("Checkerboard Debug - building LSM Name:\n{:?}",building_lsm_name);
+            let mut return_body: Vec<DB_Building> = Vec::new();
+            let lsm_building = database.get_building_by_abbrev(&building_sel);
+            debug!("Checkerboard Debug - building LSM Name:\n{:?}", &lsm_building.lsm_name.as_str());
             let url = format!(
                 r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", 
-                building_lsm_name
+                &lsm_building.lsm_name.as_str()
             );
             let req = reqwest::Client::builder()
                 .cookie_store(true)
@@ -643,21 +647,23 @@ async fn handle_connection(
                 }
             }
 
-            for room in &mut buildings.get_mut(&building_sel).unwrap().rooms {
+            for mut room in database.get_rooms_by_abbrev(&building_sel) {
                 if check_map.contains_key(&room.name) {
                     // checked Date format may need changed here
                     debug!("Checkerboard Debug - checked value: \n{:?}", String::from(check_map.get(&room.name).unwrap()));
                     //room.checked = String::from(check_map.get(&room.name).unwrap().split("T").collect::<Vec<&str>>()[0]);
                     room.checked = String::from(check_map.get(&room.name).unwrap());
                     debug!("Checkerboard Debug - Room struct: \n{:?}", room);
-                    room.needs_checked = check_lsm(room);
+                    room.needs_checked = check_lsm(&room);
                 }
-                let schedule_params = check_schedule(room);
+                let schedule_params = check_schedule(&room);
                 room.available = schedule_params.0;
                 room.until = schedule_params.1;
+
+                database.update_room(&room);
             }
 
-            return_body.push(buildings.get(&building_sel).unwrap().clone());
+            return_body.push(database.get_building_by_abbrev(&building_sel));
             // ----------------------------------------------------------------
 
             // parse rooms map to load statuses for return
@@ -749,18 +755,18 @@ fn pad_zero(raw_in: String, length: usize) -> String {
     }
 }
 
-fn get_zone_data(buildings: HashMap<String, Building>) -> Vec<u8> {
+fn get_zone_data(buildings: Vec<DB_Building>) -> Vec<u8> {
     let mut zone_1: Vec<String> = Vec::new();
     let mut zone_2: Vec<String> = Vec::new();
     let mut zone_3: Vec<String> = Vec::new();
     let mut zone_4: Vec<String> = Vec::new();
-    for (abbrev, building) in buildings.iter() {
+    for building in buildings {
         match building.zone {
-            1               => zone_1.push(abbrev.clone()),
-            2               => zone_2.push(abbrev.clone()),
-            3               => zone_3.push(abbrev.clone()),
-            4               => zone_4.push(abbrev.clone()),
-            0 | 5..=u8::MAX => (),
+            1               => zone_1.push(building.abbrev.clone()),
+            2               => zone_2.push(building.abbrev.clone()),
+            3               => zone_3.push(building.abbrev.clone()),
+            4               => zone_4.push(building.abbrev.clone()),
+            _               => (),
         }
     }
     let json_return = json!({
@@ -810,7 +816,7 @@ NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
       CAMPUS_STR -> "html-css-js/campus.json"
 */
 // call ping_this executible here
-fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<u8> {
+fn execute_ping(body: Vec<u8>, mut database: Database) -> Vec<u8> {
     let tmp = String::from_utf8(body).expect("Err, invalid UTF-8");
     debug!("JacknetClientRequest: {:?}", tmp);
     // Prep Request into Struct
@@ -822,48 +828,38 @@ fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<
     //   NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
     //         CAMPUS_STR -> "html-css-js/campus.json" 
 
-    let rooms_to_ping: &mut Vec<Room> = &mut buildings.get_mut(&pr.building).unwrap().rooms;
-    let mut hn_ips: Vec<Vec<String>>;
+    let rooms_to_ping: Vec<DB_Room> = database.get_rooms_by_abbrev(&pr.building);
+    let mut hn_ips: Vec<Vec<Option<DB_IpAddress>>>;
 
-    for rm in 0..rooms_to_ping.len() {
-        hn_ips = Vec::new();
-        for hn_group in 0..rooms_to_ping[rm].hostnames.len() { // make this ping
-            hn_ips.push(Vec::new());
-            if pr.devices[hn_group] == 0 {
-                continue;
-            }
-            let hns = &rooms_to_ping[rm].get_hostnames()[hn_group];
-            hn_ips[hn_group] = ping_room(hns.to_vec());
-        }
-        
-        rooms_to_ping[rm].ips = hn_ips;
+    for mut rm in rooms_to_ping {
+        rm.ping_data = ping_room(rm.ping_data);
+        database.update_room(&rm);
     }
 
-    buildings.get_mut(&pr.building).unwrap().rooms = rooms_to_ping.to_vec();
-
     let json_return = json!({
-        "jn_body": buildings.get(&pr.building).unwrap(),
+        "jn_body": database.get_rooms_by_abbrev(&pr.building),
     });
     // Return JSON with ping results
     return json_return.to_string().into();
 }
 
-fn ping_room(hn_group: Vec<String>) -> Vec<String> {
-    let mut ips: HashMap<String, String> = HashMap::new();
-    for hn in 0..hn_group.len() {
+fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
+    let mut pinged_hns: Vec<Option<DB_IpAddress>> = Vec::new();
+    for net in net_elements {
         std::thread::scope(|s| {
             s.spawn(|| {
-                ips.insert(hn_group[hn].to_string(), ping_this(&hn_group[hn].to_string()));
+                let hn_string: String = net.as_ref().unwrap().hostname.to_string();
+                pinged_hns.push(Some(
+                    DB_IpAddress {
+                        hostname: net.unwrap().hostname,
+                        ip: ping_this(&hn_string)
+                    }
+                ))
             });
         });
     }
 
-    let mut ips_vec = hn_group;
-    for ip in 0..ips_vec.len() {
-        ips_vec[ip] = ips.get(&ips_vec[ip]).unwrap().to_string();
-    }
-
-    return ips_vec;
+    return pinged_hns;
 }
 
 // Generate Hostnames
@@ -947,8 +943,8 @@ fn construct_headers(call_type: &str, keys: Keys) -> HeaderMap {
     return header_map;
 }
 
-fn check_schedule(room: &Room) -> (u8, String) {
-    let mut available: u8 = 1;
+fn check_schedule(room: &DB_Room) -> (bool, String) {
+    let mut available: bool = true;
     let mut until: String = String::from("TOMORROW");
 
     let now = Local::now();
@@ -969,16 +965,16 @@ fn check_schedule(room: &Room) -> (u8, String) {
     let adjusted_time: u16 = (hours * 100) + minutes;
     
     for block in &room.schedule {
-        let block_vec: Vec<&str> = block.split(&[' ', '-']).collect();
+        let block_vec: Vec<&str> = block.as_ref().unwrap().split(&[' ', '-']).collect::<Vec<_>>().to_vec();
         let adjusted_start: u16 = block_vec[1].parse().unwrap();
         let adjusted_end: u16 = block_vec[2].parse().unwrap();
         if block_vec[0].contains(day_of_week) {
             if adjusted_time < adjusted_start {
-                available = 1;
+                available = true;
                 until = pad_zero((adjusted_start % 100).to_string(), 4);
                 return (available, until);
             } else if (adjusted_start <= adjusted_time) && (adjusted_time <= adjusted_end) {
-                available = 0;
+                available = false;
                 until = pad_zero((adjusted_end).to_string(), 4);
                 return (available, until);
             }
@@ -988,22 +984,22 @@ fn check_schedule(room: &Room) -> (u8, String) {
     return (available, until);
 }
 
-fn check_lsm(room: &Room) -> u8 {
+fn check_lsm(room: &DB_Room) -> bool {
     let needs_checked;
     // Line below produces -> ParseError(TooShort)
     let parsed_checked: DateTime<Local> = room.checked.parse().unwrap();
     let time_diff: TimeDelta = Local::now() - parsed_checked;
-    if room.gp == 1 {
+    if room.gp {
         if time_diff.num_seconds() >= 604800 {
-            needs_checked = 1;
+            needs_checked = true;
         } else {
-            needs_checked = 0;
+            needs_checked = false;
         }
     } else {
         if time_diff.num_days() >= 30 {
-            needs_checked = 1;
+            needs_checked = true;
         } else {
-            needs_checked = 0;
+            needs_checked = false;
         }
     }
 
