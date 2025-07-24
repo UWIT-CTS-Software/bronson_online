@@ -311,7 +311,8 @@ function stashCheckerboard(checkerboardResponse) {
     }
     // add indicator to button
     let cbButton = document.getElementById("CBButton");
-    cbButton.innerHTML = `<span>CheckerBoard *</span>`;
+    //cbButton.innerHTML = `<img class="tab_img" src="button2.png"/><span>CheckerBoard *</span>`;
+    cbButton.classList.add("stashed");
     return;
 }
 
@@ -330,7 +331,8 @@ function stashJNResponse(formattedPingRequest, buildingName, deviceNames) {
     }
     // add indicator to button
     let jnButton = document.getElementById("JNButton");
-    jnButton.innerHTML = `<span>JackNet *</span>`;
+    //jnButton.innerHTML = `<img class="tab_img" src="button2.png"/><span>JackNet *</span>`;
+    jnButton.classList.add("stashed");
     return;
 }
 
@@ -356,6 +358,10 @@ function preserveCurrentTool() {
     let currentHTMLObject = document.querySelector('.program_board .program_guts');
     currentTool += "_html";
     // console.log("bronson debug: preserving:\n", currentTool);
-    sessionStorage.setItem(currentTool, currentHTMLObject.innerHTML);
+    if(currentHTMLObject != null) {
+        sessionStorage.setItem(currentTool, currentHTMLObject.innerHTML);
+    } else {
+        console.log("Error, programGuts is null");
+    }
     return;
 }

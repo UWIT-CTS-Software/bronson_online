@@ -1,6 +1,6 @@
 # Bronson Online
 
-![image](https://github.com/user-attachments/assets/1c128596-5141-4aef-863a-c5369643078f)
+<img width="1170" height="119" alt="image" src="https://github.com/user-attachments/assets/c0540131-bed3-48c4-9019-2a8d716c8f23" />
 
 `"All I do is eat oysters and speak six languages in three voices." - Action Bronson`
 
