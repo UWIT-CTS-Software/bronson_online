@@ -153,11 +153,11 @@ function setScheduleEditor() {
     <fieldset className="techSchdOptions">
         <legend> Options </legend>
         <button onclick="updateAllTechSchedules()"> Save All Schedules </button>
-        <button onclick="addBlankTechSchedule()"> Add a Technician </button>
-        <button onclick="setRemoveMode()"> Remove a Technician </button>
-        <button onclick="exportSchd()"> Export Schedules </button>
+        <button onclick="addBlankTechSchedule()"> TODO: Add a Technician </button>
+        <button onclick="setRemoveMode()"> TODO: Remove a Technician </button>
+        <button onclick="exportSchd()"> TODO: Export Schedules </button>
         <div class="techFilterDiv">
-            <label for="techSchdFilter">Filter Technician:</label>
+            <label for="techSchdFilter">Filter Technicians:</label>
             <textarea id="techSchdFilter" placeholder="Name:" onkeyup="filterTechs()"></textarea>
         </div>
     </fieldset>`;
@@ -202,6 +202,9 @@ function addBlankTechSchedules() {
 }
 
 // TODO: Export Schdule
+//  thinking about adding a library to do excel files
+//  if too complex resort to csv.
+//  output may be the literal string inside the tech obj
 function exportSchd() {
     return;
 }
@@ -209,7 +212,7 @@ function exportSchd() {
 function filterTechs() {
     let techTables = document.getElementsByClassName("techSchdDiv");
     let filter = document.getElementById("techSchdFilter").value;
-    console.log("filtering", filter);
+    //console.log("filtering", filter);
     if (filter == '') {
         for(let i = 0; i < techTables.length; i++) {
             techTables[i].hidden = false;

@@ -22,6 +22,14 @@ ul {
     list-style-type: none;
 }
 
+p {
+    color: rgb(236, 200, 101);
+    text-align: center;
+    /* font-family:'Courier New', Courier, monospace; */
+    font-family: 'Lucida Sans', sans-serif;
+    font-size: medium;
+}
+
 textarea {
     margin: auto;
     width: 100%;
@@ -499,7 +507,7 @@ button:-webkit-details-marker {
 }
 
 .db_console {
-    grid-column: 2 / 8;
+    grid-column: 4 / 8;
     grid-row: 1 / 2;
     /* width: 59%; */
 }
@@ -511,7 +519,19 @@ button:-webkit-details-marker {
     width: 60%; */
     width: 100%;
 }
+.db_schedule {
+    grid-column: 2/10;
+    grid-row:2;
+}
 
+.cb_dash {
+    grid-column:2/4;
+    grid-row:1/2;
+}
+
+.cb_dash fieldset {
+    height: 95%;
+}
 
 /* .leaderTab {
     width:25%;
@@ -620,13 +640,9 @@ button:-webkit-details-marker {
 }
 
 /* Schedule Stuff */
-.db_schedule {
-    grid-column: 2/8;
-    grid-row:2;
-}
 
 .schedule {
-    transform: translate(90px, 1px);
+    transform: translate(90px, -2px);
 }
 
 .timeBlockTable {
@@ -645,14 +661,21 @@ button:-webkit-details-marker {
     color:rgb(194, 181, 124);
     border-radius: 4px;
     padding-bottom: 5px;
+    width:100%;
 }
 
-#db_schedule_table thead {
+#db_schedule_table .timeBlockTable {
     /* border: 2px outset gold; */
+    width: 3%;
+    text-align: left;
+    vertical-align:bottom;
+    border: none;
+    border-left: 1px inset rgb(216, 192, 104);
 }
 
 #db_schedule_table th {
     border: 1px outset rgb(220, 183, 96);
+    width:7%;
     font-size: xx-small;
 }
 
@@ -671,10 +694,7 @@ button:-webkit-details-marker {
     border-bottom: 26px solid #7c1919;
 } */
 
-.cb_dash {
-    grid-column:8/10;
-    grid-row:2;
-}
+
 .cb_dashZones {
     margin: 0px;
     padding: 0px;
@@ -1072,6 +1092,7 @@ span.psw {
     font-family: 'Courier New', Courier, monospace;
     margin:0px 0px 4px 0px;
     font-weight: bold;
+    text-align: left;
 }
 
 .cbTopperBuildingStatus {
@@ -1403,15 +1424,18 @@ ol li::marker {
 /* Admin Tools -- Schedule Editor */
 /* Top Options */
 #techSchdFilter {
-    width:20%;
+    width:70%;
     height:25px;
     float:right;
 }
 
 .techFilterDiv {
-    width: 50%;
+    width: 25%;
     height: 30px;
     float:right;
+}
+.techFilterDiv label {
+    font-size:small;
 }
 
 /* Tech Tables */
@@ -1471,6 +1495,11 @@ ol li::marker {
 
 .adminTechTable th {
     width: 50px;
+}
+
+.adminTechTable .schdtrue:hover {
+    transform: scale(1.1);
+    box-shadow:#302f35 2px 2px 2px 2px;
 }
 
 .admin_tabs {
