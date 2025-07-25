@@ -150,11 +150,11 @@ function setScheduleEditor() {
     let buttonFieldset = document.createElement('div');
     buttonFieldset.classList.add("schdEditorButtonsDiv");
     buttonFieldset.innerHTML = `
-    <fieldset className="techSchdOptions">
+    <fieldset id="techSchdOptions" className="techSchdOptions">
         <legend> Options </legend>
         <button onclick="updateAllTechSchedules()"> Save All Schedules </button>
-        <button onclick="addBlankTechSchedule()"> TODO: Add a Technician </button>
-        <button onclick="setRemoveMode()"> TODO: Remove a Technician </button>
+        <button id="addNewTechBttn" onclick="addBlankTechSchedule(0)"> Add a Technician </button>
+        <button onclick="setRemoveMode()"> Remove a Technician </button>
         <button onclick="exportSchd()"> TODO: Export Schedules </button>
         <div class="techFilterDiv">
             <label for="techSchdFilter">Filter Technicians:</label>
@@ -172,6 +172,7 @@ function setScheduleEditor() {
     let admin_internals = document.getElementById('admin_internals');
     admin_internals.replaceWith(schedule_editor);
     // Add additional Listeners
+    // Disable enterkey
     document.getElementById('techSchdFilter').addEventListener('keydown', function(event) {
         if (event.key === 'Enter') {
             event.preventDefault();
@@ -181,6 +182,12 @@ function setScheduleEditor() {
     for(tech in scheduleData.Technicians) {
         let techObj = scheduleData.Technicians[tech];
         updateHours(`tech${techObj.Name}`,`${techObj.Name.split(" ")[1]}Hours`);
+        // Disable enter on name fields
+        document.getElementById(`techNameEdit${techObj.Name}`).addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+        } 
+    });
     }
     return;
 }
@@ -189,6 +196,77 @@ function setScheduleEditor() {
 //  I really dont want to accidentally remove someone with a misclick
 //   so I want this to be a popup with a list of techs. With a button
 function setRemoveMode() {
+    let techTables = document.getElementsByClassName('techSchdDiv');
+    for(i in techTables) {
+        techTables[i].hidden = true;
+    }
+    let options = document.getElementById('techSchdOptions');
+    options.hidden = true;
+    let fireSomeoneMenu = document.createElement('div');
+    fireSomeoneMenu.setAttribute("id", "techSchdRemoveTech");
+    fireSomeoneMenu.classList.add("techSchdRemoveTech");
+    // Get current saved Schedule
+    let scheduleData = JSON.parse(localStorage.getItem("schedule"));
+    let techList = scheduleData["Technicians"];
+    console.log(techList);
+    // HTML
+    let html = `
+    <ul id="techSchdRemoveList">`;
+    for(i in techList) {
+        //console.log("techList[i]", techList[i]);
+        html += `<li id="rm_${techList[i].Name}" onclick="removeTechSelect('rm_${techList[i].Name}')">${techList[i].Name}</li>`;
+    }
+    html +=`</ul>`;
+    html += `<button onclick="exitRemoveMode()">Exit Remove Mode</button>
+    <button onclick="removeSelectedTechs()">Confirm Selection</button>`;
+    // place new element on page
+    fireSomeoneMenu.innerHTML = html;
+    if (document.getElementById('techSchdRemoveTech') == undefined) {
+        document.getElementById("admin_internals").appendChild(fireSomeoneMenu);
+    } else {
+        document.getElementById("techSchdRemoveTech").replaceWith(fireSomeoneMenu);
+    }
+    
+    return;
+}
+
+// This function simply adds a class to a techs name to indicate that they have been selected for
+//  removal out of the schedule. In order to complete the removal the admin has to click 
+//  'Confirm Selection'. This is to ensure intentionality and not accidentally remove someone.
+function removeTechSelect(techID) {
+    let element = document.getElementById(techID);
+    if(element.classList.contains("setToRemove")) {
+        element.classList.remove("setToRemove");
+    } else {
+        element.classList.add("setToRemove");
+    }
+    return;
+}
+
+function exitRemoveMode() {
+    document.getElementById("techSchdRemoveTech").remove();
+    // let hiddenElements = document.getElementsByClassName("techSchdDiv");
+    // for (i in hiddenElements) {
+    //     hiddenElements[i].hidden = false;
+    // }
+    setScheduleEditor();
+    return;
+}
+
+function removeSelectedTechs() {
+    // get techs to remove
+    let techsToRemove = document.getElementsByClassName("setToRemove");
+    // get stored json
+    let scheduleData = JSON.parse(localStorage.getItem("schedule"));
+    for (let i = 0;i < techsToRemove.length; i++) {
+        let rm_id = techsToRemove[i].getAttribute('id').split("rm_")[1];
+        console.log(rm_id)
+        scheduleData["Technicians"] = scheduleData["Technicians"].filter(obj => obj.Name !== rm_id);
+    }
+    // NOTE: verify this is not broken and correct before updating the localstorage iteration.
+    console.log(scheduleData);
+    localStorage.setItem("schedule", JSON.stringify(scheduleData));
+    setRemoveMode();
     return;
 }
 
@@ -197,7 +275,32 @@ function setRemoveMode() {
 // The save button here will need to be a little different
 //  it will need to add the new tech to the array of objects.
 //  the other function updates an existing entry.
-function addBlankTechSchedules() {
+function addBlankTechSchedule(count) {
+    //Up Count in onclick
+    let newTechBttn = document.getElementById("addNewTechBttn");
+    newTechBttn.setAttribute('onclick', `addBlankTechSchedule(${count+1})`);
+    let blankTech = {
+        "Name": `New Tech${count}`,
+        "Assignment": "Unassigned",
+        "Schedule": {
+            "Monday": "NA",
+            "Tuesday": "NA",
+            "Wednesday": "NA",
+            "Thursday": "NA",
+            "Friday": "NA"
+        }
+    }
+    let newTable = makeTechEditTable(blankTech);
+    // get techSchdDiv Elements and insert new tech
+    let oldTables = document.getElementsByClassName('techSchdDiv');
+    let parentElement = document.getElementById('admin_internals');
+    parentElement.insertBefore(newTable, oldTables[0]);
+    document.getElementById(`techNameEdit${blankTech.Name}`).addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            console.log("something is wrong");
+        } 
+    });
     return;
 }
 
@@ -422,12 +525,28 @@ function updateTechSchedule(tableID) {
     }
     // Assignment
     let select = document.getElementById(`techSelect${techName}`);
+    // TODO: Name
+    let name = document.getElementById(`techNameEdit${techName}`)
     // get copy of current tech schedules and update it
     //   DATABASE POST REQUEST HERE.
     let scheduleData = JSON.parse(localStorage.getItem('schedule'));
+    // If tech is not in json, add to it
     let techIndex = scheduleData.Technicians.findIndex(element => element.Name === techName);
-    scheduleData.Technicians[techIndex].Schedule = newSchdObj;
-    scheduleData.Technicians[techIndex].Assignment = select.value;
-    localStorage.setItem('schedule', JSON.stringify(scheduleData));
+    console.log(techIndex);
+    if(techIndex == -1) {
+        console.log("Adding New Tech to Schedule");
+        let newTechObj = {
+            "Name": name.value,
+            "Assignment": select.value,
+            "Schedule": newSchdObj
+        }
+        scheduleData.Technicians.push(newTechObj);
+        localStorage.setItem('schedule', JSON.stringify(scheduleData));
+    } else {
+        scheduleData.Technicians[techIndex].Schedule = newSchdObj;
+        scheduleData.Technicians[techIndex].Name = name.value;
+        scheduleData.Technicians[techIndex].Assignment = select.value;
+        localStorage.setItem('schedule', JSON.stringify(scheduleData));
+    }
     return;
 }

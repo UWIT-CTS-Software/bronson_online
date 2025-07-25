@@ -22,13 +22,13 @@ ul {
     list-style-type: none;
 }
 
-p {
+/* p {
     color: rgb(236, 200, 101);
     text-align: center;
-    /* font-family:'Courier New', Courier, monospace; */
+
     font-family: 'Lucida Sans', sans-serif;
     font-size: medium;
-}
+} */
 
 textarea {
     margin: auto;
@@ -1501,6 +1501,16 @@ ol li::marker {
     transform: scale(1.1);
     box-shadow:#302f35 2px 2px 2px 2px;
 }
+
+.admin_internals li {
+    background-color:#a5a29c;
+    border: 2px black;
+}
+.setToRemove {
+    background-color:red;
+}
+
+/* TABS */
 
 .admin_tabs {
     margin: -9px 0px 26px 0px;
