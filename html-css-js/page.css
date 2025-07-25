@@ -1401,11 +1401,25 @@ ol li::marker {
 }
 
 /* Admin Tools -- Schedule Editor */
+/* Top Options */
+#techSchdFilter {
+    width:20%;
+    height:25px;
+    float:right;
+}
+
+.techFilterDiv {
+    width: 50%;
+    height: 30px;
+    float:right;
+}
+
+/* Tech Tables */
+
 .techFieldset {
     padding: 3px 3px 3px 3px;
     display: flex;
 }
-
 
 .techFieldset label {
     font-size:small;

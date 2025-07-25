@@ -150,10 +150,16 @@ function setScheduleEditor() {
     let buttonFieldset = document.createElement('div');
     buttonFieldset.classList.add("schdEditorButtonsDiv");
     buttonFieldset.innerHTML = `
-    <fieldset>
-        <legend> Buttons </legend>
-        <button> Set Schedule </button>
-        <button> Add Technician </button>
+    <fieldset className="techSchdOptions">
+        <legend> Options </legend>
+        <button onclick="updateAllTechSchedules()"> Save All Schedules </button>
+        <button onclick="addBlankTechSchedule()"> Add a Technician </button>
+        <button onclick="setRemoveMode()"> Remove a Technician </button>
+        <button onclick="exportSchd()"> Export Schedules </button>
+        <div class="techFilterDiv">
+            <label for="techSchdFilter">Filter Technician:</label>
+            <textarea id="techSchdFilter" placeholder="Name:" onkeyup="filterTechs()"></textarea>
+        </div>
     </fieldset>`;
     schedule_editor.appendChild(buttonFieldset);
     // Make filters (?)
@@ -165,12 +171,63 @@ function setScheduleEditor() {
     // replace admin_internals
     let admin_internals = document.getElementById('admin_internals');
     admin_internals.replaceWith(schedule_editor);
+    // Add additional Listeners
+    document.getElementById('techSchdFilter').addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+        } 
+    });
+    // update hours for everyone
+    for(tech in scheduleData.Technicians) {
+        let techObj = scheduleData.Technicians[tech];
+        updateHours(`tech${techObj.Name}`,`${techObj.Name.split(" ")[1]}Hours`);
+    }
     return;
 }
 
-// TODO - return a div for each tech given
+// TODO: set remove mode,
+//  I really dont want to accidentally remove someone with a misclick
+//   so I want this to be a popup with a list of techs. With a button
+function setRemoveMode() {
+    return;
+}
+
+// TODO: place a blank tech table at the top of the page.
+//s empty name, unassigned, no time selected on the table.
+// The save button here will need to be a little different
+//  it will need to add the new tech to the array of objects.
+//  the other function updates an existing entry.
+function addBlankTechSchedules() {
+    return;
+}
+
+// TODO: Export Schdule
+function exportSchd() {
+    return;
+}
+
+function filterTechs() {
+    let techTables = document.getElementsByClassName("techSchdDiv");
+    let filter = document.getElementById("techSchdFilter").value;
+    console.log("filtering", filter);
+    if (filter == '') {
+        for(let i = 0; i < techTables.length; i++) {
+            techTables[i].hidden = false;
+        }
+        return;
+    }
+    for(let i = 0; i < techTables.length; i++) {
+        if(!techTables[i].getAttribute('id').toLowerCase().includes(filter.toLowerCase())) {
+            techTables[i].hidden = true;
+        }
+    }
+    return;
+}
+
 function makeTechEditTable(techObj) {
     let techTable = document.createElement('div');
+    techTable.classList.add("techSchdDiv");
+    techTable.setAttribute("id", techObj.Name);
     //techTable.innerText = techObj.Name;
     //let techSchedule = techObj.Schedule;
     let tableHTML = `
@@ -193,6 +250,12 @@ function makeTechEditTable(techObj) {
                 ${makeAdminTechSchdRow(techObj, "Thursday")}
                 ${makeAdminTechSchdRow(techObj, "Friday")}
             </tbody>
+            <tfoot>
+                <tr>
+                    <th scope"row" colspan="2">Weekly Hours:</th>
+                    <td id="${techObj.Name.split(" ")[1]}Hours"></td>
+                </tr>
+            </tfoot>
         </table>
         </fieldset>`;
     techTable.innerHTML = tableHTML;
@@ -242,14 +305,14 @@ function makeAdminTechSchdRow(tech, day) {
             ++timeIndex;
         }
         let id = tech.Name.split(" ")[1] + day + timeBlocks[i];
-        html += `<td id="${id}" draggable="true" ondragenter="flipTime('${id}')" onclick="flipTime('${id}')" class="schd${onClock}">\t</td>`;
+        html += `<td id="${id}" draggable="true" ondragenter="flipTime('${tech.Name}','${id}')" onclick="flipTime('${tech.Name}','${id}')" class="schd${onClock}">\t</td>`;
     }
     //console.groupEnd("TimeSwitch vs. TimeBlocks");
     html += `</tr>`
     return html;
 }
 
-function flipTime(tableElementID) {
+function flipTime(techName, tableElementID) {
     let element = document.getElementById(tableElementID);
     if(element.classList.contains("schdtrue")) {
         element.classList.remove("schdtrue");
@@ -257,6 +320,25 @@ function flipTime(tableElementID) {
     } else {
         element.classList.remove("schdfalse");
         element.classList.add("schdtrue");
+    }
+    updateHours(`tech${techName}`,`${techName.split(" ")[1]}Hours`);
+    return;
+}
+
+function updateHours(tableID, tableHoursID) {
+    let table = document.getElementById(tableID);
+    let hoursEntry = document.getElementById(tableHoursID);
+    let onCells = table.getElementsByClassName('schdtrue');
+    //console.log("updateHours", onCells);
+    hoursEntry.innerText = onCells.length * .5;
+    return;
+}
+
+function updateAllTechSchedules() {
+    let tables = document.getElementsByClassName("adminTechTable");
+    for(let i = 0; i < tables.length; i++) {
+        let tableId = tables[i].getAttribute("id");
+        updateTechSchedule(tableId);
     }
     return;
 }
