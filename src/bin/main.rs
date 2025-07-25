@@ -44,16 +44,16 @@ Wiki
 use server_lib::{
     Keys,
     ThreadPool, PingRequest, 
-    Room, Building, 
+    Building, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
-    BLDG_JSON, ROOM_CSV, CAMPUS_CSV, KEYS, 
+    KEYS, 
     CFM_DIR, WIKI_DIR, LOG, 
     Request, Response, STATUS_200, STATUS_303, STATUS_404,
     Database,
     models::{
         DB_Room, DB_Building, DB_User, DB_DataElement,
-        DB_IpAddress, DB_Hostname, 
+        DB_IpAddress,  
     },
 };
 use getopts::Options;
@@ -62,7 +62,7 @@ use std::{
     io::{ prelude::*, Read, stdout, },
     net::{ TcpListener, },
     fs::{
-        read_to_string, read_dir, metadata,
+        read_dir, metadata,
         File,
     },
     time::{ Duration, SystemTime },
@@ -76,7 +76,6 @@ use reqwest::{
 };
 use log::{ debug, info, }; // error, trace, warn, };
 use cookie::{ Cookie, };
-use csv::{ Reader, };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
 use regex::Regex;
@@ -123,10 +122,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         init_logger("info")?;
     }
-
-    // generate rooms HashMap
-    let buildings = gen_building_map();
-    let dash_contents = &mut String::from("Welcome to Bronson!");
     
     // set TcpListener and initalize
     // ------------------------------------------------------------------------
@@ -158,15 +153,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for stream in listener.incoming() {
         let mut stream = stream.unwrap();
         let clone_db = database.clone();
-        let clone_bldg = buildings.clone().expect("MAP_ERR: Building not cloned.");
         let clone_keys = keys.clone();
-        let mut clone_dash = dash_contents.clone();
 
         stream.read(&mut buffer).unwrap();
         let req = Request::build(buffer.clone());
 
         pool.execute(move || {
-            let mut res = handle_connection(req, clone_db, clone_bldg, clone_keys, &mut clone_dash).unwrap();
+            let mut res = handle_connection(req, clone_db, clone_keys).unwrap();
             stream.write(&res.build()).unwrap();
             stream.flush().unwrap();
             stdout().flush().unwrap();
@@ -204,90 +197,26 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
     return Ok(());
 }
 
-fn gen_building_map() -> Option<HashMap<String, Building>> {
-    let room_filter = Regex::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
-
-    let mut schedules: HashMap<String, Vec<String>> = HashMap::new();
-    let schedule_data = File::open(ROOM_CSV).unwrap();
-    let mut schedule_rdr = Reader::from_reader(schedule_data);
-    for result in schedule_rdr.records() {
-        let record = result.unwrap();
-        if room_filter.is_match(record.get(0).expect("Empty")) {
-            let room = String::from(record.get(0).expect("Empty"));
-            let mut schedule = Vec::new();
-            for block in 1..8 {
-                if record.get(block).expect("Empty") == "" {
-                    break;
-                }
-
-                schedule.push(String::from(record.get(block).expect("Empty")));
-            }
-
-            schedules.insert(room, schedule);
-        }
-    }
-
-    let bldg_file: String = read_to_string(BLDG_JSON).ok()?;
-    let mut buildings: HashMap<String, Building> = serde_json::from_str(bldg_file.as_str()).ok()?;
-    let room_data = File::open(CAMPUS_CSV).unwrap();
-    let mut room_rdr = Reader::from_reader(room_data);
-    for result in room_rdr.records() {
-        let record = result.unwrap();
-        let room_name = record.get(0).expect("Empty");
-        if room_filter.is_match(room_name) {
-            let mut item_vec: Vec<u8> = Vec::new();
-            for i in 1..7 {
-                item_vec.push(record.get(i).expect("-1").parse().unwrap());
-            }
-
-            let schedule = match schedules.get(&String::from(room_name)) {
-                Some(x) => x.to_owned(),
-                _       => Vec::<String>::new(),
-            };
-            let hn_vec = gen_hn(String::from(room_name), &item_vec);
-            let ip_vec = gen_ip(item_vec);
-
-            let room = Room {
-                name: String::from(room_name),
-                hostnames: hn_vec,
-                ips: ip_vec,
-                gp: record.get(7).expect("-1").parse().unwrap(),
-                //checked: String::from("2000-01-01"), // Switched this to DateTime Friendly
-                checked: String::from("2000-01-01T00:00:00Z"),
-                needs_checked: 1,
-                schedule: schedule.to_vec(),
-                available: 0,
-                until: String::from("Tomorrow")
-            };
-
-            let bldg_abbrev = String::from(room_name.split(" ").collect::<Vec<_>>()[0]);
-            let building: &mut Building = buildings.get_mut(&bldg_abbrev).unwrap();
-
-            building.rooms.push(room);
-        }
-    }
-
-    return Some(buildings);
-}
-
 #[tokio::main]
 #[allow(unused_assignments)]
 async fn handle_connection(
     req: Request,
     mut database: Database,
-    mut buildings: HashMap<String, Building>,
     keys: Keys,
-    dash_contents: &mut String,
 ) -> Option<Response> {
     
     let mut user_homepage: &str = "html-css-js/login.html";
     if req.headers.contains_key("Cookie") {
-        let username_search = Regex::new("user=(?<username>admin|guest)").unwrap();
+        let username_search = Regex::new("user=(?<username>.*)").unwrap();
         let Some(username) = username_search.captures(&req.headers.get("Cookie").unwrap()) else { panic!("Empty") };
-        if &username["username"] == "admin" {
-            user_homepage = "html-css-js/index_admin.html";
-        } else {
-            user_homepage = "html-css-js/index.html"
+        let user = database.get_user(&username["username"]);
+        if user.is_some() {
+            match user.unwrap().permissions {
+                7 => user_homepage = "html-css-js/index_admin.html",
+                6 => user_homepage = "html-css-js/index_admin.html",
+                0 => user_homepage = "html-css-js/login.html",
+                _ => user_homepage = "html-css-js/index.html",
+            }
         }
     }
 
@@ -369,8 +298,6 @@ async fn handle_connection(
             res.send_file(user_homepage);
             res.insert_onload("setAdminTools()");
         }
-        // --- TODO: Has the hashmap been updated? If true return the changed pieces
-        //        (caching)
         // Assets
         "GET /favicon.ico HTTP/1.1"        => {
             res.status(STATUS_200);
@@ -394,7 +321,7 @@ async fn handle_connection(
         },
         // Data Requests
         "GET /campusData HTTP/1.1"         => {
-            let contents = json!(&database.get_buildings()).to_string().into();
+            let contents = json!(&database.get_campus()).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -405,7 +332,7 @@ async fn handle_connection(
         },
         "GET /dashContents HTTP/1.1"       => {
             let contents = json!({
-                "contents": dash_contents
+                "contents": database.get_data("dashboard").val
             }).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
@@ -532,7 +459,10 @@ async fn handle_connection(
             let update_search = Regex::new(r#".*contents":"(?<contents>.*)""#).unwrap();
             let contents = update_search.captures(str::from_utf8(&req.body).expect("Empty")).unwrap();
             let new_contents = contents["contents"].to_string();
-            *dash_contents = new_contents;
+            database.update_data(&DB_DataElement {
+                key: String::from("dashboard"),
+                val: new_contents,
+            });
             res.status(STATUS_200);
             res.send_contents("".into());
         },
@@ -541,33 +471,25 @@ async fn handle_connection(
         // --------------------------------------------------------------------
         // login
         "POST /login HTTP/1.1"             => {
-            let credential_search = Regex::new(r"uname=(?<user>.*)&psw=(?<pass>[\d\w%]*)").unwrap();
+            let credential_search = Regex::new(r"uname=(?<user>.*)&remember=[on|off]").unwrap();
             let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Option::Some(res) };
             let user = String::from(credentials["user"].to_string().into_boxed_str());
-            let pass = String::from(credentials["pass"].to_string().into_boxed_str());
-            let mut found_user: bool = false;
-            for credential in keys.users {
-                if user == credential[0] && pass == credential[1] {
-                    found_user = true;
-                    let cookie;
-                    if user == "admin" {
-                        cookie = Cookie::build(("user","admin"));
-                        user_homepage = "html-css-js/index_admin.html";
-                    } else {
-                        cookie = Cookie::build(("user","guest"));
-                        user_homepage = "html-css-js/index.html";
-                    }
-                    res.insert_header("Set-Cookie", cookie.to_string().as_str());
-                    res.insert_header("Access-Control-Expose-Headers", "Set-Cookie");
-                    res.status(STATUS_303);
-                    res.send_file(user_homepage);
-                    break;
+            let db_user: Option<DB_User> = database.get_user(&user.as_str());
+            if db_user.is_some() {
+                match &db_user.unwrap().permissions {
+                    7 => user_homepage = "html-css-js/index_admin.html",  // admin
+                    6 => user_homepage = "html-css-js/index_admin.html", // manager / lead tech
+                    0 => user_homepage = "html-css-js/login.html",       // revoked
+                    _ => user_homepage = "html-css-js/index.html",       // tech default
                 }
+
+                let cookie = Cookie::build(("user", user));
+                res.insert_header("Set-Cookie", cookie.to_string().as_str());
+                res.insert_header("Access-Control-Expose-Headers", "Set-Cookie");
             }
-            if !found_user {
-                res.status(STATUS_200);
-                res.send_file(user_homepage);
-            }
+
+            res.status(STATUS_200);
+            res.send_file(user_homepage);
         },
         "POST /bugreport HTTP/1.1"         => {
             let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
@@ -601,15 +523,15 @@ async fn handle_connection(
                 .ok()?
             ;
 
-            let _body = req.post(url)
-                          .timeout(Duration::from_secs(15))
-                          .json(&arg_map)
-                          .send()
-                          .await
-                          .expect("[-] RESPONSE ERROR")
-                          .text()
-                          .await
-                          .expect("[-] PAYLOAD ERROR");
+            let _ = req.post(url)
+                .timeout(Duration::from_secs(15))
+                .json(&arg_map)
+                .send()
+                .await
+                .expect("[-] RESPONSE ERROR")
+                .text()
+                .await
+                .expect("[-] PAYLOAD ERROR");
 
             res.status(STATUS_200);
             res.send_file(user_homepage);
@@ -627,7 +549,7 @@ async fn handle_connection(
             let building_sel = String::from_utf8(req.body).expect("CheckerBoard Err, invalid UTF-8");
             // call for roomchecks in LSM and store
             // ----------------------------------------------------------------
-            let mut return_body: Vec<DB_Building> = Vec::new();
+            let mut return_body: Vec<Building> = Vec::new();
             let lsm_building = database.get_building_by_abbrev(&building_sel);
             debug!("Checkerboard Debug - building LSM Name:\n{:?}", &lsm_building.lsm_name.as_str());
             let url = format!(
@@ -680,7 +602,17 @@ async fn handle_connection(
                 database.update_room(&room);
             }
 
-            return_body.push(database.get_building_by_abbrev(&building_sel));
+            let ret_building = database.get_building_by_abbrev(&building_sel);
+            let ret_rooms = database.get_rooms_by_abbrev(&ret_building.abbrev);
+            return_body.push(
+                Building {
+                    abbrev: ret_building.abbrev,
+                    name: ret_building.name,
+                    lsm_name: ret_building.lsm_name,
+                    rooms: ret_rooms,
+                    zone: ret_building.zone,
+                }
+            );
             // ----------------------------------------------------------------
 
             // parse rooms map to load statuses for return
@@ -772,12 +704,12 @@ fn pad_zero(raw_in: String, length: usize) -> String {
     }
 }
 
-fn get_zone_data(buildings: Vec<DB_Building>) -> Vec<u8> {
+fn get_zone_data(buildings: HashMap<String, DB_Building>) -> Vec<u8> {
     let mut zone_1: Vec<String> = Vec::new();
     let mut zone_2: Vec<String> = Vec::new();
     let mut zone_3: Vec<String> = Vec::new();
     let mut zone_4: Vec<String> = Vec::new();
-    for building in buildings {
+    for (_, building) in buildings.iter() {
         match building.zone {
             1               => zone_1.push(building.abbrev.clone()),
             2               => zone_2.push(building.abbrev.clone()),
@@ -846,7 +778,6 @@ fn execute_ping(body: Vec<u8>, mut database: Database) -> Vec<u8> {
     //         CAMPUS_STR -> "html-css-js/campus.json" 
 
     let rooms_to_ping: Vec<DB_Room> = database.get_rooms_by_abbrev(&pr.building);
-    let mut hn_ips: Vec<Vec<Option<DB_IpAddress>>>;
 
     for mut rm in rooms_to_ping {
         rm.ping_data = ping_room(rm.ping_data);
@@ -877,62 +808,6 @@ fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress
     }
 
     return pinged_hns;
-}
-
-// Generate Hostnames
-//    Nov. 5 Revision Paradigm Shift -> genHost @ database init
-//      room_name -> "AN 104"
-//      item_vec  -> "[0,1,2,3,4]" 
-//          "[ Proc , Pj , Disp , Ws , Tp ]"
-fn gen_hn(
-    room_name: String, 
-    item_vec: &Vec<u8>
-) -> Vec<Vec<String>> {
-    let mut hostnames = Vec::new();
-    let mut tmp_hn    = String::new();
-    let parts: Vec<&str> = room_name.split(" ").collect();
-    // let building_prefix = parts[0];
-    // let room_number     = parts[1];
-
-    // Assemble the hostname here
-    for i in 0..6 {
-        let dev_type = match i {
-            0 => "PROC",
-            1 => "PJ",
-            2 => "DISP",
-            3 => "WS",
-            4 => "TP",
-            5 => "CMICX",
-            _ => "ERROR"
-        };
-
-        hostnames.push(Vec::new());
-        for j in 0..item_vec[i] {
-            tmp_hn.push_str(parts[0]);
-            tmp_hn.push('-');
-            tmp_hn.push_str(parts[1]);
-            tmp_hn.push('-');
-            tmp_hn.push_str(dev_type);
-            tmp_hn.push(char::from_digit((j+1).into(), 10).expect("digit bad idk"));
-            hostnames[i].push(tmp_hn);
-            tmp_hn = String::new();
-        };
-    };
-    return hostnames;
-}
-
-// helper function for packing x's into the hashmap on init
-fn gen_ip(item_vec: Vec<u8>) -> Vec<Vec<String>> {
-    let mut ips = Vec::new();
-    let mut ip_groups = Vec::new();
-    for i in item_vec {
-        for _ in 0..i {
-            ips.push("x".to_string());
-        }
-        ip_groups.push(ips.clone());
-        ips = Vec::new();
-    };
-    return ip_groups;
 }
 
 /*

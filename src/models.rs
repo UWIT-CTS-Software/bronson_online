@@ -177,7 +177,7 @@ pub struct DB_Building {
 
 
 #[allow(non_camel_case_types)]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable, AsChangeset)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Queryable, Selectable, Insertable, AsChangeset)]
 #[diesel(table_name = rooms)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct DB_Room {

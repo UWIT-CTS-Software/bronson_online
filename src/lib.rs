@@ -397,11 +397,38 @@ impl Database {
 		return ip_vec;
 	}
 
-	pub fn get_buildings(&mut self) -> Vec<DB_Building> {
-		buildings
+	pub fn get_campus(&mut self) -> HashMap<String, Building>{
+		let mut ret_map: HashMap<String, Building> = HashMap::new();
+		let bldg_map = self.get_buildings();
+		for (bldg_abbrev, bldg) in bldg_map {
+			ret_map.insert(
+				bldg_abbrev.clone(),
+				Building {
+					abbrev: bldg.abbrev,
+					name: bldg.name,
+					lsm_name: bldg.lsm_name,
+					rooms: self.get_rooms_by_abbrev(&bldg_abbrev),
+					zone: bldg.zone
+				}
+			);
+		}
+
+		ret_map
+	}
+
+	pub fn get_buildings(&mut self) -> HashMap<String, DB_Building> {
+		let mut ret_map: HashMap<String, DB_Building> = HashMap::new();
+
+		let bldg_array = buildings
 			.select(DB_Building::as_select())
 			.load(&mut self.connection)
-			.expect("SQL_ERR: Error loading buildings")
+			.expect("SQL_ERR: Error loading buildings");
+
+		for bldg in bldg_array {
+			ret_map.insert(bldg.abbrev.to_string(), bldg);
+		}
+
+		ret_map
 	}
 
 	pub fn get_building_by_abbrev(&mut self, bldg_abbrev: &String) -> DB_Building {
@@ -428,11 +455,14 @@ impl Database {
 
 	pub fn get_rooms_by_abbrev(&mut self, bldg_abbrev: &String) -> Vec<DB_Room> {
 		use crate::schema::bronson::rooms::dsl::abbrev;
-		rooms
+		let mut ret_vec = rooms
 			.select(DB_Room::as_select())
 			.filter(abbrev.eq(bldg_abbrev))
 			.load(&mut self.connection)
-			.expect("SQL_ERR: Error loading rooms by abbreviation")
+			.expect("SQL_ERR: Error loading rooms by abbreviation");
+
+		ret_vec.sort_by_key(|r| r.name.clone());
+		ret_vec
 	}
 
 	pub fn update_room(&mut self, room: &DB_Room) {
@@ -447,14 +477,13 @@ impl Database {
 			.expect("SQL_ERR: Error inserting room");
 	}
 
-	pub fn get_user(&mut self, user: &String) -> DB_User {
+	pub fn get_user(&mut self, user: &str) -> Option<DB_User> {
 		users
 			.select(DB_User::as_select())
 			.filter(username.eq(user))
 			.first(&mut self.connection)
 			.optional()
 			.expect("SQL_ERR: Error loading user")
-			.unwrap()
 	}
 
 	pub fn update_user(&mut self, user: &DB_User) {
@@ -476,7 +505,7 @@ impl Database {
 			.expect("SQL_ERR: Error deleting user");
 	}
 
-	pub fn get_data(&mut self, data_key: &String) -> DB_DataElement {
+	pub fn get_data(&mut self, data_key: &str) -> DB_DataElement {
 		data
 			.select(DB_DataElement::as_select())
 			.filter(key.eq(data_key))
@@ -538,11 +567,11 @@ impl<'a> Clone for Keys {
 // ----------- Custom struct for checkerboard - jn <3
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Building {
+	pub abbrev: String,
 	pub name: String,
 	pub lsm_name: String,
-	pub abbrev: String,
-	pub rooms: Vec<Room>,
-	pub zone: u8,
+	pub rooms: Vec<DB_Room>,
+	pub zone: i16,
 }
 
 impl Building {
