@@ -59,6 +59,23 @@ These functions are used in both Checkerboard and Jacknet.
 ░▒▓███████▓▒░░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░  ░▒▓█▓▒░░▒▓█▓▒░ 
 */
 
+// class Time {
+//     constructor() { this.time = ''; }
+
+//     setTime(time) { this.time = time; }
+
+//     getTime() { return this.time; }
+// }
+
+// class Cookie {
+//     constructor() { this.value = "none"; }
+
+//     setCookie(id) { this.value = id; }
+
+//     getCookie() { return this.value; }
+// }
+
+const Days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 // Sets local strage for data used by the various tools
 //  - Zone Building list array of room names for each zone
 //  - Campus.json used for various things in jacknet
@@ -68,18 +85,48 @@ These functions are used in both Checkerboard and Jacknet.
 //  change on the backend.
 async function initLocalStorage() {
     // Campus Data (Effectively a clone of the hashmap)
-    let campData = await getCampusData();
-    localStorage.setItem("campData", JSON.stringify(campData));
+    if(localStorage.getItem("campData") == null) {
+        let campData = await getCampusData();
+        localStorage.setItem("campData", JSON.stringify(campData));
+    }
     // Zone Arrays
-    let zoneData = await getZoneData();
-    localStorage.setItem("zoneData", JSON.stringify(zoneData));
+    if (localStorage.getItem("zoneData") == null) {
+        let zoneData = await getZoneData();
+        localStorage.setItem("zoneData", JSON.stringify(zoneData));
+    }
     // Leaderboard
-    let leaderboard = await getLeaderboard();
-    localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+    if (localStorage.getItem("leaderboard") == null) {
+        let leaderboard = await getLeaderboard();
+        localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+    }
+    // Schedule
+    if (localStorage.getItem("schedule") == null) {
+        let schedule = await getSchedule();
+        localStorage.setItem("schedule", schedule);
+    }
     // CheckerboardStorage
     if (sessionStorage.getItem("cb_dash") == null) {
         initCheckerboardStorage();
     }
+    // Default Dashboard Selections
+    //  Leaderboard: 7-Days
+    //  Schedule: Current-Day
+    setLeaderWeek();
+    // Set Schedule
+    let today = new Date();
+    console.log(`Today is ${today.getDay()}`);
+    // Add today class to today's button
+    let buttons = document.getElementsByClassName("today");
+    for(let i = 0; i< buttons.length; i++) {
+        if (buttons != null) {
+            buttons[i].classList.remove("today");
+        }
+    }
+    let todayButton = Days[today.getDay()]+"Button";
+    let todayButtonObj = document.getElementById(todayButton);
+    todayButtonObj.classList.add("today");
+    // Set Today's Tab
+    setSchedule(todayButton);
     return;
 }
 
@@ -114,6 +161,183 @@ async function getLeaderboard() {
             return response.json();
         }
     );
+}
+
+async function getSchedule() {
+    return fetch("techSchedule")
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("HTTP error " + response.status);
+            }
+            return response.json();
+        }
+    );
+}
+
+// Dashboard Stuff
+// Schedule
+function setSchedule(buttonID) {
+    //console.log(buttonID + " Pressed");
+    let current = document.getElementsByClassName("schedule_selected");
+    if (current.length != 0) {
+        current[0].classList.remove("schedule_selected");
+    }
+    let newCurrent = document.getElementById(buttonID);
+    newCurrent.classList.add("schedule_selected");
+    let schdData = JSON.parse(localStorage.getItem('schedule'));
+    if (schdData == null) {
+        console.assert("Error: Schedule Data does not exist here");
+        return;
+    }
+    if (newCurrent.classList.contains('today')) {
+        renderTimeIndicator();
+    }
+    // Build the table
+    let tbody_HTML = `<tbody>`;
+    let today = buttonID.split("Button")[0];
+    // Sort Technicians by assignment
+    const priorityList = ["Zone 1", "Zone 2", "Zone 3", "Zone 4"];
+    let zoneTechs = [];
+    let otherTechs = [];
+    for(let i = 0; i < priorityList.length; i++) {
+        // Iterate through techs
+        for(let j = 0; j < schdData.Technicians.length; j++) {
+            if(schdData.Technicians[j].Assignment == priorityList[i]) {
+                zoneTechs.push(schdData.Technicians[j]);
+            }
+        }
+    }
+    // populate otherTechs
+    for(let j = 0; j < schdData.Technicians.length; j++) {
+        if(!priorityList.includes(schdData.Technicians[j].Assignment)) {
+            otherTechs.push(schdData.Technicians[j]);
+        }
+    }
+    let techList = zoneTechs.concat(otherTechs);
+    // Build Table
+    for(let i = 0; i < techList.length; i++) {
+        tbody_HTML += makeTechSchdRow(techList[i], today);
+    }
+    tbody_HTML += `</tbody>`;
+    let tbody = document.createElement('tbody');
+    tbody.setAttribute("id", "schd_tbody");
+    tbody.innerHTML = tbody_HTML;
+    // append to table
+    let table = document.getElementById("schd_tbody");
+    table.replaceWith(tbody);
+    return;
+}
+
+function makeTechTableHeader(firstColumn) {
+    let times = getTechSchdTimeBlocks();
+    let html = `<tr>
+        <th scope="col" class="schdLeftIndex">${firstColumn}</th>`;
+    for(i in times) {
+        html += `<th scope="col" class="timeBlockTable">${times[i]}</th>`;
+    }
+    html += '</tr>';
+    return html;
+}
+
+function makeTechSchdRow(tech, today) {
+    let html = `
+    <tr>
+        <th scope="row">${tech.Name}</th>`;
+    // get schedule timeblocks
+    let timeBlocks = getTechSchdTimeBlocks();
+    timeBlocks.push("7:30PM");
+    // get techs schedule for the day
+    let timeSwitches = [];
+    let shift = tech.Schedule[today].split(",");
+    for(let i = 0; i < shift.length; i++) {
+        timeSwitches.push(shift[i].split(' - '))
+    }
+    timeSwitches = timeSwitches.flat(2);
+    let onClock = false;
+    let timeIndex = 0;
+    let startShiftIndex, endShiftIndex = 0;
+    // Iterate through 24 time blocks;
+    for(let i = 0; i < timeBlocks.length-1; i++) {
+        if(timeBlocks[i] == timeSwitches[timeIndex]) {
+            onClock = !onClock;
+            ++timeIndex;
+            // I want to see when shift ends now
+            startShiftIndex = i;
+            if(onClock) {
+                endShiftIndex = timeBlocks.indexOf(timeSwitches[timeIndex]);
+                i = endShiftIndex - 1;
+            }
+        }
+        if(onClock) {
+            html += `<td class="schd${onClock}" colspan=${endShiftIndex - startShiftIndex}>${tech.Assignment}\t</td>`;
+            startShiftIndex, endShiftIndex = 0;
+            onClock = !onClock;
+            ++timeIndex;
+        } else {
+            html += `<td class="schd${onClock}">\t</td>`;
+        }
+    }
+    html += `</tr>`
+    return html;
+}
+
+// The headers for scheudles
+function getTechSchdTimeBlocks() {
+    return ["7:30AM","8:00AM","8:30AM","9:00AM","9:30AM","10:00AM","10:30AM","11:00AM","11:30AM","12:00PM","12:30PM","1:00PM","1:30PM","2:00PM","2:30PM","3:00PM","3:30PM","4:00PM","4:30PM","5:00PM","5:30PM","6:00PM","6:30PM","7:00PM"];
+}
+
+// TODO : make a bar that indicates the time that spans the height of the tech schedule
+function renderTimeIndicator() {
+    return;
+}
+
+// Leaderboard
+function setLeaderWeek() {
+    let current = document.getElementsByClassName("leader_selected");
+    if (current.length != 0) {
+        current[0].classList.remove("leader_selected");
+    }
+    let newCurrent = document.getElementById("WeekButton");
+    newCurrent.classList.add("leader_selected");
+    let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["7days"];
+    let leaderString = "";
+    for (let i=0; i<weekLeader.length; i++) {
+        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+    }
+    let leaderboard = document.getElementById("leaderboard");
+    leaderboard.innerHTML = leaderString;
+}
+
+function setLeaderMonth() {
+    let current = document.getElementsByClassName("leader_selected");
+    if (current.length != 0) {
+        current[0].classList.remove("leader_selected");
+    }
+    let newCurrent = document.getElementById("MonthButton");
+    newCurrent.classList.add("leader_selected");
+    let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["30days"];
+    let leaderString = "";
+    for (let i=0; i<weekLeader.length; i++) {
+        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+    }
+    let leaderboard = document.getElementById("leaderboard");
+    leaderboard.innerHTML = leaderString;
+}
+
+function setLeaderSemester() {
+    let current = document.getElementsByClassName("leader_selected");
+    if (current.length != 0) {
+        current[0].classList.remove("leader_selected");
+    }
+    let newCurrent = document.getElementById("SemesterButton");
+    newCurrent.classList.add("leader_selected");
+    let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["90days"];
+    let leaderString = "";
+    for (let i=0; i<weekLeader.length; i++) {
+        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+    }
+    let leaderboard = document.getElementById("leaderboard");
+    leaderboard.innerHTML = leaderString;
 }
 
 // - - -- --- - - CMAPUS.JSON GET INFO FUNCTIONS
@@ -278,7 +502,7 @@ async function dashCheckerboard() {
         if (object["zones"][item]["rooms"] != 0) {
             let percent = object["zones"][item]["checked"] / object["zones"][item]["rooms"];
             percent = String((100*percent).toFixed(5)).slice(0,5);
-            cb_dashDivHTML += `<li> <label class="cbProgLabel for="${object["zones"][item]["zone"]}_prog">Zone ${object["zones"][item]["zone"]}:  ${percent}%</label><progress id="${object["zones"][item]["zone"]}_prog"value="${percent}" max="100"></progress></li>`;
+            cb_dashDivHTML += `<li> <p>Zone ${object["zones"][item]["zone"]}: </p><label class="cbProgLabel" for="${object["zones"][item]["zone"]}_prog"> ${percent}%</label><progress id="${object["zones"][item]["zone"]}_prog"value="${percent}" max="100"></progress></li>`;
         }
     }
     cb_dashDivHTML += `</ul></fieldset>`;
