@@ -1,7 +1,8 @@
 /*
 page.css
 
-This file is a nightmare
+This file is a nightmare to navigate.
+need to consolidate things and reuse tags
 */
 
 /* Global Definitions */
@@ -22,13 +23,13 @@ ul {
     list-style-type: none;
 }
 
-/* p {
+p {
     color: rgb(236, 200, 101);
     text-align: center;
 
     font-family: 'Lucida Sans', sans-serif;
     font-size: medium;
-} */
+}
 
 textarea {
     margin: auto;
@@ -304,7 +305,7 @@ button:-webkit-details-marker {
 }
 
 .toolTab.selected {
-    transform: matrix(1, 0, 0, .7, 0, 3.5);
+    transform: matrix(1, 0, 0, .7, 0, 4);
     transition-duration: 0.1s;
     filter: hue-rotate(-60deg);
     /* margin: -12px -6px; */
@@ -524,6 +525,11 @@ button:-webkit-details-marker {
     grid-row:2;
 }
 
+.db_schedule fieldset {
+    min-width: 0px;
+    overflow-x: scroll;
+}
+
 .cb_dash {
     grid-column:2/4;
     grid-row:1/2;
@@ -569,7 +575,7 @@ button:-webkit-details-marker {
     font-family: "Racing Sans One", sans-serif;
     font-size: 14px;
     text-align: center;
-    width:80px;
+    width:72px;
     transition-duration: .2s;
 }
 
@@ -598,14 +604,12 @@ button:-webkit-details-marker {
     filter: hue-rotate(35deg);
     padding-top:0px;
     box-shadow: none;
-    /* border: none; */
 }
 
 .leaderTab.leader_selected, .leaderTab.schedule_selected {
-    transform: matrix(1, 0, 0, .7, 0, 3.5);
+    transform: matrix(1, 0, 0, .7, 0, 4);
     transition-duration: 0.1s;
     filter: hue-rotate(-60deg);
-    /* margin: -12px -6px; */
 }
 
 .leaderTab.leader_selected span, .leaderTab.schedule_selected span {
@@ -616,11 +620,10 @@ button:-webkit-details-marker {
     padding: 0px 4px 20px 4px;
     margin: 2px 0px 8px 0px;
     filter: hue-rotate(20deg);
-    /* width:67%; */
 }
 
 .leader_tab_img {
-    width:98px;
+    width:90px;
     height:30px;
 }
 
@@ -642,7 +645,8 @@ button:-webkit-details-marker {
 /* Schedule Stuff */
 
 .schedule {
-    transform: translate(90px, -2px);
+    transform: translate(90px, 5px);
+    width: 500px;
 }
 
 .timeBlockTable {
@@ -660,8 +664,10 @@ button:-webkit-details-marker {
     border: 1px inset rgb(216, 192, 104);
     color:rgb(194, 181, 124);
     border-radius: 4px;
+    margin-top:11px;
     padding-bottom: 5px;
     width:100%;
+    overflow-x: scroll;
 }
 
 #db_schedule_table .timeBlockTable {
@@ -698,6 +704,18 @@ button:-webkit-details-marker {
 .cb_dashZones {
     margin: 0px;
     padding: 0px;
+}
+
+.cb_dashZones p {
+    font-family: "Racing Sans One", sans-serif;
+    text-align: left;
+    font-size: 18pt;
+    padding: 0px 0px 0px 30px;
+    margin: 0px 0px 0px 0px;
+}
+
+.cb_dashZones progress {
+    width: 75%;
 }
 
 input[type=text], input[type=password] {
@@ -800,6 +818,21 @@ span.psw {
     }
     .cancelbtn {
         width: 100%;
+    }
+}
+
+@media (max-width: 1000px) {
+    .db_leader {
+        grid-column: 8/11;
+    }
+    .db_schedule {
+        grid-column: 1/-1;
+    }
+    .cb_dash {
+        grid-column: 1/4;
+    }
+    .cb_dash progress {
+        width: 50%;
     }
 }
 
@@ -969,6 +1002,7 @@ span.psw {
     text-align: center;
     margin:0rem;
     /* margin-right: .5rem; */
+    font-family:serif;
 }
 
 .visRoomDevice {
