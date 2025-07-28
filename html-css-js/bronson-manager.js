@@ -502,7 +502,7 @@ async function dashCheckerboard() {
         if (object["zones"][item]["rooms"] != 0) {
             let percent = object["zones"][item]["checked"] / object["zones"][item]["rooms"];
             percent = String((100*percent).toFixed(5)).slice(0,5);
-            cb_dashDivHTML += `<li> <label class="cbProgLabel for="${object["zones"][item]["zone"]}_prog">Zone ${object["zones"][item]["zone"]}:  ${percent}%</label><progress id="${object["zones"][item]["zone"]}_prog"value="${percent}" max="100"></progress></li>`;
+            cb_dashDivHTML += `<li> <p>Zone ${object["zones"][item]["zone"]}: </p><label class="cbProgLabel" for="${object["zones"][item]["zone"]}_prog"> ${percent}%</label><progress id="${object["zones"][item]["zone"]}_prog"value="${percent}" max="100"></progress></li>`;
         }
     }
     cb_dashDivHTML += `</ul></fieldset>`;

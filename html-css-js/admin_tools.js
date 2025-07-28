@@ -155,7 +155,7 @@ function setScheduleEditor() {
         <button onclick="updateAllTechSchedules()"> Save All Schedules </button>
         <button id="addNewTechBttn" onclick="addBlankTechSchedule(0)"> Add a Technician </button>
         <button onclick="setRemoveMode()"> Remove a Technician </button>
-        <button onclick="exportSchd()"> TODO: Export Schedules </button>
+        <button onclick="exportSchd()"> Export Schedules (CSV)</button>
         <div class="techFilterDiv">
             <label for="techSchdFilter">Filter Technicians:</label>
             <textarea id="techSchdFilter" placeholder="Name:" onkeyup="filterTechs()"></textarea>
@@ -208,7 +208,7 @@ function setRemoveMode() {
     // Get current saved Schedule
     let scheduleData = JSON.parse(localStorage.getItem("schedule"));
     let techList = scheduleData["Technicians"];
-    console.log(techList);
+    //console.log(techList);
     // HTML
     let html = `
     <ul id="techSchdRemoveList">`;
@@ -270,11 +270,6 @@ function removeSelectedTechs() {
     return;
 }
 
-// TODO: place a blank tech table at the top of the page.
-//s empty name, unassigned, no time selected on the table.
-// The save button here will need to be a little different
-//  it will need to add the new tech to the array of objects.
-//  the other function updates an existing entry.
 function addBlankTechSchedule(count) {
     //Up Count in onclick
     let newTechBttn = document.getElementById("addNewTechBttn");
@@ -308,7 +303,35 @@ function addBlankTechSchedule(count) {
 //  thinking about adding a library to do excel files
 //  if too complex resort to csv.
 //  output may be the literal string inside the tech obj
+// CSV = comma delimited values
+// MEANING, those strings with ',' to deliminate my shifts in a given day are now a problem
+// while also being gross to look at, the code below also is non-functional because that is 
+// not handled.
 function exportSchd() {
+    // retrieve schd data
+    let scheduleData = JSON.parse(localStorage.getItem("schedule"));
+    let techList = scheduleData["Technicians"];
+    // Define the csv Rows
+    let name_items = ["Name"];
+    let assignment = ["Assignment"];
+    let mon_items = ["Monday"];
+    let tues_items = ["Tuesday"];
+    let wed_items = ["Wednesday"];
+    let thur_items = ["Thursday"];
+    let fri_items = ["Friday"];
+    let tmp = [];
+    for (tech in techList) {
+        name_items.push(techList[tech].Name);
+        assignment.push(techList[tech].Assignment);
+        let schd = techList[tech].Schedule;
+        mon_items.push(schd.Monday.replaceAll(",",";"));
+        tues_items.push(schd.Tuesday.replaceAll(",",";"));
+        wed_items.push(schd.Wednesday.replaceAll(",",";"));
+        thur_items.push(schd.Thursday.replaceAll(",",";"));
+        fri_items.push(schd.Friday.replaceAll(",",";"));
+    }
+    csv = [name_items.join(","),assignment.join(","),mon_items.join(","),wed_items.join(","),thur_items.join(","),fri_items.join(",")].join("\n");
+    downloadCsv(csv);
     return;
 }
 
