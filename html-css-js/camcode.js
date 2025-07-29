@@ -41,6 +41,14 @@ large
 2 proj or 4 lcd
 
 med
+
+Note: 7/29/25 - jn
+This file has not been touched in about a year. The intention was to generate Q-SYS files for our rooms, however the Q-SYS editor suite outputs a compiled binary. Meaning making a lil app like this
+to make our OWN compiled binary, will not be feasible for the time we have to work on this. 
+I believe it to be possible with a lot of time and patience with something like a hex editor.
+But this would require a fairly large database of Q-SYS files that we will now have to analyze.
+Which is not the best. Which is why we opted for 'cc-altmode' which is a database of compiled 
+system files.  
 */
 
 // TODO: findFiles()

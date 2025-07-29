@@ -4,6 +4,8 @@ Handles sign-in protocol and setting up the webpage once authorized.
 
 notes;
 make tool/site bar load once login is succesful
+This will be removed for final mounted release.
+could stick around for the offline demo version.
 */
 
 function setSignIn() {
