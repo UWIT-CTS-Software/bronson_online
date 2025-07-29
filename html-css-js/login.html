@@ -33,15 +33,15 @@
     <div class="program_header">
       <!-- Hamburger Declaration -->
       <div class="hb_menu">
-        <fieldset class="ph_fieldset">
-          <legend class="ph_legend">
+        <fieldset>
+          <legend>
             Menu:</legend>
           <button class="hb_button" onclick="toggleMenu()">Back</button>
           <button class="hb_button">Help / FAQ </button>
           <button class="hb_button" onclick="initForm()">Report Bug</button>
         </fieldset>
-        <fieldset class="ph_fieldset">
-          <legend class="ph_legend">
+        <fieldset>
+          <legend>
             Sites:</legend>
           <button id="TimeClockURL" onclick="window.open('https://shibboleth.uwyo.edu/idp/profile/SAML2/Unsolicited/SSO?providerId=https://9922.tcplusondemand.com&shire=https://9922.tcplusondemand.com/api/v0000/saml2Sessions/0/Saml2SingleSignOnEmployeePost&target=CompanyNamespace%3d9922%3bCompanyId%3d1%3bRedirectPat');" type="button" class="hb_button">
             TimeClock </button>
@@ -86,7 +86,7 @@
         <img src="logo.png" alt="Avatar" class="avatar">
       </div>
     
-      <div class="container">
+      <div class="modal_container">
         <label for="uname"><b>Username</b></label>
         <input type="text" placeholder="Enter Username" name="uname" id="uname" required>
   
@@ -98,10 +98,9 @@
         </label>
       </div>
   
-      <div class="container">
+      <div class="modal_container">
         <button type="button" class="headButton" onclick="terminateLogin()" class="cancelbtn">Cancel</button>
         <button class="headButton" style="float: right;" type="submit">Log In</button>
-        <!-- <span class="psw">Forgot <a href="#">password?</a></span> -->
       </div>
     </form>
   </div>
