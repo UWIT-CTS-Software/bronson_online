@@ -4,14 +4,25 @@
   <head>
     <title>UWIT-Bronson Admin</title>
     <meta charset="UTF-8" />
+    <iframe id="content" style ="display:none;"></iframe>
     <link rel="stylesheet" type="text/css" href="page.css">
     <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery.terminal/css/jquery.terminal.min.css"/>    
+    <script src="admin_tools.js"></script>
+    <!-- <script src="bronson-manager.js"></script> -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery.terminal/css/jquery.terminal.min.css"/>
     <script type="text/javascript">
-      $.get("index.html", function(data){
-        $("#prog_placeholder").replaceWith(data);
-      });
+      // $.get("index.html", await function(data){
+      //   $("#prog_placeholder").replaceWith(data);
+      // });
+
+      $(document).ready(function() {
+        $.get("index.html", function(data){
+          $("#prog_placeholder").replaceWith(data);
+          setDashboard();
+          setAdminBronson();
+        });
+      })
 
       $(function() {
         $('#terminal').terminal({
@@ -169,7 +180,7 @@ $$$$$$$$\                                $$\                     $$\
     </template>
   </head>
   <!-- body -->
-  <body onload="setDashboard()">
+  <body>
     <div class="program_board" id="prog_placeholder">
     </div>
     <footer id="terminal"></footer>

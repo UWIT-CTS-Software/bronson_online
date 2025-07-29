@@ -348,7 +348,7 @@ async function pingpong(devices, building) {
 //   [
 //     [[ROOM1-DEV1-1, ROOM1-DEV1-2],[ROOM1-DEV2-1],[]],
 //     [[ROOM2-DEV1-1, ROOM2-DEV1-2],[ROOM2-DEV2-1],[ROOM2-DEV3-1]],
-//     [[...],[...]]
+//     [[...],[...],[...]]
 //   ],
 //   [
 //      [[IP-ADDRS],[...],[...]],
@@ -385,6 +385,7 @@ function formatPingPong(PingPongJSON, devices) {
     }
     // output
     let new_PR = [out_hn, out_ip];
+    console.log(new_PR);
     return new_PR;
 }
 
@@ -659,7 +660,8 @@ async function setJackNet() {
             sessionStorage.removeItem("JackNet_stash");
             // Reset button
             let jnButton = document.getElementById("JNButton");
-            jnButton.innerHTML = `<span>JackNet</span>`;
+            //jnButton.innerHTML = `<img class="tab_img" src="button2.png"/><span>JackNet</span>`;
+            jnButton.classList.remove("stashed");
         }
         return;
     }

@@ -1,0 +1,147 @@
+{
+    "Technicians": [
+        {
+            "Name": "Alex Bryan",
+            "Assignment": "SysEn",
+            "Schedule": {
+                "Monday": "8:00AM - 12:00PM,1:00PM - 5:00PM",
+                "Tuesday": "8:00AM - 12:00PM,1:00PM - 5:00PM",
+                "Wednesday": "8:00AM - 12:00PM,1:00PM - 5:00PM",
+                "Thursday": "8:00AM - 12:00PM,1:00PM - 5:00PM",
+                "Friday": "8:00AM - 12:00PM,1:00PM - 5:00PM"
+            }
+        },
+        {
+            "Name": "Cian Melker",
+            "Assignment": "Networking",
+            "Schedule": {
+                "Monday": "8:00AM - 3:30PM",
+                "Tuesday": "8:00AM - 3:30PM",
+                "Wednesday": "8:00AM - 3:30PM",
+                "Thursday": "8:00AM - 3:30PM",
+                "Friday": "8:00AM - 3:30PM"
+            }
+        },
+        {
+            "Name": "Collin Davis",
+            "Assignment": "Zone 2",
+            "Schedule": {
+                "Monday": "NA",
+                "Tuesday": "8:00AM - 3:30PM",
+                "Wednesday": "8:00AM - 5:00PM",
+                "Thursday": "8:00AM - 12:00PM",
+                "Friday": "8:00AM - 5:00PM"
+            }
+        },
+        {
+            "Name": "Colton Hopster",
+            "Assignment": "Zone 1",
+            "Schedule": {
+                "Monday": "11:00AM - 5:00PM",
+                "Tuesday": "9:30AM - 5:00PM",
+                "Wednesday": "9:30AM - 5:00PM",
+                "Thursday": "9:30AM - 5:00PM",
+                "Friday": "NA"
+            }
+        },
+        {
+            "Name": "Jack Nyman",
+            "Assignment": "Coding",
+            "Schedule": {
+                "Monday": "9:00AM - 5:00PM",
+                "Tuesday": "9:00AM - 5:00PM",
+                "Wednesday": "9:00AM - 5:00PM",
+                "Thursday": "9:00AM - 5:00PM",
+                "Friday": "9:00AM - 5:00PM"
+            }
+        },
+        {
+            "Name": "Jarred Heddins",
+            "Assignment": "Zone 1",
+            "Schedule": {
+                "Monday": "11:00AM - 5:00PM",
+                "Tuesday": "11:00AM - 5:00PM",
+                "Wednesday": "11:00AM - 5:00PM",
+                "Thursday": "11:00AM - 5:00PM",
+                "Friday": "11:00AM - 5:00PM"
+            }
+        },
+        {
+            "Name": "Jason Vanlandingham",
+            "Assignment": "Zone 4",
+            "Schedule": {
+                "Monday": "9:30AM - 5:00PM",
+                "Tuesday": "9:30AM - 5:00PM",
+                "Wednesday": "9:30AM - 5:00PM",
+                "Thursday": "9:30AM - 5:00PM",
+                "Friday": "9:30AM - 5:00PM"
+            }
+        },
+        {
+            "Name": "Korrin Sutherburg",
+            "Assignment": "Zone 3",
+            "Schedule": {
+                "Monday": "8:00AM - 10:00AM,1:00PM - 5:00PM",
+                "Tuesday": "8:00AM - 12:00PM,1:00PM - 5:00PM",
+                "Wednesday": "8:00AM - 12:00PM,1:00PM - 5:00PM",
+                "Thursday": "8:00AM - 12:00PM,1:00PM - 5:00PM",
+                "Friday": "8:00AM - 12:00PM,1:00PM - 5:00PM"
+            }
+        },
+        {
+            "Name": "Lexus Fermelia",
+            "Assignment": "Zone 2",
+            "Schedule": {
+                "Monday": "11:00AM - 5:00PM",
+                "Tuesday": "1:00PM - 5:00PM",
+                "Wednesday": "NA",
+                "Thursday": "10:00AM - 1:00PM,2:00PM-5:00PM",
+                "Friday": "NA"
+            }
+        },
+        {
+            "Name": "Mario Garcia-Ceballos",
+            "Assignment": "Zone 3",
+            "Schedule": {
+                "Monday": "9:00AM - 12:00PM,2:00PM - 5:00PM",
+                "Tuesday": "9:00AM - 12:00PM,2:00PM - 5:00PM",
+                "Wednesday": "9:00AM - 12:00PM,2:00PM - 5:00PM",
+                "Thursday": "9:00AM - 12:00PM,2:00PM - 5:00PM",
+                "Friday": "9:00AM - 12:00PM,2:00PM - 5:00PM"
+            }
+        },
+        {
+            "Name": "Michael Stoll",
+            "Assignment": "Zone 2",
+            "Schedule": {
+                "Monday": "NA",
+                "Tuesday": "NA",
+                "Wednesday": "12:00PM - 5:00PM",
+                "Thursday": "12:00PM - 5:00PM",
+                "Friday": "12:00PM - 5:00PM"
+            }
+        },
+        {
+            "Name": "Sofia Newsome",
+            "Assignment": "Zone 4",
+            "Schedule": {
+                "Monday": "12:00PM - 4:00PM",
+                "Tuesday": "12:00PM - 4:00PM",
+                "Wednesday": "12:00PM - 4:00PM",
+                "Thursday": "12:00PM - 4:00PM",
+                "Friday": "NA"
+            }
+        },
+        {
+            "Name": "Thomas Lockwood",
+            "Assignment": "Zone 1",
+            "Schedule": {
+                "Monday": "NA",
+                "Tuesday": "8:00AM - 3:30PM",
+                "Wednesday": "NA",
+                "Thursday": "NA",
+                "Friday": "NA"
+            }
+        }
+    ]
+}

@@ -19,9 +19,6 @@
   <script src="camcode.js" type="text/javascript" charset="utf-8"></script>
   <script src="cc-altmode.js" type="text/javascript" charset="utf-8"></script>
   <script src="jacknet.js" type="text/javascript" charset="utf-8"></script>
-
-  <!-- <script src="signing.js" type="text/javascript" charset="utf-8"></script> -->
-  <!-- <script src="wiki.js" type="text/javascript" charset="utf-8"></script> -->
   <!-- <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> -->
   <script>
     window.addEventListener("popstate", () => {
@@ -37,7 +34,7 @@
         setDashboard();
       }
     },
-    false,
+      false,
     );
 
     function toggleMenu() {
@@ -88,12 +85,12 @@
             <fieldset>
                 <legend> 
                     Messages: </legend>
-                <textarea readonly rows="18" cols ="65" class="db_messages" name="consoleOutput" spellcheck="false"> 
+                <textarea readonly rows="14" cols ="65" class="db_messages" name="consoleOutput" spellcheck="false"> 
                     ${json["contents"]}
                 </textarea>
             </fieldset>`;
         });
-  
+      // Dashboard Leaderboard
       let leaderboard = document.createElement("div");
       leaderboard.classList.add("db_leader");
         leaderboard.innerHTML = `
@@ -109,13 +106,57 @@
             <button id="SemesterButton" onclick="setLeaderSemester()" type="button" class="leaderTab semesterTab"><img class="leader_tab_img" src="button2.png"/><span> 
               90 days </span></button>
           </div>
-          <textarea readonly rows="17" cols="35" class="innerConsole" id="leaderboard" spellcheck="false">
+          <textarea readonly rows="12" cols="1" class="innerConsole" id="leaderboard" spellcheck="false">
           </textarea>
         </fieldset>
       `;
 
+      // Dashboard Schedule
+      // note 25 time segments, 12.5 hours / 30min
+      //       1 column for technician name
+      let schedule = document.createElement("div");
+      schedule.classList.add("db_schedule");
+      schedule.innerHTML = `
+        <fieldset>
+          <legend>
+            Schedule
+          </legend>
+          <div class="tab_row schedule">
+            <button id="MondayButton" onclick="setSchedule('MondayButton')" type="button" class="leaderTab">
+              <img class="leader_tab_img" src="button2.png"/>
+              <span>Monday</span>
+            </button>
+            <button id="TuesdayButton" onclick="setSchedule('TuesdayButton')" type="button" class="leaderTab">
+              <img class="leader_tab_img" src="button2.png"/>
+              <span>Tuesday</span>
+            </button>
+            <button id="WednesdayButton" onclick="setSchedule('WednesdayButton')" type="button" class="leaderTab">
+              <img class="leader_tab_img" src="button2.png"/>
+              <span>Wednesday</span>
+            </button>
+            <button id="ThursdayButton" onclick="setSchedule('ThursdayButton')" type="button" class="leaderTab">
+              <img class="leader_tab_img" src="button2.png"/>
+              <span>Thursday</span>
+            </button>
+            <button id="FridayButton" onclick="setSchedule('FridayButton')" type="button" class="leaderTab">
+              <img class="leader_tab_img" src="button2.png"/>
+              <span>Friday</span>
+            </button>
+          </div>
+          <table id="db_schedule_table">
+            <thead>
+              ${makeTechTableHeader("Technician")}
+            </thead>
+            <tbody id="schd_tbody">
+            </tbody>
+          </table>
+        </fieldset>`;
+      // Once initStorageRuns and grabs the schedule data,
+      // we will update this table and append <tbody>
+      //  - maybe stats on hours in a <tfoot>, unsure.
       db_container.appendChild(consoleOutput);
       db_container.appendChild(leaderboard);
+      db_container.appendChild(schedule);
 
       // Check for client-side cached response
       if(sessionStorage.getItem("cb_body") != null) {
@@ -131,60 +172,6 @@
       // Init sessionStorage
       initLocalStorage();
       return;
-    }
-
-    function setLeaderWeek() {
-      let current = document.getElementsByClassName("leader_selected");
-      if (current.length != 0) {
-          current[0].classList.remove("leader_selected");
-      }
-      let newCurrent = document.getElementById("WeekButton");
-      newCurrent.classList.add("leader_selected");
-
-      let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["7days"];
-      let leaderString = "";
-      for (let i=0; i<weekLeader.length; i++) {
-        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
-      }
-
-      let leaderboard = document.getElementById("leaderboard");
-      leaderboard.innerHTML = leaderString;
-    }
-
-    function setLeaderMonth() {
-      let current = document.getElementsByClassName("leader_selected");
-      if (current.length != 0) {
-          current[0].classList.remove("leader_selected");
-      }
-      let newCurrent = document.getElementById("MonthButton");
-      newCurrent.classList.add("leader_selected");
-
-      let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["30days"];
-      let leaderString = "";
-      for (let i=0; i<weekLeader.length; i++) {
-        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
-      }
-
-      let leaderboard = document.getElementById("leaderboard");
-      leaderboard.innerHTML = leaderString;
-    }
-
-    function setLeaderSemester() {
-      let current = document.getElementsByClassName("leader_selected");
-      if (current.length != 0) {
-          current[0].classList.remove("leader_selected");
-      }
-      let newCurrent = document.getElementById("SemesterButton");
-      newCurrent.classList.add("leader_selected");
-
-      let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["90days"];
-      let leaderString = "";
-      for (let i=0; i<weekLeader.length; i++) {
-        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
-      }
-
-      let leaderboard = document.getElementById("leaderboard");
-      leaderboard.innerHTML = leaderString;
     }
 
     // Bug Report form
@@ -248,11 +235,11 @@
           </fieldset>
         </div>
         <!-- Site Button -->
-        <h1 class='site_header' onclick='toggleMenu()'>
+        <h1 class='site_header' onclick='toggleMenu()' title="Hamburger Menu Toggle">
           Bronson</h1>
         <!-- Tool Tabs / Middle Section -->
         <div class="middle_section">
-          <div class="middle_test">
+          <div class="middle_test" id="middle">
             <!-- Message -->
             <p class='message_header'>
               <i>Basic Room Observations and Notifications for Status and Operational Needs</i></p>

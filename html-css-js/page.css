@@ -1,3 +1,10 @@
+/*
+page.css
+
+This file is a nightmare to navigate.
+need to consolidate things and reuse tags
+*/
+
 /* Global Definitions */
 body {
     background-color: rgb(50, 50, 50);
@@ -14,6 +21,14 @@ label {
 
 ul {
     list-style-type: none;
+}
+
+p {
+    color: rgb(236, 200, 101);
+    text-align: center;
+
+    font-family: 'Lucida Sans', sans-serif;
+    font-size: medium;
 }
 
 textarea {
@@ -197,17 +212,16 @@ button:-webkit-details-marker {
     text-align: left;
     font-family:'Courier New', Courier, monospace;
     display: flex;
-    /* grid-area: 2 / 9; */
-    grid-column: 2 / 10;
+    grid-column: 2 / 11;
     grid-row: 1;
-    /* height: 20px; */
     padding-top: 0px;
     margin: 0px;
 }
 
-/* .middle_test {
-    display: inline-grid;
-} */
+.middle_test {
+    width: 100%;
+
+}
 
 .message_header {
     color: rgb(118, 66, 28);
@@ -217,23 +231,19 @@ button:-webkit-details-marker {
     font-weight: 400;
     font-style: normal;
     text-align: left;
-    /* display: inline-grid;
-    grid-column: 1 / 4;
-    grid-row: 1; */
-    /* vertical-align: end; */
-    padding:1%;
-    margin: 0% 0%;
-    width: 100%
+    padding: 9px 5px 1px 5px;
+    margin: 0px 0px;
+    width: 90%
 } 
 
 .tab_row {
-    margin: 6px 0px;
+    margin: 3px 0px;
     display: flex;
     padding: 0% 0%;
     /* grid-auto-columns: 1fr;
     grid-column: 1 / auto;
     grid-row: 1; */
-    transform: translate(0px,18px);
+    transform: translate(0px,22px);
 }
 
 .toolTab {
@@ -295,7 +305,7 @@ button:-webkit-details-marker {
 }
 
 .toolTab.selected {
-    transform: matrix(1, 0, 0, .7, 0, 3.5);
+    transform: matrix(1, 0, 0, .7, 0, 4);
     transition-duration: 0.1s;
     filter: hue-rotate(-60deg);
     /* margin: -12px -6px; */
@@ -319,6 +329,28 @@ button:-webkit-details-marker {
     margin: 2px 0px 8px 0px;
     filter: hue-rotate(20deg);
     /* width:67%; */
+}
+
+.toolTab.stashed span {
+    /* border-color: red; */
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(0,0,0,0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
+    }
+
+    100% {
+        transform: scale(.95);
+        box-shadow: 0 0 0 0 rgba(0,0,0,0.7);
+    }
 }
 
 .tab_img {
@@ -462,7 +494,7 @@ button:-webkit-details-marker {
     background-color: rgb(50, 50, 50);
     display: grid;
     grid-template-columns: repeat(10,1fr);
-    /* gap: 10px; */
+    gap: 4px;
     grid-auto-rows: minmax(20px, auto);
     /* float: left; */
 }
@@ -476,24 +508,42 @@ button:-webkit-details-marker {
 }
 
 .db_console {
-    grid-column: 2 / 8;
+    grid-column: 4 / 8;
     grid-row: 1 / 2;
     /* width: 59%; */
 }
 
 .db_leader {
-    grid-column: 8 / 11;
+    grid-column: 8 / 10;
     grid-row: 1 / 2;
     /* margin-left: -20%;
     width: 60%; */
-    width:fit-content;
+    width: 100%;
+}
+.db_schedule {
+    grid-column: 2/10;
+    grid-row:2;
+}
+
+.db_schedule fieldset {
+    min-width: 0px;
+    overflow-x: scroll;
+}
+
+.cb_dash {
+    grid-column:2/4;
+    grid-row:1/2;
+}
+
+.cb_dash fieldset {
+    height: 95%;
 }
 
 /* .leaderTab {
     width:25%;
 } */
 .leader {
-    margin: -6px 0px 22px 0px;
+    margin: -6px 0px 26px 0px;
     padding: 0px 0px 0px 5px;
     /* width: 350px; */
     display: flex;
@@ -525,7 +575,7 @@ button:-webkit-details-marker {
     font-family: "Racing Sans One", sans-serif;
     font-size: 14px;
     text-align: center;
-    width:62px;
+    width:72px;
     transition-duration: .2s;
 }
 
@@ -554,17 +604,15 @@ button:-webkit-details-marker {
     filter: hue-rotate(35deg);
     padding-top:0px;
     box-shadow: none;
-    /* border: none; */
 }
 
-.leaderTab.leader_selected {
-    transform: matrix(1, 0, 0, .7, 0, 3.5);
+.leaderTab.leader_selected, .leaderTab.schedule_selected {
+    transform: matrix(1, 0, 0, .7, 0, 4);
     transition-duration: 0.1s;
     filter: hue-rotate(-60deg);
-    /* margin: -12px -6px; */
 }
 
-.leaderTab.leader_selected span {
+.leaderTab.leader_selected span, .leaderTab.schedule_selected span {
     transform: scaleY(1.6);
     top: 0px;
     bottom: 5px;
@@ -572,11 +620,10 @@ button:-webkit-details-marker {
     padding: 0px 4px 20px 4px;
     margin: 2px 0px 8px 0px;
     filter: hue-rotate(20deg);
-    /* width:67%; */
 }
 
 .leader_tab_img {
-    width:80px;
+    width:90px;
     height:30px;
 }
 
@@ -593,8 +640,59 @@ button:-webkit-details-marker {
 .semesterTab {
     grid-column: auto;
     z-index: 2;
-    
 }
+
+/* Schedule Stuff */
+
+.schedule {
+    transform: translate(90px, 5px);
+    width: 500px;
+}
+
+.timeBlockTable {
+    text-align:left;
+    vertical-align: bottom;
+    font-size: xx-small;
+    border: none;
+    border-left: 1px inset rgb(216,192,104);
+}
+
+#db_schedule_table {
+    font-weight:100;
+    font-size:x-small;
+    font-family:'Courier New', Courier, monospace;
+    border: 1px inset rgb(216, 192, 104);
+    color:rgb(194, 181, 124);
+    border-radius: 4px;
+    margin-top:11px;
+    padding-bottom: 5px;
+    width:100%;
+    overflow-x: scroll;
+}
+
+#db_schedule_table .timeBlockTable {
+    /* border: 2px outset gold; */
+    width: 3%;
+    text-align: left;
+    vertical-align:bottom;
+    border: none;
+    border-left: 1px inset rgb(216, 192, 104);
+}
+
+#db_schedule_table th {
+    border: 1px outset rgb(220, 183, 96);
+    width:7%;
+    font-size: xx-small;
+}
+
+.schdfalse {
+    border:#24292E solid 2px;
+}
+
+.schdtrue {
+    background-color: rgb(49, 125, 64);
+}
+
 
 /* .leaderTab.leader_selected {
     transform: translateY(4px);
@@ -602,13 +700,22 @@ button:-webkit-details-marker {
     border-bottom: 26px solid #7c1919;
 } */
 
-.cb_dash {
-    grid-column: 1/2;
-    grid-row:1;
-}
+
 .cb_dashZones {
     margin: 0px;
     padding: 0px;
+}
+
+.cb_dashZones p {
+    font-family: "Racing Sans One", sans-serif;
+    text-align: left;
+    font-size: 18pt;
+    padding: 0px 0px 0px 30px;
+    margin: 0px 0px 0px 0px;
+}
+
+.cb_dashZones progress {
+    width: 75%;
 }
 
 input[type=text], input[type=password] {
@@ -714,21 +821,20 @@ span.psw {
     }
 }
 
-@media (max-width: 950px){
-    /* .cb_dash {
-        grid-column:1/2;
-    }
-    .db_console {
-        grid-column:2/7;
-    }
+@media (max-width: 1000px) {
     .db_leader {
-        grid-column:7/11;
-    } */
-    .leaderTab {
-        width:20px;
+        grid-column: 8/11;
+    }
+    .db_schedule {
+        grid-column: 1/-1;
+    }
+    .cb_dash {
+        grid-column: 1/4;
+    }
+    .cb_dash progress {
+        width: 50%;
     }
 }
-
 
 /* JackNet Definitions 
        _            _    _   _      _   
@@ -896,6 +1002,7 @@ span.psw {
     text-align: center;
     margin:0rem;
     /* margin-right: .5rem; */
+    font-family:serif;
 }
 
 .visRoomDevice {
@@ -1019,6 +1126,7 @@ span.psw {
     font-family: 'Courier New', Courier, monospace;
     margin:0px 0px 4px 0px;
     font-weight: bold;
+    text-align: left;
 }
 
 .cbTopperBuildingStatus {
@@ -1291,85 +1399,6 @@ ol li::marker {
     opacity: 40%;
 }
 
-/* Wiki Defifnitions 
- __          ___ _    _ 
- \ \        / (_) |  (_)
-  \ \  /\  / / _| | ___ 
-   \ \/  \/ / | | |/ / |
-    \  /\  /  | |   <| |
-     \/  \/   |_|_|\_\_|
-*/
-textarea:invalid {
-    border: 2px dashed red;
-  }
-  
-textarea:valid {
-    border: 2px solid lime;
-}
-
-/* Container for input and preview */
-.w_editor{
-    position: relative;
-    background-color: rgb(50, 50, 50);
-    display: grid;
-    grid-template-columns: repeat(11,1fr);
-    gap: 10px;
-    grid-auto-rows: minmax(20px, auto);
-}
-
-.w_input {
-    background-color: rgb(36, 35, 35);
-    float: left;
-    display: block;
-    grid-column: 3 / 7;
-    grid-row: 2 / 5;
-}
-
-.inputWindow {
-    width: 100%;
-    height: 100%;
-    box-sizing: border-box;
-    color:rgb(205, 205, 205);
-    background-color: rgb(50, 50, 50)
-}
-
-.w_preview {
-    background-color: rgb(50, 50, 50);
-    color: rgb(236, 200, 101);
-    float: right;
-    display: block;
-    grid-column: 7 / 11;
-    grid-row: 2 / 5;
-    border:4px outset rgb(142, 136, 117);
-    /* box-shadow: 5px 10px 10px; */
-}
-
-.w_optionMenu {
-    display: block;
-    grid-column: 3 / 11;
-    border:4px outset rgb(89, 85, 73);
-}
-
-.w_toc {
-    background-color: rgb(173, 169, 110);
-    display: block;
-    border:4px outset rgb(89, 85, 73);
-    grid-column: 2;
-    grid-row: 1 / 5;
-}
-
-.w_fieldset {
-    border:4px inset rgb(102, 98, 84);
-    background-color: rgb(50, 50, 50);
-    color: rgb(236, 200, 101);
-}
-
-.w_legend {
-    border:2px outset rgb(102, 98, 84);
-    background-color: rgb(50, 50, 50);
-
-}
-
 /* Terminal definitions
 
 */
@@ -1391,4 +1420,216 @@ textarea:valid {
     background-color: rgb(50, 50, 50);
     color: rgb(236, 200, 101);
     border-top: 2px inset rgb(236, 200, 101);
+}
+
+/* Admin Tools */
+.admin_tab {
+    float:right;
+    transform: matrix(1,0,0,1,-5,2);
+}
+
+.at_container {
+    background-color: rgb(50,50,50);
+    display: grid;
+    grid-template-columns: repeat(10,1fr);
+    grid-auto-rows:minmax(20px, auto);
+}
+
+.at_fieldset {
+    grid-column: 2/10;
+}
+
+#admin_internals {
+    border: 1px inset rgb(236,200,101);
+    border-radius:15px;
+    padding: 5px 0px 0px 0px;
+}
+
+.at_dme {
+    grid-column: 2/6;
+}
+
+#dme_editor {
+    border:2px inset rgb(122,113,45);
+    padding-bottom: 5px;
+    margin-bottom:5px;
+}
+
+/* Admin Tools -- Schedule Editor */
+/* Top Options */
+#techSchdFilter {
+    width:70%;
+    height:25px;
+    float:right;
+}
+
+.techFilterDiv {
+    width: 25%;
+    height: 30px;
+    float:right;
+}
+.techFilterDiv label {
+    font-size:small;
+}
+
+/* Tech Tables */
+
+.techFieldset {
+    padding: 3px 3px 3px 3px;
+    display: flex;
+}
+
+.techFieldset label {
+    font-size:small;
+}
+
+.techFieldset select {
+    width:100%;
+}
+
+.techFieldset textarea {
+    height:17%;
+    width: 100%;
+    margin: 0px;
+    float: right;
+}
+
+.schdTechFields {
+    width: 12%;
+}
+
+.techAssignmentSelectDiv {
+    padding: 1px 1px 1px 1px;
+    display: flex;
+    width: 100%;
+}
+
+.techSchdNameDiv {
+    padding: 1px 1px 1px 1px;
+    display: flex;
+    width: 48%;
+}
+
+.adminTechTable {
+    font-weight:100;
+    font-size:small;
+    font-family:'Courier New', Courier, monospace;
+    border: 1px inset rgb(216, 192, 104);
+    color:rgb(194, 181, 124);
+    border-radius: 4px;
+    padding-bottom: 5px;
+    width:87%;
+    height:165px;
+}
+
+.adminTechTable .schdLeftIndex {
+    border: 1px outset rgb(220, 183, 96);
+    font-size: x-small;
+}
+
+.adminTechTable th {
+    width: 50px;
+}
+
+.adminTechTable .schdtrue:hover {
+    transform: scale(1.1);
+    box-shadow:#302f35 2px 2px 2px 2px;
+}
+
+.admin_internals li {
+    background-color:#a5a29c;
+    border: 2px black;
+}
+.setToRemove {
+    background-color:red;
+}
+
+/* TABS */
+
+.admin_tabs {
+    margin: -9px 0px 26px 0px;
+    padding: 0px 0px 1px 13px;
+    /* width: 350px; */
+    display: flex;
+}
+
+.atTab {
+    margin: -12px -6px;
+    opacity: 100%;
+    grid-row: 1;
+    text-align: center;
+    border: none;
+    background-color: transparent;
+    box-sizing: content-box;
+    box-shadow: none;
+}
+
+.atTab span { 
+    position: absolute;
+    top: 3px;
+    left: 13px;
+    bottom: 0px;
+    color: rgb(180, 142, 79);
+    background: rgb(88,79,51);
+    border: rgb(135,62,9) solid 2px;
+    border-bottom: none;
+    border-radius: 10px;
+    padding: 0px 0px 0px 0px;
+    margin: 2px 0px 10px 0px;
+    font-family: "Racing Sans One", sans-serif;
+    font-size: 14px;
+    text-align: center;
+    width:107px;
+    transition-duration: .2s;
+}
+
+.atTab:hover{
+    text-decoration: none;
+    transition-duration: 0.1s;
+    transform: matrix(1,0,0,1.1,0,-1.5);
+    background: transparent;
+    filter: hue-rotate(10deg);
+}
+
+.atTab:active span {
+    transform: matrix(1,0,0,1.5,0,-30);
+    top: 4px;
+    bottom: -3px;
+    left: 14px;
+    padding: 0px 0px 0px 0px;
+    transition-duration: .1s;
+    border: none;
+}
+
+.atTab:active {
+    background: transparent;
+    transform: matrix(1,0,0,.5,0,6);
+    transition-duration:.1s;
+    filter: hue-rotate(35deg);
+    padding-top:0px;
+    box-shadow: none;
+    /* border: none; */
+}
+
+.atTab.at_selected {
+    transform: matrix(1, 0, 0, .7, 0, 3.5);
+    transition-duration: 0.1s;
+    filter: hue-rotate(-60deg);
+    /* margin: -12px -6px; */
+}
+
+.atTab.at_selected span {
+    transform: scaleY(1.6);
+    top: 0px;
+    bottom: 5px;
+    left:8px;
+    padding: 0px 5.5px 20px 5.5px;
+    margin: 2px 0px 8px 0px;
+    filter: hue-rotate(20deg);
+    /* width:67%; */
+}
+
+.at_tab_img {
+    width:130px;
+    height:30px;
 }
