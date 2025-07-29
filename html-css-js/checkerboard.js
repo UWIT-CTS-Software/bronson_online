@@ -39,21 +39,7 @@ TODO -
       If every room in a building (or zone) is checked, it is an achievement for the tech
       they should get some kinda special message or confetti when this happens.
 */
-class Time {
-    constructor() { this.time = ''; }
 
-    setTime(time) { this.time = time; }
-
-    getTime() { return this.time; }
-}
-
-class Cookie {
-    constructor() { this.value = "none"; }
-
-    setCookie(id) { this.value = id; }
-
-    getCookie() { return this.value; }
-}
 
 // Run Checkerboard
 async function getCheckerboardByBuilding(build_ab) {
@@ -348,7 +334,8 @@ async function setChecker() {
             sessionStorage.removeItem("CheckerBoard_stash");
             // Reset button
             let cbButton = document.getElementById("CBButton");
-            cbButton.innerHTML = `<span>CheckerBoard</span>`;
+            //cbButton.innerHTML = `<img class="tab_img" src="button2.png"/><span>CheckerBoard</span>`;
+            cbButton.classList.remove("stashed");
         }
         return;
     }
