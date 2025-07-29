@@ -453,7 +453,18 @@ async fn handle_connection(
             res.send_contents(file_buffer);
         },
         "POST /add/user HTTP/1.1"          => {
-            
+            let new_user: DB_User = serde_json::from_str(&String::from_utf8(req.body).unwrap()).unwrap();
+            database.update_user(&new_user);
+
+            res.status(STATUS_200);
+            res.send_contents("User successfully added.".into());
+        },
+        "POST /delete/user HTTP/1.1"          => {
+            let del_user: String = String::from_utf8(req.body).expect("UNKNOWN");
+            database.delete_user(&del_user);
+
+            res.status(STATUS_200);
+            res.send_contents("User successfully deleted.".into());
         },
         "POST /update/dash HTTP/1.1"       => {
             let update_search = Regex::new(r#".*contents":"(?<contents>.*)""#).unwrap();
@@ -464,7 +475,7 @@ async fn handle_connection(
                 val: new_contents,
             });
             res.status(STATUS_200);
-            res.send_contents("".into());
+            res.send_file("".into());
         },
         // --------------------------------------------------------------------
         // make calls to backend functionality
