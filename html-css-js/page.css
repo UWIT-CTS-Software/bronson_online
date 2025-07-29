@@ -5,7 +5,20 @@ This file is a nightmare to navigate.
 need to consolidate things and reuse tags
 */
 
-/* Global Definitions */
+/* Fonts */
+.racing-sans-one-regular {
+    font-family: "Racing Sans One", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
+.contrail-one-regular {
+    font-family: "Contrail One", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
+/* ---- Global Elements ---- */
 body {
     background-color: rgb(50, 50, 50);
 }
@@ -26,7 +39,6 @@ ul {
 p {
     color: rgb(236, 200, 101);
     text-align: center;
-
     font-family: 'Lucida Sans', sans-serif;
     font-size: medium;
 }
@@ -110,7 +122,7 @@ button:hover {
 }
   
 button:disabled {
-    background-color: #FAFBFC;
+    background-color: #353320;
     border-color: rgba(27, 31, 35, 0.15);
     color: #959DA5;
     cursor: default;
@@ -141,24 +153,11 @@ button:-webkit-details-marker {
     width: 120px;
 }
 
-/* Fonts */
-
-.racing-sans-one-regular {
-    font-family: "Racing Sans One", sans-serif;
-    font-weight: 400;
-    font-style: normal;
-}
-
-.contrail-one-regular {
-    font-family: "Contrail One", sans-serif;
-    font-weight: 400;
-    font-style: normal;
-}
-
 /* The space in which the website exists. */
+/* Outer most layer in the HTML hiarchy */
 .program_board {
-    padding-bottom: 10%;
-    margin-top: -6px;
+    padding-bottom: 500px; 
+    margin-top: -8px;
 }
 
 /* Program Header Section          */
@@ -211,16 +210,11 @@ button:-webkit-details-marker {
     background-color: rgba(0, 0, 0, 0);
     text-align: left;
     font-family:'Courier New', Courier, monospace;
-    display: flex;
+    display: inline-block;
     grid-column: 2 / 11;
     grid-row: 1;
     padding-top: 0px;
     margin: 0px;
-}
-
-.middle_test {
-    width: 100%;
-
 }
 
 .message_header {
@@ -234,148 +228,9 @@ button:-webkit-details-marker {
     padding: 9px 5px 1px 5px;
     margin: 0px 0px;
     width: 90%
-} 
-
-.tab_row {
-    margin: 3px 0px;
-    display: flex;
-    padding: 0% 0%;
-    /* grid-auto-columns: 1fr;
-    grid-column: 1 / auto;
-    grid-row: 1; */
-    transform: translate(0px,22px);
 }
 
-.toolTab {
-    margin: -12px -7px;
-    opacity: 100%;
-    grid-row: 1;
-    text-align: center;
-    border: none;
-    background-color: transparent;
-    box-sizing: content-box;
-    box-shadow: none;
-}
-
-.toolTab span { 
-    position: absolute;
-    top: 3px;
-    left: 12px;
-    bottom: 0px;
-    color: rgb(180, 142, 79);
-    background: rgb(88,79,51);
-    border: rgb(135,62,9) solid 2px;
-    border-bottom: none;
-    border-radius: 10px;
-    padding: 0px 0px 0px 0px;
-    margin: 2px 0px 10px 0px;
-    font-family: "Racing Sans One", sans-serif;
-    font-size: 15px;
-    text-align: center;
-    width:110px;
-    transition-duration: .2s;
-}
-
-.toolTab:hover {
-    text-decoration: none;
-    transition-duration: 0.1s;
-    transform: matrix(1,0,0,1.1,0,-1.5);
-    background: transparent;
-    filter: hue-rotate(10deg);
-}
-
-.toolTab:active {
-    background: transparent;
-    transform: matrix(1,0,0,.7,0,4);
-    transition-duration:.1s;
-    filter: hue-rotate(35deg);
-    padding-top:0px;
-    box-shadow: none;
-    /* border: none; */
-}
-
-.toolTab:active span {
-    transform: matrix(1,0,0,1.5,0,-30);
-    top: 4px;
-    bottom: -3px;
-    left: 14px;
-    padding: 0px 0px 0px 0px;
-    transition-duration: .1s;
-    border: none;
-}
-
-.toolTab.selected {
-    transform: matrix(1, 0, 0, .7, 0, 4);
-    transition-duration: 0.1s;
-    filter: hue-rotate(-60deg);
-    /* margin: -12px -6px; */
-}
-
-.toolTab.selected span {
-    /*
-    transform: scaleY(1.6);
-    top: 0px;
-    bottom: 5px;
-    left:8px;
-    padding: 0px 13px 0px 13px;
-    filter: hue-rotate(20deg);
-    width:67%;
-    */
-    transform: scaleY(1.6);
-    top: 0px;
-    bottom: 5px;
-    left:8px;
-    padding: 0px 4px 20px 4px;
-    margin: 2px 0px 8px 0px;
-    filter: hue-rotate(20deg);
-    /* width:67%; */
-}
-
-.toolTab.stashed span {
-    /* border-color: red; */
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% {
-        transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(0,0,0,0.7);
-    }
-
-    70% {
-        transform: scale(1);
-        box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
-    }
-
-    100% {
-        transform: scale(.95);
-        box-shadow: 0 0 0 0 rgba(0,0,0,0.7);
-    }
-}
-
-.tab_img {
-    width: 130px;
-    height: 30px;
-}
-
-.dbTab {
-    grid-column: auto;
-    z-index: 0;
-}
-.chTab {
-    grid-column: auto;
-    z-index: 1;
-}
-
-.jnTab {
-    grid-column: auto;
-    z-index: 2;
-}
-
-.ccTab {
-    grid-column: auto;
-    z-index: 3;
-}
+/* Tabs are located towards the bottom of the file. */
  
 /*
 ▗▖ ▗▖▗▞▀▜▌▄▄▄▄  ▗▖█  ▐▌ ▄▄▄  ▗▞▀▚▖ ▄▄▄ 
@@ -387,51 +242,29 @@ button:-webkit-details-marker {
                           ▐▙▄▞▘        
 
 */
-
-/* This refers to the button in the middle panel */
-.hamburger {
-    margin: 20px auto;
-    display: inline-grid;
-    /* vertical-align: middle; */
-    border: 2px outset rgb(133, 118, 60);;
-    background: none;
-    cursor: pointer;
-    padding-left: 4px;
-    padding-top: 6px;
-    padding-right: 4px;
-    scale: 70%;
-    grid-column: 1 / 2;
-    grid-row: 1;
-    z-index: 1;
-    transform: translate(-78%, 20px)
-}
-
-.closeIcon {
-    display: none;
-}
-
 .hb_menu {
     z-index: 1;
     position: fixed;
     grid-row: 3x;
-    border:4px outset rgb(144, 118, 26);
+    border:4px double rgb(133, 60, 60);
+    border-radius:20px;
     background: rgb(39, 35, 35);
     transform: translateX(-150%);
     transition: transform 0.2s;
     color: black;
-    margin-top: 90px;
+    margin-top: 100px;
     width: 11rem;
-    box-shadow: 5px 10px 10px;
+    box-shadow: 3px 4px 4px;
 }
 
-.ph_legend {
+.hb_menu legend {
     color: rgb(118, 66, 28);
     background-color: rgb(214, 184, 103);
     border: 2px outset rgb(144, 118, 26);
     font-size: smaller;
 }
 
-.ph_fieldset {
+.hb_menu fieldset {
     color: rgb(118, 66, 28);
     background-color: rgb(190, 164, 92);
     border: 2px inset rgb(144, 118, 26);
@@ -442,42 +275,8 @@ button:-webkit-details-marker {
     height: fit-content;
 }
 
-.menu_ul {
-    grid-row: 8 / 3;
-    z-index: 1;
-    position: fixed;
-    grid-row: 3x;
-    /* transform: translateX(-150%); */
-    transition: transform 0.2s;
-    border:4px outset rgb(144, 118, 26);
-    background: rgb(39, 35, 35);
-    color: white;
-    list-style: none;
-    margin-top: 5%;
-    width: 9rem;
-}
-
 .showMenu {
     transform: translateX(0);
-}
-
-.menuItem {
-    color: white;
-}
-
-.menuItem:hover {
-    cursor: pointer;
-    color: #959DA5;
-    border: 2px inset rgb(144, 118, 26);
-}
-
-.site_buttons {
-    color: rgb(118, 66, 28);
-    background-color: rgba(0, 0, 0, 0);
-    text-align: center;
-    font-family:'Courier New', Courier, monospace;
-    margin: 4px;
-    margin-left: 136px;
 }
 
 /*
@@ -504,7 +303,7 @@ button:-webkit-details-marker {
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-    padding-bottom:3px;
+    padding-bottom: 3px;
 }
 
 .db_console {
@@ -530,125 +329,33 @@ button:-webkit-details-marker {
     overflow-x: scroll;
 }
 
-.cb_dash {
+.db_checker {
     grid-column:2/4;
     grid-row:1/2;
 }
 
-.cb_dash fieldset {
+.db_checker fieldset {
     height: 95%;
 }
 
-/* .leaderTab {
-    width:25%;
-} */
-.leader {
-    margin: -6px 0px 26px 0px;
-    padding: 0px 0px 0px 5px;
-    /* width: 350px; */
-    display: flex;
+.db_checker ul {
+    margin: 0px;
+    padding: 0px;
 }
 
-.leaderTab {
-    margin: -12px -6px;
-    opacity: 100%;
-    grid-row: 1;
-    text-align: center;
-    border: none;
-    background-color: transparent;
-    box-sizing: content-box;
-    box-shadow: none;
-}
-
-.leaderTab span { 
-    position: absolute;
-    top: 3px;
-    left: 11px;
-    bottom: 0px;
-    color: rgb(180, 142, 79);
-    background: rgb(88,79,51);
-    border: rgb(135,62,9) solid 2px;
-    border-bottom: none;
-    border-radius: 10px;
-    padding: 0px 0px 0px 0px;
-    margin: 2px 0px 10px 0px;
+.db_checker p {
     font-family: "Racing Sans One", sans-serif;
-    font-size: 14px;
-    text-align: center;
-    width:72px;
-    transition-duration: .2s;
+    text-align: left;
+    font-size: 18pt;
+    padding: 0px 0px 0px 30px;
+    margin: 0px 0px 0px 0px;
 }
 
-.leaderTab:hover{
-    text-decoration: none;
-    transition-duration: 0.1s;
-    transform: matrix(1,0,0,1.1,0,-1.5);
-    background: transparent;
-    filter: hue-rotate(10deg);
-}
-
-.leaderTab:active span {
-    transform: matrix(1,0,0,1.5,0,-30);
-    top: 4px;
-    bottom: -3px;
-    left: 14px;
-    padding: 0px 0px 0px 0px;
-    transition-duration: .1s;
-    border: none;
-}
-
-.leaderTab:active {
-    background: transparent;
-    transform: matrix(1,0,0,.5,0,6);
-    transition-duration:.1s;
-    filter: hue-rotate(35deg);
-    padding-top:0px;
-    box-shadow: none;
-}
-
-.leaderTab.leader_selected, .leaderTab.schedule_selected {
-    transform: matrix(1, 0, 0, .7, 0, 4);
-    transition-duration: 0.1s;
-    filter: hue-rotate(-60deg);
-}
-
-.leaderTab.leader_selected span, .leaderTab.schedule_selected span {
-    transform: scaleY(1.6);
-    top: 0px;
-    bottom: 5px;
-    left:6.5px;
-    padding: 0px 4px 20px 4px;
-    margin: 2px 0px 8px 0px;
-    filter: hue-rotate(20deg);
-}
-
-.leader_tab_img {
-    width:90px;
-    height:30px;
-}
-
-.weekTab {
-    grid-column: auto;
-    z-index: 0;
-    /* width: 55px; */
-}
-.monthTab {
-    grid-column: auto;
-    z-index: 1;
-    /* width: 55px; */
-}
-.semesterTab {
-    grid-column: auto;
-    z-index: 2;
+.db_checker progress {
+    width: 75%;
 }
 
 /* Schedule Stuff */
-
-.schedule {
-    transform: translate(90px, 5px);
-    width: 500px;
-}
-
 .timeBlockTable {
     text-align:left;
     vertical-align: bottom;
@@ -671,7 +378,6 @@ button:-webkit-details-marker {
 }
 
 #db_schedule_table .timeBlockTable {
-    /* border: 2px outset gold; */
     width: 3%;
     text-align: left;
     vertical-align:bottom;
@@ -693,134 +399,6 @@ button:-webkit-details-marker {
     background-color: rgb(49, 125, 64);
 }
 
-
-/* .leaderTab.leader_selected {
-    transform: translateY(4px);
-    transition-duration: 0.1s;
-    border-bottom: 26px solid #7c1919;
-} */
-
-
-.cb_dashZones {
-    margin: 0px;
-    padding: 0px;
-}
-
-.cb_dashZones p {
-    font-family: "Racing Sans One", sans-serif;
-    text-align: left;
-    font-size: 18pt;
-    padding: 0px 0px 0px 30px;
-    margin: 0px 0px 0px 0px;
-}
-
-.cb_dashZones progress {
-    width: 75%;
-}
-
-input[type=text], input[type=password] {
-    width: 100%;
-    padding: 12px 20px;
-    margin: 8px 0;
-    display: inline-block;
-    background-color: rgb(50, 50, 50);
-    border: 1px solid rgb(144, 118, 26);
-    color: rgb(144, 118, 26);;
-    box-sizing: border-box;
-}
-
-.login_imgcontainer {
-    text-align: center;
-    margin: 24px 0 12px 0;
-    position: relative;
-}
-
-img.avatar {
-    width: 40%;
-}
-
-img.background {
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
-    width: 50%;
-}
-
-.container {
-    padding: 16px;
-}
-
-span.psw {
-    float: right;
-    padding-top: 16px;
-}
-
-/* The Modal (background) */
-.modal {
-    display: none; /* Hidden by default */
-    position: fixed; /* Stay in place */
-    z-index: 1; /* Sit on top */
-    left: 0;
-    top: 0;
-    width: 100%; /* Full width */
-    height: 100%; /* Full height */
-    overflow: auto; /* Enable scroll if needed */
-    background-color: rgb(0,0,0); /* Fallback color */
-    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-    padding-top: 60px;
-}
-
-/* Modal Content/Box */
-.modal-content {
-    background-color: rgb(50, 50, 50);
-    margin: 10% auto 15% auto;
-    border: 1px solid rgb(144, 118, 26);
-    width: 40%;
-}
-
-/* The Close Button (x) */
-.close {
-    position: absolute;
-    right: 25px;
-    top: 0;
-    color: #000;
-    font-size: 35px;
-    font-weight: bold;
-}
-
-.close:hover,
-.close:focus {
-    color: red;
-    cursor: pointer;
-}
-
-/* Add Zoom Animation */
-.animate {
-    -webkit-animation: animatezoom 0.6s;
-    animation: animatezoom 0.6s
-}
-
-@-webkit-keyframes animatezoom {
-    from {-webkit-transform: scale(0)} 
-    to {-webkit-transform: scale(1)}
-}
-
-@keyframes animatezoom {
-    from {transform: scale(0)} 
-    to {transform: scale(1)}
-}
-
-/* Change styles for span and cancel button on extra small screens */
-@media screen and (max-width: 300px) {
-span.psw {
-        display: block;
-        float: none;
-    }
-    .cancelbtn {
-        width: 100%;
-    }
-}
-
 @media (max-width: 1000px) {
     .db_leader {
         grid-column: 8/11;
@@ -828,10 +406,10 @@ span.psw {
     .db_schedule {
         grid-column: 1/-1;
     }
-    .cb_dash {
+    .db_checker {
         grid-column: 1/4;
     }
-    .cb_dash progress {
+    .db_checker progress {
         width: 50%;
     }
 }
@@ -1074,14 +652,7 @@ span.psw {
     grid-column: 3 / 10;
     grid-row: 1/4;
     font-family:'Courier New', Courier, monospace;
-    /* text-transform: full-width;
-    letter-spacing: -0.2em; */
 }
-/* 
-.cb_fieldset {
-    border:4px outset rgb(144, 118, 26);
-    float: center;
-} */
 
 .cb_zoneSelFieldset {
     padding: 2px 0px 4px 4px;
@@ -1208,10 +779,7 @@ span.psw {
     column-count: 2;
     gap:0px;
 }
-/* 
-.cbVisRoomAttributes > li {
-    margin-bottom:4px;
-} */
+
 .cbVisNotChecked {
     background-color: rgb(102, 53, 54);
     /* border: rgb(94, 46, 17) inset 2px; */
@@ -1219,26 +787,12 @@ span.psw {
     border-right:rgb(75,45,15) outset 1px;
 }
 
-/* .cbVisNotCheckedSpan {
-    padding:0px;
-    margin:0px;
-    display:flex;
-    text-align:center;
-} */
-
 .cbVisChecked {
     background-color: rgb(67, 102, 65);
     /* border: rgb(33, 39, 33) inset 2px; */
     border-radius: 0px 0px 0px 18px;
     border-right:rgb(75,45,15) outset 1px;
 }
-/* 
-.cbVisCheckedSpan {
-    padding:0px;
-    margin:0px;
-    display:flex;
-    text-align:center;
-} */
 
 .cbVisAvailable {
     background-color: rgb(57, 125, 54);
@@ -1247,25 +801,12 @@ span.psw {
     border-left:rgb(90,60,30) inset 1px;
 }
 
-/* .cbVisAvailableSpan {
-   padding:0px;
-    margin:0px;
-    display:flex;
-    text-align:center;
-} */
-
 .cbVisNotAvailable {
     background-color: rgb(139,24,27);
     /* border: rgb(94, 46, 17) inset 2px; */
     border-radius: 0px 0px 18px 0px;
     border-left:rgb(90,60,30) inset 1px;
 }
-/* .cbVisNotAvailableSpan {
-    padding:0px;
-    margin:0px;
-    display:flex;
-    text-align:center;
-} */
 
 /* Maybe use this instead */
 .cbVisRoomAttributeSpan {
@@ -1331,14 +872,6 @@ span.psw {
 .cfm_fieldset {
     border:4px outset rgb(144, 118, 26);
 }
-
-/* .rmSelect {
-    border:4px outset rgb(144, 118, 26);
-} */
-
-/* .bdSelect {
-    border:4px outset rgb(144, 118, 26);
-} */
 
 .cfm_FileContainer {
     grid-column: 3 / 7;
@@ -1423,10 +956,6 @@ ol li::marker {
 }
 
 /* Admin Tools */
-.admin_tab {
-    float:right;
-    transform: matrix(1,0,0,1,-5,2);
-}
 
 .at_container {
     background-color: rgb(50,50,50);
@@ -1544,8 +1073,255 @@ ol li::marker {
     background-color:red;
 }
 
-/* TABS */
+/* -------------- Tabs -------------- */
+/* Program Header Tabs */
+.tab_row {
+    margin: 3px 0px;
+    display: flex;
+    padding: 0% 0%;
+    /* grid-auto-columns: 1fr;
+    grid-column: 1 / auto;
+    grid-row: 1; */
+    transform: translate(0px,22px);
+}
 
+.toolTab {
+    margin: -12px -7px;
+    opacity: 100%;
+    grid-row: 1;
+    text-align: center;
+    border: none;
+    background-color: transparent;
+    box-sizing: content-box;
+    box-shadow: none;
+}
+
+.toolTab span { 
+    position: absolute;
+    top: 3px;
+    left: 12px;
+    bottom: 0px;
+    color: rgb(180, 142, 79);
+    background: rgb(88,79,51);
+    border: rgb(135,62,9) solid 2px;
+    border-bottom: none;
+    border-radius: 10px;
+    padding: 0px 0px 0px 0px;
+    margin: 2px 0px 10px 0px;
+    font-family: "Racing Sans One", sans-serif;
+    font-size: 15px;
+    text-align: center;
+    width:110px;
+    transition-duration: .2s;
+}
+
+.toolTab:hover {
+    text-decoration: none;
+    transition-duration: 0.1s;
+    transform: matrix(1,0,0,1.1,0,-1.5);
+    background: transparent;
+    filter: hue-rotate(10deg);
+}
+
+.toolTab:active {
+    background: transparent;
+    transform: matrix(1,0,0,.7,0,4);
+    transition-duration:.1s;
+    filter: hue-rotate(35deg);
+    padding-top:0px;
+    box-shadow: none;
+    /* border: none; */
+}
+
+.toolTab:active span {
+    transform: matrix(1,0,0,1.5,0,-30);
+    top: 4px;
+    bottom: -3px;
+    left: 14px;
+    padding: 0px 0px 0px 0px;
+    transition-duration: .1s;
+    border: none;
+}
+
+.toolTab.selected {
+    transform: matrix(1, 0, 0, .7, 0, 4);
+    transition-duration: 0.1s;
+    filter: hue-rotate(-60deg);
+    /* margin: -12px -6px; */
+}
+
+.toolTab.selected span {
+    transform: scaleY(1.6);
+    top: 0px;
+    bottom: 6px;
+    left:8px;
+    padding: 0px 4px 20px 4px;
+    margin: 2px 0px 8px 0px;
+    filter: hue-rotate(20deg);
+    /* width:67%; */
+}
+
+.toolTab.stashed span {
+    /* border-color: red; */
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(0,0,0,0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
+    }
+
+    100% {
+        transform: scale(.95);
+        box-shadow: 0 0 0 0 rgba(0,0,0,0.7);
+    }
+}
+
+.tab_img {
+    width: 130px;
+    height: 30px;
+}
+
+.dbTab {
+    grid-column: auto;
+    z-index: 0;
+}
+.chTab {
+    grid-column: auto;
+    z-index: 1;
+}
+
+.jnTab {
+    grid-column: auto;
+    z-index: 2;
+}
+
+.ccTab {
+    grid-column: auto;
+    z-index: 3;
+}
+
+/* Dashboard Tabs */
+
+.leader {
+    margin: -6px 0px 26px 0px;
+    padding: 0px 0px 0px 5px;
+    /* width: 350px; */
+    display: flex;
+}
+
+.schedule {
+    transform: translate(90px, 6px);
+    width: 500px;
+}
+
+.leaderTab {
+    margin: -12px -6px;
+    opacity: 100%;
+    grid-row: 1;
+    text-align: center;
+    border: none;
+    background-color: transparent;
+    box-sizing: content-box;
+    box-shadow: none;
+}
+
+.leaderTab span { 
+    position: absolute;
+    top: 3px;
+    left: 11px;
+    bottom: 0px;
+    color: rgb(180, 142, 79);
+    background: rgb(88,79,51);
+    border: rgb(135,62,9) solid 2px;
+    border-bottom: none;
+    border-radius: 10px;
+    padding: 0px 0px 0px 0px;
+    margin: 2px 0px 10px 0px;
+    font-family: "Racing Sans One", sans-serif;
+    font-size: 14px;
+    text-align: center;
+    width:72px;
+    transition-duration: .2s;
+}
+
+.leaderTab:hover{
+    text-decoration: none;
+    transition-duration: 0.1s;
+    transform: matrix(1,0,0,1.1,0,-1.5);
+    background: transparent;
+    filter: hue-rotate(10deg);
+}
+
+.leaderTab:active span {
+    transform: matrix(1,0,0,1.5,0,-30);
+    top: 4px;
+    bottom: -3px;
+    left: 14px;
+    padding: 0px 0px 0px 0px;
+    transition-duration: .1s;
+    border: none;
+}
+
+.leaderTab:active {
+    background: transparent;
+    transform: matrix(1,0,0,.5,0,6);
+    transition-duration:.1s;
+    filter: hue-rotate(35deg);
+    padding-top:0px;
+    box-shadow: none;
+}
+
+.leaderTab.leader_selected, .leaderTab.schedule_selected {
+    transform: matrix(1, 0, 0, .7, 0, 4);
+    transition-duration: 0.1s;
+    filter: hue-rotate(-60deg);
+}
+
+.leaderTab.leader_selected span, .leaderTab.schedule_selected span {
+    transform: scaleY(1.6);
+    top: 0px;
+    bottom: 5px;
+    left:6.5px;
+    padding: 0px 4px 20px 4px;
+    margin: 2px 0px 8px 0px;
+    filter: hue-rotate(20deg);
+}
+
+.leader_tab_img {
+    width:90px;
+    height:30px;
+}
+
+.weekTab {
+    grid-column: auto;
+    z-index: 0;
+    /* width: 55px; */
+}
+.monthTab {
+    grid-column: auto;
+    z-index: 1;
+    /* width: 55px; */
+}
+.semesterTab {
+    grid-column: auto;
+    z-index: 2;
+}
+
+/* Admin Tool Tabs */
+/* admin tools tab */ 
+.admin_tab {
+    float:right;
+    transform: matrix(1,0,0,1,-5,2);
+}
+
+/* The row inside admin tool page */
 .admin_tabs {
     margin: -9px 0px 26px 0px;
     padding: 0px 0px 1px 13px;
@@ -1632,4 +1408,110 @@ ol li::marker {
 .at_tab_img {
     width:130px;
     height:30px;
+}
+
+/* Other */
+
+input[type=text], input[type=password] {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    display: inline-block;
+    background-color: rgb(50, 50, 50);
+    border: 1px solid rgb(144, 118, 26);
+    color: rgb(144, 118, 26);;
+    box-sizing: border-box;
+}
+
+span.psw {
+    float: right;
+    padding-top: 16px;
+}
+
+.login_imgcontainer {
+    text-align: center;
+    margin: 24px 0 12px 0;
+    position: relative;
+}
+
+img.avatar {
+    width: 40%;
+}
+
+img.background {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 50%;
+}
+
+.modal_container {
+    padding: 16px;
+}
+
+
+/* The Modal (background) */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgb(0,0,0); /* Fallback color */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    padding-top: 60px;
+}
+
+/* Modal Content/Box */
+.modal-content {
+    background-color: rgb(50, 50, 50);
+    margin: 10% auto 15% auto;
+    border: 1px solid rgb(144, 118, 26);
+    width: 40%;
+}
+
+/* The Close Button (x) */
+.close {
+    position: absolute;
+    right: 25px;
+    top: 0;
+    color: #000;
+    font-size: 35px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: red;
+    cursor: pointer;
+}
+
+/* Add Zoom Animation */
+.animate {
+    -webkit-animation: animatezoom 0.6s;
+    animation: animatezoom 0.6s
+}
+
+@-webkit-keyframes animatezoom {
+    from {-webkit-transform: scale(0)} 
+    to {-webkit-transform: scale(1)}
+}
+
+@keyframes animatezoom {
+    from {transform: scale(0)} 
+    to {transform: scale(1)}
+}
+
+/* Change styles for span and cancel button on extra small screens */
+@media screen and (max-width: 300px) {
+span.psw {
+        display: block;
+        float: none;
+    }
+    .cancelbtn {
+        width: 100%;
+    }
 }

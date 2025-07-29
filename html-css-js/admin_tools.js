@@ -1,6 +1,38 @@
-// admin_tools.js
+/* admin_tools.js
 
+Functions
+    - sleep(ms);
+    - setAdminBronson();
+    - setAdminTools();
+  Message Editor
+    - setMessageEditor();
+    - setDashboardMessage(); -------------------------------------- DB_TODO
+    - clearEditor();
+  Schedule
+    - setScheduleEditor();
+    - setRemoveMode();
+    - removeTechSelect(techID);
+    - exitRemoveMode();
+    - removeSelectedTechs();
+    - addBlankTechSchedule(count);
+    - exportSchd();
+    - filterTechs();
+    - makeTechEditTable();
+    - makeTechAssignmentSelect(techObj);
+    - makeAdminTechSchdRow(tech, day);
+    - flipTime(techName, tableElementID);
+    - updateHours(tableID, tableHoursID);
+    - updateAllTechSchedules();
+    - updateTechSchedule(techID); --------------------------------- DB_TODO
+*/
 // Note, I think it would be good to put the terminal stuff in here that is currently in index_admin.html but it utilizes JQueury in a way that I am not hundred percent sure of so I will not be doing that just yet because I don't want to break anything.
+
+// quick sleep function, used to wait for server response when jquery delays retreiveing
+// something from the backend. Which should only really need to happen when an admin
+// refreshes the page.
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 // Adds the 'Admin Tools' tab to the program header
 function setAdminBronson() {
@@ -15,13 +47,11 @@ function setAdminBronson() {
 
 // Set Admin Tool Page on program guts
 async function setAdminTools() {
-    const menuItems = document.querySelectorAll(".menuItem");
-
-    menuItems.forEach(function(menuItem) {
-      menuItem.addEventListener("click", toggleMenu);
-    });
-
+    await sleep(200);
     preserveCurrentTool();
+
+    //   DATABASE_TODO - once functional, uncomment line below.
+    // await checkForDataUpdates()
 
     document.title = "Admin Tools - Bronson";
     // remove currently active status mark tab has active.
@@ -114,6 +144,9 @@ function setMessageEditor() {
 function setDashboardMessage() {
     let dme = document.getElementById("dme_editor");
     contents = dme.innerText;
+    // DATABASE_TODO
+    //  - This needs to be a post into the database.
+    //    Once that is done the below line will not be relevant
     localStorage.setItem("DashboardMessage", contents);
     return;
 }
@@ -146,7 +179,6 @@ function setScheduleEditor() {
         return;
     }
     
-    // TODO: Make Buttons
     let buttonFieldset = document.createElement('div');
     buttonFieldset.classList.add("schdEditorButtonsDiv");
     buttonFieldset.innerHTML = `
@@ -192,9 +224,7 @@ function setScheduleEditor() {
     return;
 }
 
-// TODO: set remove mode,
-//  I really dont want to accidentally remove someone with a misclick
-//   so I want this to be a popup with a list of techs. With a button
+// Remove Mode is intended to mimimize the likelihood that a tech is accidentally removed.
 function setRemoveMode() {
     let techTables = document.getElementsByClassName('techSchdDiv');
     for(i in techTables) {
@@ -548,12 +578,11 @@ function updateTechSchedule(tableID) {
     }
     // Assignment
     let select = document.getElementById(`techSelect${techName}`);
-    // TODO: Name
+    // Name
     let name = document.getElementById(`techNameEdit${techName}`)
     // get copy of current tech schedules and update it
-    //   DATABASE POST REQUEST HERE.
     let scheduleData = JSON.parse(localStorage.getItem('schedule'));
-    // If tech is not in json, add to it
+    // If tech is not in the json, add to it
     let techIndex = scheduleData.Technicians.findIndex(element => element.Name === techName);
     console.log(techIndex);
     if(techIndex == -1) {
@@ -571,5 +600,10 @@ function updateTechSchedule(tableID) {
         scheduleData.Technicians[techIndex].Assignment = select.value;
         localStorage.setItem('schedule', JSON.stringify(scheduleData));
     }
+    // DATABASE_TODO
+    // need to grab this updated schedule object and post it to the backend.
+    // Since this is not something that is managed indepth by the database,
+    // calculating the hash value that we check in 'checkForDataUpdates()'
+    // here may be neccessary.
     return;
 }
