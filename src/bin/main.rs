@@ -8,7 +8,7 @@
 
 Backend
     - main()
-    - handle_connection(stream: TcpStream, cookie_jar: Arc<Jar>, buildings: HashMap) -> Option
+    - handle_connection(req: Request, database: Database) -> Option
     - process_buffer(buffer: mut [u8]) -> String
     - find_enclosed(s: String, delimeters: (char,char), include_delim: bool) -> String
 
@@ -16,7 +16,7 @@ JackNet
     - execute_ping(body: Vec<u8>) -> String
 
 ChkrBrd
-    - construct_headers(call_type: &str, keys: Keys) -> HeaderMap
+    - construct_headers(call_type: &str, database: &mut Database) -> HeaderMap
     - check_schedule(room: Room) -> String
     - check_lsm(room: Room) -> String
 
@@ -42,12 +42,10 @@ Wiki
 // dependencies
 // ----------------------------------------------------------------------------
 use server_lib::{
-    Keys,
     ThreadPool, PingRequest, 
     Building, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
-    KEYS, 
     CFM_DIR, WIKI_DIR, LOG, 
     Request, Response, STATUS_200, STATUS_303, STATUS_404,
     Database,
@@ -102,10 +100,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     database.init_if_empty();
 
     // get keys
-    let key_file = File::open(KEYS)
-        .expect("[-] FILE_ERR: Could not open.");
-    let keys: Keys = serde_json::from_reader(key_file)
-        .expect("[-] PARSE_ERR: Could not parse into struct.");
 
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
@@ -153,13 +147,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for stream in listener.incoming() {
         let mut stream = stream.unwrap();
         let clone_db = database.clone();
-        let clone_keys = keys.clone();
 
         stream.read(&mut buffer).unwrap();
         let req = Request::build(buffer.clone());
 
         pool.execute(move || {
-            let mut res = handle_connection(req, clone_db, clone_keys).unwrap();
+            let mut res = handle_connection(req, clone_db).unwrap();
             stream.write(&res.build()).unwrap();
             stream.flush().unwrap();
             stdout().flush().unwrap();
@@ -202,7 +195,6 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
 async fn handle_connection(
     req: Request,
     mut database: Database,
-    keys: Keys,
 ) -> Option<Response> {
     
     let mut user_homepage: &str = "html-css-js/login.html";
@@ -346,7 +338,7 @@ async fn handle_connection(
             let req = reqwest::Client::builder()
                 .cookie_store(true)
                 .user_agent("server_lib/1.10.1")
-                .default_headers(construct_headers("lsm", keys))
+                .default_headers(construct_headers("lsm", &mut database))
                 .timeout(Duration::from_secs(15))
                 .build()
                 .ok()?
@@ -528,7 +520,7 @@ async fn handle_connection(
                 .cookie_store(true)
                 // .cookie_provider(Arc::clone(&cookie_jar))
                 .user_agent("server_lib/1.10.1")
-                .default_headers(construct_headers("gh", keys))
+                .default_headers(construct_headers("gh", &mut database))
                 .timeout(Duration::from_secs(15))
                 .build()
                 .ok()?
@@ -570,7 +562,7 @@ async fn handle_connection(
             let req = reqwest::Client::builder()
                 .cookie_store(true)
                 .user_agent("server_lib/1.10.1")
-                .default_headers(construct_headers("lsm", keys))
+                .default_headers(construct_headers("lsm", &mut database))
                 .timeout(Duration::from_secs(15))
                 .build()
                 .ok()?
@@ -832,14 +824,14 @@ $$ |  $$\ $$ |  $$ |$$  _$$<  $$ |      $$ |  $$ |$$ |      $$ |  $$ |
  \______/ \__|  \__|\__|  \__|\__|      \_______/ \__|       \_______|
 */
 
-fn construct_headers(call_type: &str, keys: Keys) -> HeaderMap {
+fn construct_headers(call_type: &str,database: &mut Database) -> HeaderMap {
     let mut header_map = HeaderMap::new();
     if call_type == "lsm" {
         header_map.insert(ACCEPT, HeaderValue::from_static("application/json"));
-        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&keys.lsm_api).expect("[-] KEY_ERR: Not found."));
+        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&database.get_key("lsm_api").val).expect("[-] KEY_ERR: Not found."));
     } else if call_type == "gh" {
         header_map.insert(ACCEPT, HeaderValue::from_static("application/vnd.github+json"));
-        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&keys.gh_api).expect("[-] KEY_ERR: Not found."));
+        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&database.get_key("gh_api").val).expect("[-] KEY_ERR: Not found."));
         header_map.insert(HeaderName::from_static("x-github-api-version"), HeaderValue::from_static("2022-11-28"));
     }
 

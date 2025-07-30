@@ -59,8 +59,13 @@ CREATE TABLE IF NOT EXISTS bronson.users (
     permissions SMALLINT     NOT NULL DEFAULT 3
 );
 
+CREATE TABLE IF NOT EXISTS bronson.keys (
+    key_id  TEXT PRIMARY KEY,
+    val TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS bronson.data (
-    key TEXT         PRIMARY KEY,
-    val TEXT         NOT NULL
+    key TEXT PRIMARY KEY,
+    val TEXT NOT NULL
 );
 
