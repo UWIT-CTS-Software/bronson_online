@@ -46,7 +46,8 @@ use server_lib::{
     Building, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
-    CFM_DIR, WIKI_DIR, LOG, 
+    TSCH_JSON, BLDG_JSON, ROOM_CSV, CAMPUS_CSV,
+    CFM_DIR, WIKI_DIR, LOG,
     Request, Response, STATUS_200, STATUS_303, STATUS_404,
     Database,
     models::{
@@ -307,11 +308,13 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_file("assets/button2.png");
         },
-        "GET /button2red.png HTTP/1.1"        => {
-            res.status(STATUS_200);
-            res.send_file("assets/button2red.png");
-        },
         // Data Requests
+        "GET /techSchedule HTTP/1.1"  => {
+            let contents = get_tech_schedules();
+            res.status(STATUS_200);
+            //res.send_file("data/techSchedule.json");
+            res.send_contents(contents);
+        },
         "GET /campusData HTTP/1.1"         => {
             let contents = json!(&database.get_campus()).to_string().into();
             res.status(STATUS_200);
@@ -742,6 +745,13 @@ fn get_zone_data(buildings: HashMap<String, DB_Building>) -> Vec<u8> {
             ]
         });
     return json_return.to_string().into();
+}
+
+fn get_tech_schedules() -> Vec<u8> {
+    let tsch_file: String = read_to_string(TSCH_JSON).expect("Error");
+    //let schedules: String = serde_json::from_str(tsch_file.as_str()).expect("Error");
+    let contents: Vec<u8> = json!(tsch_file).to_string().into();
+    return contents;
 }
 
 /*
