@@ -41,10 +41,7 @@ there should be an object for the csv export and if a search is ran, it is overw
 
 TODO:
     [ ] - All Buildings PopUp, "Are You Sure?"
-    [ ] - When a response is received add new buttons to the options
-        - "collapse all/expand all" 
-            when we have all these tiles it may be nice to collapse all of them
-    [ ] - change the minimze/exapand button to change depending on state.
+    [ ] - when we have all these tiles it may be nice to collapse all of them
 */
 
 /*
@@ -91,7 +88,7 @@ function getSelectedDevices() {
     };
     let sum = devList.reduce((acc, cur) => acc + cur, 0);
     if (sum == 0) {
-        devList = [1,1,1,1,1,1];
+        devList = [1,1,1,1,1,0]; // ceiling mics disabled
     }
     return devList;
 }
@@ -277,8 +274,7 @@ async function runSearch() {
         // Expect the structure of ping result to change.
         let formPR = formatPingPong(pingResult, devices);
         // console.log("JackNet Debug - formPR:\n", formPR);
-        // - maybe
-        // TODO - check document title and if it is not jacknet,
+        // check document title and if it is not jacknet,
         //  chuck the response into session storage and when the user 
         //  goes back to JackNet, continue with everything below
         if (document.title != "JackNet - Bronson") {
@@ -348,7 +344,7 @@ async function pingpong(devices, building) {
 //   [
 //     [[ROOM1-DEV1-1, ROOM1-DEV1-2],[ROOM1-DEV2-1],[]],
 //     [[ROOM2-DEV1-1, ROOM2-DEV1-2],[ROOM2-DEV2-1],[ROOM2-DEV3-1]],
-//     [[...],[...]]
+//     [[...],[...],[...]]
 //   ],
 //   [
 //      [[IP-ADDRS],[...],[...]],
@@ -570,7 +566,6 @@ async function postJNVis(hns, ips, building, totalDevices, totalNotFound, device
     vis_container.id = "tile" + tileID;
     let bAbbrev = await getAbbrev(building);
     let totalFound = totalDevices - totalNotFound;
-    // TODO - add a percentage in the header?
     let HTML_visHeader = `<div class="visHeader"> ${building} (${bAbbrev})<button class="visButton" onclick="closeVisTab(\'${tileID}\')"> x </button><button class="visButton" onclick="minimizeVisTab(\'${tileID}\')"> _ </button><span style="color: rgb(95, 95, 95); margin: 0% 2%;float:right"> ${totalFound}/${totalDevices} Devices Found</span></div>`;
     // Compile lists...
     // Tables are row based instead of column, making this a little different
@@ -644,13 +639,6 @@ async function postJNVis(hns, ips, building, totalDevices, totalNotFound, device
 
 // SETTING THE HTML DOM
 async function setJackNet() {
-    // 7.7.25 - what is a menuItem?
-    const menuItems = document.querySelectorAll(".menuItem");
-
-    menuItems.forEach(function(menuItem) {
-      menuItem.addEventListener("click", toggleMenu);
-    });
-
     preserveCurrentTool();
 
     document.title = "JackNet - Bronson";
@@ -673,27 +661,30 @@ async function setJackNet() {
     // Check for preserved space
     let cached_HTML = sessionStorage.getItem("JackNet_html");
     if (cached_HTML != null) {
-        progGuts.innerHTML = cached_HTML;
-        const runButton = document.getElementById('run');
-        runButton.disabled = false;
-        let stash = JSON.parse(sessionStorage.getItem("JackNet_stash"));
-        if (stash != null) {
-            console.log("JackNet Stash Found, unloading items");
-            for(response in stash.stashList) {
-                console.log(stash.stashList[response]);
-                let pr = stash.stashList[response]["formattedPingRequest"];
-                let bn = stash.stashList[response]["buildingName"];
-                let dn = stash.stashList[response]["deviceNames"];
-                await printPR(pr, bn, dn);
+        // make sure cache was not overwritten with another tool.
+        if(cached_HTML.includes("jn_container")) {
+            progGuts.innerHTML = cached_HTML;
+            const runButton = document.getElementById('run');
+            runButton.disabled = false;
+            let stash = JSON.parse(sessionStorage.getItem("JackNet_stash"));
+            if (stash != null) {
+                console.log("JackNet Stash Found, unloading items");
+                for(response in stash.stashList) {
+                    console.log(stash.stashList[response]);
+                    let pr = stash.stashList[response]["formattedPingRequest"];
+                    let bn = stash.stashList[response]["buildingName"];
+                    let dn = stash.stashList[response]["deviceNames"];
+                    await printPR(pr, bn, dn);
+                }
+                // reset stash
+                sessionStorage.removeItem("JackNet_stash");
+                // Reset button
+                let jnButton = document.getElementById("JNButton");
+                //jnButton.innerHTML = `<img class="tab_img" src="button2.png"/><span>JackNet</span>`;
+                jnButton.classList.remove("stashed");
             }
-            // reset stash
-            sessionStorage.removeItem("JackNet_stash");
-            // Reset button
-            let jnButton = document.getElementById("JNButton");
-            //jnButton.innerHTML = `<img class="tab_img" src="button2.png"/><span>JackNet</span>`;
-            jnButton.classList.remove("stashed");
+            return;
         }
-        return;
     }
 
     //--- No html cache found, build from scratch
@@ -767,8 +758,9 @@ async function setJackNet() {
         <fieldset>
             <legend> 
                 Console Output: </legend>
-            <textarea readonly rows="15" cols ="75" class="jn_innerConsole" name="consoleOutput" spellcheck="false"> 
-JackNet Console: Responses will be printed here along with some tiles below.
+            <textarea readonly rows="15" cols ="75" class="jn_innerConsole" name="consoleOutput" spellcheck="false">                JackNet Console: Responses will be printed here along with some tiles below.
+
+DISCLAIMER: This application is moreso a proof of concept rather than a functional everyday tool. Just because a device does not return back, does not neccessarily mean that it is in need of servicing. Many devices such as Ceiling Mics are not even on the network to begin with (specifically the A/V VLAN). Many functional rooms on campus utilize local networks to facilitate communication. This tool does a very simple ICMP ping request using what the hostname for a given device SHOULD be and returns back the IP address if it is found. This means devices without a DHCP reservation (or port) will not appear online. The only way we can access the information as we envisioned is by connecting to a room's network switch via SNMP and pulling information from there and that is currently not implemented in this tool. We are waiting for an instance of an API used by the university that will provide the framework to utilize SNMP. The goal is to leverage the detailed information we get from SNMP to provide diagnostic recommendations. For example, if the biamp is connected but not transmitting data, indicative of a restart. Giving us a quick way to jump to the heart of the problem in the context of live troubleshooting. This tool is far from ready for that use case. 
             </textarea>
         </fieldset>`;
 
@@ -804,6 +796,8 @@ JackNet Console: Responses will be printed here along with some tiles below.
     main_container.classList.add('program_guts');
     main_container.appendChild(visualizerSection);
     progGuts.replaceWith(main_container);
-
+    // disable ceiling mics option (No ceiling mics are on the network).
+    let micCheckBox = document.getElementById("cmicx");
+    micCheckBox.disabled = true;
     return;
   }

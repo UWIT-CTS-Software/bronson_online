@@ -12,13 +12,13 @@ This file contains all code relating to checkboard and will manipulate the DOM i
 
 TOC:
     - getCheckerboardByBuilding(build_ab)
-    - run()
+    - run() ---------------------------------------------------------------------------------- DB_TODO
   HTML
     - FourDigitToTimeFormat(unformattedTime)
     - buildStarterTopper(zone_array)
     - updateTopperElement(topperID, buildingName, numberCheckd, numberRooms)
     - clearVisContainer()
-    - printCBResponse(JSON)
+    - printCBResponse(JSON) ------------------------------------------------------------------ DB_TODO
     - cbJumpTo(entryID)
     - cb_clear()
     - setChecker()
@@ -39,21 +39,7 @@ TODO -
       If every room in a building (or zone) is checked, it is an achievement for the tech
       they should get some kinda special message or confetti when this happens.
 */
-class Time {
-    constructor() { this.time = ''; }
 
-    setTime(time) { this.time = time; }
-
-    getTime() { return this.time; }
-}
-
-class Cookie {
-    constructor() { this.value = "none"; }
-
-    setCookie(id) { this.value = id; }
-
-    getCookie() { return this.value; }
-}
 
 // Run Checkerboard
 async function getCheckerboardByBuilding(build_ab) {
@@ -79,13 +65,14 @@ async function run() {
         }
     }
     //console.log(zone_array);
-    // Clear cbVisContainer (??)
+    // Clear cbVisContainer
     clearVisContainer();
 
     // Get selected zone building list
     //console.log(zone_array);
     buildStarterTopper(zone_array);
     // set Session Storage to initial values
+    // DATABASE_TODO : Cutting out resetCBdash(), no longer calculating zone percentages on front-end
     resetCBDash(zone_array);
 
     // iterativly go through buildings
@@ -281,6 +268,7 @@ async function printCBResponse(JSON) {
     await updateTopperElement(topperID, building['name'], numberChecked, numberRooms);
     // Send an update to session storage;
     //console.log(building['zone']);
+    // DATABASE_TODO, no longer doing zone percents on front end
     await updateCBDashZone(building['zone'], numberRooms, numberChecked);
     return;
 }
@@ -305,12 +293,6 @@ function cb_clear() {
 }
 
 async function setChecker() {
-    const menuItems = document.querySelectorAll(".menuItem");
-
-    menuItems.forEach(function(menuItem) {
-      menuItem.addEventListener("click", toggleMenu);
-    });
-
     preserveCurrentTool();
 
     document.title = "CheckerBoard - Bronson";
@@ -333,25 +315,27 @@ async function setChecker() {
     // Check for preserved space
     let cached_HTML = sessionStorage.getItem("CheckerBoard_html");
     if (cached_HTML != null) {
-        progGuts.innerHTML = cached_HTML;
-        // Quickly make sure that run is enabled
-        const runButton = document.getElementById('cb_run');
-        runButton.disabled = false;
-        // TODO - check stash, load stash
-        let stash = JSON.parse(sessionStorage.getItem("CheckerBoard_stash"));
-        if (stash != null) {
-            console.log("Checkerboard stash found, unloading items");
-            for(item in stash.stashList) {
-                await printCBResponse(stash.stashList[item]["checkerboardResponse"]);
+        // make sure cache was not overwritten with another tool.
+        if(cached_HTML.includes("cb_container")) {
+            progGuts.innerHTML = cached_HTML;
+            // Quickly make sure that run is enabled
+            const runButton = document.getElementById('cb_run');
+            runButton.disabled = false;
+            let stash = JSON.parse(sessionStorage.getItem("CheckerBoard_stash"));
+            if (stash != null) {
+                console.log("Checkerboard stash found, unloading items");
+                for(item in stash.stashList) {
+                    await printCBResponse(stash.stashList[item]["checkerboardResponse"]);
+                }
+                // Reset stash
+                sessionStorage.removeItem("CheckerBoard_stash");
+                // Reset button
+                let cbButton = document.getElementById("CBButton");
+                //cbButton.innerHTML = `<img class="tab_img" src="button2.png"/><span>CheckerBoard</span>`;
+                cbButton.classList.remove("stashed");
             }
-            // Reset stash
-            sessionStorage.removeItem("CheckerBoard_stash");
-            // Reset button
-            let cbButton = document.getElementById("CBButton");
-            //cbButton.innerHTML = `<img class="tab_img" src="button2.png"/><span>CheckerBoard</span>`;
-            cbButton.classList.remove("stashed");
+            return;
         }
-        return;
     }
     
     // -- No HTML Cache found, build from scratch

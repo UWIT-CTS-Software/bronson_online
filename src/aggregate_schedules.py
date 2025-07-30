@@ -20,7 +20,7 @@ for file in files:
             else:
                 room_dict.update({row[0]:schedule})
 
-with open('roomConfig_agg.csv', 'w') as f:
+with open('../data/roomConfig_agg.csv', 'w') as f:
     writer = csv.writer(f, delimiter=',')
     for room in room_dict.keys():
         row = []

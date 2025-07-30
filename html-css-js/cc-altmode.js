@@ -215,12 +215,6 @@ async function updateRoomList() {
 //      setCrestronFile()
 // Change the DOM for Crestron File Manager
 async function setCrestronFile() {
-    const menuItems = document.querySelectorAll(".menuItem");
-
-    menuItems.forEach(function(menuItem) {
-      menuItem.addEventListener("click", toggleMenu);
-    });
-
     preserveCurrentTool();
     
     document.title = "CamCode - Bronson";
