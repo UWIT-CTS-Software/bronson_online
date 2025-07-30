@@ -3,6 +3,7 @@ use crate::schema::bronson::{
     data,
     buildings,
     rooms,
+    keys,
     sql_types::{
         IpAddress,
     }
@@ -202,6 +203,14 @@ pub struct DB_User {
     pub permissions: i16,
 }
 
+#[allow(non_camel_case_types)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable, AsChangeset)]
+#[diesel(table_name = keys)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct DB_Key {
+    pub key_id: String,
+    pub val: String,
+}
 
 #[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable, AsChangeset)]

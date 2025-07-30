@@ -55,11 +55,12 @@ use crate::schema::bronson::{
 	buildings::dsl::*,
 	rooms::dsl::*,
 	users::dsl::*,
+	keys::dsl::*,
 	data::dsl::*,
 };
 use crate::models::{
 	DB_Hostname, DB_IpAddress,
-	DB_Room, DB_Building, DB_User, DB_DataElement,
+	DB_Room, DB_Building, DB_User, DB_Key, DB_DataElement,
 	DeviceType,
 };
 
@@ -303,6 +304,29 @@ impl Database {
 
 		}
 
+		let key_results = keys
+			.select(DB_Key::as_select())
+			.load(&mut self.connection)
+			.expect("Error loading keys");
+
+		if key_results.len() == 0 {
+			let key_file: String = read_to_string(KEYS).ok()?;
+			let json_keys: HashMap<String, String> = serde_json::from_str(key_file.as_str()).ok()?;
+
+			for (id, value) in json_keys.iter() {
+				let new_key = DB_Key {
+					key_id: id.clone(),
+					val: value.clone()
+				};
+
+				let _ = diesel::insert_into(keys::table())
+					.values(&new_key)
+					.returning(DB_Key::as_returning())
+					.get_result(&mut self.connection)
+					.expect("SQL_ERR: Error inserting key");
+			}
+		}
+
 		let data_results = data
 			.select(DB_DataElement::as_select())
 			.load(&mut self.connection)
@@ -503,6 +527,35 @@ impl Database {
 			.returning(DB_User::as_returning())
 			.get_result(&mut self.connection)
 			.expect("SQL_ERR: Error deleting user");
+	}
+
+	pub fn get_key(&mut self, id: &str) -> DB_Key {
+		keys
+			.select(DB_Key::as_select())
+			.filter(key_id.eq(id))
+			.first(&mut self.connection)
+			.optional()
+			.expect("SQL_ERR: Error loading key")
+			.unwrap()
+	}
+
+	pub fn update_key(&mut self, update_key: &DB_Key) {
+		let _ = diesel::insert_into(keys)
+			.values(update_key)
+			.on_conflict(key_id)
+			.do_update()
+			.set(update_key)
+			.returning(DB_Key::as_returning())
+			.get_result(&mut self.connection)
+			.expect("SQL_ERR: Error inserting key");
+	}
+
+	pub fn delete_key(&mut self, id: &String) {
+		let _ = diesel::delete(keys)
+			.filter(key_id.eq(id))
+			.returning(DB_Key::as_returning())
+			.get_result(&mut self.connection)
+			.expect("SQL_ERR: Error deleting key");
 	}
 
 	pub fn get_data(&mut self, data_key: &str) -> DB_DataElement {

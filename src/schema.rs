@@ -24,6 +24,13 @@ pub mod bronson {
     }
 
     diesel::table! {
+        bronson.keys (key_id) {
+            key_id -> Text,
+            val -> Text,
+        }
+    }
+
+    diesel::table! {
         use diesel::sql_types::*;
         use super::sql_types::IpAddress;
 
@@ -52,6 +59,7 @@ pub mod bronson {
     diesel::allow_tables_to_appear_in_same_query!(
         buildings,
         data,
+        keys,
         rooms,
         users,
     );
