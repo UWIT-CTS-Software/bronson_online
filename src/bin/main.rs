@@ -46,9 +46,9 @@ use server_lib::{
     Building, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
-    TSCH_JSON, BLDG_JSON, ROOM_CSV, CAMPUS_CSV,
+    TSCH_JSON,
     CFM_DIR, WIKI_DIR, LOG,
-    Request, Response, STATUS_200, STATUS_303, STATUS_404,
+    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_404,
     Database,
     models::{
         DB_Room, DB_Building, DB_User, DB_DataElement,
@@ -61,7 +61,7 @@ use std::{
     io::{ prelude::*, Read, stdout, },
     net::{ TcpListener, },
     fs::{
-        read_dir, metadata,
+        read_to_string, read_dir, metadata,
         File,
     },
     time::{ Duration, SystemTime },
@@ -99,8 +99,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut database = Database::new();
     database.init_if_empty();
-
-    // get keys
 
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
@@ -489,10 +487,13 @@ async fn handle_connection(
                     _ => user_homepage = "html-css-js/index.html",       // tech default
                 }
 
-                let cookie = Cookie::build(("user", user));
-                res.insert_header("Set-Cookie", cookie.to_string().as_str());
-                res.insert_header("Access-Control-Expose-Headers", "Set-Cookie");
+            } else {
+                user_homepage = "html-css-js/index.html";
             }
+        
+            let cookie = Cookie::build(("user", user));
+            res.insert_header("Set-Cookie", cookie.to_string().as_str());
+            res.insert_header("Access-Control-Expose-Headers", "Set-Cookie");
 
             res.status(STATUS_200);
             res.send_file(user_homepage);
@@ -725,25 +726,23 @@ fn get_zone_data(buildings: HashMap<String, DB_Building>) -> Vec<u8> {
         }
     }
     let json_return = json!({
-        "zones":[ 
-                {
-                    "name": 1,
-                    "building_list": zone_1, 
-                },
-                {
-                    "name": 2,
-                    "building_list": zone_2,
-                },
-                {
-                    "name": 3,
-                    "building_list": zone_3,
-                },
-                {
-                    "name": 4,
-                    "building_list": zone_4,
-                }
-            ]
-        });
+        "1": {
+            "name": 1,
+            "building_list": zone_1, 
+        },
+        "2": {
+            "name": 2,
+            "building_list": zone_2,
+        },
+        "3": {
+            "name": 3,
+            "building_list": zone_3,
+        },
+        "4": {
+            "name": 4,
+            "building_list": zone_4,
+        }
+    });
     return json_return.to_string().into();
 }
 
