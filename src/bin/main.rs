@@ -42,11 +42,11 @@ Wiki
 // dependencies
 // ----------------------------------------------------------------------------
 use server_lib::{
+    BUFF_SIZE, 
     ThreadPool, PingRequest, 
     Building, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
-    TSCH_JSON,
     CFM_DIR, WIKI_DIR, LOG,
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_404,
     Database,
@@ -61,7 +61,7 @@ use std::{
     io::{ prelude::*, Read, stdout, },
     net::{ TcpListener, },
     fs::{
-        read_to_string, read_dir, metadata,
+        read_dir, metadata,
         File,
     },
     time::{ Duration, SystemTime },
@@ -138,7 +138,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     debug!("Server mounted!");
 
     let pool = ThreadPool::new(6);
-    let mut buffer = [0; 1024];
+    let mut buffer = [0; BUFF_SIZE];
 
     // ----------------------------------------------------------------------
     stdout().flush().unwrap();
@@ -157,7 +157,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             stdout().flush().unwrap();
         });
 
-        buffer = [0; 1024];
+        buffer = [0; BUFF_SIZE];
     }
 
     return Ok(());
@@ -308,7 +308,7 @@ async fn handle_connection(
         },
         // Data Requests
         "GET /techSchedule HTTP/1.1"  => {
-            let contents = get_tech_schedules();
+            let contents = database.get_data("schedule").val.into();
             res.status(STATUS_200);
             //res.send_file("data/techSchedule.json");
             res.send_contents(contents);
@@ -444,6 +444,17 @@ async fn handle_connection(
             let filename = "attachment; filename=output.log";
             res.insert_header("Content-Disposition", &filename);
             res.send_contents(file_buffer);
+        },
+        "POST /updateSchedule HTTP/1.1"        => {
+            let new_data = DB_DataElement {
+                key: String::from("schedule"),
+                val: String::from_utf8(req.body).expect("Unable to parse body contents")
+            };
+
+            database.update_data(&new_data);
+
+            res.status(STATUS_200);
+            res.send_contents("".into());
         },
         "POST /add/user HTTP/1.1"          => {
             let new_user: DB_User = serde_json::from_str(&String::from_utf8(req.body).unwrap()).unwrap();
@@ -744,13 +755,6 @@ fn get_zone_data(buildings: HashMap<String, DB_Building>) -> Vec<u8> {
         }
     });
     return json_return.to_string().into();
-}
-
-fn get_tech_schedules() -> Vec<u8> {
-    let tsch_file: String = read_to_string(TSCH_JSON).expect("Error");
-    //let schedules: String = serde_json::from_str(tsch_file.as_str()).expect("Error");
-    let contents: Vec<u8> = json!(tsch_file).to_string().into();
-    return contents;
 }
 
 /*

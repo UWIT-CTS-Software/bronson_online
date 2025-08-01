@@ -115,11 +115,6 @@ async function initLocalStorage() {
         let leaderboard = await getLeaderboard();
         localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
     }
-    // Schedule
-    if (localStorage.getItem("schedule") == null) {
-        let schedule = await getSchedule();
-        localStorage.setItem("schedule", schedule);
-    }
     // CheckerboardStorage
     if (sessionStorage.getItem("db_checker") == null) {
         // DATABASE_TODO - swap functions / switch to localStorage / more info below
@@ -176,8 +171,26 @@ async function getSchedule() {
                 throw new Error("HTTP error " + response.status);
             }
             return response.json();
+        }).then(json => {
+            /* return JSON.parse(json); */
+            return json;
+        });
+}
+
+async function updateSchedule(schedule) {
+    return fetch("updateSchedule", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Content-Length": JSON.stringify(schedule).length,
+        },
+        body: JSON.stringify(schedule)
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error("HTTP error " + response.status);
         }
-    );
+        return response;
+    });
 }
 
 // DATABASE_TODO: pull the dashboard message from backend
@@ -517,7 +530,7 @@ async function dashCheckerboard() {
 }
 
 // Schedule
-function setSchedule(buttonID) {
+async function setSchedule(buttonID) {
     //console.log(buttonID + " Pressed");
     let current = document.getElementsByClassName("schedule_selected");
     if (current.length != 0) {
@@ -526,7 +539,7 @@ function setSchedule(buttonID) {
     let newCurrent = document.getElementById(buttonID);
     newCurrent.classList.add("schedule_selected");
     // Get schedule data
-    let schdData = JSON.parse(localStorage.getItem('schedule'));
+    let schdData = await getSchedule();
     if (schdData == null) {
         console.assert("Error: Schedule Data does not exist here");
         return;
