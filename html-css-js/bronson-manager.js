@@ -487,9 +487,12 @@ function initCheckerboardStorage() {
 // we are adding room numbers to these valus iteratively as they come in.
 function resetCBDash(zoneArray) {
     let object = JSON.parse(sessionStorage.getItem("db_checker"));
-    Object.values(object).forEach(function(zone) {
-        zone["rooms"] = 0;
-        zone["checked"] = 0;
+    zoneArray.forEach(function(z) {
+        object[`${z}`] = {
+            "zone":`${z}`,
+            "rooms":0,
+            "checked":0
+        };
     });
     sessionStorage.setItem("db_checker", JSON.stringify(object));
     return;
@@ -520,9 +523,14 @@ async function dashCheckerboard() {
     cb_dashDiv.classList.add("db_checker");
     let cb_dashDivHTML = `<fieldset><legend>Checkerboard Zone Overview</legend><ul>`;
     Object.values(object).forEach(function(zone) {
+        console.log(zone);
         let percent = zone["checked"] / zone["rooms"];
         percent = String((100*percent).toFixed(5)).slice(0,5);
-        cb_dashDivHTML += `<li> <p>Zone ${zone["zone"]}: &emsp; ${zone["checked"]} / ${zone["rooms"]} Rooms</p><label class="cbProgLabel" for="${zone["zone"]}_prog"> ${percent}%</label><progress id="${zone["zone"]}_prog" value="${percent}" max="100"></progress></li>`;
+        cb_dashDivHTML += `<li> 
+        <p>Zone ${zone["zone"]}: &emsp; ${zone["checked"]} / ${zone["rooms"]}  Rooms</p>
+        <label class="cbProgLabel" for="${zone["zone"]}_prog"> ${percent}%</label>
+        <progress id="${zone["zone"]}_prog" value="${percent}" max="100"></progress>
+        </li>`;
     });
     cb_dashDivHTML += `</ul></fieldset>`;
     cb_dashDiv.innerHTML = cb_dashDivHTML;
