@@ -7,4 +7,4 @@ custom_type_derives = ["diesel::query_builder::QueryId", "Clone"]
 schema = "bronson"
 
 [migrations_directory]
-dir = "/home/beth-c137/Desktop/UWIT/bronson_online/migrations"
+dir = "./migrations"

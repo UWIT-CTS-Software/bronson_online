@@ -795,9 +795,14 @@ fn execute_ping(body: Vec<u8>, mut database: Database) -> Vec<u8> {
 
     let rooms_to_ping: Vec<DB_Room> = database.get_rooms_by_abbrev(&pr.building);
 
-    for mut rm in rooms_to_ping {
-        rm.ping_data = ping_room(rm.ping_data);
-        database.update_room(&rm);
+    for rm in rooms_to_ping {
+        std::thread::scope(|s| {
+            s.spawn(|| {
+                let mut room = rm.clone();
+                room.ping_data = ping_room(room.ping_data);
+                database.update_room(&room);
+            });
+        });
     }
 
     let json_return = json!({
@@ -810,17 +815,13 @@ fn execute_ping(body: Vec<u8>, mut database: Database) -> Vec<u8> {
 fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
     let mut pinged_hns: Vec<Option<DB_IpAddress>> = Vec::new();
     for net in net_elements {
-        std::thread::scope(|s| {
-            s.spawn(|| {
-                let hn_string: String = net.as_ref().unwrap().hostname.to_string();
-                pinged_hns.push(Some(
-                    DB_IpAddress {
-                        hostname: net.unwrap().hostname,
-                        ip: ping_this(&hn_string)
-                    }
-                ))
-            });
-        });
+        let hn_string: String = net.as_ref().unwrap().hostname.to_string();
+        pinged_hns.push(Some(
+            DB_IpAddress {
+                hostname: net.unwrap().hostname,
+                ip: ping_this(&hn_string)
+            }
+        ))
     }
 
     return pinged_hns;
