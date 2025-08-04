@@ -115,11 +115,6 @@ async function initLocalStorage() {
         let leaderboard = await getLeaderboard();
         localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
     }
-    // Schedule
-    if (localStorage.getItem("schedule") == null) {
-        let schedule = await getSchedule();
-        localStorage.setItem("schedule", schedule);
-    }
     // CheckerboardStorage
     if (sessionStorage.getItem("db_checker") == null) {
         // DATABASE_TODO - swap functions / switch to localStorage / more info below
@@ -176,8 +171,26 @@ async function getSchedule() {
                 throw new Error("HTTP error " + response.status);
             }
             return response.json();
+        }).then(json => {
+            /* return JSON.parse(json); */
+            return json;
+        });
+}
+
+async function updateSchedule(schedule) {
+    return fetch("updateSchedule", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Content-Length": JSON.stringify(schedule).length,
+        },
+        body: JSON.stringify(schedule)
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error("HTTP error " + response.status);
         }
-    );
+        return response;
+    });
 }
 
 // DATABASE_TODO: pull the dashboard message from backend
@@ -216,7 +229,6 @@ function setDashboardDefaults() {
     setLeaderWeek();
     // Set Schedule
     let today = new Date();
-    console.log(`Today is ${today.getDay()}`);
     // Add today class to today's button
     let buttons = document.getElementsByClassName("today");
     for(let i = 0; i< buttons.length; i++) {
@@ -286,31 +298,21 @@ function getLocalZoneData() {
 // getBuildingNamesFromZoneArray(zone_array);
 //  returns a list of building names from a zone number
 function getBuildingNamesFromZone(zone_number) {
-    let data = getLocalZoneData();
-    let zoneData = data.zones;
-    // tmp value to store abbrevs
-    let tmp = [];
-    // iterate through zones
-    for(var i = 0; i < zoneData.length; i++) {
-        if (zone_number == zoneData[i].name) {
-            let zoneBuildingList = zoneData[i].building_list;
-            for (var j = 0; j < zoneBuildingList.length; j++) {
-                tmp.push(getBuildingName(zoneBuildingList[j]));
-            }
-        }
-    }
-    return tmp;
+    let abbrevs = getLocalZoneData();
+
+    let buildings = getLocalCampusData();
+    let ret_arr = [];
+    abbrevs[`${zone_number}`].building_list.forEach(function(abbrev) {
+        ret_arr.push(buildings[abbrev].name);
+    });
+
+    return ret_arr;
 }
 
 function getBuildingAbbrevsFromZone(zone_number) {
     let data = getLocalZoneData();
-    let zoneData = data.zones;
-    for(var i = 0; i < zoneData.length; i++) {
-        if(zone_number == zoneData[i].name) {
-            return zoneData[i].building_list;
-        }
-    }
-    return;
+    
+    return data[`${zone_number}`]["building_list"];
 }
 /*
  ░▒▓██████▓▒░ ░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓████████▓▒░ 
@@ -455,23 +457,28 @@ async function getDashboardChecker() {
 // Define the dashboard object, once it gets real values from the backend
 //  users will see it on the dashboard.
 function initCheckerboardStorage() {
-    const initEntry = {zones: [{
-        zone: "1",
-        rooms: 0,
-        checked: 0
-    },{
-        zone: "2",
-        rooms: 0,
-        checked: 0
-    },{
-        zone: "3",
-        rooms: 0,
-        checked: 0
-    },{
-        zone: "4",
-        rooms: 0,
-        checked: 0
-    }]};
+    const initEntry = {
+        "1": {
+            zone: "1",
+            rooms: 0,
+            checked: 0
+        },
+        "2": {
+            zone: "2",
+            rooms: 0,
+            checked: 0
+        },
+        "3": {
+            zone: "3",
+            rooms: 0,
+            checked: 0
+        },
+        "4": {
+            zone: "4",
+            rooms: 0,
+            checked: 0
+        }
+    };
     sessionStorage.setItem("db_checker", JSON.stringify(initEntry));
     return;
 }
@@ -480,12 +487,13 @@ function initCheckerboardStorage() {
 // we are adding room numbers to these valus iteratively as they come in.
 function resetCBDash(zoneArray) {
     let object = JSON.parse(sessionStorage.getItem("db_checker"));
-    for (item in object["zones"]) {
-        if (object["zones"][item]["zone"] == zoneArray[item]) {
-            object["zones"][item]["rooms"] = 0;
-            object["zones"][item]["checked"] = 0;
-        }
-    }
+    zoneArray.forEach(function(z) {
+        object[`${z}`] = {
+            "zone":`${z}`,
+            "rooms":0,
+            "checked":0
+        };
+    });
     sessionStorage.setItem("db_checker", JSON.stringify(object));
     return;
 }
@@ -496,14 +504,11 @@ function resetCBDash(zoneArray) {
 //  receieved information. To actually update the dashboard widget they
 //  need to go back to checkerboard. This could probably be fixed by 
 //  making this update happen when something is stashed.
-function updateCBDashZone(currentZone, rooms, checked) {
+function updateCBDashZone(zone_num, rooms, checked) {
     let object = JSON.parse(sessionStorage.getItem("db_checker"));
-    for (item in object["zones"]) {
-        if (object["zones"][item]["zone"] == currentZone) {
-            object["zones"][item]["rooms"] += rooms;
-            object["zones"][item]["checked"] += checked;
-        }
-    }
+    let zoneObj = object[`${zone_num}`];
+    zoneObj["rooms"] += rooms;
+    zoneObj["checked"] += checked;
     sessionStorage.setItem("db_checker", JSON.stringify(object));
     return;
 }
@@ -516,24 +521,23 @@ async function dashCheckerboard() {
     let object = JSON.parse(sessionStorage.getItem("db_checker"));
     let cb_dashDiv = document.createElement("div");
     cb_dashDiv.classList.add("db_checker");
-    cb_dashDivHTML = `<fieldset><legend>Checkerboard Zone Overview</legend><ul>`;
-    for (item in object["zones"]) {
-        if (object["zones"][item]["rooms"] != 0) {
-            let zoneNum = object["zones"][item]["zone"];
-            let checkedRooms = object["zones"][item]["checked"];
-            let totalRooms = object["zones"][item]["rooms"];
-            let percent = object["zones"][item]["checked"] / totalRooms;
-            percent = String((100*percent).toFixed(5)).slice(0,5);
-            cb_dashDivHTML += `<li> <p>Zone ${zoneNum}: &emsp; ${checkedRooms} / ${totalRooms} Rooms</p><label class="cbProgLabel" for="${zoneNum}_prog"> ${percent}%</label><progress id="${zoneNum}_prog" value="${percent}" max="100"></progress></li>`;
-        }
-    }
+    let cb_dashDivHTML = `<fieldset><legend>Checkerboard Zone Overview</legend><ul>`;
+    Object.values(object).forEach(function(zone) {
+        let percent = zone["checked"] / zone["rooms"];
+        percent = String((100*percent).toFixed(5)).slice(0,5);
+        cb_dashDivHTML += `<li> 
+        <p>Zone ${zone["zone"]}: &emsp; ${zone["checked"]} / ${zone["rooms"]}  Rooms</p>
+        <label class="cbProgLabel" for="${zone["zone"]}_prog"> ${percent}%</label>
+        <progress id="${zone["zone"]}_prog" value="${percent}" max="100"></progress>
+        </li>`;
+    });
     cb_dashDivHTML += `</ul></fieldset>`;
     cb_dashDiv.innerHTML = cb_dashDivHTML;
     return cb_dashDiv;
 }
 
 // Schedule
-function setSchedule(buttonID) {
+async function setSchedule(buttonID) {
     //console.log(buttonID + " Pressed");
     let current = document.getElementsByClassName("schedule_selected");
     if (current.length != 0) {
@@ -542,7 +546,7 @@ function setSchedule(buttonID) {
     let newCurrent = document.getElementById(buttonID);
     newCurrent.classList.add("schedule_selected");
     // Get schedule data
-    let schdData = JSON.parse(localStorage.getItem('schedule'));
+    let schdData = await getSchedule();
     if (schdData == null) {
         console.assert("Error: Schedule Data does not exist here");
         return;
@@ -559,23 +563,23 @@ function setSchedule(buttonID) {
     let otherTechs = [];
     for(let i = 0; i < priorityList.length; i++) {
         // Iterate through techs
-        for(let j = 0; j < schdData.Technicians.length; j++) {
-            if(schdData.Technicians[j].Assignment == priorityList[i]) {
-                zoneTechs.push(schdData.Technicians[j]);
+        Object.values(schdData).forEach(function(tech) {
+            if (tech.Assignment == priorityList[i]) {
+                zoneTechs.push(tech);
             }
-        }
+        });
     }
     // populate otherTechs
-    for(let j = 0; j < schdData.Technicians.length; j++) {
-        if(!priorityList.includes(schdData.Technicians[j].Assignment)) {
-            otherTechs.push(schdData.Technicians[j]);
+    Object.values(schdData).forEach(function(tech) {
+        if (!priorityList.includes(tech.Assignment)) {
+            otherTechs.push(tech);
         }
-    }
+    });
     let techList = zoneTechs.concat(otherTechs);
     // Build Table
-    for(let i = 0; i < techList.length; i++) {
-        tbody_HTML += makeTechSchdRow(techList[i], today);
-    }
+    techList.forEach(function(tech) {
+        tbody_HTML += makeTechSchdRow(tech, today);
+    });
     tbody_HTML += `</tbody>`;
     let tbody = document.createElement('tbody');
     tbody.setAttribute("id", "schd_tbody");
@@ -608,7 +612,7 @@ function makeTechTableHeader(firstColumn) {
     let times = getTechSchdTimeBlocks();
     let html = `<tr>
         <th scope="col" class="schdLeftIndex">${firstColumn}</th>`;
-    for(i in times) {
+    for( i in times) {
         html += `<th scope="col" class="timeBlockTable">${times[i]}</th>`;
     }
     html += '</tr>';
@@ -625,7 +629,7 @@ function makeTechSchdRow(tech, today) {
     // get techs schedule for the day
     let timeSwitches = [];
     let shift = tech.Schedule[today].split(",");
-    for(let i = 0; i < shift.length; i++) {
+    for (let i = 0; i < shift.length; i++) {
         timeSwitches.push(shift[i].split(' - '))
     }
     timeSwitches = timeSwitches.flat(2);
@@ -633,7 +637,7 @@ function makeTechSchdRow(tech, today) {
     let timeIndex = 0;
     let startShiftIndex, endShiftIndex = 0;
     // Iterate through 24 time blocks;
-    for(let i = 0; i < timeBlocks.length-1; i++) {
+    for (let i = 0; i < timeBlocks.length-1; i++) {
         if(timeBlocks[i] == timeSwitches[timeIndex]) {
             onClock = !onClock;
             ++timeIndex;

@@ -79,8 +79,9 @@ async function run() {
     // compile a hit list
     let buildingsToCheck = [];
     for(var i = 0; i < zone_array.length; i++) {
-        buildingsToCheck.push(... getBuildingAbbrevsFromZone(zone_array[i]));
+        buildingsToCheck.push(...getBuildingAbbrevsFromZone(zone_array[i]));
     }
+
     // Iterating through buildings to check
     let cbTotalBuildingResponse = [];
     for(var i = 0; i < buildingsToCheck.length; i++) {

@@ -8,7 +8,7 @@
 
 Backend
     - main()
-    - handle_connection(stream: TcpStream, cookie_jar: Arc<Jar>, buildings: HashMap) -> Option
+    - handle_connection(req: Request, database: Database) -> Option
     - process_buffer(buffer: mut [u8]) -> String
     - find_enclosed(s: String, delimeters: (char,char), include_delim: bool) -> String
 
@@ -16,7 +16,7 @@ JackNet
     - execute_ping(body: Vec<u8>) -> String
 
 ChkrBrd
-    - construct_headers(call_type: &str, keys: Keys) -> HeaderMap
+    - construct_headers(call_type: &str, database: &mut Database) -> HeaderMap
     - check_schedule(room: Room) -> String
     - check_lsm(room: Room) -> String
 
@@ -42,14 +42,18 @@ Wiki
 // dependencies
 // ----------------------------------------------------------------------------
 use server_lib::{
-    Keys,
+    BUFF_SIZE, 
     ThreadPool, PingRequest, 
-    Room, Building, 
+    Building, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
-    TSCH_JSON, BLDG_JSON, ROOM_CSV, CAMPUS_CSV, KEYS, 
-    CFM_DIR, WIKI_DIR, 
-    Request, Response, STATUS_200, STATUS_303, STATUS_404,
+    CFM_DIR, WIKI_DIR, LOG,
+    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_404,
+    Database,
+    models::{
+        DB_Room, DB_Building, DB_User, DB_DataElement,
+        DB_IpAddress,  
+    },
 };
 use getopts::Options;
 use std::{
@@ -57,7 +61,7 @@ use std::{
     io::{ prelude::*, Read, stdout, },
     net::{ TcpListener, },
     fs::{
-        read_to_string, read_dir, metadata,
+        read_dir, metadata,
         File,
     },
     time::{ Duration, SystemTime },
@@ -71,7 +75,6 @@ use reqwest::{
 };
 use log::{ debug, info, }; // error, trace, warn, };
 use cookie::{ Cookie, };
-use csv::{ Reader, };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
 use regex::Regex;
@@ -94,11 +97,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // debug setting
     env::set_var("RUST_BACKTRACE", "1");
 
-    // get keys
-    let key_file = File::open(KEYS)
-        .expect("[-] FILE_ERR: Could not open.");
-    let keys: Keys = serde_json::from_reader(key_file)
-        .expect("[-] PARSE_ERR: Could not parse into struct.");
+    let mut database = Database::new();
+    database.init_if_empty();
 
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
@@ -115,10 +115,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         init_logger("info")?;
     }
-
-    // generate rooms HashMap
-    let buildings = gen_building_map();
-    let dash_contents = &mut String::from("Welcome to Bronson!");
     
     // set TcpListener and initalize
     // ------------------------------------------------------------------------
@@ -142,28 +138,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     debug!("Server mounted!");
 
     let pool = ThreadPool::new(6);
-    let mut buffer = [0; 1024];
+    let mut buffer = [0; BUFF_SIZE];
 
     // ----------------------------------------------------------------------
     stdout().flush().unwrap();
 
     for stream in listener.incoming() {
         let mut stream = stream.unwrap();
-        let clone_bldg = buildings.clone().expect("MAP_ERR: Building not cloned.");
-        let clone_keys = keys.clone();
-        let mut clone_dash = dash_contents.clone();
+        let clone_db = database.clone();
 
         stream.read(&mut buffer).unwrap();
         let req = Request::build(buffer.clone());
 
         pool.execute(move || {
-            let mut res = handle_connection(req, clone_bldg, clone_keys, &mut clone_dash).unwrap();
+            let mut res = handle_connection(req, clone_db).unwrap();
             stream.write(&res.build()).unwrap();
             stream.flush().unwrap();
             stdout().flush().unwrap();
         });
 
-        buffer = [0; 1024];
+        buffer = [0; BUFF_SIZE];
     }
 
     return Ok(());
@@ -195,89 +189,25 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
     return Ok(());
 }
 
-fn gen_building_map() -> Option<HashMap<String, Building>> {
-    let room_filter = Regex::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
-
-    let mut schedules: HashMap<String, Vec<String>> = HashMap::new();
-    let schedule_data = File::open(ROOM_CSV).unwrap();
-    let mut schedule_rdr = Reader::from_reader(schedule_data);
-    for result in schedule_rdr.records() {
-        let record = result.unwrap();
-        if room_filter.is_match(record.get(0).expect("Empty")) {
-            let room = String::from(record.get(0).expect("Empty"));
-            let mut schedule = Vec::new();
-            for block in 1..8 {
-                if record.get(block).expect("Empty") == "" {
-                    break;
-                }
-
-                schedule.push(String::from(record.get(block).expect("Empty")));
-            }
-
-            schedules.insert(room, schedule);
-        }
-    }
-
-    let bldg_file: String = read_to_string(BLDG_JSON).ok()?;
-    let mut buildings: HashMap<String, Building> = serde_json::from_str(bldg_file.as_str()).ok()?;
-    let room_data = File::open(CAMPUS_CSV).unwrap();
-    let mut room_rdr = Reader::from_reader(room_data);
-    for result in room_rdr.records() {
-        let record = result.unwrap();
-        let room_name = record.get(0).expect("Empty");
-        if room_filter.is_match(room_name) {
-            let mut item_vec: Vec<u8> = Vec::new();
-            for i in 1..7 {
-                item_vec.push(record.get(i).expect("-1").parse().unwrap());
-            }
-
-            let schedule = match schedules.get(&String::from(room_name)) {
-                Some(x) => x.to_owned(),
-                _       => Vec::<String>::new(),
-            };
-            let hn_vec = gen_hn(String::from(room_name), &item_vec);
-            let ip_vec = gen_ip(item_vec);
-
-            let room = Room {
-                name: String::from(room_name),
-                hostnames: hn_vec,
-                ips: ip_vec,
-                gp: record.get(7).expect("-1").parse().unwrap(),
-                //checked: String::from("2000-01-01"), // Switched this to DateTime Friendly
-                checked: String::from("2000-01-01T00:00:00Z"),
-                needs_checked: 1,
-                schedule: schedule.to_vec(),
-                available: 0,
-                until: String::from("Tomorrow")
-            };
-
-            let bldg_abbrev = String::from(room_name.split(" ").collect::<Vec<_>>()[0]);
-            let building: &mut Building = buildings.get_mut(&bldg_abbrev).unwrap();
-
-            building.rooms.push(room);
-        }
-    }
-
-    return Some(buildings);
-}
-
 #[tokio::main]
 #[allow(unused_assignments)]
 async fn handle_connection(
     req: Request,
-    mut buildings: HashMap<String, Building>,
-    keys: Keys,
-    dash_contents: &mut String,
+    mut database: Database,
 ) -> Option<Response> {
     
     let mut user_homepage: &str = "html-css-js/login.html";
     if req.headers.contains_key("Cookie") {
-        let username_search = Regex::new("user=(?<username>admin|guest)").unwrap();
+        let username_search = Regex::new("user=(?<username>.*)").unwrap();
         let Some(username) = username_search.captures(&req.headers.get("Cookie").unwrap()) else { panic!("Empty") };
-        if &username["username"] == "admin" {
-            user_homepage = "html-css-js/index_admin.html";
-        } else {
-            user_homepage = "html-css-js/index.html"
+        let user = database.get_user(&username["username"]);
+        if user.is_some() {
+            match user.unwrap().permissions {
+                7 => user_homepage = "html-css-js/index_admin.html",
+                6 => user_homepage = "html-css-js/index_admin.html",
+                0 => user_homepage = "html-css-js/login.html",
+                _ => user_homepage = "html-css-js/index.html",
+            }
         }
     }
 
@@ -359,8 +289,6 @@ async fn handle_connection(
             res.send_file(user_homepage);
             res.insert_onload("setAdminTools()");
         }
-        // --- TODO: Has the hashmap been updated? If true return the changed pieces
-        //        (caching)
         // Assets
         "GET /favicon.ico HTTP/1.1"        => {
             res.status(STATUS_200);
@@ -380,24 +308,24 @@ async fn handle_connection(
         },
         // Data Requests
         "GET /techSchedule HTTP/1.1"  => {
-            let contents = get_tech_schedules();
+            let contents = database.get_data("schedule").val.into();
             res.status(STATUS_200);
             //res.send_file("data/techSchedule.json");
             res.send_contents(contents);
         },
         "GET /campusData HTTP/1.1"         => {
-            let contents = json!(&buildings).to_string().into();
+            let contents = json!(&database.get_campus()).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "GET /zoneData HTTP/1.1"           => { // NEW: returns data in lib.rs as json
-            let contents = get_zone_data(buildings);
+            let contents = get_zone_data(database.get_buildings());
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "GET /dashContents HTTP/1.1"       => {
             let contents = json!({
-                "contents": dash_contents
+                "contents": database.get_data("dashboard").val
             }).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
@@ -411,7 +339,7 @@ async fn handle_connection(
             let req = reqwest::Client::builder()
                 .cookie_store(true)
                 .user_agent("server_lib/1.10.1")
-                .default_headers(construct_headers("lsm", keys))
+                .default_headers(construct_headers("lsm", &mut database))
                 .timeout(Duration::from_secs(15))
                 .build()
                 .ok()?
@@ -482,7 +410,6 @@ async fn handle_connection(
             let contents = json!({
                 "body": "[+] All updated successfully."
             }).to_string().into();
-            buildings = gen_building_map().expect("MAP_ERR: Building map failed.");
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -497,7 +424,6 @@ async fn handle_connection(
             let contents = json!({
                 "body": "[+] Map updated successfully."
             }).to_string().into();
-            buildings = gen_building_map().expect("MAP_ERR: Building map failed.");
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -508,7 +434,7 @@ async fn handle_connection(
             res.send_contents("".into());
         },
         "GET /get/log HTTP/1.1"            => {
-            let mut f = File::open("/home/beth-c137/Desktop/UWIT/bronson_online/output.log").unwrap();
+            let mut f = File::open(LOG).unwrap();
             
             let mut file_buffer = Vec::new();
             f.read_to_end(&mut file_buffer).unwrap();
@@ -519,14 +445,36 @@ async fn handle_connection(
             res.insert_header("Content-Disposition", &filename);
             res.send_contents(file_buffer);
         },
+        "POST /updateSchedule HTTP/1.1"        => {
+            let new_data = DB_DataElement {
+                key: String::from("schedule"),
+                val: String::from_utf8(req.body).expect("Unable to parse body contents")
+            };
+
+            database.update_data(&new_data);
+
+            res.status(STATUS_200);
+            res.send_contents("".into());
+        },
         "POST /add/user HTTP/1.1"          => {
-            
+            let new_user: DB_User = serde_json::from_str(&String::from_utf8(req.body).unwrap()).unwrap();
+            database.update_user(&new_user);
+
+            res.status(STATUS_200);
+            res.send_contents("User successfully added.".into());
+        },
+        "POST /delete/user HTTP/1.1"          => {
+            let del_user: String = String::from_utf8(req.body).expect("UNKNOWN");
+            database.delete_user(&del_user);
+
+            res.status(STATUS_200);
+            res.send_contents("User successfully deleted.".into());
         },
         "POST /update/dash HTTP/1.1"       => {
-            let update_search = Regex::new(r#".*contents":"(?<contents>.*)""#).unwrap();
-            let contents = update_search.captures(str::from_utf8(&req.body).expect("Empty")).unwrap();
-            let new_contents = contents["contents"].to_string();
-            *dash_contents = new_contents;
+            database.update_data(&DB_DataElement {
+                key: String::from("dashboard"),
+                val: String::from_utf8(req.body).expect("Unable to parse body contents"),
+            });
             res.status(STATUS_200);
             res.send_contents("".into());
         },
@@ -535,33 +483,28 @@ async fn handle_connection(
         // --------------------------------------------------------------------
         // login
         "POST /login HTTP/1.1"             => {
-            let credential_search = Regex::new(r"uname=(?<user>.*)&psw=(?<pass>[\d\w%]*)").unwrap();
+            let credential_search = Regex::new(r"uname=(?<user>.*)&remember=[on|off]").unwrap();
             let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Option::Some(res) };
             let user = String::from(credentials["user"].to_string().into_boxed_str());
-            let pass = String::from(credentials["pass"].to_string().into_boxed_str());
-            let mut found_user: bool = false;
-            for credential in keys.users {
-                if user == credential[0] && pass == credential[1] {
-                    found_user = true;
-                    let cookie;
-                    if user == "admin" {
-                        cookie = Cookie::build(("user","admin"));
-                        user_homepage = "html-css-js/index_admin.html";
-                    } else {
-                        cookie = Cookie::build(("user","guest"));
-                        user_homepage = "html-css-js/index.html";
-                    }
-                    res.insert_header("Set-Cookie", cookie.to_string().as_str());
-                    res.insert_header("Access-Control-Expose-Headers", "Set-Cookie");
-                    res.status(STATUS_303);
-                    res.send_file(user_homepage);
-                    break;
+            let db_user: Option<DB_User> = database.get_user(&user.as_str());
+            if db_user.is_some() {
+                match &db_user.unwrap().permissions {
+                    7 => user_homepage = "html-css-js/index_admin.html",  // admin
+                    6 => user_homepage = "html-css-js/index_admin.html", // manager / lead tech
+                    0 => user_homepage = "html-css-js/login.html",       // revoked
+                    _ => user_homepage = "html-css-js/index.html",       // tech default
                 }
+
+            } else {
+                user_homepage = "html-css-js/index.html";
             }
-            if !found_user {
-                res.status(STATUS_200);
-                res.send_file(user_homepage);
-            }
+        
+            let cookie = Cookie::build(("user", user));
+            res.insert_header("Set-Cookie", cookie.to_string().as_str());
+            res.insert_header("Access-Control-Expose-Headers", "Set-Cookie");
+
+            res.status(STATUS_200);
+            res.send_file(user_homepage);
         },
         "POST /bugreport HTTP/1.1"         => {
             let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
@@ -589,28 +532,28 @@ async fn handle_connection(
                 .cookie_store(true)
                 // .cookie_provider(Arc::clone(&cookie_jar))
                 .user_agent("server_lib/1.10.1")
-                .default_headers(construct_headers("gh", keys))
+                .default_headers(construct_headers("gh", &mut database))
                 .timeout(Duration::from_secs(15))
                 .build()
                 .ok()?
             ;
 
-            let _body = req.post(url)
-                          .timeout(Duration::from_secs(15))
-                          .json(&arg_map)
-                          .send()
-                          .await
-                          .expect("[-] RESPONSE ERROR")
-                          .text()
-                          .await
-                          .expect("[-] PAYLOAD ERROR");
+            let _ = req.post(url)
+                .timeout(Duration::from_secs(15))
+                .json(&arg_map)
+                .send()
+                .await
+                .expect("[-] RESPONSE ERROR")
+                .text()
+                .await
+                .expect("[-] PAYLOAD ERROR");
 
             res.status(STATUS_200);
             res.send_file(user_homepage);
         },
         // Jacknet
         "POST /ping HTTP/1.1"              => {
-            let contents = execute_ping(req.body, buildings); // JN
+            let contents = execute_ping(req.body, database); // JN
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -618,24 +561,20 @@ async fn handle_connection(
         "POST /run_cb HTTP/1.1"            => {
             // get zone selection from request and store
             // ----------------------------------------------------------------
-            let building_sel = String::from_utf8(req.body).expect("CamCode Err, invalid UTF-8");
+            let building_sel = String::from_utf8(req.body).expect("CheckerBoard Err, invalid UTF-8");
             // call for roomchecks in LSM and store
             // ----------------------------------------------------------------
             let mut return_body: Vec<Building> = Vec::new();
-            // attempt to fix buildings.get
-            let building_lsm_name: &str = &mut buildings.get_mut(&building_sel)
-                .unwrap()
-                .lsm_name
-                .as_str();
-            debug!("Checkerboard Debug - building LSM Name:\n{:?}",building_lsm_name);
+            let lsm_building = database.get_building_by_abbrev(&building_sel);
+            debug!("Checkerboard Debug - building LSM Name:\n{:?}", &lsm_building.lsm_name.as_str());
             let url = format!(
                 r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", 
-                building_lsm_name
+                &lsm_building.lsm_name.as_str()
             );
             let req = reqwest::Client::builder()
                 .cookie_store(true)
                 .user_agent("server_lib/1.10.1")
-                .default_headers(construct_headers("lsm", keys))
+                .default_headers(construct_headers("lsm", &mut database))
                 .timeout(Duration::from_secs(15))
                 .build()
                 .ok()?
@@ -662,21 +601,33 @@ async fn handle_connection(
                 }
             }
 
-            for room in &mut buildings.get_mut(&building_sel).unwrap().rooms {
+            for mut room in database.get_rooms_by_abbrev(&building_sel) {
                 if check_map.contains_key(&room.name) {
                     // checked Date format may need changed here
                     debug!("Checkerboard Debug - checked value: \n{:?}", String::from(check_map.get(&room.name).unwrap()));
                     //room.checked = String::from(check_map.get(&room.name).unwrap().split("T").collect::<Vec<&str>>()[0]);
                     room.checked = String::from(check_map.get(&room.name).unwrap());
                     debug!("Checkerboard Debug - Room struct: \n{:?}", room);
-                    room.needs_checked = check_lsm(room);
+                    room.needs_checked = check_lsm(&room);
                 }
-                let schedule_params = check_schedule(room);
+                let schedule_params = check_schedule(&room);
                 room.available = schedule_params.0;
                 room.until = schedule_params.1;
+
+                database.update_room(&room);
             }
 
-            return_body.push(buildings.get(&building_sel).unwrap().clone());
+            let ret_building = database.get_building_by_abbrev(&building_sel);
+            let ret_rooms = database.get_rooms_by_abbrev(&ret_building.abbrev);
+            return_body.push(
+                Building {
+                    abbrev: ret_building.abbrev,
+                    name: ret_building.name,
+                    lsm_name: ret_building.lsm_name,
+                    rooms: ret_rooms,
+                    zone: ret_building.zone,
+                }
+            );
             // ----------------------------------------------------------------
 
             // parse rooms map to load statuses for return
@@ -768,48 +719,39 @@ fn pad_zero(raw_in: String, length: usize) -> String {
     }
 }
 
-fn get_zone_data(buildings: HashMap<String, Building>) -> Vec<u8> {
+fn get_zone_data(buildings: HashMap<String, DB_Building>) -> Vec<u8> {
     let mut zone_1: Vec<String> = Vec::new();
     let mut zone_2: Vec<String> = Vec::new();
     let mut zone_3: Vec<String> = Vec::new();
     let mut zone_4: Vec<String> = Vec::new();
-    for (abbrev, building) in buildings.iter() {
+    for (_, building) in buildings.iter() {
         match building.zone {
-            1               => zone_1.push(abbrev.clone()),
-            2               => zone_2.push(abbrev.clone()),
-            3               => zone_3.push(abbrev.clone()),
-            4               => zone_4.push(abbrev.clone()),
-            0 | 5..=u8::MAX => (),
+            1               => zone_1.push(building.abbrev.clone()),
+            2               => zone_2.push(building.abbrev.clone()),
+            3               => zone_3.push(building.abbrev.clone()),
+            4               => zone_4.push(building.abbrev.clone()),
+            _               => (),
         }
     }
     let json_return = json!({
-        "zones":[ 
-                {
-                    "name": 1,
-                    "building_list": zone_1, 
-                },
-                {
-                    "name": 2,
-                    "building_list": zone_2,
-                },
-                {
-                    "name": 3,
-                    "building_list": zone_3,
-                },
-                {
-                    "name": 4,
-                    "building_list": zone_4,
-                }
-            ]
-        });
+        "1": {
+            "name": 1,
+            "building_list": zone_1, 
+        },
+        "2": {
+            "name": 2,
+            "building_list": zone_2,
+        },
+        "3": {
+            "name": 3,
+            "building_list": zone_3,
+        },
+        "4": {
+            "name": 4,
+            "building_list": zone_4,
+        }
+    });
     return json_return.to_string().into();
-}
-
-fn get_tech_schedules() -> Vec<u8> {
-    let tsch_file: String = read_to_string(TSCH_JSON).expect("Error");
-    //let schedules: String = serde_json::from_str(tsch_file.as_str()).expect("Error");
-    let contents: Vec<u8> = json!(tsch_file).to_string().into();
-    return contents;
 }
 
 /*
@@ -836,7 +778,7 @@ NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
       CAMPUS_STR -> "html-css-js/campus.json"
 */
 // call ping_this executible here
-fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<u8> {
+fn execute_ping(body: Vec<u8>, mut database: Database) -> Vec<u8> {
     let tmp = String::from_utf8(body).expect("Err, invalid UTF-8");
     debug!("JacknetClientRequest: {:?}", tmp);
     // Prep Request into Struct
@@ -848,104 +790,33 @@ fn execute_ping(body: Vec<u8>, mut buildings: HashMap<String, Building>) -> Vec<
     //   NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
     //         CAMPUS_STR -> "html-css-js/campus.json" 
 
-    let rooms_to_ping: &mut Vec<Room> = &mut buildings.get_mut(&pr.building).unwrap().rooms;
-    let mut hn_ips: Vec<Vec<String>>;
+    let rooms_to_ping: Vec<DB_Room> = database.get_rooms_by_abbrev(&pr.building);
 
-    for rm in 0..rooms_to_ping.len() {
-        hn_ips = Vec::new();
-        for hn_group in 0..rooms_to_ping[rm].hostnames.len() { // make this ping
-            hn_ips.push(Vec::new());
-            if pr.devices[hn_group] == 0 {
-                continue;
-            }
-            let hns = &rooms_to_ping[rm].get_hostnames()[hn_group];
-            hn_ips[hn_group] = ping_room(hns.to_vec());
-        }
-        
-        rooms_to_ping[rm].ips = hn_ips;
+    for mut rm in rooms_to_ping {
+        rm.ping_data = ping_room(rm.ping_data);
+        database.update_room(&rm);
     }
 
-    buildings.get_mut(&pr.building).unwrap().rooms = rooms_to_ping.to_vec();
-
     let json_return = json!({
-        "jn_body": buildings.get(&pr.building).unwrap(),
+        "jn_body": database.get_rooms_by_abbrev(&pr.building),
     });
     // Return JSON with ping results
     return json_return.to_string().into();
 }
 
-fn ping_room(hn_group: Vec<String>) -> Vec<String> {
-    let mut ips: HashMap<String, String> = HashMap::new();
-    for hn in 0..hn_group.len() {
-        std::thread::scope(|s| {
-            s.spawn(|| {
-                ips.insert(hn_group[hn].to_string(), ping_this(&hn_group[hn].to_string()));
-            });
-        });
+fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
+    let mut pinged_hns: Vec<Option<DB_IpAddress>> = Vec::new();
+    for net in net_elements {
+        let hn_string: String = net.clone().unwrap().hostname.to_string();
+        pinged_hns.push(Some(
+            DB_IpAddress {
+                hostname: net.unwrap().hostname,
+                ip: ping_this(&hn_string)
+            }
+        ))
     }
 
-    let mut ips_vec = hn_group;
-    for ip in 0..ips_vec.len() {
-        ips_vec[ip] = ips.get(&ips_vec[ip]).unwrap().to_string();
-    }
-
-    return ips_vec;
-}
-
-// Generate Hostnames
-//    Nov. 5 Revision Paradigm Shift -> genHost @ database init
-//      room_name -> "AN 104"
-//      item_vec  -> "[0,1,2,3,4]" 
-//          "[ Proc , Pj , Disp , Ws , Tp ]"
-fn gen_hn(
-    room_name: String, 
-    item_vec: &Vec<u8>
-) -> Vec<Vec<String>> {
-    let mut hostnames = Vec::new();
-    let mut tmp_hn    = String::new();
-    let parts: Vec<&str> = room_name.split(" ").collect();
-    // let building_prefix = parts[0];
-    // let room_number     = parts[1];
-
-    // Assemble the hostname here
-    for i in 0..6 {
-        let dev_type = match i {
-            0 => "PROC",
-            1 => "PJ",
-            2 => "DISP",
-            3 => "WS",
-            4 => "TP",
-            5 => "CMICX",
-            _ => "ERROR"
-        };
-
-        hostnames.push(Vec::new());
-        for j in 0..item_vec[i] {
-            tmp_hn.push_str(parts[0]);
-            tmp_hn.push('-');
-            tmp_hn.push_str(parts[1]);
-            tmp_hn.push('-');
-            tmp_hn.push_str(dev_type);
-            tmp_hn.push(char::from_digit((j+1).into(), 10).expect("digit bad idk"));
-            hostnames[i].push(tmp_hn);
-            tmp_hn = String::new();
-        };
-    };
-    return hostnames;
-}
-
-// helper function for packing x's into the hashmap on init
-fn gen_ip(item_vec: Vec<u8>) -> Vec<Vec<String>> {
-    let mut ips = Vec::new();
-    let mut ip_groups = Vec::new();
-    for i in item_vec {
-        for _ in 0..i {
-            ips.push("x".to_string());
-        }
-        ip_groups.push(ips.clone());
-        ips = Vec::new();
-    };
-    return ip_groups;
+    return pinged_hns;
 }
 
 /*
@@ -959,22 +830,22 @@ $$ |  $$\ $$ |  $$ |$$  _$$<  $$ |      $$ |  $$ |$$ |      $$ |  $$ |
  \______/ \__|  \__|\__|  \__|\__|      \_______/ \__|       \_______|
 */
 
-fn construct_headers(call_type: &str, keys: Keys) -> HeaderMap {
+fn construct_headers(call_type: &str,database: &mut Database) -> HeaderMap {
     let mut header_map = HeaderMap::new();
     if call_type == "lsm" {
         header_map.insert(ACCEPT, HeaderValue::from_static("application/json"));
-        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&keys.lsm_api).expect("[-] KEY_ERR: Not found."));
+        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&database.get_key("lsm_api").val).expect("[-] KEY_ERR: Not found."));
     } else if call_type == "gh" {
         header_map.insert(ACCEPT, HeaderValue::from_static("application/vnd.github+json"));
-        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&keys.gh_api).expect("[-] KEY_ERR: Not found."));
+        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&database.get_key("gh_api").val).expect("[-] KEY_ERR: Not found."));
         header_map.insert(HeaderName::from_static("x-github-api-version"), HeaderValue::from_static("2022-11-28"));
     }
 
     return header_map;
 }
 
-fn check_schedule(room: &Room) -> (u8, String) {
-    let mut available: u8 = 1;
+fn check_schedule(room: &DB_Room) -> (bool, String) {
+    let mut available: bool = true;
     let mut until: String = String::from("TOMORROW");
 
     let now = Local::now();
@@ -995,16 +866,16 @@ fn check_schedule(room: &Room) -> (u8, String) {
     let adjusted_time: u16 = (hours * 100) + minutes;
     
     for block in &room.schedule {
-        let block_vec: Vec<&str> = block.split(&[' ', '-']).collect();
+        let block_vec: Vec<&str> = block.as_ref().unwrap().split(&[' ', '-']).collect::<Vec<_>>().to_vec();
         let adjusted_start: u16 = block_vec[1].parse().unwrap();
         let adjusted_end: u16 = block_vec[2].parse().unwrap();
         if block_vec[0].contains(day_of_week) {
             if adjusted_time < adjusted_start {
-                available = 1;
+                available = true;
                 until = pad_zero((adjusted_start % 100).to_string(), 4);
                 return (available, until);
             } else if (adjusted_start <= adjusted_time) && (adjusted_time <= adjusted_end) {
-                available = 0;
+                available = false;
                 until = pad_zero((adjusted_end).to_string(), 4);
                 return (available, until);
             }
@@ -1014,22 +885,22 @@ fn check_schedule(room: &Room) -> (u8, String) {
     return (available, until);
 }
 
-fn check_lsm(room: &Room) -> u8 {
+fn check_lsm(room: &DB_Room) -> bool {
     let needs_checked;
     // Line below produces -> ParseError(TooShort)
     let parsed_checked: DateTime<Local> = room.checked.parse().unwrap();
     let time_diff: TimeDelta = Local::now() - parsed_checked;
-    if room.gp == 1 {
+    if room.gp {
         if time_diff.num_seconds() >= 604800 {
-            needs_checked = 1;
+            needs_checked = true;
         } else {
-            needs_checked = 0;
+            needs_checked = false;
         }
     } else {
         if time_diff.num_days() >= 30 {
-            needs_checked = 1;
+            needs_checked = true;
         } else {
-            needs_checked = 0;
+            needs_checked = false;
         }
     }
 
