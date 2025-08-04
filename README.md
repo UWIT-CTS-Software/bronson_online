@@ -104,7 +104,7 @@ Not only does rust's diesel ORM manage server-side database querying, but it als
 `curl --proto '=https' --tlsv1.2 -LsSf https://github.com/diesel-rs/diesel/releases/download/v2.2.11/diesel_cli-installer.sh | sh`
 
 Once diesel's CLI is successfully installed, the environment needs to be able to access PostgreSQL with the appropriate credentials. <br>
-`echo DATABASE_URL=postgres://postgres:<password>@localhost/bronson_online > .env` <br>
+`echo DATABASE_URL=postgres://postgres:<password>@localhost/bronson > .env` <br>
 where `<password>` is the password provided when setting up postgreSQL above.
 
 Diesel now has the proper resources, so it will be able to handle the setup and management of necessary database shemas. <br>
