@@ -471,15 +471,12 @@ async fn handle_connection(
             res.send_contents("User successfully deleted.".into());
         },
         "POST /update/dash HTTP/1.1"       => {
-            let update_search = Regex::new(r#".*contents":"(?<contents>.*)""#).unwrap();
-            let contents = update_search.captures(str::from_utf8(&req.body).expect("Empty")).unwrap();
-            let new_contents = contents["contents"].to_string();
             database.update_data(&DB_DataElement {
                 key: String::from("dashboard"),
-                val: new_contents,
+                val: String::from_utf8(req.body).expect("Unable to parse body contents"),
             });
             res.status(STATUS_200);
-            res.send_file("".into());
+            res.send_contents("".into());
         },
         // --------------------------------------------------------------------
         // make calls to backend functionality
@@ -810,17 +807,13 @@ fn execute_ping(body: Vec<u8>, mut database: Database) -> Vec<u8> {
 fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
     let mut pinged_hns: Vec<Option<DB_IpAddress>> = Vec::new();
     for net in net_elements {
-        std::thread::scope(|s| {
-            s.spawn(|| {
-                let hn_string: String = net.as_ref().unwrap().hostname.to_string();
-                pinged_hns.push(Some(
-                    DB_IpAddress {
-                        hostname: net.unwrap().hostname,
-                        ip: ping_this(&hn_string)
-                    }
-                ))
-            });
-        });
+        let hn_string: String = net.clone().unwrap().hostname.to_string();
+        pinged_hns.push(Some(
+            DB_IpAddress {
+                hostname: net.unwrap().hostname,
+                ip: ping_this(&hn_string)
+            }
+        ))
     }
 
     return pinged_hns;

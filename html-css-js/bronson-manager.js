@@ -523,7 +523,6 @@ async function dashCheckerboard() {
     cb_dashDiv.classList.add("db_checker");
     let cb_dashDivHTML = `<fieldset><legend>Checkerboard Zone Overview</legend><ul>`;
     Object.values(object).forEach(function(zone) {
-        console.log(zone);
         let percent = zone["checked"] / zone["rooms"];
         percent = String((100*percent).toFixed(5)).slice(0,5);
         cb_dashDivHTML += `<li> 
