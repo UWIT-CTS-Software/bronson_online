@@ -157,7 +157,7 @@
       if(sessionStorage.getItem("cb_body") != null) {
         db_container.append(await dashCheckerboard());
       } else if (sessionStorage.getItem("jn_body") != null) {
-        db_container.append(dashJackNet());
+        //db_container.append(dashJackNet()); //dashJackNet() has nothing, DNE
       }
 
       let main_container = document.createElement('div');

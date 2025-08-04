@@ -143,11 +143,14 @@ function setMessageEditor() {
 //  dashboards will pull that value for the dashboard messages content.
 function setDashboardMessage() {
     let dme = document.getElementById("dme_editor");
-    contents = dme.innerText;
+    contents = dme.value;
     // DATABASE_TODO
     //  - This needs to be a post into the database.
     //    Once that is done the below line will not be relevant
-    localStorage.setItem("DashboardMessage", contents);
+    fetch("/update/dash", {
+        method: "POST",
+        body: contents
+    });
     return;
 }
 
@@ -159,7 +162,7 @@ function clearEditor() {
 
 // SCHEDULE EDITOR
 
-function setScheduleEditor() {
+async function setScheduleEditor() {
     // remove currently active status, mark tab has active.
     let current = document.getElementsByClassName("at_selected");
     if (current.length != 0) {
@@ -173,7 +176,7 @@ function setScheduleEditor() {
     schedule_editor.classList.add('at_se');
     // get Current Schedule
     //  Note this will change with the database
-    let scheduleData = JSON.parse(localStorage.getItem("schedule"));
+    let scheduleData = await getSchedule();
     if(scheduleData == null) {
         console.assert("Error: schedule not found in local storage.");
         return;
@@ -196,10 +199,9 @@ function setScheduleEditor() {
     schedule_editor.appendChild(buttonFieldset);
     // Make filters (?)
     // Make Tables
-    for(let i = 0; i < scheduleData.Technicians.length; i++) {
-        //console.log(scheduleData.Technicians[i]);
-        schedule_editor.appendChild(makeTechEditTable(scheduleData.Technicians[i]));
-    }
+    Object.values(scheduleData).forEach(function(tech) {
+        schedule_editor.appendChild(makeTechEditTable(tech));
+    });
     // replace admin_internals
     let admin_internals = document.getElementById('admin_internals');
     admin_internals.replaceWith(schedule_editor);
@@ -211,21 +213,20 @@ function setScheduleEditor() {
         } 
     });
     // update hours for everyone
-    for(tech in scheduleData.Technicians) {
-        let techObj = scheduleData.Technicians[tech];
-        updateHours(`tech${techObj.Name}`,`${techObj.Name.split(" ")[1]}Hours`);
+    Object.values(scheduleData).forEach(function(tech) {
+        updateHours(`tech${tech.Name}`,`${tech.Name.split(" ")[1]}Hours`);
         // Disable enter on name fields
-        document.getElementById(`techNameEdit${techObj.Name}`).addEventListener('keydown', function(event) {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-        } 
+        document.getElementById(`techNameEdit${tech.Name}`).addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+            } 
+        });
     });
-    }
     return;
 }
 
 // Remove Mode is intended to mimimize the likelihood that a tech is accidentally removed.
-function setRemoveMode() {
+async function setRemoveMode() {
     let techTables = document.getElementsByClassName('techSchdDiv');
     for(i in techTables) {
         techTables[i].hidden = true;
@@ -236,16 +237,14 @@ function setRemoveMode() {
     fireSomeoneMenu.setAttribute("id", "techSchdRemoveTech");
     fireSomeoneMenu.classList.add("techSchdRemoveTech");
     // Get current saved Schedule
-    let scheduleData = JSON.parse(localStorage.getItem("schedule"));
-    let techList = scheduleData["Technicians"];
+    let scheduleData = await getSchedule();
     //console.log(techList);
     // HTML
     let html = `
     <ul id="techSchdRemoveList">`;
-    for(i in techList) {
-        //console.log("techList[i]", techList[i]);
-        html += `<li id="rm_${techList[i].Name}" onclick="removeTechSelect('rm_${techList[i].Name}')">${techList[i].Name}</li>`;
-    }
+    Object.values(scheduleData).forEach(function(tech) {
+        html += `<li id="rm_${tech.Name}" onclick="removeTechSelect('rm_${tech.Name}')">${tech.Name}</li>`;
+    })
     html +=`</ul>`;
     html += `<button onclick="exitRemoveMode()">Exit Remove Mode</button>
     <button onclick="removeSelectedTechs()">Confirm Selection</button>`;
@@ -283,19 +282,17 @@ function exitRemoveMode() {
     return;
 }
 
-function removeSelectedTechs() {
+async function removeSelectedTechs() {
     // get techs to remove
     let techsToRemove = document.getElementsByClassName("setToRemove");
     // get stored json
-    let scheduleData = JSON.parse(localStorage.getItem("schedule"));
+    let scheduleData = await getSchedule();
     for (let i = 0;i < techsToRemove.length; i++) {
         let rm_id = techsToRemove[i].getAttribute('id').split("rm_")[1];
-        console.log(rm_id)
-        scheduleData["Technicians"] = scheduleData["Technicians"].filter(obj => obj.Name !== rm_id);
+        delete scheduleData[rm_id];
     }
     // NOTE: verify this is not broken and correct before updating the localstorage iteration.
-    console.log(scheduleData);
-    localStorage.setItem("schedule", JSON.stringify(scheduleData));
+    updateSchedule(scheduleData);
     setRemoveMode();
     return;
 }
@@ -337,10 +334,9 @@ function addBlankTechSchedule(count) {
 // MEANING, those strings with ',' to deliminate my shifts in a given day are now a problem
 // while also being gross to look at, the code below also is non-functional because that is 
 // not handled.
-function exportSchd() {
+async function exportSchd() {
     // retrieve schd data
-    let scheduleData = JSON.parse(localStorage.getItem("schedule"));
-    let techList = scheduleData["Technicians"];
+    let schdData = await getSchedule();
     // Define the csv Rows
     let name_items = ["Name"];
     let assignment = ["Assignment"];
@@ -349,18 +345,25 @@ function exportSchd() {
     let wed_items = ["Wednesday"];
     let thur_items = ["Thursday"];
     let fri_items = ["Friday"];
-    let tmp = [];
-    for (tech in techList) {
-        name_items.push(techList[tech].Name);
-        assignment.push(techList[tech].Assignment);
-        let schd = techList[tech].Schedule;
+    Object.values(schdData).forEach(function(tech) {
+        name_items.push(tech.Name);
+        assignment.push(tech.Assignment);
+        let schd = tech.Schedule;
         mon_items.push(schd.Monday.replaceAll(",",";"));
         tues_items.push(schd.Tuesday.replaceAll(",",";"));
         wed_items.push(schd.Wednesday.replaceAll(",",";"));
         thur_items.push(schd.Thursday.replaceAll(",",";"));
         fri_items.push(schd.Friday.replaceAll(",",";"));
-    }
-    csv = [name_items.join(","),assignment.join(","),mon_items.join(","),wed_items.join(","),thur_items.join(","),fri_items.join(",")].join("\n");
+    });
+    csv = [
+        name_items.join(","),
+        assignment.join(","),
+        mon_items.join(","),
+        tues_items.join(","),
+        wed_items.join(","),
+        thur_items.join(","),
+        fri_items.join(",")
+    ].join("\n");
     downloadCsv(csv);
     return;
 }
@@ -396,7 +399,7 @@ function makeTechEditTable(techObj) {
             <label for="techNameEdit${techObj.Name}">Name:</label>
             <textarea id="techNameEdit${techObj.Name}" spellcheck="false" rows="1" cols="10">${techObj.Name}</textarea><br>
             ${makeTechAssignmentSelect(techObj)}
-            <button onclick="updateTechSchedule('tech${techObj.Name}')">Save Schedule</button>
+            <button onclick="updateAllTechSchedules()">Save Schedule</button>
         </fieldset>
         <table id="tech${techObj.Name}" class="adminTechTable">
             <thead>
@@ -493,18 +496,20 @@ function updateHours(tableID, tableHoursID) {
     return;
 }
 
-function updateAllTechSchedules() {
+async function updateAllTechSchedules() {
+    let schedule = {};
     let tables = document.getElementsByClassName("adminTechTable");
     for(let i = 0; i < tables.length; i++) {
         let tableId = tables[i].getAttribute("id");
-        updateTechSchedule(tableId);
+        schedule = await updateTechSchedule(tableId, schedule);
     }
+    updateSchedule(schedule);
     return;
 }
 
 // grabs the table for a tech on the page and converts it to schedule time
 // as well as the assignment drop down
-function updateTechSchedule(tableID) {
+async function updateTechSchedule(tableID, scheduleData) {
     // This will be a post request once the database is implemented.
     let table = document.getElementById(tableID);
     let trueCells = table.getElementsByClassName('schdtrue');
@@ -579,31 +584,18 @@ function updateTechSchedule(tableID) {
     // Assignment
     let select = document.getElementById(`techSelect${techName}`);
     // Name
-    let name = document.getElementById(`techNameEdit${techName}`)
+    let name = document.getElementById(`techNameEdit${techName}`);
     // get copy of current tech schedules and update it
-    let scheduleData = JSON.parse(localStorage.getItem('schedule'));
-    // If tech is not in the json, add to it
-    let techIndex = scheduleData.Technicians.findIndex(element => element.Name === techName);
-    console.log(techIndex);
-    if(techIndex == -1) {
-        console.log("Adding New Tech to Schedule");
-        let newTechObj = {
-            "Name": name.value,
-            "Assignment": select.value,
-            "Schedule": newSchdObj
-        }
-        scheduleData.Technicians.push(newTechObj);
-        localStorage.setItem('schedule', JSON.stringify(scheduleData));
-    } else {
-        scheduleData.Technicians[techIndex].Schedule = newSchdObj;
-        scheduleData.Technicians[techIndex].Name = name.value;
-        scheduleData.Technicians[techIndex].Assignment = select.value;
-        localStorage.setItem('schedule', JSON.stringify(scheduleData));
+    let techObj = {
+        "Name": name.value,
+        "Assignment": select.value,
+        "Schedule": newSchdObj
     }
+    scheduleData[techObj["Name"]] = techObj;
     // DATABASE_TODO
     // need to grab this updated schedule object and post it to the backend.
     // Since this is not something that is managed indepth by the database,
     // calculating the hash value that we check in 'checkForDataUpdates()'
     // here may be neccessary.
-    return;
+    return scheduleData;
 }
