@@ -50,6 +50,11 @@ use diesel::{
 	prelude::*,
 	associations::HasTable,
 };
+use diesel_migrations::{
+	embed_migrations,
+	EmbeddedMigrations,
+	MigrationHarness,
+};
 use dotenvy::dotenv;
 use crate::schema::bronson::{
 	buildings::dsl::*,
@@ -948,6 +953,8 @@ pub struct GeneralRequest {
 	pub priority: String,
 	pub buffer: String
 }
+
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
 pub static BUFF_SIZE : usize = 4096;
 pub static TSCH_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/techSchedule.json");
