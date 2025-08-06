@@ -183,7 +183,6 @@ impl Database {
 
 	pub fn init_if_empty(&mut self) -> Option<()> {
 		dotenv().ok();
-		println!("Running migration.");
 		match self.connection.run_pending_migrations(MIGRATIONS) {
 			Ok(_) => (),
 			Err(result) => panic!("Failed to run migration: {}", result)
@@ -299,6 +298,7 @@ impl Database {
 
 		if user_results.len() == 0 {
 			let json_users: HashMap<String, i16> = serde_json::from_str(&env::var("USERS_JSON").unwrap()).ok()?;
+			println!("{:?}", json_users);
 
 			for (user, perms) in json_users.iter() {
 				let new_user = DB_User { 
