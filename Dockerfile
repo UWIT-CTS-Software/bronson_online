@@ -2,7 +2,7 @@ FROM registry.fedoraproject.org/fedora:latest
 USER root
 EXPOSE 7878
 
-RUN sudo dnf install -y cargo rustc gnupg sget postgresql posgtresql-libs gcc openssl-devel libpq-devel git
+RUN sudo dnf install -y cargo rustc gnupg wget postgresql postgresql-libs gcc openssl-devel libpq-devel git
 RUN cargo --version && \
     rustc --version
 RUN sudo dnf update -y
