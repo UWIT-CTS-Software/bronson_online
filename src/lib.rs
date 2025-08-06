@@ -177,6 +177,13 @@ impl Database {
 	}
 
 	pub fn init_if_empty(&mut self) -> Option<()> {
+		dotenv().ok();
+		println!("Running migration.");
+		match self.connection.run_pending_migrations(MIGRATIONS) {
+			Ok(_) => (),
+			Err(result) => panic!("Failed to run migration: {}", result)
+		};
+
 		let bldg_results = buildings
 			.select(DB_Building::as_select())
 			.load(&mut self.connection)
@@ -286,8 +293,7 @@ impl Database {
 			.expect("Error loading users.");
 
 		if user_results.len() == 0 {
-			let user_file: String = read_to_string(USERS).ok()?;
-			let json_users: HashMap<String, i16> = serde_json::from_str(user_file.as_str()).ok()?;
+			let json_users: HashMap<String, i16> = serde_json::from_str(&env::var("USERS_JSON").unwrap()).ok()?;
 
 			for (user, perms) in json_users.iter() {
 				let new_user = DB_User { 
