@@ -46,10 +46,8 @@ use csv::Reader;
 use log::{ warn, };
 use regex::bytes::Regex;
 use serde::{Deserialize, Serialize, };
-use serde_json::Value;
 use diesel::{
 	prelude::*,
-	associations::HasTable,
 };
 use diesel_migrations::{
 	embed_migrations,
@@ -206,11 +204,7 @@ impl Database {
 					zone: building.zone as i16
 				};
 
-				let _ = diesel::insert_into(buildings::table())
-					.values(&new_bldg)
-					.returning(DB_Building::as_returning())
-					.get_result(&mut self.connection)
-					.expect("SQL_ERR: Error inserting building.");
+				self.update_building(&new_bldg);
 			}
 		}
 
@@ -283,11 +277,7 @@ impl Database {
 						schedule: room_schedule.to_vec()
 					};
 
-					let _ = diesel::insert_into(rooms::table())
-						.values(&new_room)
-						.returning(DB_Room::as_returning())
-						.get_result(&mut self.connection)
-						.expect("SQL_ERR: Error inserting room");
+					self.update_room(&new_room);
 				}
 			}
 		}
@@ -306,11 +296,7 @@ impl Database {
 					permissions: *perms as i16
 				};
 
-				let _ = diesel::insert_into(users::table())
-					.values(&new_user)
-					.returning(DB_User::as_returning())
-					.get_result(&mut self.connection)
-					.expect("SQL_ERR: Error inserting user");
+				self.update_user(&new_user);
 			}
 
 		}
@@ -329,11 +315,7 @@ impl Database {
 					val: value.clone()
 				};
 
-				let _ = diesel::insert_into(keys::table())
-					.values(&new_key)
-					.returning(DB_Key::as_returning())
-					.get_result(&mut self.connection)
-					.expect("SQL_ERR: Error inserting key");
+				self.update_key(&new_key);
 			}
 		}
 
@@ -343,59 +325,36 @@ impl Database {
 			.expect("Error loading data.");
 
 		if data_results.len() == 0 {
-			let _ = diesel::insert_into(data::table())
-				.values(&DB_DataElement {
-					key: String::from("dashboard"),
-					val: String::from("Welcome to bronson!"),
-				})
-				.returning(DB_DataElement::as_returning())
-				.get_result(&mut self.connection)
-				.expect("SQL_ERR: Error inserting data element");
+			self.update_data(&DB_DataElement {
+				key: String::from("dashboard"),
+				val: String::from("Welcome to bronson!"),
+			});
 
-			let _ = diesel::insert_into(data::table())
-				.values(&DB_DataElement {
-					key: String::from("zone1"),
-					val: String::from("0"),
-				})
-				.returning(DB_DataElement::as_returning())
-				.get_result(&mut self.connection)
-				.expect("SQL_ERR: Error inserting data element");
+			self.update_data(&DB_DataElement {
+				key: String::from("zone1"),
+				val: String::from("0")
+			});
 
-			let _ = diesel::insert_into(data::table())
-				.values(&DB_DataElement {
-					key: String::from("zone2"),
-					val: String::from("0"),
-				})
-				.returning(DB_DataElement::as_returning())
-				.get_result(&mut self.connection)
-				.expect("SQL_ERR: Error inserting data element");
+			self.update_data(&DB_DataElement {
+				key: String::from("zone2"),
+				val: String::from("0"),
+			});
 
-			let _ = diesel::insert_into(data::table())
-				.values(&DB_DataElement {
-					key: String::from("zone3"),
-					val: String::from("0"),
-				})
-				.returning(DB_DataElement::as_returning())
-				.get_result(&mut self.connection)
-				.expect("SQL_ERR: Error inserting data element");
+			self.update_data(&DB_DataElement {
+				key: String::from("zone3"),
+				val: String::from("0"),
+			});
 
-			let _ = diesel::insert_into(data::table())
-				.values(&DB_DataElement {
-					key: String::from("zone4"),
-					val: String::from("0"),
-				})
-				.returning(DB_DataElement::as_returning())
-				.get_result(&mut self.connection)
-				.expect("SQL_ERR: Error inserting data element");
+			self.update_data(&DB_DataElement {
+				key: String::from("zone4"),
+				val: String::from("0"),
+			});
 
-			let _ = diesel::insert_into(data::table())
-				.values(&DB_DataElement {
-					key: String::from("schedule"),
-					val: String::from("{\"Alex Bryan\":{\"Name\":\"Alex Bryan\",\"Assignment\":\"SysEn\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Cian Melker\":{\"Name\":\"Cian Melker\",\"Assignment\":\"Networking\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Collin Davis\":{\"Name\":\"Collin Davis\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Colton Hopster\":{\"Name\":\"Colton Hopster\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Jack Nyman\":{\"Name\":\"Jack Nyman\",\"Assignment\":\"Coding\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Jarred Heddins\":{\"Name\":\"Jarred Heddins\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Jason Vanlandingham\":{\"Name\":\"Jason Vanlandingham\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Korrin Sutherburg\":{\"Name\":\"Korrin Sutherburg\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Lexus Fermelia\":{\"Name\":\"Lexus Fermelia\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Mario Garcia-Ceballos\":{\"Name\":\"Mario Garcia-Ceballos\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Michael Stoll\":{\"Name\":\"Michael Stoll\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Sofia Newsome\":{\"Name\":\"Sofia Newsome\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Thomas Lockwood\":{\"Name\":\"Thomas Lockwood\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}}}")
-				})
-				.returning(DB_DataElement::as_returning())
-				.get_result(&mut self.connection)
-				.expect("SQL_ERR: Error inserting data element");
+			self.update_data(&DB_DataElement {
+				key: String::from("schedule"),
+				val: String::from("{\"Alex Bryan\":{\"Name\":\"Alex Bryan\",\"Assignment\":\"SysEn\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Cian Melker\":{\"Name\":\"Cian Melker\",\"Assignment\":\"Networking\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Collin Davis\":{\"Name\":\"Collin Davis\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Colton Hopster\":{\"Name\":\"Colton Hopster\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Jack Nyman\":{\"Name\":\"Jack Nyman\",\"Assignment\":\"Coding\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Jarred Heddins\":{\"Name\":\"Jarred Heddins\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Jason Vanlandingham\":{\"Name\":\"Jason Vanlandingham\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Korrin Sutherburg\":{\"Name\":\"Korrin Sutherburg\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Lexus Fermelia\":{\"Name\":\"Lexus Fermelia\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Mario Garcia-Ceballos\":{\"Name\":\"Mario Garcia-Ceballos\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Michael Stoll\":{\"Name\":\"Michael Stoll\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Sofia Newsome\":{\"Name\":\"Sofia Newsome\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Thomas Lockwood\":{\"Name\":\"Thomas Lockwood\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}}}")
+			});
+
 		}
 
 		Some(())
