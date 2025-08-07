@@ -46,6 +46,7 @@ use csv::Reader;
 use log::{ warn, };
 use regex::bytes::Regex;
 use serde::{Deserialize, Serialize, };
+use serde_json::Value;
 use diesel::{
 	prelude::*,
 	associations::HasTable,
@@ -172,7 +173,7 @@ impl Database {
 	pub fn new() -> Database {
 		dotenv().ok();
 
-		let db_url = env::var("DATABASE_URL").expect("DATABASE_URL env variable not found.");
+		let db_url = env::var("DATABASE_URL").expect("DATABASE_URL env variable not found");
 		let connection = PgConnection::establish(&db_url)
 			.unwrap_or_else(|_| panic!("Error connecting to {}", db_url));
 
@@ -298,7 +299,6 @@ impl Database {
 
 		if user_results.len() == 0 {
 			let json_users: HashMap<String, i16> = serde_json::from_str(&env::var("USERS_JSON").unwrap()).ok()?;
-			println!("{:?}", json_users);
 
 			for (user, perms) in json_users.iter() {
 				let new_user = DB_User { 
@@ -321,8 +321,7 @@ impl Database {
 			.expect("Error loading keys");
 
 		if key_results.len() == 0 {
-			let key_file: String = read_to_string(KEYS).ok()?;
-			let json_keys: HashMap<String, String> = serde_json::from_str(key_file.as_str()).ok()?;
+			let json_keys: HashMap<String, String> = serde_json::from_str(&env::var("KEYS_JSON").unwrap()).ok()?;
 
 			for (id, value) in json_keys.iter() {
 				let new_key = DB_Key {
