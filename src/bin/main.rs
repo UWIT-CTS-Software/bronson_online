@@ -994,6 +994,8 @@ fn cfm_build_dir() -> Vec<u8> {
     for (_, &ref item) in cfm_dirs.iter().enumerate() {
         if (&item[(cut_index + 1)..]).to_string().starts_with('_') {
             continue; // ignore directories starting with '_'
+        } else if (&item[(cut_index + 1)..]).to_string().starts_with('.') {
+            continue; // ignore directories starting with '.'
         } else if is_this_file(&item) {
             continue; // ignore files
         }
