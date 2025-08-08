@@ -50,6 +50,9 @@ use diesel::{
 	prelude::*,
 	associations::HasTable,
 };
+use diesel_migrations::{
+	embed_migrations
+};
 use dotenvy::dotenv;
 use crate::schema::bronson::{
 	buildings::dsl::*,

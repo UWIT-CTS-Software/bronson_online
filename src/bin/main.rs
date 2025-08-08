@@ -80,8 +80,16 @@ use serde_json::{ json, Value, };
 use regex::Regex;
 use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta };
 use urlencoding::decode;
-// ----------------------------------------------------------------------------
-
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use diesel::{PgConnection, Connection};
+use dotenvy::dotenv;
+// -----------------------------------------------------------------------
+// macro_rules! embed_migrations {
+//     () => {
+//         embed_migrations!("./migrations");
+//     };
+// }
+pub const MIGRATIONS : EmbeddedMigrations = embed_migrations!();
 /*
 $$$$$$$\                      $$\                                 $$\ 
 $$  __$$\                     $$ |                                $$ |
@@ -96,6 +104,14 @@ $$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |  $$ |\$$$$$$$ |
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // debug setting
     env::set_var("RUST_BACKTRACE", "1");
+    // embed_migrations
+    dotenv().ok(); // Load .env file
+    let database_url = env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set");
+    let mut connection = PgConnection::establish(&database_url)
+        .expect("Error Connecting to Database");
+    connection.run_pending_migrations(MIGRATIONS)
+            .map_err(|e| format!("Failed to run migrations: {}", e))?;
 
     let mut database = Database::new();
     database.init_if_empty();
