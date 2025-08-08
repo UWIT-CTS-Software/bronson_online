@@ -8,7 +8,7 @@
     },
     "AHC": {
         "name"    : "American Heritage Center",
-        "lsm_name": "American%20Heritage%20Center%20(AC)",
+        "lsm_name": "American%20Heritage%20Center%20(AHC)",
         "abbrev"  : "AHC",
         "zone"    : 4,
         "rooms"   : []
@@ -76,10 +76,10 @@
         "zone"    : 4,
         "rooms"   : []
     },
-    "CI": {
+    "CIC": {
         "name"    : "Cheney International Center",
         "lsm_name": "Cheney%20International%20Center%20(CIC)",
-        "abbrev"  : "CI",
+        "abbrev"  : "CIC",
         "zone"    : 3,
         "rooms"   : []
     },
@@ -134,7 +134,7 @@
     },
     "ES": {
         "name"    : "Earth Sciences",
-        "lsm_name": "Earth%20Sciences%20Building%20(ESB)",
+        "lsm_name": "Earth%20Sciences%20Building%20(ES)",
         "abbrev"  : "ES",
         "zone"    : 1,
         "rooms"   : []
@@ -181,10 +181,10 @@
         "zone"    : 1,
         "rooms"   : []
     },
-    "IT": {
+    "ITC": {
         "name"    : "IT Center",
         "lsm_name": "IT%20Center%20(ITC)",
-        "abbrev"  : "IT",
+        "abbrev"  : "ITC",
         "zone"    : 4,
         "rooms"   : []
     },
@@ -239,7 +239,7 @@
     },
     "ST": {
         "name"    : "Enzi STEM",
-        "lsm_name": "Michael%20B.%20Enzi%20STEM%20(STEM)",
+        "lsm_name": "Michael%20B.%20Enzi%20STEM%20(ST)",
         "abbrev"  : "ST",
         "zone"    : 1,
         "rooms"  : []
