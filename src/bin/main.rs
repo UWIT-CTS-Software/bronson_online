@@ -59,10 +59,10 @@ use getopts::Options;
 use std::{
     str, env,
     io::{ prelude::*, Read, stdout, },
-    net::{ TcpListener, },
+    net::{ TcpListener, IpAddr, Ipv4Addr, },
     fs::{
         read_dir, metadata,
-        File,
+        File, ReadDir, 
     },
     time::{ Duration, SystemTime },
     string::{ String, },
@@ -73,7 +73,7 @@ use std::{
 use reqwest::{ 
     header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
-use log::{ debug, info, }; // error, trace, warn, };
+use log::{ debug, info, warn, error, }; // trace, };
 use cookie::{ Cookie, };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
@@ -120,7 +120,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ------------------------------------------------------------------------
     let host_ip: &str;
     let mut host_port = 7878;
-    let local_ip_addr = &(local_ip().unwrap().to_string());
+    let local_ip_addr = &(match local_ip() {
+        Ok(ip) => ip,
+        Err(e) => {
+            warn!("Unable to get public ip: {}\nDefaulting to localhost", e);
+            IpAddr::V4(Ipv4Addr::new(127,0,0,1))
+        }
+    }.to_string());
     if matches.opt_present("p") {
         info!("[#] -- You are running using public IP --");
         host_ip = local_ip_addr;
@@ -129,7 +135,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         host_ip = "127.0.0.1";
     }
 
-    while let Err(_e) = TcpListener::bind(format!("{}:{}", host_ip, host_port.to_string())) {
+    while let Err(_) = TcpListener::bind(format!("{}:{}", host_ip, host_port.to_string())) {
+        warn!("Port {} busy. Incrementing.", host_port);
         host_port += 1;
     }
     let listener = TcpListener::bind(format!("{}:{}", host_ip, host_port.to_string())).unwrap();
@@ -141,13 +148,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut buffer = [0; BUFF_SIZE];
 
     // ----------------------------------------------------------------------
-    stdout().flush().unwrap();
+    match stdout().flush() {
+        Ok(_) => (),
+        Err(e) => error!("STDOUT flush failed: {}", e)
+    };
 
     for stream in listener.incoming() {
-        let mut stream = stream.unwrap();
+        let mut stream = match stream {
+            Ok(s) => s,
+            Err(e) => {
+                error!("Incoming stream corrupted: {}\nDropping packet.", e);
+                continue;
+            }
+        };
         let clone_db = database.clone();
 
-        stream.read(&mut buffer).unwrap();
+        match stream.read(&mut buffer) {
+            Ok(_) => (),
+            Err(e) => error!("Error reading to buffer: {}", e)
+        };
         let req = Request::build(buffer.clone());
 
         pool.execute(move || {
@@ -969,7 +988,14 @@ fn find_files(building: String, rm: String) -> Vec<String> {
 
 fn get_dir_contents(path: &str) -> Vec<String> {
     let mut strings = Vec::new();
-    let paths = read_dir(&path).unwrap();
+    /* let paths = match read_dir(&path) {
+        Ok(p) => p,
+        Err(e) => {
+            error!("Malformed directory path(s): {}\nDefaulting to empty.", e);
+            Vec::new()
+        } */
+    let mut paths = read_dir(&path).unwrap();
+    /* }; */
     for p in paths {
         strings.push(p.unwrap().path().display().to_string());
     }
@@ -1126,8 +1152,6 @@ fn get_cfm_dir(body: Vec<u8>) -> Vec<u8> {
     //
     let cfmr_d: CFMRequestFile = serde_json::from_str(&tmp)
         .expect("CamCode Err, Failed to get dir struct");
-    //let cfmr_d: CFMRequestFile = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
-    //    .expect("Fatal Error 38: failed to parse filename");
 
     if dir_exists(CFM_DIR) {
         // Error handling
