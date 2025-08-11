@@ -352,9 +352,6 @@ async function pingpong(devices, building) {
 //   ]
 function formatPingPong(PingPongJSON, devices) {
     // tmp
-    let tmp_hn = [];
-    let tmp_ip = [];
-    let index_weight = 0;
     // out
     let out_hn = [];
     let out_ip = [];
@@ -407,11 +404,10 @@ function formatPingPong(PingPongJSON, devices) {
         }
 
         out_hn.push(room_arr_hn);
-        out_ip.push(room_arr_hn);
+        out_ip.push(room_arr_ip);
     }
     // output
     let new_PR = [out_hn, out_ip];
-    console.log(new_PR);
     return new_PR;
 }
 

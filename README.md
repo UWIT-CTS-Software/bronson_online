@@ -12,7 +12,7 @@ The frontend is written in JavaScript and the backend was written in Rust.
 
 ## Prerequisites
 
-### Install Rust and Cargo (Linux)
+### Install Rust and Cargo
 First, Rust needs installed. <br>
 `curl https://sh.rustup.rs -sSf | sh`<br>
 You should see output stating "Rust is installed now. Great!"<br>
@@ -22,11 +22,17 @@ run the following commands to verify version information is returned.<br>
 `rustc --version`<br>
 `cargo --version`
 
-### Install PostgreSQL (Linux)
+### Install PostgreSQL
 First, update your package index and install the prerequisite packages. <br>
+**Debian** <br>
 `sudo apt update` <br>
 `sudo apt install gnupg2 wget`
 
+**Arch** <br>
+`sudo pacman -Syu` <br> 
+`sudo pacman -S gnupg wget`
+
+### Fetch PostgreSQL repository
 After the necessary packages are installed, the PostgreSQL repository can be fetched. <br>
 `sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs).pgdg main" > /etc/apt/sources.list.d/pgdg.list'`
 
@@ -34,10 +40,12 @@ Now that apt knows about the repository, the signing key is necessary for an aut
 `curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg`
 
 Update the package list. <br> 
-`sudo apt update`
+`sudo apt update` (Debian) <br>
+`sudo pacman -Syu` (Arch)
 
 Install PostgreSQL 16 and its contrib modules. <br>
-`sudo apt install postgresql-16 postgresql-contrib-16` <br>
+`sudo apt install postgresql-16 postgresql-contrib-16` (Debian) <br>
+`sudo pacman -S postgresql postgresql-libs` (Arch)
 
 ### Mount and configure the PostgreSQL server
 Start and enable the PostgreSQL service. <br>
@@ -45,16 +53,23 @@ Start and enable the PostgreSQL service. <br>
 `sudo systemctl enable postgresql`
 
 Configure the PostgreSQL server. (Any text editor will work) <br>
-`sudo nano /etc/postgresql/16/main/postgresql.conf`
+`sudo nano /etc/postgresql/16/main/postgresql.conf` (Debian) <br>
+`sudo nano /var/lib/postgresql/data/postqresql.conf` (Arch)
 
 Set listen_adresses to allow remote connectivity. <br>
 `listen_addresses = '*'` <br>
 Save and exit.
 
 Configure PostgreSQL to use MD5 password authentication in the pg_hba.conf file. This is required when enabling remote connections. <br>
+**Debian** <br>
 `sudo sed -i '/^host/s/ident/md5/' /etc/postgresql/16/main/pg_hba.conf` <br>
 `sudo sed -i '/^local/s/peer/trust/' /etc/postgresql/16/main/pg_hba.conf` <br>
-`echo "host all all 0.0.0.0/0 md5" | sudo tee -a /etc/postgresql/16/main/pg_hba.conf`
+`echo "host all all 0.0.0.0/0 md5" | sudo tee -a /etc/postgresql/16/main/pg_hba.conf` <br>
+
+**Arch**<br>
+`sudo sed -i '/^host/s/ident/md5' /var/lib/postgresql/data/pg_hba.conf` <br>
+`sudo sed -i '/^local/s/peer/trust' /var/lib/postgresql/data/pg_hba.conf` <br>
+`echo "host all all 0.0.0.0/0 md5" | sudo tee -a /var/lib/postgresql/data/pg_hba.conf` <br>
 
 Restart the PostgreSQL server to adopt these changes. <br>
 `sudo systemctl restart postgresql`
@@ -89,14 +104,12 @@ Not only does rust's diesel ORM manage server-side database querying, but it als
 `curl --proto '=https' --tlsv1.2 -LsSf https://github.com/diesel-rs/diesel/releases/download/v2.2.11/diesel_cli-installer.sh | sh`
 
 Once diesel's CLI is successfully installed, the environment needs to be able to access PostgreSQL with the appropriate credentials. <br>
-`echo DATABASE_URL=postgres://postgres:<password>@localhost/bronson_online > .env` <br>
+`echo DATABASE_URL=postgres://postgres:<password>@localhost/bronson > .env` <br>
 where `<password>` is the password provided when setting up postgreSQL above.
 
 Diesel now has the proper resources, so it will be able to handle the setup and management of necessary database shemas. <br>
 `diesel setup` <br>
-`diesel migration generate bronson` <br>
-
-Generating a migration will create two new files **migrations/yyyy-mm-dd-hhmmss_bronson/up.sql** and **migrations/yyyy-mm-dd-hhmmss_bronson/down.sql**. These files will contain the framework for establishing the necessary tables and reverting them if necessary.
+`diesel migration run` <br>
 
 ## Initialize Server
 To start the server, navigate to the bronson_online folder in a terminal shell, then execute the following command:<br>
