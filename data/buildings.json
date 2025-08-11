@@ -4,13 +4,17 @@
         "lsm_name": "Animal%20Science/Molecular%20Biology%20(AB)",
         "abbrev"  : "AB",
         "zone"    : 4,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "AHC": {
         "name"    : "American Heritage Center",
-        "lsm_name": "American%20Heritage%20Center%20(AC)",
+        "lsm_name": "American%20Heritage%20Center%20(AHC)",
         "abbrev"  : "AHC",
         "zone"    : 4,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "AG": {
@@ -18,6 +22,8 @@
         "lsm_name": "Agriculture%20(AG)",
         "abbrev"  : "AG",
         "zone"    : 2,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "AN": {
@@ -25,6 +31,8 @@
         "lsm_name": "Anthropology%20(AN)",
         "abbrev"  : "AN",
         "zone"    : 1,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "AS": {
@@ -32,6 +40,8 @@
         "lsm_name": "Arts%20%26%20Sciences%20(AS)",
         "abbrev"  : "AS",
         "zone"    : 3,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "AV": {
@@ -39,6 +49,8 @@
         "lsm_name": "Aven%20Nelson%20(AV)",
         "abbrev"  : "AV",
         "zone"    : 3,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "BC": {
@@ -46,6 +58,8 @@
         "lsm_name": "Berry%20Center%20(BC)",
         "abbrev"  : "BC",
         "zone"    : 1,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "BH": {
@@ -53,6 +67,8 @@
         "lsm_name": "Beta%20House%20(BH)",
         "abbrev"  : "BH",
         "zone"    : 4,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "BS": {
@@ -60,6 +76,8 @@
         "lsm_name": "Biological%20Sciences%20(BS)",
         "abbrev"  : "BS",
         "zone"    : 3,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "BU": {
@@ -67,6 +85,8 @@
         "lsm_name": "Business%20(BU)",
         "abbrev"  : "BU",
         "zone"    : 2,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "CB": {
@@ -74,13 +94,17 @@
         "lsm_name": "Corbett%20(CB)",
         "abbrev"  : "CB",
         "zone"    : 4,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
-    "CI": {
+    "CIC": {
         "name"    : "Cheney International Center",
-        "lsm_name": "Cheney%20International%20Center%20(CI)",
-        "abbrev"  : "CI",
+        "lsm_name": "Cheney%20International%20Center%20(CIC)",
+        "abbrev"  : "CIC",
         "zone"    : 3,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "CL": {
@@ -88,6 +112,8 @@
         "lsm_name": "Coe%20Library%20(CL)",
         "abbrev"  : "CL",
         "zone"    : 2,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "CR": {
@@ -95,6 +121,8 @@
         "lsm_name": "Classroom%20Building%20(CR)",
         "abbrev"  : "CR",
         "zone"    : 3,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "EA": {
@@ -102,6 +130,8 @@
         "lsm_name": "Education%20Annex%20(EA)",
         "abbrev"  : "EA",
         "zone"    : 2,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "ED": {
@@ -109,6 +139,8 @@
         "lsm_name": "Education%20(ED)",
         "abbrev"  : "ED",
         "zone"    : 2,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "EERB": {
@@ -116,6 +148,8 @@
         "lsm_name": "Engineering%20Education%20and%20Research%20Building%20(EERB)",
         "abbrev"  : "EERB",
         "zone"    : 1,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "EIC": {
@@ -123,6 +157,8 @@
         "lsm_name": "Energy%20Innovation%20Center%20(EIC)",
         "abbrev"  : "EIC",
         "zone"    : 1,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "EN": {
@@ -130,13 +166,17 @@
         "lsm_name": "Engineering%20(EN)",
         "abbrev"  : "EN",
         "zone"    : 2,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "ES": {
         "name"    : "Earth Sciences",
-        "lsm_name": "Earth%20Sciences%20Building%20(ESB)",
+        "lsm_name": "Earth%20Sciences%20Building%20(ES)",
         "abbrev"  : "ES",
         "zone"    : 1,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "GE": {
@@ -144,6 +184,8 @@
         "lsm_name": "Geology%20(GE)",
         "abbrev"  : "GE",
         "zone"    : 1,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "GH": {
@@ -151,6 +193,8 @@
         "lsm_name": "Guthrie%20House%20(GH)",
         "abbrev"  : "GH",
         "zone"    : 3,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "HA": {
@@ -158,6 +202,8 @@
         "lsm_name": "Half%20Acre%20(HA)",
         "abbrev"  : "HA",
         "zone"    : 2,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "HI": {
@@ -165,6 +211,8 @@
         "lsm_name": "History%20(HI)",
         "abbrev"  : "HI",
         "zone"    : 2,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "HO": {
@@ -172,6 +220,8 @@
         "lsm_name": "Hoyt%20Hall%20(HO)",
         "abbrev"  : "HO",
         "zone"    : 3,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "HS": {
@@ -179,13 +229,17 @@
         "lsm_name": "Health%20Sciences%20(HS)",
         "abbrev"  : "HS",
         "zone"    : 1,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
-    "IT": {
+    "ITC": {
         "name"    : "IT Center",
         "lsm_name": "IT%20Center%20(ITC)",
-        "abbrev"  : "IT",
+        "abbrev"  : "ITC",
         "zone"    : 4,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "KH": {
@@ -193,6 +247,8 @@
         "lsm_name": "Knight%20Hall%20(KH)",
         "abbrev"  : "KH",
         "zone"    : 3,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "LS": {
@@ -200,13 +256,17 @@
         "lsm_name": "Law%20School%20(LS)",
         "abbrev"  : "LS",
         "zone"    : 4,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "NAC": {
         "name"    : "Native American Center",
-        "lsm_name": "Native%20American%20Ed%20Research%20%26%20Culteral%20Center%20(NA)",
+        "lsm_name": "Native%20American%20Center%20(NAC)",
         "abbrev"  : "NAC",
         "zone"    : 3,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "PA": {
@@ -214,6 +274,8 @@
         "lsm_name": "Buchanan%20Center%20for%20Performing%20Arts%20(PA)",
         "abbrev"  : "PA",
         "zone"    : 4,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "PS": {
@@ -221,6 +283,8 @@
         "lsm_name": "Physical%20Sciences%20(PS)",
         "abbrev"  : "PS",
         "zone"    : 3,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "RH": {
@@ -228,6 +292,8 @@
         "lsm_name": "Ross%20Hall%20(RH)",
         "abbrev"  : "RH",
         "zone"    : 3,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "SI": {
@@ -235,13 +301,17 @@
         "lsm_name": "Science%20Initiative%20Building%20(SI)",
         "abbrev"  : "SI",
         "zone"    : 1,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     },
     "ST": {
         "name"    : "Enzi STEM",
-        "lsm_name": "Michael%20B.%20Enzi%20STEM%20(STEM)",
+        "lsm_name": "Michael%20B.%20Enzi%20STEM%20(ST)",
         "abbrev"  : "ST",
         "zone"    : 1,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"  : []
     },
     "VA": {
@@ -249,6 +319,8 @@
         "lsm_name": "Visual%20Arts%20(VA)",
         "abbrev"  : "VA",
         "zone"    : 4,
+        "total_rooms": 0,
+        "checked_rooms":0,
         "rooms"   : []
     }
 }

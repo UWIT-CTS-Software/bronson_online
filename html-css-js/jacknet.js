@@ -352,36 +352,62 @@ async function pingpong(devices, building) {
 //   ]
 function formatPingPong(PingPongJSON, devices) {
     // tmp
-    let tmp_hn = [];
-    let tmp_ip = [];
-    let index_weight = 0;
     // out
     let out_hn = [];
     let out_ip = [];
     //
-    let inner_body = PingPongJSON['jn_body'];
-    let room_list = inner_body['rooms'];
+    let room_list = PingPongJSON['jn_body'];
     for(var i = 0; i < room_list.length; i++) {
-        index_weight = 0;
-        // get hn/ip and trim uncalled devices
-        tmp_hn = room_list[i]['hostnames'];
-        tmp_ip = room_list[i]['ips'];
-        // iterate through devices and if 0, slice
-        for(var j = 0; j < devices.length; j++) {
-            if (!devices[j]) {
-                //console.log("JN-Removing uncalled device type");
-                tmp_hn.splice(j - index_weight, 1);
-                tmp_ip.splice(j - index_weight, 1);
-                index_weight++;
+        let room_arr_hn = [];
+        let room_arr_ip = [];
+        for (var k = 0; k < devices.length; k++) {
+            if (devices[k] != 0) {
+                let dev_type;
+                switch (k) {
+                    case 0:
+                        dev_type = "PROC";
+                        break;
+                    case 1:
+                        dev_type = "PJ";
+                        break;
+                    case 2:
+                        dev_type = "DISP";
+                        break;
+                    case 3:
+                        dev_type = "WS";
+                        break;
+                    case 4:
+                        dev_type = "TP";
+                        break;
+                    case 5:
+                        dev_type = "CMIC";
+                        break;
+                    default:
+                        dev_type = "UNKNOWN";
+                        break;
+                }
+
+                let filtered_arr = room_list[i]["ping_data"].filter(element => element.hostname.dev_type === dev_type);
+                let tmp_hn = [];
+                let tmp_ip = [];
+                for (var j=0; j<filtered_arr.length; j++) {
+                    let ping_element = filtered_arr[j];
+                    let hn_element = ping_element.hostname;
+                    tmp_hn.push(`${hn_element.room.replace(" ", "-")}-${hn_element.dev_type}${hn_element.num}`);
+                    tmp_ip.push(ping_element.ip);
+                }
+
+                // push to output arrays
+                room_arr_hn.push(tmp_hn);
+                room_arr_ip.push(tmp_ip);
             }
         }
-        // push to output arrays
-        out_hn.push(tmp_hn);
-        out_ip.push(tmp_ip);
+
+        out_hn.push(room_arr_hn);
+        out_ip.push(room_arr_ip);
     }
     // output
     let new_PR = [out_hn, out_ip];
-    console.log(new_PR);
     return new_PR;
 }
 
