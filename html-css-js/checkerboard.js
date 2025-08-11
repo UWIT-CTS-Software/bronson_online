@@ -67,21 +67,14 @@ async function run() {
     //console.log(zone_array);
     // Clear cbVisContainer
     clearVisContainer();
-
     // Get selected zone building list
-    //console.log(zone_array);
     buildStarterTopper(zone_array);
-    // set Session Storage to initial values
-    // DATABASE_TODO : Cutting out resetCBdash(), no longer calculating zone percentages on front-end
-    resetCBDash(zone_array);
-
     // iterativly go through buildings
     // compile a hit list
     let buildingsToCheck = [];
     for(var i = 0; i < zone_array.length; i++) {
         buildingsToCheck.push(...getBuildingAbbrevsFromZone(zone_array[i]));
     }
-
     // Iterating through buildings to check
     let cbTotalBuildingResponse = [];
     for(var i = 0; i < buildingsToCheck.length; i++) {
@@ -146,7 +139,6 @@ function FourDigitToTimeFormat(unformattedTime) {
         }
     }
     let newTime = String(hours).padStart(2,'0') + ":" + String(minutes).padStart(2,'0') + suffix;
-    //console.log(newTime);
     return newTime;
 }
 
@@ -163,7 +155,6 @@ function buildStarterTopper(zone_array) {
         // Iterate through buildings in a given zone
         for (var j = 0; j < buildingNames.length; j++) {
             // Note, would be cool if this could be animated triple dot...
-            //let HTML_tmp = `<li class=cbTopperBuilding id="cbTopper_${buildingAbbrev[j]}" onclick="cbJumpTo(\'cbVis_${buildingAbbrev[j]}\')"> Loading ${buildingNames[j]} ...</li>`;
             let HTML_tmp = `<li class=cbTopperBuilding id="cbTopper_${buildingAbbrev[j]}" onclick="cbJumpTo(\'cbVis_${buildingAbbrev[j]}\')">
             <p class="cbTopperBuildingNameText">${buildingNames[j]}</p>
             <p class="cbTopperBuildingStatus">Loading. .. </p>
@@ -174,8 +165,6 @@ function buildStarterTopper(zone_array) {
         HTML_cbTopperZone += HTML_cbTopperBuildings;
         HTML_cbTopperContainer += HTML_cbTopperZone;
     }
-    //HTML_cbTopperContainer += `</div>`;
-    //console.log(HTML_cbTopperContainer);
     topperContainer.innerHTML = HTML_cbTopperContainer;
     return;
 }
@@ -185,10 +174,6 @@ async function updateTopperElement(topperID, buildingName, numberChecked, number
     let topperEntry = document.getElementById(topperID);
     // TODO - Make this more fancy
     //topperEntry.innerText = `${buildingName} - Rooms Checked: ${numberChecked} / ${numberRooms} (${percent}%)`;
-    // Pre-Update HTML
-    /*
-    `<li class=cbTopperBuilding id="cbTopper_${buildingAbbrev[j]}" onclick="cbJumpTo(\'cbVis_${buildingAbbrev[j]}\')"> Loading ${buildingNames[j]} ...</li>`;
-    */
     topperEntry.innerHTML = `<p class="cbTopperBuildingNameText">${buildingName}</p>
     <div class="cbTopperBuildingStatus"><p class="cbBStatusText">Rooms Checked: ${numberChecked}/${numberRooms}</p><label class="cbProgLabel" for="${buildingName}_status">${percent}%</label><progress id="${buildingName}_status" class="cbProgress" value="${percent}" max="100"> </progress></div>`;
     return;
@@ -267,10 +252,6 @@ async function printCBResponse(JSON) {
     let checkedPercent = 100 * (numberChecked / numberRooms);
     let topperID = `cbTopper_${building['abbrev']}`;
     await updateTopperElement(topperID, building['name'], numberChecked, numberRooms);
-    // Send an update to session storage;
-    //console.log(building['zone']);
-    // DATABASE_TODO, no longer doing zone percents on front end
-    await updateCBDashZone(building['zone'], numberRooms, numberChecked);
     return;
 }
 

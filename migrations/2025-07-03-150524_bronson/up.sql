@@ -21,10 +21,12 @@ CREATE TYPE bronson.ip_address AS (
 );
 
 CREATE TABLE IF NOT EXISTS bronson.buildings (
-    abbrev   TEXT         PRIMARY KEY,
-    name     TEXT         NOT NULL,
-    lsm_name TEXT         NOT NULL,
-    zone     SMALLINT     NOT NULL,
+    abbrev        TEXT         PRIMARY KEY,
+    name          TEXT         NOT NULL,
+    lsm_name      TEXT         NOT NULL,
+    zone          SMALLINT     NOT NULL,
+    total_rooms   SMALLINT     NOT NULL,
+    checked_rooms SMALLINT     NOT NULL,
 
     CHECK (length(abbrev) <= 5),
     CHECK (length(name) <= 255),

@@ -143,11 +143,14 @@ function setMessageEditor() {
 //  dashboards will pull that value for the dashboard messages content.
 function setDashboardMessage() {
     let dme = document.getElementById("dme_editor");
-    contents = dme.innerText;
+    contents = dme.value;
     // DATABASE_TODO
     //  - This needs to be a post into the database.
     //    Once that is done the below line will not be relevant
-    localStorage.setItem("DashboardMessage", contents);
+    fetch("/update/dash", {
+        method: "POST",
+        body: contents
+    });
     return;
 }
 
