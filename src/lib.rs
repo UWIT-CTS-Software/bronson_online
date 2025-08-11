@@ -191,7 +191,9 @@ impl Database {
 					abbrev: json_abbrev.to_string(), 
 					name: building.name.clone(), 
 					lsm_name: building.lsm_name.clone(), 
-					zone: building.zone as i16
+					zone: building.zone as i16,
+					total_rooms: 0,
+					checked_rooms: 0
 				};
 
 				let _ = diesel::insert_into(buildings::table())
@@ -344,42 +346,6 @@ impl Database {
 
 			let _ = diesel::insert_into(data::table())
 				.values(&DB_DataElement {
-					key: String::from("zone1"),
-					val: String::from("0"),
-				})
-				.returning(DB_DataElement::as_returning())
-				.get_result(&mut self.connection)
-				.expect("SQL_ERR: Error inserting data element");
-
-			let _ = diesel::insert_into(data::table())
-				.values(&DB_DataElement {
-					key: String::from("zone2"),
-					val: String::from("0"),
-				})
-				.returning(DB_DataElement::as_returning())
-				.get_result(&mut self.connection)
-				.expect("SQL_ERR: Error inserting data element");
-
-			let _ = diesel::insert_into(data::table())
-				.values(&DB_DataElement {
-					key: String::from("zone3"),
-					val: String::from("0"),
-				})
-				.returning(DB_DataElement::as_returning())
-				.get_result(&mut self.connection)
-				.expect("SQL_ERR: Error inserting data element");
-
-			let _ = diesel::insert_into(data::table())
-				.values(&DB_DataElement {
-					key: String::from("zone4"),
-					val: String::from("0"),
-				})
-				.returning(DB_DataElement::as_returning())
-				.get_result(&mut self.connection)
-				.expect("SQL_ERR: Error inserting data element");
-
-			let _ = diesel::insert_into(data::table())
-				.values(&DB_DataElement {
 					key: String::from("schedule"),
 					val: String::from("{\"Alex Bryan\":{\"Name\":\"Alex Bryan\",\"Assignment\":\"SysEn\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Cian Melker\":{\"Name\":\"Cian Melker\",\"Assignment\":\"Networking\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Collin Davis\":{\"Name\":\"Collin Davis\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Colton Hopster\":{\"Name\":\"Colton Hopster\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Jack Nyman\":{\"Name\":\"Jack Nyman\",\"Assignment\":\"Coding\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Jarred Heddins\":{\"Name\":\"Jarred Heddins\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Jason Vanlandingham\":{\"Name\":\"Jason Vanlandingham\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Korrin Sutherburg\":{\"Name\":\"Korrin Sutherburg\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Lexus Fermelia\":{\"Name\":\"Lexus Fermelia\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Mario Garcia-Ceballos\":{\"Name\":\"Mario Garcia-Ceballos\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Michael Stoll\":{\"Name\":\"Michael Stoll\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Sofia Newsome\":{\"Name\":\"Sofia Newsome\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Thomas Lockwood\":{\"Name\":\"Thomas Lockwood\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}}}")
 				})
@@ -441,7 +407,9 @@ impl Database {
 					name: bldg.name,
 					lsm_name: bldg.lsm_name,
 					rooms: self.get_rooms_by_abbrev(&bldg_abbrev),
-					zone: bldg.zone
+					zone: bldg.zone,
+					total_rooms: bldg.total_rooms,
+					checked_rooms: bldg.checked_rooms
 				}
 			);
 		}
@@ -634,6 +602,8 @@ pub struct Building {
 	pub lsm_name: String,
 	pub rooms: Vec<DB_Room>,
 	pub zone: i16,
+	pub total_rooms: i16,
+	pub checked_rooms: i16
 }
 
 impl Building {
@@ -653,6 +623,8 @@ impl<'a> Clone for Building {
 			abbrev: String::from(new_abbrev),
 			rooms: (&self.rooms).to_vec(),
 			zone: self.zone,
+			total_rooms: self.total_rooms,
+			checked_rooms: self.checked_rooms,
 		}
 	}
 }

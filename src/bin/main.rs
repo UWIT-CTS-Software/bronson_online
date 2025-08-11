@@ -80,8 +80,11 @@ use serde_json::{ json, Value, };
 use regex::Regex;
 use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta };
 use urlencoding::decode;
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use diesel::{PgConnection, Connection};
+use dotenvy::dotenv;
 // ----------------------------------------------------------------------------
-
+pub const MIGRATIONS : EmbeddedMigrations = embed_migrations!();
 /*
 $$$$$$$\                      $$\                                 $$\ 
 $$  __$$\                     $$ |                                $$ |
@@ -96,6 +99,14 @@ $$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |  $$ |\$$$$$$$ |
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // debug setting
     env::set_var("RUST_BACKTRACE", "1");
+    // embed_migrations
+    dotenv().ok(); // Load .env file
+    let database_url = env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set");
+    let mut connection = PgConnection::establish(&database_url)
+        .expect("Error Connecting to Database");
+    connection.run_pending_migrations(MIGRATIONS)
+            .map_err(|e| format!("Failed to run migrations: {}", e))?;
 
     let mut database = Database::new();
     database.init_if_empty();
@@ -330,6 +341,14 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents(contents);
         },
+        // "GET /dashboard/checker"           => { // Returns zone checked. NOTE: trying method of including information in the ZoneData
+        //     // Get Room Counts
+        //     let contents = json!({
+        //         "contents": database.get_data("dashchecker").val
+        //     }).to_string().into();
+        //     res.status(STATUS_200);
+        //     res.send_contents(contents);
+        // }
         "GET /leaderboard HTTP/1.1"        => {
             let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
             let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
@@ -601,6 +620,10 @@ async fn handle_connection(
                 }
             }
 
+            // TODO: get checked_rooms
+            // let checked_rooms: i16 = v["count"].as_i64().unwrap().try_into().unwrap();
+            let mut checked_rooms: i16 = 0;
+            let mut room_check_list: Vec<String> = Vec::new();
             for mut room in database.get_rooms_by_abbrev(&building_sel) {
                 if check_map.contains_key(&room.name) {
                     // checked Date format may need changed here
@@ -613,19 +636,37 @@ async fn handle_connection(
                 let schedule_params = check_schedule(&room);
                 room.available = schedule_params.0;
                 room.until = schedule_params.1;
-
+                // Check for room check
+                if !room.needs_checked {
+                    checked_rooms += 1;
+                }
                 database.update_room(&room);
             }
-
             let ret_building = database.get_building_by_abbrev(&building_sel);
             let ret_rooms = database.get_rooms_by_abbrev(&ret_building.abbrev);
-            return_body.push(
+            // TODO: Get number of Checked and Total Number of rooms.
+            let number_rooms: i16 = ret_rooms.len().try_into().unwrap();
+            // Note, number_rooms and checked_rooms rely on the rooms inside LSM. 
+            //
+            let new_building: DB_Building = DB_Building {
+                abbrev: ret_building.abbrev,
+                name: ret_building.name,
+                lsm_name: ret_building.lsm_name,
+                zone: ret_building.zone,
+                checked_rooms: checked_rooms,
+                total_rooms: number_rooms,
+            };
+            database.update_building(&new_building);
+
+            return_body.push( 
                 Building {
-                    abbrev: ret_building.abbrev,
-                    name: ret_building.name,
-                    lsm_name: ret_building.lsm_name,
+                    abbrev: new_building.abbrev,
+                    name: new_building.name,
+                    lsm_name: new_building.lsm_name,
                     rooms: ret_rooms,
-                    zone: ret_building.zone,
+                    zone: new_building.zone,
+                    checked_rooms: new_building.checked_rooms,
+                    total_rooms: new_building.total_rooms,
                 }
             );
             // ----------------------------------------------------------------
