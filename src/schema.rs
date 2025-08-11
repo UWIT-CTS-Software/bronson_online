@@ -13,6 +13,8 @@ pub mod bronson {
             name -> Text,
             lsm_name -> Text,
             zone -> Int2,
+            total_rooms -> Int2,
+            checked_rooms -> Int2,
         }
     }
 
