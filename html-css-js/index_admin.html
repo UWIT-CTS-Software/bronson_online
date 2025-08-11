@@ -97,6 +97,30 @@ test   : test VALUE
                 break;
             }
           },
+          add: async function (...args) {
+            switch (args[0]) {
+              case "user":
+                if (args.length != 3) {
+                  this.echo("usage: update user [USERNAME] [PERMISSIONS]");
+                  break;
+                }
+                try {
+                  fetch("/add/user", {
+                    method: "POST",
+                    body: JSON.stringify({
+                      username: args[1] ? args[1] : "UNKNOWN",
+                      permissions: parseInt(args[2]) ? parseInt(args[2]) : 0,
+                    })
+                  })
+                } catch (e) {
+                  this.echo(`Error: ${e}`);
+                  this.echo("usage: update user [USERNAME] [PERMISSIONS]");
+                }
+                break;
+              default:
+                break;
+            }
+          },
           update: async function(...args) {
             switch (args[0]) {
               case "dashboard":
@@ -118,7 +142,9 @@ test   : test VALUE
                         body: JSON.stringify({
                           contents: args[2]
                         })
-                      })
+                      });
+
+                      location.reload();
                     }
                     break;
                   case "upload":
@@ -151,6 +177,22 @@ Method arguments:
                 break;
               default:
                 this.echo("Error: please see \"update -h\" for help.");
+                break;
+            }
+          },
+          delete: async function (...args) {
+            switch (args[0]) {
+              case "user":
+                if (!args[1]) {
+                  this.echo("Error: ");
+                } else {
+                  fetch("/delete/user", {
+                    method: "POST",
+                    body: args[1]
+                  });
+                }
+                break;
+              default:
                 break;
             }
           },

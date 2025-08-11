@@ -12,7 +12,7 @@ The frontend is written in JavaScript and the backend was written in Rust.
 
 ## Prerequisites
 
-### Install Rust and Cargo (Linux)
+### Install Rust and Cargo
 First, Rust needs installed. <br>
 `curl https://sh.rustup.rs -sSf | sh`<br>
 You should see output stating "Rust is installed now. Great!"<br>
@@ -22,16 +22,98 @@ run the following commands to verify version information is returned.<br>
 `rustc --version`<br>
 `cargo --version`
 
+### Install PostgreSQL
+First, update your package index and install the prerequisite packages. <br>
+**Debian** <br>
+`sudo apt update` <br>
+`sudo apt install gnupg2 wget`
+
+**Arch** <br>
+`sudo pacman -Syu` <br> 
+`sudo pacman -S gnupg wget`
+
+### Fetch PostgreSQL repository
+After the necessary packages are installed, the PostgreSQL repository can be fetched. <br>
+`sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs).pgdg main" > /etc/apt/sources.list.d/pgdg.list'`
+
+Now that apt knows about the repository, the signing key is necessary for an authorized transaction. <br>
+`curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg`
+
+Update the package list. <br> 
+`sudo apt update` (Debian) <br>
+`sudo pacman -Syu` (Arch)
+
+Install PostgreSQL 16 and its contrib modules. <br>
+`sudo apt install postgresql-16 postgresql-contrib-16` (Debian) <br>
+`sudo pacman -S postgresql postgresql-libs` (Arch)
+
+### Mount and configure the PostgreSQL server
+Start and enable the PostgreSQL service. <br>
+`sudo systemctl start postgresql` <br>
+`sudo systemctl enable postgresql`
+
+Configure the PostgreSQL server. (Any text editor will work) <br>
+`sudo nano /etc/postgresql/16/main/postgresql.conf` (Debian) <br>
+`sudo nano /var/lib/postgresql/data/postqresql.conf` (Arch)
+
+Set listen_adresses to allow remote connectivity. <br>
+`listen_addresses = '*'` <br>
+Save and exit.
+
+Configure PostgreSQL to use MD5 password authentication in the pg_hba.conf file. This is required when enabling remote connections. <br>
+**Debian** <br>
+`sudo sed -i '/^host/s/ident/md5/' /etc/postgresql/16/main/pg_hba.conf` <br>
+`sudo sed -i '/^local/s/peer/trust/' /etc/postgresql/16/main/pg_hba.conf` <br>
+`echo "host all all 0.0.0.0/0 md5" | sudo tee -a /etc/postgresql/16/main/pg_hba.conf` <br>
+
+**Arch**<br>
+`sudo sed -i '/^host/s/ident/md5' /var/lib/postgresql/data/pg_hba.conf` <br>
+`sudo sed -i '/^local/s/peer/trust' /var/lib/postgresql/data/pg_hba.conf` <br>
+`echo "host all all 0.0.0.0/0 md5" | sudo tee -a /var/lib/postgresql/data/pg_hba.conf` <br>
+
+Restart the PostgreSQL server to adopt these changes. <br>
+`sudo systemctl restart postgresql`
+
+Allow the PostgreSQL port to pass through the firewall. <br>
+`sudo ufw allow 5432/tcp`
+
+Connect to the PostgreSQL database server with the default "postgres" user. <br>
+`sudo -u postgres psql`
+
+Set a password for the postgres user. <br>
+`ALTER USER postgres PASSWORD '<password>'` <br>
+where `<password>` is the password you'd like to set.
+
+Quit psql. <br>
+`\q`
+
 ## Installation Guide (Linux)
+
+### Clone the repository
 After installing the necessary cli tools, the repository can be cloned in with<br>
-`git clone https://github.com/UWIT-CTS-Software/bronson_online.git`<br><br>
+`git clone https://github.com/UWIT-CTS-Software/bronson_online.git`<br>
 NOTE: The server will **not** compile without the necessary keys and device configuration archive. Please email *abryan9@uwyo.edu* for more information.
+
+Now, navigate to the newly installed repository <br>
+`cd bronson`
+
+### Install diesel CLI
+Not only does rust's diesel ORM manage server-side database querying, but it also has a CLI that can be used to easily migrate the necessary tables. Before adding this CLI, it is important that rust is on its latest stable release.
+
+`rustup update stable` <br>
+`curl --proto '=https' --tlsv1.2 -LsSf https://github.com/diesel-rs/diesel/releases/download/v2.2.11/diesel_cli-installer.sh | sh`
+
+Once diesel's CLI is successfully installed, the environment needs to be able to access PostgreSQL with the appropriate credentials. <br>
+`echo DATABASE_URL=postgres://postgres:<password>@localhost/bronson > .env` <br>
+where `<password>` is the password provided when setting up postgreSQL above.
+
+Diesel now has the proper resources, so it will be able to handle the setup and management of necessary database shemas. <br>
+`diesel setup` <br>
+`diesel migration run` <br>
 
 ## Initialize Server
 To start the server, navigate to the bronson_online folder in a terminal shell, then execute the following command:<br>
-`cargo run -- -l`.<br>
-
-The first flag tells the compiler that we aren't trying to pass it any arguments, then the -l argument gets collected by main.rs to initialize the server on the localhost ip.
+`cargo run`.<br>
 
 From there, access the ip:port address that is outputted in the previous step in your browser to access the web application locally.
 

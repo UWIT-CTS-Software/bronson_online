@@ -28,19 +28,41 @@ CFMRequestFile
 GeneralRequest
 */
 
+pub mod models;
+pub mod schema;
+
 use std::{
 	str,
+	env,
 	thread,
 	sync::{
 		mpsc, Arc, Mutex,
 	},
 	fmt::Debug,
 	collections::HashMap,
-	fs::{ read }
+	fs::{ read, read_to_string, File }
 };
+use csv::Reader;
 use log::{ warn, };
 use regex::bytes::Regex;
 use serde::{Deserialize, Serialize, };
+use diesel::{
+	prelude::*,
+	associations::HasTable,
+};
+use dotenvy::dotenv;
+use crate::schema::bronson::{
+	buildings::dsl::*,
+	rooms::dsl::*,
+	users::dsl::*,
+	keys::dsl::*,
+	data::dsl::*,
+};
+use crate::models::{
+	DB_Hostname, DB_IpAddress,
+	DB_Room, DB_Building, DB_User, DB_Key, DB_DataElement,
+	DeviceType,
+};
 
 trait FnBox {
     fn call_box(self: Box<Self>);
@@ -117,7 +139,10 @@ impl ThreadPool {
     pub fn execute<F>(&self, f: F)
 	where F: FnOnce() + Send + 'static {
 		let job = Box::new(f);
-		self.sender.send(Message::NewJob(job)).unwrap();
+		match self.sender.send(Message::NewJob(job)) {
+			Ok(_) => (),
+			Err(e) => panic!("EXC_ERR: {}", e)
+		};
     }
 }
 
@@ -136,6 +161,421 @@ impl Drop for ThreadPool {
 		}
     }
 }
+
+pub struct Database {
+	connection: PgConnection,
+}
+
+impl Database {
+	pub fn new() -> Database {
+		dotenv().ok();
+
+		let db_url = env::var("DATABASE_URL").expect("DATABASE_URL env variable not found.");
+		let connection = PgConnection::establish(&db_url)
+			.unwrap_or_else(|_| panic!("Error connecting to {}", db_url));
+
+		return Database {
+			connection: connection,
+		};
+	}
+
+	pub fn init_if_empty(&mut self) -> Option<()> {
+		let bldg_results = buildings
+			.select(DB_Building::as_select())
+			.load(&mut self.connection)
+			.expect("Error loading buildings.");
+
+		if bldg_results.len() == 0 {
+			let bldg_file: String = read_to_string(BLDG_JSON).ok()?;
+			let json_buildings: HashMap<String, Building> = serde_json::from_str(bldg_file.as_str()).ok()?;
+
+			for (json_abbrev, building) in json_buildings.iter() {
+				let new_bldg = DB_Building { 
+					abbrev: json_abbrev.to_string(), 
+					name: building.name.clone(), 
+					lsm_name: building.lsm_name.clone(), 
+					zone: building.zone as i16,
+					total_rooms: 0,
+					checked_rooms: 0
+				};
+
+				let _ = diesel::insert_into(buildings::table())
+					.values(&new_bldg)
+					.returning(DB_Building::as_returning())
+					.get_result(&mut self.connection)
+					.expect("SQL_ERR: Error inserting building.");
+			}
+		}
+
+		let room_results = rooms
+			.select(DB_Room::as_select())
+			.load(&mut self.connection)
+			.expect("Error loading rooms.");
+		
+		if room_results.len() == 0 {
+			let room_filter = Regex::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
+
+			let mut schedules: HashMap<String, Vec<String>> = HashMap::new();
+			let schedule_data = File::open(ROOM_CSV).unwrap();
+			let mut schedule_rdr = Reader::from_reader(schedule_data);
+			for result in schedule_rdr.records() {
+				let record = result.unwrap();
+				let room_name = record.get(0).expect("Empty");
+				if room_filter.is_match(room_name.as_bytes()) {
+					let room = String::from(room_name);
+					let mut room_schedule = Vec::new();
+					for block in 1..8 {
+						if record.get(block).expect("Empty") == "" {
+							break;
+						}
+
+						room_schedule.push(String::from(record.get(block).expect("Empty")));
+					}
+
+					schedules.insert(room, room_schedule);
+				}
+    		}
+
+			let room_data = File::open(CAMPUS_CSV).unwrap();
+			let mut room_rdr = Reader::from_reader(room_data);
+			for result in room_rdr.records() {
+				let record = result.unwrap();
+				let room_name = record.get(0).expect("Empty");
+				if room_filter.is_match(room_name.as_bytes()) {
+					let mut item_vec: Vec<u8> = Vec::new();
+					for i in 1..7 {
+						item_vec.push(record.get(i).expect("-1").parse().unwrap());
+					}
+
+					let room_schedule = match schedules.get(&String::from(room_name)) {
+						Some(x) => {
+							let mut opt_vec = Vec::<Option<String>>::new();
+							for item in x {
+								opt_vec.push(Some(item.to_string()));
+							}
+
+							opt_vec
+						},
+						_       => Vec::<Option<String>>::new(),
+					};
+					let hn_vec = Self::gen_hn(String::from(room_name), &item_vec);
+					let ping_vec = Self::gen_ip(&hn_vec);
+
+					let new_room = DB_Room {
+						abbrev: String::from(room_name.split(' ').next().unwrap()),
+						name: String::from(room_name),
+						checked: String::from("2000-01-01T00:00:00Z"),
+						needs_checked: true,
+						gp: match record.get(7).expect("-1").parse().unwrap() {
+							0 => false,
+							_ => true,
+						},
+						available: false,
+						until: String::from("Tomorrow"),
+						ping_data: ping_vec,
+						schedule: room_schedule.to_vec()
+					};
+
+					let _ = diesel::insert_into(rooms::table())
+						.values(&new_room)
+						.returning(DB_Room::as_returning())
+						.get_result(&mut self.connection)
+						.expect("SQL_ERR: Error inserting room");
+				}
+			}
+		}
+
+		let user_results = users
+			.select(DB_User::as_select())
+			.load(&mut self.connection)
+			.expect("Error loading users.");
+
+		if user_results.len() == 0 {
+			let user_file: String = read_to_string(USERS).ok()?;
+			let json_users: HashMap<String, i16> = serde_json::from_str(user_file.as_str()).ok()?;
+
+			for (user, perms) in json_users.iter() {
+				let new_user = DB_User { 
+					username: user.clone(), 
+					permissions: *perms as i16
+				};
+
+				let _ = diesel::insert_into(users::table())
+					.values(&new_user)
+					.returning(DB_User::as_returning())
+					.get_result(&mut self.connection)
+					.expect("SQL_ERR: Error inserting user");
+			}
+
+		}
+
+		let key_results = keys
+			.select(DB_Key::as_select())
+			.load(&mut self.connection)
+			.expect("Error loading keys");
+
+		if key_results.len() == 0 {
+			let key_file: String = read_to_string(KEYS).ok()?;
+			let json_keys: HashMap<String, String> = serde_json::from_str(key_file.as_str()).ok()?;
+
+			for (id, value) in json_keys.iter() {
+				let new_key = DB_Key {
+					key_id: id.clone(),
+					val: value.clone()
+				};
+
+				let _ = diesel::insert_into(keys::table())
+					.values(&new_key)
+					.returning(DB_Key::as_returning())
+					.get_result(&mut self.connection)
+					.expect("SQL_ERR: Error inserting key");
+			}
+		}
+
+		let data_results = data
+			.select(DB_DataElement::as_select())
+			.load(&mut self.connection)
+			.expect("Error loading data.");
+
+		if data_results.len() == 0 {
+			let _ = diesel::insert_into(data::table())
+				.values(&DB_DataElement {
+					key: String::from("dashboard"),
+					val: String::from("Welcome to bronson!"),
+				})
+				.returning(DB_DataElement::as_returning())
+				.get_result(&mut self.connection)
+				.expect("SQL_ERR: Error inserting data element");
+
+			let _ = diesel::insert_into(data::table())
+				.values(&DB_DataElement {
+					key: String::from("schedule"),
+					val: String::from("{\"Alex Bryan\":{\"Name\":\"Alex Bryan\",\"Assignment\":\"SysEn\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Cian Melker\":{\"Name\":\"Cian Melker\",\"Assignment\":\"Networking\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Collin Davis\":{\"Name\":\"Collin Davis\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Colton Hopster\":{\"Name\":\"Colton Hopster\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Jack Nyman\":{\"Name\":\"Jack Nyman\",\"Assignment\":\"Coding\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Jarred Heddins\":{\"Name\":\"Jarred Heddins\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Jason Vanlandingham\":{\"Name\":\"Jason Vanlandingham\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Korrin Sutherburg\":{\"Name\":\"Korrin Sutherburg\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Lexus Fermelia\":{\"Name\":\"Lexus Fermelia\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Mario Garcia-Ceballos\":{\"Name\":\"Mario Garcia-Ceballos\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Michael Stoll\":{\"Name\":\"Michael Stoll\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Sofia Newsome\":{\"Name\":\"Sofia Newsome\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Thomas Lockwood\":{\"Name\":\"Thomas Lockwood\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}}}")
+				})
+				.returning(DB_DataElement::as_returning())
+				.get_result(&mut self.connection)
+				.expect("SQL_ERR: Error inserting data element");
+		}
+
+		Some(())
+	}
+
+	fn gen_hn(room_name: String, items: &Vec<u8>) -> Vec<Option<DB_Hostname>> {
+		let mut hn_vec: Vec<Option<DB_Hostname>> = Vec::new(); 
+		for dev_count in 0..items.len() {
+			for dev in 1..=items[dev_count] {
+				hn_vec.push(
+					Some(DB_Hostname {
+						room: room_name.clone(),
+						dev_type: match dev_count {
+							0 => DeviceType::PROC,
+							1 => DeviceType::PJ,
+							2 => DeviceType::DISP,
+							3 => DeviceType::WS,
+							4 => DeviceType::TP,
+							5 => DeviceType::CMIC,
+							_ => DeviceType::UNKNOWN
+						},
+						num: dev as i32
+					})
+				);
+			}
+		}
+
+		return hn_vec;
+	}
+
+	fn gen_ip(hn_vec: &Vec<Option<DB_Hostname>>) -> Vec<Option<DB_IpAddress>> {
+		let mut ip_vec: Vec<Option<DB_IpAddress>> = Vec::new();
+		for hn in hn_vec {
+			ip_vec.push(
+				Some(DB_IpAddress {
+					hostname: hn.clone().unwrap().clone(),
+					ip: String::from("x")
+				})
+			);
+		}
+
+		return ip_vec;
+	}
+
+	pub fn get_campus(&mut self) -> HashMap<String, Building>{
+		let mut ret_map: HashMap<String, Building> = HashMap::new();
+		let bldg_map = self.get_buildings();
+		for (bldg_abbrev, bldg) in bldg_map {
+			ret_map.insert(
+				bldg_abbrev.clone(),
+				Building {
+					abbrev: bldg.abbrev,
+					name: bldg.name,
+					lsm_name: bldg.lsm_name,
+					rooms: self.get_rooms_by_abbrev(&bldg_abbrev),
+					zone: bldg.zone,
+					total_rooms: bldg.total_rooms,
+					checked_rooms: bldg.checked_rooms
+				}
+			);
+		}
+
+		ret_map
+	}
+
+	pub fn get_buildings(&mut self) -> HashMap<String, DB_Building> {
+		let mut ret_map: HashMap<String, DB_Building> = HashMap::new();
+
+		let bldg_array = buildings
+			.select(DB_Building::as_select())
+			.load(&mut self.connection)
+			.expect("SQL_ERR: Error loading buildings");
+
+		for bldg in bldg_array {
+			ret_map.insert(bldg.abbrev.to_string(), bldg);
+		}
+
+		ret_map
+	}
+
+	pub fn get_building_by_abbrev(&mut self, bldg_abbrev: &String) -> DB_Building {
+		buildings
+			.find(bldg_abbrev)
+			.select(DB_Building::as_select())
+			.first(&mut self.connection)
+			.optional()
+			.expect("SQL_ERR: Error loading buildings by abbreviation")
+			.unwrap()
+	}
+
+	pub fn update_building(&mut self, building: &DB_Building) {
+		use crate::schema::bronson::buildings::dsl::abbrev;
+		let _ = diesel::insert_into(buildings)
+			.values(building)
+			.on_conflict(abbrev)
+			.do_update()
+			.set(building)
+			.returning(DB_Building::as_returning())
+			.get_result(&mut self.connection)
+			.expect("SQL_ERR: Error inserting building");
+	}
+
+	pub fn get_rooms_by_abbrev(&mut self, bldg_abbrev: &String) -> Vec<DB_Room> {
+		use crate::schema::bronson::rooms::dsl::abbrev;
+		let mut ret_vec = rooms
+			.select(DB_Room::as_select())
+			.filter(abbrev.eq(bldg_abbrev))
+			.load(&mut self.connection)
+			.expect("SQL_ERR: Error loading rooms by abbreviation");
+
+		ret_vec.sort_by_key(|r| r.name.clone());
+		ret_vec
+	}
+
+	pub fn update_room(&mut self, room: &DB_Room) {
+		use crate::schema::bronson::rooms::dsl::name;
+		let _ = diesel::insert_into(rooms)
+			.values(room)
+			.on_conflict(name)
+			.do_update()
+			.set(room)
+			.returning(DB_Room::as_returning())
+			.get_result(&mut self.connection)
+			.expect("SQL_ERR: Error inserting room");
+	}
+
+	pub fn get_user(&mut self, user: &str) -> Option<DB_User> {
+		users
+			.select(DB_User::as_select())
+			.filter(username.eq(user))
+			.first(&mut self.connection)
+			.optional()
+			.expect("SQL_ERR: Error loading user")
+	}
+
+	pub fn update_user(&mut self, user: &DB_User) {
+		let _ = diesel::insert_into(users)
+			.values(user)
+			.on_conflict(username)
+			.do_update()
+			.set(user)
+			.returning(DB_User::as_returning())
+			.get_result(&mut self.connection)
+			.expect("SQL_ERR: Error inserting user");
+	}
+
+	pub fn delete_user(&mut self, user: &String) {
+		let _ = diesel::delete(users)
+			.filter(username.eq(user))
+			.returning(DB_User::as_returning())
+			.get_result(&mut self.connection)
+			.expect("SQL_ERR: Error deleting user");
+	}
+
+	pub fn get_key(&mut self, id: &str) -> DB_Key {
+		keys
+			.select(DB_Key::as_select())
+			.filter(key_id.eq(id))
+			.first(&mut self.connection)
+			.optional()
+			.expect("SQL_ERR: Error loading key")
+			.unwrap()
+	}
+
+	pub fn update_key(&mut self, update_key: &DB_Key) {
+		let _ = diesel::insert_into(keys)
+			.values(update_key)
+			.on_conflict(key_id)
+			.do_update()
+			.set(update_key)
+			.returning(DB_Key::as_returning())
+			.get_result(&mut self.connection)
+			.expect("SQL_ERR: Error inserting key");
+	}
+
+	pub fn delete_key(&mut self, id: &String) {
+		let _ = diesel::delete(keys)
+			.filter(key_id.eq(id))
+			.returning(DB_Key::as_returning())
+			.get_result(&mut self.connection)
+			.expect("SQL_ERR: Error deleting key");
+	}
+
+	pub fn get_data(&mut self, data_key: &str) -> DB_DataElement {
+		data
+			.select(DB_DataElement::as_select())
+			.filter(key.eq(data_key))
+			.first(&mut self.connection)
+			.optional()
+			.expect("SQL_ERR: Error loading data element")
+			.unwrap()
+	}
+
+	pub fn update_data(&mut self, element: &DB_DataElement) {
+		let _ = diesel::insert_into(data)
+			.values(element)
+			.on_conflict(key)
+			.do_update()
+			.set(element)
+			.returning(DB_DataElement::as_returning())
+			.get_result(&mut self.connection)
+			.expect("SQL_ERR: Error inserting user");
+	}
+
+	pub fn delete_data(&mut self, data_key: &String) {
+		let _ = diesel::delete(data)
+			.filter(key.eq(data_key))
+			.returning(DB_DataElement::as_returning())
+			.get_result(&mut self.connection)
+			.expect("SQL_ERR: Error deleting data element");
+
+	}
+}
+
+impl<'a> Clone for Database {
+	fn clone(&self) -> Database {
+		return Database::new();
+	}
+}
+
+
 
 // keys struct
 #[derive(Serialize, Deserialize, Debug)]
@@ -160,11 +600,13 @@ impl<'a> Clone for Keys {
 // ----------- Custom struct for checkerboard - jn <3
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Building {
+	pub abbrev: String,
 	pub name: String,
 	pub lsm_name: String,
-	pub abbrev: String,
-	pub rooms: Vec<Room>,
-	pub zone: u8,
+	pub rooms: Vec<DB_Room>,
+	pub zone: i16,
+	pub total_rooms: i16,
+	pub checked_rooms: i16
 }
 
 impl Building {
@@ -184,6 +626,8 @@ impl<'a> Clone for Building {
 			abbrev: String::from(new_abbrev),
 			rooms: (&self.rooms).to_vec(),
 			zone: self.zone,
+			total_rooms: self.total_rooms,
+			checked_rooms: self.checked_rooms,
 		}
 	}
 }
@@ -203,11 +647,11 @@ pub struct Room {
 
 // this is very rag-tag - error handling needs to be built-in
 impl Room {
-	pub fn update_checked(&mut self, val: String) {
-		self.checked = val;
+	pub fn update_checked(&mut self, value: String) {
+		self.checked = value;
 	}
-	pub fn update_ips(&mut self, val: Vec<Vec<String>>) {
-		self.ips = val;
+	pub fn update_ips(&mut self, value: Vec<Vec<String>>) {
+		self.ips = value;
 	}
 	pub fn get_hostnames(&self) -> Vec<Vec<String>> {
 		let mut out_vec = Vec::new();
@@ -245,7 +689,7 @@ pub struct Request {
 }
 
 impl Request {
-	pub fn build(buffer: [u8; 1024]) -> Request {
+	pub fn build(buffer: [u8; BUFF_SIZE]) -> Request {
 		let buf_vec: Vec<u8> = Vec::from(buffer);
 		let mut lines: Vec<Vec<u8>> = Vec::new();
 
@@ -317,8 +761,8 @@ impl Response {
 		self.status = String::from(status);
 	}
 
-	pub fn insert_header(&mut self, key: &str, val: &str) {
-		self.headers.insert(String::from(key), String::from(val));
+	pub fn insert_header(&mut self, header: &str, value: &str) {
+		self.headers.insert(String::from(header), String::from(value));
 	}
 
 	pub fn send_file(&mut self, filepath: &str) {
@@ -382,13 +826,13 @@ impl Response {
 		}
 		content.push(b'\r');
 		content.push(b'\n');
-		for (key, val) in <HashMap<String, String> as Clone>::clone(&self.headers).into_iter() {
-			for c in key.chars() {
+		for (header, value) in <HashMap<String, String> as Clone>::clone(&self.headers).into_iter() {
+			for c in header.chars() {
 				content.push(c as u8);
 			}
 			content.push(b':');
 			content.push(b' ');
-			for c in val.chars() {
+			for c in value.chars() {
 				content.push(c as u8);
 			}
 			content.push(b'\r');
@@ -474,14 +918,17 @@ pub struct GeneralRequest {
 	pub buffer: String
 }
 
+pub static BUFF_SIZE : usize = 4096;
 pub static TSCH_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/techSchedule.json");
 pub static BLDG_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/buildings.json");
-pub static CAMPUS_STR: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.json"));
+pub static CAMPUS_STR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.json");
 pub static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
 pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
 pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/roomConfig_agg.csv");
 pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.csv");
-pub static KEYS      : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/keys.json");
+pub static LOG       : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/output.log");
+pub static KEYS      : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/keys.json");
+pub static USERS     : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/users.json");
 pub static STATUS_200: &str = "HTTP/1.1 200 OK";
 pub static STATUS_303: &str = "HTTP/1.1 303 See Other";
 pub static STATUS_404: &str = "HTTP/1.1 404 Not Found";
