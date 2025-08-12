@@ -410,7 +410,12 @@ button:-webkit-details-marker {
         grid-column: 1/4;
     }
     .db_checker progress {
-        width: 50%;
+        width: 60%;
+    }
+    .db_checker p {
+        font-size: 16pt;
+        padding: 0px 0px 0px 20px;
+        margin: 0px 0pc 0px 0px
     }
 }
 
@@ -987,13 +992,13 @@ ol li::marker {
 /* Admin Tools -- Schedule Editor */
 /* Top Options */
 #techSchdFilter {
-    width:70%;
+    width:60%;
     height:25px;
     float:right;
 }
 
 .techFilterDiv {
-    width: 25%;
+    width: 35%;
     height: 30px;
     float:right;
 }
@@ -1006,6 +1011,8 @@ ol li::marker {
 .techFieldset {
     padding: 3px 3px 3px 3px;
     display: flex;
+    overflow-x:scroll;
+    min-width:0px;
 }
 
 .techFieldset label {
@@ -1071,6 +1078,13 @@ ol li::marker {
 }
 .setToRemove {
     background-color:red;
+}
+
+@media (max-width: 1000px) {
+    #admin_internals {
+        width: 900px;
+    }
+
 }
 
 /* -------------- Tabs -------------- */
@@ -1279,7 +1293,7 @@ ol li::marker {
 }
 
 .leaderTab.leader_selected, .leaderTab.schedule_selected {
-    transform: matrix(1, 0, 0, .7, 0, 4);
+    transform: matrix(1, 0, 0, .6, 0, 5);
     transition-duration: 0.1s;
     filter: hue-rotate(-60deg);
 }
@@ -1325,7 +1339,7 @@ ol li::marker {
 .admin_tabs {
     margin: -9px 0px 26px 0px;
     padding: 0px 0px 1px 13px;
-    /* width: 350px; */
+    width: 350px;
     display: flex;
 }
 
@@ -1408,6 +1422,15 @@ ol li::marker {
 .at_tab_img {
     width:130px;
     height:30px;
+}
+
+@media (max-width: 1000px) {
+    .leaderTab:active {
+        transform: matrix(1,0,0,.8,0,3);
+    }
+    .atTab:active {
+        transform: matrix(1,0,0,.8,0,3);
+    }
 }
 
 /* Other */
