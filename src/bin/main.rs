@@ -48,7 +48,7 @@ use server_lib::{
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
     CFM_DIR, WIKI_DIR, LOG,
-    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_404,
+    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_404, STATUS_500, 
     Database,
     models::{
         DB_Room, DB_Building, DB_User, DB_DataElement,
@@ -59,11 +59,12 @@ use getopts::Options;
 use std::{
     str, env,
     io::{ prelude::*, Read, stdout, },
-    net::{ TcpListener, },
+    net::{ TcpListener, IpAddr, Ipv4Addr, },
     fs::{
         read_dir, metadata,
-        File,
+        File, 
     },
+    path::Path,
     time::{ Duration, SystemTime },
     string::{ String, },
     clone::{ Clone, },
@@ -73,7 +74,7 @@ use std::{
 use reqwest::{ 
     header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
-use log::{ debug, info, }; // error, trace, warn, };
+use log::{ debug, info, warn, error, }; // trace, };
 use cookie::{ Cookie, };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
@@ -131,7 +132,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ------------------------------------------------------------------------
     let host_ip: &str;
     let mut host_port = 7878;
-    let local_ip_addr = &(local_ip().unwrap().to_string());
+    let local_ip_addr = &(match local_ip() {
+        Ok(ip) => ip,
+        Err(e) => {
+            warn!("Unable to get public ip: {}\nDefaulting to localhost", e);
+            IpAddr::V4(Ipv4Addr::new(127,0,0,1))
+        }
+    }.to_string());
     if matches.opt_present("p") {
         info!("[#] -- You are running using public IP --");
         host_ip = local_ip_addr;
@@ -140,7 +147,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         host_ip = "127.0.0.1";
     }
 
-    while let Err(_e) = TcpListener::bind(format!("{}:{}", host_ip, host_port.to_string())) {
+    while let Err(_) = TcpListener::bind(format!("{}:{}", host_ip, host_port.to_string())) {
+        warn!("Port {} busy. Incrementing.", host_port);
         host_port += 1;
     }
     let listener = TcpListener::bind(format!("{}:{}", host_ip, host_port.to_string())).unwrap();
@@ -152,13 +160,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut buffer = [0; BUFF_SIZE];
 
     // ----------------------------------------------------------------------
-    stdout().flush().unwrap();
+    match stdout().flush() {
+        Ok(_) => (),
+        Err(e) => error!("STDOUT flush failed: {}", e)
+    };
 
     for stream in listener.incoming() {
-        let mut stream = stream.unwrap();
+        let mut stream = match stream {
+            Ok(s) => s,
+            Err(e) => {
+                error!("Incoming stream corrupted: {}\nDropping packet.", e);
+                continue;
+            }
+        };
         let clone_db = database.clone();
 
-        stream.read(&mut buffer).unwrap();
+        match stream.read(&mut buffer) {
+            Ok(_) => (),
+            Err(e) => error!("Error reading to buffer: {}", e)
+        };
         let req = Request::build(buffer.clone());
 
         pool.execute(move || {
@@ -374,12 +394,10 @@ async fn handle_connection(
                               .expect("[-] PAYLOAD ERROR");
 
             let v_7_days: Value = serde_json::from_str(&body_7_days).expect("Empty");
-            let data_7_days: Vec<Value>;
-            if v_7_days["count"].as_i64() > Some(0) {
-                data_7_days = v_7_days["data"].as_array().unwrap().to_vec();
-            } else {
-                data_7_days = Vec::new();
-            }
+            let data_7_days: Vec<Value> = match v_7_days["data"].as_array() {
+                Some(data) => data.clone(),
+                None => Vec::<Value>::new()
+            };
 
             let body_30_days = req.get(url_30_days)
                               .timeout(Duration::from_secs(15))
@@ -391,12 +409,10 @@ async fn handle_connection(
                               .expect("[-] PAYLOAD ERROR");
 
             let v_30_days: Value = serde_json::from_str(&body_30_days).expect("Empty");
-            let data_30_days: Vec<Value>;
-            if v_30_days["count"].as_i64() > Some(0) {
-                data_30_days = v_30_days["data"].as_array().unwrap().to_vec();
-            } else {
-                data_30_days = Vec::new();
-            }
+            let data_30_days: Vec<Value> = match v_30_days["data"].as_array() {
+                Some(data) => data.clone(),
+                None => Vec::<Value>::new()
+            };
 
             let body_90_days = req.get(url_90_days)
                               .timeout(Duration::from_secs(15))
@@ -408,12 +424,10 @@ async fn handle_connection(
                               .expect("[-] PAYLOAD ERROR");
 
             let v_90_days: Value = serde_json::from_str(&body_90_days).expect("Empty");
-            let data_90_days: Vec<Value>;
-            if v_90_days["count"].as_i64() > Some(0) {
-                data_90_days = v_90_days["data"].as_array().unwrap().to_vec();
-            } else {
-                data_90_days = Vec::new();
-            }
+            let data_90_days: Vec<Value> = match v_90_days["data"].as_array() {
+                Some(data) => data.clone(),
+                None => Vec::<Value>::new()
+            };
 
             let contents = json!({
                  "7days": data_7_days,
@@ -447,16 +461,28 @@ async fn handle_connection(
             res.send_contents(contents);
         },
         "GET /get/PLACEHOLDER HTTP/1.1"    => {
-            debug!("test!");
+            debug!("test!");,
+                checked:
             debug!("{:?}", req.body);
             res.status(STATUS_200);
             res.send_contents("".into());
         },
         "GET /get/log HTTP/1.1"            => {
-            let mut f = File::open(LOG).unwrap();
+            let mut f = match File::open(LOG) {
+                Ok(file) => file,
+                Err(e) => {
+                    error!("Unable to open log file: {}", e);
+                    res.status(STATUS_500);
+                    res.send_contents(format!("Unable to open log file: {}", e).into());
+                    return Some(res);
+                }
+            };
             
             let mut file_buffer = Vec::new();
-            f.read_to_end(&mut file_buffer).unwrap();
+            match f.read_to_end(&mut file_buffer) {
+                Ok(_) => (),
+                Err(e) => error!("Unable to read file: {}", e)
+            };
 
             res.status(STATUS_200);
             res.insert_header("Content-Type", "application/zip");
@@ -611,12 +637,24 @@ async fn handle_connection(
             let v: Value = serde_json::from_str(&body).expect("Empty");
             let mut check_map: HashMap<String, String> = HashMap::new();
             if v["count"].as_i64() > Some(0) {
-                let num_entries = v["count"].as_i64().unwrap();
-                let checks: &mut Vec<Value> = &mut v["data"].as_array().unwrap().to_vec();
+                let num_entries = match v["count"].as_i64() {
+                    Some(num) => num,
+                    None => 0
+                };
+                let checks: &mut Vec<Value> = match &mut v["data"].as_array() {
+                    Some(data) => &mut data.clone(),
+                    None => {
+                        error!("Unable to get API data as vec.");
+                        &mut Vec::<Value>::new()
+                    }
+                };
                 checks.reverse();
                 for i in 0..num_entries {
                     let check = checks[i as usize].as_object().unwrap();
-                    check_map.insert(String::from(check["LocationName"].as_str().unwrap()), String::from(check["CompletedOn"].as_str().unwrap()));
+                    check_map.insert(
+                        String::from(check["LocationName"].as_str().unwrap()), 
+                        String::from(check["CompletedOn"].as_str().unwrap())
+                    );
                 }
             }
 
@@ -627,10 +665,13 @@ async fn handle_connection(
             for mut room in database.get_rooms_by_abbrev(&building_sel) {
                 if check_map.contains_key(&room.name) {
                     // checked Date format may need changed here
-                    debug!("Checkerboard Debug - checked value: \n{:?}", String::from(check_map.get(&room.name).unwrap()));
-                    //room.checked = String::from(check_map.get(&room.name).unwrap().split("T").collect::<Vec<&str>>()[0]);
-                    room.checked = String::from(check_map.get(&room.name).unwrap());
-                    debug!("Checkerboard Debug - Room struct: \n{:?}", room);
+                    room.checked = String::from(match check_map.get(&room.name) {
+                        Some(r) => r,
+                        None => {
+                            warn!("Unable to fetch room, defaulting.");
+                            "2000-01-01T00:00:00Z"
+                        }
+                    });
                     room.needs_checked = check_lsm(&room);
                 }
                 let schedule_params = check_schedule(&room);
@@ -707,10 +748,21 @@ async fn handle_connection(
         },
         "POST /cfm_file HTTP/1.1"          => {
             let contents = get_cfm_file(req.body);
-            let mut f = File::open(&contents).unwrap();
+            let mut f = match File::open(&contents) {
+                Ok(file) => file,
+                Err(e) => {
+                    error!("Unable to open file {}: {}", &contents, e);
+                    res.status(STATUS_500);
+                    res.send_contents(format!("File not found: {}", &contents).into());
+                    return Some(res);
+                }
+            };
             
             let mut file_buffer = Vec::new();
-            f.read_to_end(&mut file_buffer).unwrap();
+            match f.read_to_end(&mut file_buffer) {
+                Ok(_) => (),
+                Err(e) => error!("Unable to read to end of file: {}", e)
+            };
 
             res.status(STATUS_200);
             res.insert_header("Content-Type", "application/zip");
@@ -782,7 +834,8 @@ fn get_zone_data(buildings: HashMap<String, DB_Building>) -> Vec<u8> {
         "2": {
             "name": 2,
             "building_list": zone_2,
-        },
+        },,
+                checked:
         "3": {
             "name": 3,
             "building_list": zone_3,
@@ -833,9 +886,14 @@ fn execute_ping(body: Vec<u8>, mut database: Database) -> Vec<u8> {
 
     let rooms_to_ping: Vec<DB_Room> = database.get_rooms_by_abbrev(&pr.building);
 
-    for mut rm in rooms_to_ping {
-        rm.ping_data = ping_room(rm.ping_data);
-        database.update_room(&rm);
+    for rm in rooms_to_ping {
+        std::thread::scope(|s| {
+            s.spawn(|| {
+                let mut room = rm.clone();
+                room.ping_data = ping_room(room.ping_data);
+                database.update_room(&room);
+            });
+        });
     }
 
     let json_return = json!({
@@ -848,7 +906,7 @@ fn execute_ping(body: Vec<u8>, mut database: Database) -> Vec<u8> {
 fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
     let mut pinged_hns: Vec<Option<DB_IpAddress>> = Vec::new();
     for net in net_elements {
-        let hn_string: String = net.clone().unwrap().hostname.to_string();
+        let hn_string: String = net.as_ref().unwrap().hostname.to_string();
         pinged_hns.push(Some(
             DB_IpAddress {
                 hostname: net.unwrap().hostname,
@@ -902,14 +960,38 @@ fn check_schedule(room: &DB_Room) -> (bool, String) {
     let time_filter = Regex::new(r"(?<hours>[0-9]{2}):(?<minutes>[0-9]{2})").unwrap();
     let time = time_filter.captures(&now_str).unwrap();
 
-    let hours: u16 = time["hours"].parse().unwrap();
-    let minutes: u16 = time["minutes"].parse().unwrap();
+    let hours: u16 = match time["hours"].parse() {
+        Ok(h) => h,
+        Err(e) => {
+            error!("Unable to parse schedule hours: {}\nDefaulting to 0.", e);
+            0
+        }
+    };
+    let minutes: u16 = match time["minutes"].parse() {
+        Ok(m) => m,
+        Err(e) => {
+            error!("Unable to parse schedule minutes: {}\nDefaulting to 0.", e);
+            0
+        }
+    };
     let adjusted_time: u16 = (hours * 100) + minutes;
     
     for block in &room.schedule {
         let block_vec: Vec<&str> = block.as_ref().unwrap().split(&[' ', '-']).collect::<Vec<_>>().to_vec();
-        let adjusted_start: u16 = block_vec[1].parse().unwrap();
-        let adjusted_end: u16 = block_vec[2].parse().unwrap();
+        let adjusted_start: u16 = match block_vec[1].parse() {
+            Ok(t) => t,
+            Err(e) => {
+                error!("Unable to parse schedule start time: {}", e);
+                0
+            }
+        };
+        let adjusted_end: u16 = match block_vec[2].parse() {
+            Ok(t) => t,
+            Err(e) => {
+                error!("Unable to parse schedule end time: {}", e);
+                0
+            }
+        };
         if block_vec[0].contains(day_of_week) {
             if adjusted_time < adjusted_start {
                 available = true;
@@ -929,7 +1011,13 @@ fn check_schedule(room: &DB_Room) -> (bool, String) {
 fn check_lsm(room: &DB_Room) -> bool {
     let needs_checked;
     // Line below produces -> ParseError(TooShort)
-    let parsed_checked: DateTime<Local> = room.checked.parse().unwrap();
+    let parsed_checked: DateTime<Local> = match room.checked.parse() {
+        Ok(dt) => dt,
+        Err(e) => {
+            error!("Unable to parse incoming DateTime: {}", e);
+            String::from("2000-01-01T00:00:00Z").parse().unwrap()
+        }
+    };
     let time_diff: TimeDelta = Local::now() - parsed_checked;
     if room.gp {
         if time_diff.num_seconds() >= 604800 {
@@ -1002,7 +1090,15 @@ fn find_files(building: String, rm: String) -> Vec<String> {
 
 fn get_dir_contents(path: &str) -> Vec<String> {
     let mut strings = Vec::new();
-    let paths = read_dir(&path).unwrap();
+    let paths = match read_dir(&path) {
+        Ok(p) => p,
+        Err(e) => {
+            error!("Malformed directory path(s): {}", e);
+            let empty_dir_path = Path::new("empty_dir");
+            let _ = std::fs::create_dir_all(&empty_dir_path);
+            read_dir(&empty_dir_path).unwrap()
+        }
+    };
     for p in paths {
         strings.push(p.unwrap().path().display().to_string());
     }
@@ -1159,8 +1255,6 @@ fn get_cfm_dir(body: Vec<u8>) -> Vec<u8> {
     //
     let cfmr_d: CFMRequestFile = serde_json::from_str(&tmp)
         .expect("CamCode Err, Failed to get dir struct");
-    //let cfmr_d: CFMRequestFile = serde_json::from_str(String::from_utf8(body).unwrap().as_str())
-    //    .expect("Fatal Error 38: failed to parse filename");
 
     if dir_exists(CFM_DIR) {
         // Error handling
