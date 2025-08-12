@@ -1293,7 +1293,7 @@ ol li::marker {
 }
 
 .leaderTab.leader_selected, .leaderTab.schedule_selected {
-    transform: matrix(1, 0, 0, .7, 0, 4);
+    transform: matrix(1, 0, 0, .6, 0, 5);
     transition-duration: 0.1s;
     filter: hue-rotate(-60deg);
 }
@@ -1422,6 +1422,15 @@ ol li::marker {
 .at_tab_img {
     width:130px;
     height:30px;
+}
+
+@media (max-width: 1000px) {
+    .leaderTab:active {
+        transform: matrix(1,0,0,.8,0,3);
+    }
+    .atTab:active {
+        transform: matrix(1,0,0,.8,0,3);
+    }
 }
 
 /* Other */
