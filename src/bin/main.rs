@@ -461,8 +461,7 @@ async fn handle_connection(
             res.send_contents(contents);
         },
         "GET /get/PLACEHOLDER HTTP/1.1"    => {
-            debug!("test!");,
-                checked:
+            debug!("test!");
             debug!("{:?}", req.body);
             res.status(STATUS_200);
             res.send_contents("".into());
@@ -661,7 +660,7 @@ async fn handle_connection(
             // TODO: get checked_rooms
             // let checked_rooms: i16 = v["count"].as_i64().unwrap().try_into().unwrap();
             let mut checked_rooms: i16 = 0;
-            let mut room_check_list: Vec<String> = Vec::new();
+            //let mut room_check_list: Vec<String> = Vec::new();
             for mut room in database.get_rooms_by_abbrev(&building_sel) {
                 if check_map.contains_key(&room.name) {
                     // checked Date format may need changed here
@@ -834,8 +833,7 @@ fn get_zone_data(buildings: HashMap<String, DB_Building>) -> Vec<u8> {
         "2": {
             "name": 2,
             "building_list": zone_2,
-        },,
-                checked:
+        },
         "3": {
             "name": 3,
             "building_list": zone_3,
