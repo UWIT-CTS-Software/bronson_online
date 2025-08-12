@@ -33,9 +33,11 @@ pub mod jp {
         let pong_string: String;
 
         match ping_response {
-            PingResult::Pong(_dur, string) => { 
-                //println!("Duration: {:?}\nPong String: \n {}", dur, string);
-                pong_string = String::from(ip_filter.find(&string).unwrap().as_str());
+            PingResult::Pong(_dur, string) => {
+                pong_string = String::from( match ip_filter.find(&string) {
+                    Some(ip) => ip.as_str(),
+                    None     => "x"
+                });
             },
             PingResult::Timeout(string) => {
                 println!("Timeout:\n{}", string);
