@@ -470,7 +470,7 @@ async function dashCheckerboard2() {
     for (zone in zoneObject) {
         let cr = 0; // Checked Rooms
         let tr = 0; // Total Rooms
-        let bl = await getBuildingAbbrevsFromZone(zone)
+        let bl = await getBuildingAbbrevsFromZone(zone);
         for(bldg in bl) {
             let building = await getBuilding(bl[bldg]);
             cr += building.checked_rooms;
