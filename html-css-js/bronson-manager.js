@@ -188,7 +188,8 @@ function setDashboardDefaults() {
     // Default Dashboard Selections
     //  Leaderboard: 7-Days
     //  Schedule: Current-Day
-    setLeaderWeek();
+    //setLeaderWeek();
+    setLeader("7days");
     // Set Schedule
     let today = new Date();
     // Add today class to today's button
@@ -623,6 +624,7 @@ function renderTimeIndicator() {
 }
 
 // Leaderboard
+/*
 function setLeaderWeek() {
     let current = document.getElementsByClassName("leader_selected");
     if (current.length != 0) {
@@ -669,4 +671,43 @@ function setLeaderSemester() {
     }
     let leaderboard = document.getElementById("leaderboard");
     leaderboard.innerHTML = leaderString;
+}*/
+
+function setLeader(jsonValue) {
+    // button can be '90days','30days', and '7days'
+    let leader = JSON.parse(localStorage.getItem("leaderboard"))[`${jsonValue}`];
+    // get button ID
+    let buttonId = "";
+    switch (jsonValue) {
+        case '90days':
+            buttonId = "SemesterButton";
+            break;
+        case "30days":
+            buttonId = "MonthButton";
+            break;
+        case "7days":
+            buttonId = "WeekButton";
+            break;
+        default:
+            console.warn("Faulty Leaderboard Behavior Detected, Unsupported Time Option");
+            return;
+    }
+
+    let current = document.getElementsByClassName("leader_selected");
+    if (current.length != 0) {
+        current[0].classList.remove("leader_selected");
+    }
+    let newCurrent = document.getElementById(`${buttonId}`);
+    newCurrent.classList.add("leader_selected");
+    // number of characters per row
+    const COL_LIMIT = 28; // 28 Columns On Mobile, 41 On desktop.
+    // print
+    let leaderString = "";
+    for (let i=0; i<leader.length; i++) {
+        let spacer = " ".repeat(COL_LIMIT - leader[i].Name.length);
+        leaderString += `${i+1}. ${leader[i].Name}: ${spacer}${leader[i].Count}\n`;
+    }
+    let leaderboard = document.getElementById("leaderboard");
+    leaderboard.innerHTML = leaderString;
+    return;
 }
