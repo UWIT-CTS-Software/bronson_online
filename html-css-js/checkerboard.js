@@ -175,7 +175,14 @@ async function updateTopperElement(topperID, buildingName, numberChecked, number
     // TODO - Make this more fancy
     //topperEntry.innerText = `${buildingName} - Rooms Checked: ${numberChecked} / ${numberRooms} (${percent}%)`;
     topperEntry.innerHTML = `<p class="cbTopperBuildingNameText">${buildingName}</p>
-    <div class="cbTopperBuildingStatus"><p class="cbBStatusText">Rooms Checked: ${numberChecked}/${numberRooms}</p><label class="cbProgLabel" for="${buildingName}_status">${percent}%</label><progress id="${buildingName}_status" class="cbProgress" value="${percent}" max="100"> </progress></div>`;
+    <div class="cbTopperBuildingStatus">
+    <div class="cbTopperLabels">
+    <p class="cbBStatusText">Rooms Checked: ${numberChecked}/${numberRooms}</p>
+    <label class="cbProgLabel" for="${buildingName}_status">${percent}%</label>
+    </div>
+    <progress id="${buildingName}_status" class="cbProgress" value="${percent}" max="100">
+    <span>test</span>
+    </progress></div>`;
     return;
 }
 
