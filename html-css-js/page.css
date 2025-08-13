@@ -345,14 +345,49 @@ button:-webkit-details-marker {
 
 .db_checker p {
     font-family: "Racing Sans One", sans-serif;
-    text-align: left;
+    /* text-align: left; */
     font-size: 18pt;
-    padding: 0px 0px 0px 30px;
+    /* padding: 0px 0px 0px 0px; */
     margin: 0px 0px 0px 0px;
+}
+.db_cbZonep {
+    text-align: left;
+    float:left;
+    width: auto;
+    padding: 0px 0px 0px 15px;
+}
+
+.db_cbRoomCountp {
+    text-align:right;
+    float: right;
+    width: auto;
+    padding: 0px 15px 0px 0px;
 }
 
 .db_checker progress {
-    width: 75%;
+    -webket-appearance: none;
+    width: 92%;
+    height: 20px;
+    padding: 0px 0px 0px 0px;
+    margin: 0px 0px 0px 4px;
+    vertical-align: bottom;
+    text-align: center;
+    position: relative;
+    left: 10px;
+    background-color: rgb(31, 31, 31);
+    border-radius: 10px;
+    border: 2px outset rgb(122,113,45);
+}
+
+.db_checker progress::-webkit-progress-bar {
+    /* background-color: black; */
+}
+
+.db_checker progress::-webkit-progress-value {
+    background-color: rgb(172, 159, 64);
+}
+.db_checker progress::-moz-progress-bar {
+    background-color: rgb(167, 155, 64);
 }
 
 /* Schedule Stuff */
@@ -398,8 +433,25 @@ button:-webkit-details-marker {
 .schdtrue {
     background-color: rgb(49, 125, 64);
 }
+@media(max-width: 1655px) {
+    .db_checker p {
+        font-size: 14pt;
+    }
+    .db_checker progress {
+        width:92%
+    }
+}
 
-@media (max-width: 1000px) {
+@media(max-width: 1410px) {
+    .db_checker p {
+        font-size: 12pt;
+    }
+    .db_checker progress {
+        width:92%
+    }
+}
+
+@media (max-width: 1250px) {
     .db_leader {
         grid-column: 8/11;
     }
@@ -410,14 +462,16 @@ button:-webkit-details-marker {
         grid-column: 1/4;
     }
     .db_checker progress {
-        width: 60%;
+        width: 92%;
     }
     .db_checker p {
-        font-size: 16pt;
-        padding: 0px 0px 0px 20px;
+        font-size: 15pt;
+        /* padding: 0px 0px 0px 20px; */
         margin: 0px 0pc 0px 0px
     }
 }
+
+
 
 /* JackNet Definitions 
        _            _    _   _      _   
@@ -721,7 +775,11 @@ button:-webkit-details-marker {
 }
 
 .cbProgLabel {
-    margin:0px 6px 0px 3%;
+    margin:0px 2%;
+    vertical-align: middle;
+    text-align: center;
+    top:3px;
+    position:relative;
 }
 .cbVisContainer {
     margin-bottom:0px;
