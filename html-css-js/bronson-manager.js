@@ -450,8 +450,8 @@ async function dashCheckerboard() {
             let percent = checkedRooms / totalRooms;
             percent = String((100*percent).toFixed(5)).slice(0,5);
             cb_dashDivHTML += `<li> 
-            <div style="display: inline;"><p class="db_cbZonep">Zone ${zoneNum}: </p><p class="db_cbRoomCountp">${checkedRooms} / ${totalRooms} Rms</p>
-            <label class="cbProgLabel" for="${zoneNum}_prog"> ${percent}%</label>
+            <div style="display: inline;"><p class="db_cbZonep">Zone ${zoneNum}: </p><p class="db_cbRoomCountp">${checkedRooms} / ${totalRooms}</p>
+            <label class="dbCbProgLabel" for="${zoneNum}_prog"> ${percent}%</label>
             <progress id="${zoneNum}_prog" value="${percent}" max="100"></progress></div>
             </li>`;
         }
