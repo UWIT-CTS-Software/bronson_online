@@ -1035,7 +1035,7 @@ button:-webkit-details-marker {
     color: rgb(170, 170, 170);
     opacity: 75%;
     padding: 10px;
-    margin: 10px;
+    margin: 24px;
     font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
 }
 
