@@ -806,7 +806,7 @@ button:-webkit-details-marker {
 
 .cbBStatusText {
     margin:0px 0px 0px 12px;
-    width: 60%;
+    width: 70%;
     float: left;
     position: relative;
     z-index: 1;
@@ -826,11 +826,12 @@ button:-webkit-details-marker {
 }
 
 .cbProgress::-webkit-progress-value {
-    background-color: rgb(122,113,45);
+    background-color: rgb(13, 255, 0);
 }
 
 .cbProgress::-moz-progress-bar {
-    background-color: rgb(126, 170, 61);
+    /* background-color: rgb(126, 170, 61); */
+    background-color: rgb(166, 175, 86);
 }
 
 .cbProgLabel {
@@ -896,9 +897,9 @@ button:-webkit-details-marker {
     margin: 0px;
     padding: 0px 0px 3px 0px;
     border-bottom: rgb(99,66,33) inset 2px;
-    font-family:Verdana, Geneva, Tahoma, sans-serif;
+    font-family:Arial, Helvetica, sans-serif;
     font-style:italic;
-    font-weight: bold;
+    font-weight: bolder;
 }
 
 .cbVisRoomAttributes {
@@ -909,6 +910,9 @@ button:-webkit-details-marker {
     column-count: 2;
     gap:0px;
     height: 60px;
+    font-family: 'Arial', sans-serif;
+    font-weight: bold;
+    font-style:oblique;
 }
 
 .cbVisNotChecked {
@@ -917,6 +921,7 @@ button:-webkit-details-marker {
     border-radius: 0px 0px 0px 18px;
     border-right:rgb(75,45,15) outset 1px;
     height:100%;
+    padding-left:5px;
 }
 
 .cbVisChecked {
@@ -925,6 +930,7 @@ button:-webkit-details-marker {
     border-radius: 0px 0px 0px 18px;
     border-right:rgb(75,45,15) outset 1px;
     height:100%;
+    padding-left:5px;
 }
 
 .cbVisAvailable {
@@ -933,6 +939,7 @@ button:-webkit-details-marker {
     border-radius: 0px 0px 18px 0px;
     border-left:rgb(90,60,30) inset 1px;
     height:100%;
+    padding-right: 5px;
 }
 
 .cbVisNotAvailable {
@@ -941,6 +948,7 @@ button:-webkit-details-marker {
     border-radius: 0px 0px 18px 0px;
     border-left:rgb(90,60,30) inset 1px;
     height:100%;
+    padding-right:5px;
 }
 
 /* Maybe use this instead */
