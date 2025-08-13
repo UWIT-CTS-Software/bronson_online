@@ -535,8 +535,8 @@ async fn handle_connection(
                 match &db_user.unwrap().permissions {
                     7 => user_homepage = "html-css-js/index_admin.html",  // admin
                     6 => user_homepage = "html-css-js/index_admin.html", // manager / lead tech
-                    0 => user_homepage = "html-css-js/login.html",       // revoked
-                    _ => user_homepage = "html-css-js/index.html",       // tech default
+                    0 => user_homepage = "html-css-js/login.html",      // revoked
+                    _ => user_homepage = "html-css-js/index.html",     // tech default
                 }
 
             } else {

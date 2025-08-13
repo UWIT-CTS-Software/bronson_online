@@ -118,7 +118,7 @@ async function initLocalStorage() {
         setDashboardDefaults();
         dashCheckerboard2(); // poplate cb_dash
     }
-
+    isMobile();
     return;
 }
 
@@ -188,7 +188,8 @@ function setDashboardDefaults() {
     // Default Dashboard Selections
     //  Leaderboard: 7-Days
     //  Schedule: Current-Day
-    setLeaderWeek();
+    //setLeaderWeek();
+    setLeader("7days");
     // Set Schedule
     let today = new Date();
     // Add today class to today's button
@@ -449,9 +450,9 @@ async function dashCheckerboard() {
             let percent = checkedRooms / totalRooms;
             percent = String((100*percent).toFixed(5)).slice(0,5);
             cb_dashDivHTML += `<li> 
-            <p>Zone ${zoneNum}: &emsp; ${checkedRooms} / ${totalRooms} Rooms</p>
-            <label class="cbProgLabel" for="${zoneNum}_prog"> ${percent}%</label>
-            <progress id="${zoneNum}_prog" value="${percent}" max="100"></progress>
+            <div style="display: inline;"><p class="db_cbZonep">Zone ${zoneNum}: </p><p class="db_cbRoomCountp">${checkedRooms} / ${totalRooms}</p>
+            <label class="dbCbProgLabel" for="${zoneNum}_prog"> ${percent}%</label>
+            <progress id="${zoneNum}_prog" value="${percent}" max="100"></progress></div>
             </li>`;
         }
     }
@@ -464,7 +465,7 @@ async function dashCheckerboard() {
 async function dashCheckerboard2() {
     let cb_dash = JSON.parse(sessionStorage.getItem("db_checker"));
     let zoneObject = JSON.parse(localStorage.getItem("zoneData"));
-    console.log(cb_dash);
+    //console.log(cb_dash);
     // GET ZONE OBJ AND ITERATE OVER THAT AND USE THAT ARRAY TO GRAB
     // ENTRIES OUT OF CAMPOBJECT
     for (zone in zoneObject) {
@@ -480,7 +481,7 @@ async function dashCheckerboard2() {
         cb_dash[zone-1].checked = cr;
         cb_dash[zone-1].rooms = tr;
     }
-    console.log(cb_dash);
+    //console.log(cb_dash);
     // if good send to session storage
     sessionStorage.setItem("db_checker", JSON.stringify(cb_dash));
     let html_obj = document.getElementById("db_checker");
@@ -623,50 +624,64 @@ function renderTimeIndicator() {
 }
 
 // Leaderboard
-function setLeaderWeek() {
+function setLeader(jsonValue) {
+    // button can be '90days','30days', and '7days'
+    let leader = JSON.parse(localStorage.getItem("leaderboard"))[`${jsonValue}`];
+    // get button ID
+    let buttonId = "";
+    switch (jsonValue) {
+        case '90days':
+            buttonId = "SemesterButton";
+            break;
+        case "30days":
+            buttonId = "MonthButton";
+            break;
+        case "7days":
+            buttonId = "WeekButton";
+            break;
+        default:
+            console.warn("Faulty Leaderboard Behavior Detected, Unsupported Time Option");
+            return;
+    }
+
     let current = document.getElementsByClassName("leader_selected");
     if (current.length != 0) {
         current[0].classList.remove("leader_selected");
     }
-    let newCurrent = document.getElementById("WeekButton");
+    let newCurrent = document.getElementById(`${buttonId}`);
     newCurrent.classList.add("leader_selected");
-    let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["7days"];
+    // number of characters per row
+    const COL_LIMIT = 28; // 28 Columns On Mobile, 41 On desktop.
+    let r = window.innerWidth / window.innerHeight;
+    console.log("r: ", r);
+    //let col = Math.round(COL_LIMIT * (COL_LIMIT*r) / 41) - 3;
+    let col = Math.round(4*Math.atan(1/70*window.innerWidth - 23.6) + 32);
+    //let col = Math.round(13/Math.PI * Math.atan(1/60*window.innerWidth - 27.6) + 34.5);
+    //let col = Math.round(13/Math.PI * Math.atan(20*(r-1)) + 34.5);
+    console.log("col: ", col, "windowWidth :", window.innerWidth);
+    // print
     let leaderString = "";
-    for (let i=0; i<weekLeader.length; i++) {
-        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+    for (let i=0; i<leader.length; i++) {
+        let n = col - leader[i].Name.length;
+        let spacer = n > 0 ? " ".repeat(n) : "";
+        
+        leaderString += `${i+1}. ${leader[i].Name}: ${spacer}${leader[i].Count}\n`;
     }
     let leaderboard = document.getElementById("leaderboard");
     leaderboard.innerHTML = leaderString;
+    return;
 }
 
-function setLeaderMonth() {
-    let current = document.getElementsByClassName("leader_selected");
-    if (current.length != 0) {
-        current[0].classList.remove("leader_selected");
+function isMobile() {
+    let screenWidth = window.innerWidth;
+    let screenHeight = window.innerHeight;
+    let r = screenWidth / screenHeight;
+    console.log("Screen Width: ", screenWidth, ", Screen Height: ", screenHeight, " Ratio: ", r);
+    if (r < 1.2) {
+        console.log("Mobile User Detected");
+        return true;
+    } else {
+        console.log("Desktop User Detected");
+        return false;
     }
-    let newCurrent = document.getElementById("MonthButton");
-    newCurrent.classList.add("leader_selected");
-    let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["30days"];
-    let leaderString = "";
-    for (let i=0; i<weekLeader.length; i++) {
-        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
-    }
-    let leaderboard = document.getElementById("leaderboard");
-    leaderboard.innerHTML = leaderString;
-}
-
-function setLeaderSemester() {
-    let current = document.getElementsByClassName("leader_selected");
-    if (current.length != 0) {
-        current[0].classList.remove("leader_selected");
-    }
-    let newCurrent = document.getElementById("SemesterButton");
-    newCurrent.classList.add("leader_selected");
-    let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["90days"];
-    let leaderString = "";
-    for (let i=0; i<weekLeader.length; i++) {
-        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
-    }
-    let leaderboard = document.getElementById("leaderboard");
-    leaderboard.innerHTML = leaderString;
 }
