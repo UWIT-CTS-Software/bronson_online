@@ -202,7 +202,7 @@ async function printCBResponse(JSON) {
     let numberChecked = 0;
     //console.log("CheckerboardDebug - returned building:\n", building);
     let numberRooms = building['rooms'].length;
-
+    
     // Start building output
     let cbVisContainer = document.createElement('div');
     cbVisContainer.classList.add('cbVisBuildingEntry');
@@ -220,7 +220,11 @@ async function printCBResponse(JSON) {
     let HTML_cbVisRooms = `<ul class="cbVisRooms">`;
     // Iterating through each room in a building
     for(var j = 0; j < rooms.length; j++) {
-        let cbRoomEntry = `<li class=cbVisRoom>`;
+        // Check to see if the checked room filter is on
+        let checkFilter = sessionStorage.getItem("cbHideBool");
+        checkFilter = (checkFilter == 'true') ? true : false;
+        console.log("CB DEBUG, Check enabled? ",checkFilter);
+        let cbRoomEntry = `<li class="cbVisRoom cbState${rooms[j]['needs_checked']} ${(!checkFilter && !rooms[j]['needs_checked']) ? "hideVisTile" : ""}">`;
         // Maybe add some generalPool/DepartmentShared indicator
         cbRoomEntry += `<p class="cbVisRoomName">${rooms[j]['name']} </p>`;
         //  - ROOM ATTRIBUTES
@@ -278,6 +282,34 @@ function cb_clear() {
     cbVisContainer.innerHTML = ``;
     // clear cache
     sessionStorage.removeItem("CheckerBoard_html");
+    return;
+}
+
+function toggleHideRooms() {
+    console.log("Toggle Clicked");
+    let currentState = sessionStorage.getItem("cbHideBool");
+    let bool = (currentState == 'true');
+    console.log(bool);
+    if (!bool) {
+        console.log("Showing Checked Rooms");
+        currentState = true;
+        let label = document.getElementById("cbToggleLabel");
+        label.innerHTML = "Showing Checked Rooms";
+        let tiles = document.getElementsByClassName("cbStatefalse");
+        for(let i=0; i < tiles.length; i++) {
+            tiles[i].classList.remove("hideVisTile");
+        }
+    } else {
+        console.log("Hiding Checked Rooms");
+        currentState = false;
+        let label = document.getElementById("cbToggleLabel");
+        label.innerHTML = "Hiding Checked Rooms";
+        let tiles = document.getElementsByClassName("cbStatefalse");
+        for(let i=0; i < tiles.length; i++) {
+            tiles[i].classList.add("hideVisTile");
+        }
+    }
+    sessionStorage.setItem("cbHideBool", currentState);
     return;
 }
 
@@ -368,6 +400,12 @@ async function setChecker() {
                 Run!</button>
             <button id="cb_clear" onclick="cb_clear()" class="headButton">
                 Clear</button>
+            <br>
+            <label id="cbHideChkedRoomsToggle" class="switch">
+                <input type="checkbox" onclick="toggleHideRooms()">
+                <span class="slider round"></span>
+            </label>
+            <label id="cbToggleLabel" for="cbHideChkedRoomsToggle">Showing Checked Rooms</label>
         </fieldset>`;
 
     // Console Output
@@ -392,6 +430,12 @@ async function setChecker() {
     main_container.appendChild(cb_container);
     main_container.classList.add('program_guts');
     progGuts.replaceWith(main_container);
+
+    // Init Hide Bool Variable in session storage
+    let currentState = sessionStorage.getItem("cbHideBool");
+    if(currentState == null) {
+        sessionStorage.setItem("cbHideBool", true);
+    }
 
     return;
 }
