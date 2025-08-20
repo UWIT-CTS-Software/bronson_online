@@ -1,4 +1,5 @@
 /*
+
     _            _               _     _     
    (_)          | |             | |   (_)    
     _  __ _  ___| | ___ __   ___| |_   _ ___ 
@@ -7,9 +8,6 @@
    | |\__,_|\___|_|\_\_| |_|\___|\__(_) |___/
   _/ |                               _/ |    
  |__/                               |__/     
-
-This file contains all code relating to jacknet and will manipulate the DOM in index.html accordingly, this file contains calls to the backend to ping devices and all of the handling
-for when it receives a response, such as drawing visualizer tiles.
 
 Data
     - CSV_EXPORT declared
@@ -36,7 +34,6 @@ HTML
     - setJackNet()
  
     NOTES
-
 there should be an object for the csv export and if a search is ran, it is overwritten. If possible fade the export button until the first search is ran.
 
 TODO:
