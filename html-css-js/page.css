@@ -370,6 +370,30 @@ input:checked + .slider:before {
     padding-bottom: 3px;
 }
 
+.db_spares {
+    grid-column: 2/4;
+    grid-row: 3;
+}
+
+.db_spares fieldset ul {
+    padding: 0px 0px 0px 4px;
+    margin: 5px 0px 0px 0px;
+    color:rgb(236, 200, 101);
+    font-family:Verdana, Geneva, Tahoma, sans-serif;
+}
+
+.sparePCName {
+    font-family: "Racing Sans One", serif;
+    font-size: 14pt;
+}
+
+.spareLocale {
+    color:#9b9560;
+}
+
+.spareUpdate {
+    color:#959DA5;
+}
 .db_console {
     grid-column: 4 / 8;
     grid-row: 1 / 2;
@@ -535,6 +559,9 @@ input:checked + .slider:before {
         grid-column: 1/-1;
     }
     .db_checker {
+        grid-column: 1/4;
+    }
+    .db_spares {
         grid-column: 1/4;
     }
     .db_checker progress {
