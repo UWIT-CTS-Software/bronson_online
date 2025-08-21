@@ -152,12 +152,18 @@
       // Once initStorageRuns and grabs the schedule data,
       // we will update this table and append <tbody>
       //  - maybe stats on hours in a <tfoot>, unsure.
+      
+      // Spare PC Widget
+      let spares = document.createElement("div");
+      spares.classList.add("db_spares");
+      spares.setAttribute("id", "db_spare");
       db_container.appendChild(consoleOutput);
       db_container.appendChild(leaderboard);
       db_container.appendChild(schedule);
+      db_container.appendChild(spares);
 
       // Check for client-side cached response
-      db_container.append(await dashCheckerboard());
+      db_container.append(await dashCheckerboardHTML());
       if (sessionStorage.getItem("jn_body") != null) {
         //db_container.append(dashJackNet()); //dashJackNet() has nothing, DNE
       }

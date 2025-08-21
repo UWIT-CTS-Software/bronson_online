@@ -8,38 +8,28 @@
                                                                    _/ |    
                                                                   |__/     
 
-This file contains all code relating to checkboard and will manipulate the DOM in index.html accordingly. There are some simularities to JackNet and it's visualizer.
-
 TOC:
     - getCheckerboardByBuilding(build_ab)
-    - run() ---------------------------------------------------------------------------------- DB_TODO
+    - run()
   HTML
     - FourDigitToTimeFormat(unformattedTime)
     - buildStarterTopper(zone_array)
     - updateTopperElement(topperID, buildingName, numberCheckd, numberRooms)
     - clearVisContainer()
-    - printCBResponse(JSON) ------------------------------------------------------------------ DB_TODO
+    - printCBResponse(JSON)
     - cbJumpTo(entryID)
     - cb_clear()
+    - toggleHideRooms()
     - setChecker()
 
 Notes:
-I am still not completely satisfied with the look, specifically the topper section, there 
-are things to be desired still.
-
 I think the Time and Cookie classes may be better suited for bronson-manager.js
 
 TODO - 
-    [ ] - minimize collapse functionality on the generated tiles
-    [ ] - filter checked rooms / hide them 
-      for this, I think it be best to add a button (or checkbox) to options fieldset.
-      will need to iterate through all the drawn tiles and add some 'hide' tag/class
-      to remove it from the page and do the same to reverse it.
     [ ] - all rooms checked special behavior
       If every room in a building (or zone) is checked, it is an achievement for the tech
       they should get some kinda special message or confetti when this happens.
 */
-
 
 // Run Checkerboard
 async function getCheckerboardByBuilding(build_ab) {
@@ -399,7 +389,7 @@ async function setChecker() {
                 Clear</button>
             <br>
             <label id="cbHideChkedRoomsToggle" class="switch">
-                <input type="checkbox" onclick="toggleHideRooms()">
+                <input id="cbToggleHide" type="checkbox" onclick="toggleHideRooms()">
                 <span class="slider round"></span>
             </label>
             <label id="cbToggleLabel" for="cbHideChkedRoomsToggle">Showing Checked Rooms</label>
@@ -429,10 +419,6 @@ async function setChecker() {
     progGuts.replaceWith(main_container);
 
     // Init Hide Bool Variable in session storage
-    let currentState = sessionStorage.getItem("cbHideBool");
-    if(currentState == null) {
-        sessionStorage.setItem("cbHideBool", true);
-    }
-
+    sessionStorage.setItem("cbHideBool", true);
     return;
 }

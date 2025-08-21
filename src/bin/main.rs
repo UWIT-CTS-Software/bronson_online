@@ -437,6 +437,40 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents(contents);
         },
+        // Testing Spares LSM API Call.
+        "GET /spares HTTP/1.1"             => {
+            let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
+            // Build and Send Request
+            let req = reqwest::Client::builder()
+                .cookie_store(true)
+                .user_agent("server_lib/1.10.1")
+                .default_headers(construct_headers("lsm", &mut database))
+                .timeout(Duration::from_secs(15))
+                .build()
+                .ok()?
+            ;
+
+            let body_spares = req.get(url_spares)
+                              .timeout(Duration::from_secs(15))
+                              .send()
+                              .await
+                              .expect("[-] RESPONSE ERROR")
+                              .text()
+                              .await
+                              .expect("[-] PAYLOAD ERROR");
+
+            let v_spares: Value = serde_json::from_str(&body_spares).expect("Empty");
+            let data_spares: Vec<Value> = match v_spares["data"].as_array() {
+                Some(data) => data.clone(),
+                None => Vec::<Value>::new()
+            };
+            // Pack into JSON response to front-end
+            let contents = json!({
+                 "spares": data_spares
+            }).to_string().into();
+            res.status(STATUS_200);
+            res.send_contents(contents);
+        },
         // Terminal
         // --------------------------------------------------------------------
         "GET /refresh/all HTTP/1.1"        => {
