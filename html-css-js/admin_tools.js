@@ -1,4 +1,6 @@
-/* admin_tools.js
+/* 
+
+admin_tools.js
 
 Functions
     - sleep(ms);
@@ -6,7 +8,7 @@ Functions
     - setAdminTools();
   Message Editor
     - setMessageEditor();
-    - setDashboardMessage(); -------------------------------------- DB_TODO
+    - setDashboardMessage();
     - clearEditor();
   Schedule
     - setScheduleEditor();
@@ -17,13 +19,15 @@ Functions
     - addBlankTechSchedule(count);
     - exportSchd();
     - filterTechs();
-    - makeTechEditTable();
+    - makeTechEditTable(techObj);
     - makeTechAssignmentSelect(techObj);
     - makeAdminTechSchdRow(tech, day);
     - flipTime(techName, tableElementID);
     - updateHours(tableID, tableHoursID);
     - updateAllTechSchedules();
-    - updateTechSchedule(techID); --------------------------------- DB_TODO
+    - updateTechSchedule(techID, scheduleData);
+    - updateSchedule(schedule);
+    
 */
 // Note, I think it would be good to put the terminal stuff in here that is currently in index_admin.html but it utilizes JQueury in a way that I am not hundred percent sure of so I will not be doing that just yet because I don't want to break anything.
 
@@ -274,10 +278,6 @@ function removeTechSelect(techID) {
 
 function exitRemoveMode() {
     document.getElementById("techSchdRemoveTech").remove();
-    // let hiddenElements = document.getElementsByClassName("techSchdDiv");
-    // for (i in hiddenElements) {
-    //     hiddenElements[i].hidden = false;
-    // }
     setScheduleEditor();
     return;
 }
@@ -598,4 +598,20 @@ async function updateTechSchedule(tableID, scheduleData) {
     // calculating the hash value that we check in 'checkForDataUpdates()'
     // here may be neccessary.
     return scheduleData;
+}
+
+async function updateSchedule(schedule) {
+    return fetch("updateSchedule", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Content-Length": JSON.stringify(schedule).length,
+        },
+        body: JSON.stringify(schedule)
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error("HTTP error " + response.status);
+        }
+        return response;
+    });
 }
