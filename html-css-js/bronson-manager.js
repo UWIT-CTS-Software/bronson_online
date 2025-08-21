@@ -693,6 +693,8 @@ function dashSpares() {
     return;
 }
 
+// Not really being used, consider this a proof of concept to give more specific
+// formatting based on user device (this is not perfect)
 function isMobile() {
     let screenWidth = window.innerWidth;
     let screenHeight = window.innerHeight;
