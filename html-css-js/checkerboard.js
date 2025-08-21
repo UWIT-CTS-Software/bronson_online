@@ -213,7 +213,7 @@ async function printCBResponse(JSON) {
         // Check to see if the checked room filter is on
         let checkFilter = sessionStorage.getItem("cbHideBool");
         checkFilter = (checkFilter == 'true') ? true : false;
-        console.log("CB DEBUG, Check enabled? ",checkFilter);
+        //console.log("CB DEBUG, Check enabled? ",checkFilter);
         let cbRoomEntry = `<li class="cbVisRoom cbState${rooms[j]['needs_checked']} ${(!checkFilter && !rooms[j]['needs_checked']) ? "hideVisTile" : ""}">`;
         // Maybe add some generalPool/DepartmentShared indicator
         cbRoomEntry += `<p class="cbVisRoomName">${rooms[j]['name']} </p>`;
@@ -275,13 +275,11 @@ function cb_clear() {
     return;
 }
 
+// This adds hideVisTile Class to all checked room tiles (or removes them)
 function toggleHideRooms() {
-    console.log("Toggle Clicked");
     let currentState = sessionStorage.getItem("cbHideBool");
     let bool = (currentState == 'true');
-    console.log(bool);
     if (!bool) {
-        console.log("Showing Checked Rooms");
         currentState = true;
         let label = document.getElementById("cbToggleLabel");
         label.innerHTML = "Showing Checked Rooms";
@@ -290,7 +288,6 @@ function toggleHideRooms() {
             tiles[i].classList.remove("hideVisTile");
         }
     } else {
-        console.log("Hiding Checked Rooms");
         currentState = false;
         let label = document.getElementById("cbToggleLabel");
         label.innerHTML = "Hiding Checked Rooms";
