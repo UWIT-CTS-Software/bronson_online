@@ -569,11 +569,9 @@ input:checked + .slider:before {
     }
     .db_checker p {
         font-size: 15pt;
-        /* padding: 0px 0px 0px 20px; */
         margin: 0px 0pc 0px 0px
     }
 }
-
 
 
 /* JackNet Definitions 

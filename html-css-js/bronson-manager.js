@@ -635,12 +635,10 @@ function setLeader(jsonValue) {
     let newCurrent = document.getElementById(`${buttonId}`);
     newCurrent.classList.add("leader_selected");
     // number of characters per row
-    const COL_LIMIT = 28; // 28 Columns On Mobile, 41 On desktop.
-    let r = window.innerWidth / window.innerHeight;
+    //const COL_LIMIT = 28; // 28 Columns On Mobile, 41 On desktop.
+    //let r = window.innerWidth / window.innerHeight;
     //let col = Math.round(COL_LIMIT * (COL_LIMIT*r) / 41) - 3;
     let col = Math.round(4*Math.atan(1/70*window.innerWidth - 23.6) + 32);
-    //let col = Math.round(13/Math.PI * Math.atan(1/60*window.innerWidth - 27.6) + 34.5);
-    //let col = Math.round(13/Math.PI * Math.atan(20*(r-1)) + 34.5);
     // print
     let leaderString = "";
     for (let i=0; i<leader.length; i++) {
