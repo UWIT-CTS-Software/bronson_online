@@ -219,7 +219,6 @@ async function getBuildingList() {
     for(const abbrev in data) {
         bl.push(data[abbrev].name);
     }
-
     return bl.sort();
 }
 
