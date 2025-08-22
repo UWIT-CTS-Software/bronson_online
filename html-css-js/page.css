@@ -1315,6 +1315,10 @@ ol li::marker {
     background-color:red;
 }
 
+#diag_terminal {
+    height: 300px;
+}
+
 @media (max-width: 1000px) {
     #admin_internals {
         width: 900px;

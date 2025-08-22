@@ -354,22 +354,14 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "GET /dashContents HTTP/1.1"       => {
+        "GET /dashContents HTTP/1.1"       => { // Dashboard Message
             let contents = json!({
                 "contents": database.get_data("dashboard").val
             }).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        // "GET /dashboard/checker"           => { // Returns zone checked. NOTE: trying method of including information in the ZoneData
-        //     // Get Room Counts
-        //     let contents = json!({
-        //         "contents": database.get_data("dashchecker").val
-        //     }).to_string().into();
-        //     res.status(STATUS_200);
-        //     res.send_contents(contents);
-        // }
-        "GET /leaderboard HTTP/1.1"        => {
+        "GET /leaderboard HTTP/1.1"        => { // Dashboard Leaderboard
             let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
             let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
             let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
@@ -438,7 +430,7 @@ async fn handle_connection(
             res.send_contents(contents);
         },
         // Testing Spares LSM API Call.
-        "GET /spares HTTP/1.1"             => {
+        "GET /spares HTTP/1.1"             => { // Dashboard Spares
             let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
             // Build and Send Request
             let req = reqwest::Client::builder()
@@ -467,6 +459,86 @@ async fn handle_connection(
             // Pack into JSON response to front-end
             let contents = json!({
                  "spares": data_spares
+            }).to_string().into();
+            res.status(STATUS_200);
+            res.send_contents(contents);
+        },
+        "POST /procDiag HTTP/1.1"             => { // Admin Tools Diagnostics
+            // TODO: Check User Permissions
+            // Get building abbrev
+            let building_sel = String::from_utf8(req.body).expect("AT: Diagnostics Err, invalid UTF-8");
+            let lsm_building = database.get_building_by_abbrev(&building_sel);
+            //println!("AT: Diagnostics - building LSM Name:\n{:?}", &lsm_building.lsm_name.as_str());
+            debug!("AT: Diagnostics Debug - building LSM Name:\n{:?}", &lsm_building.lsm_name.as_str());
+            let url_procs = format!(
+                r"https://uwyo.talem3.com/lsm/api/BuildingProcs?offset=0&p=%7BParentName%3A%22{}%22%7D", 
+                &lsm_building.lsm_name.as_str()
+            );
+            //let url_procs = "https://uwyo.talem3.com/lsm/api/ProcLocation?offset=0&p=%7B%7D";
+            // Build and Send Request
+            let req = reqwest::Client::builder()
+                .cookie_store(true)
+                .user_agent("server_lib/1.10.1")
+                .default_headers(construct_headers("lsm", &mut database))
+                .timeout(Duration::from_secs(15))
+                .build()
+                .ok()?
+            ;
+
+            let procs = req.get(url_procs)
+                              .timeout(Duration::from_secs(15))
+                              .send()
+                              .await
+                              .expect("[-] RESPONSE ERROR")
+                              .text()
+                              .await
+                              .expect("[-] PAYLOAD ERROR");
+
+            let v_procs: Value = serde_json::from_str(&procs).expect("Empty");
+            let data_procs: Vec<Value> = match v_procs["data"].as_array() {
+                Some(data) => data.clone(),
+                None => Vec::<Value>::new()
+            };
+            // Pack into JSON response to front-end
+            let contents = json!({
+                 "procs": data_procs
+            }).to_string().into();
+            res.status(STATUS_200);
+            res.send_contents(contents);
+        },
+        "GET /procDiagTEST HTTP/1.1"             => { // Admin Tools Diagnostics
+            // TODO: Check User Permissions
+            // Get building abbrev
+            //debug!("AT: Diagnostics Debug - building LSM Name:\n{:?}", &lsm_building.lsm_name.as_str());
+            let url_procs = "https://uwyo.talem3.com/lsm/api/ProcLocation?offset=0&p=%7B%7D";
+            //let url_procs = "https://uwyo.talem3.com/lsm/api/ProcLocation?offset=0&p=%7B%7D";
+            // Build and Send Request
+            let req = reqwest::Client::builder()
+                .cookie_store(true)
+                .user_agent("server_lib/1.10.1")
+                .default_headers(construct_headers("lsm", &mut database))
+                .timeout(Duration::from_secs(15))
+                .build()
+                .ok()?
+            ;
+
+            let procs = req.get(url_procs)
+                              .timeout(Duration::from_secs(15))
+                              .send()
+                              .await
+                              .expect("[-] RESPONSE ERROR")
+                              .text()
+                              .await
+                              .expect("[-] PAYLOAD ERROR");
+
+            let v_procs: Value = serde_json::from_str(&procs).expect("Empty");
+            let data_procs: Vec<Value> = match v_procs["data"].as_array() {
+                Some(data) => data.clone(),
+                None => Vec::<Value>::new()
+            };
+            // Pack into JSON response to front-end
+            let contents = json!({
+                 "procs": data_procs
             }).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);

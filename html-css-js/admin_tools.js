@@ -89,6 +89,10 @@ async function setAdminTools() {
     <button id="at_schedule" onclick="setScheduleEditor()" type="button" class="atTab">
         <img class="at_tab_img" src="button2.png"/>
         <span> Schedule Editor </span>
+    </button>
+    <button id="at_diag" onclick="setDiag()" type="button" class="atTab">
+        <img class="at_tab_img" src="button2.png"/>
+        <span> Diagnostics </span>
     </button>`;
     // init admin tool guts
     let admin_internals = document.createElement("div");
@@ -614,4 +618,183 @@ async function updateSchedule(schedule) {
         }
         return response;
     });
+}
+
+// Diagnostics Page
+//  - I am implementing new LSM API Queries to pull inventory, the hope is this page will discover
+//   discrepencies between the LSM database and the inventory we have in 'campus.csv.'
+//  - I am also interested in updating our database with a preference for what we see in LSM rather
+//   than the CSV. This will give us a more unified data handling, if a Room is converted to 
+//   displays rather than projectors, the change will be automatic and JackPing/Campus.csv will not
+//   need manual fine tuning. 
+//  - I think this page should also allow for users to do such changes if need be.
+//  - If the database needs changes this page should be able to do these changes.
+//  - if we have conflicting data in LSM and Bronson, this page will report on it.
+async function setDiag() {
+    // remove currently active status, mark tab has active.
+    let current = document.getElementsByClassName("at_selected");
+    if (current.length != 0) {
+        current[0].classList.remove("at_selected");
+    }
+    let newCurrent = document.getElementById("at_diag");
+    newCurrent.classList.add("at_selected");
+
+    let adminDiagnostics = document.createElement("div");
+    adminDiagnostics.setAttribute("id", "admin_internals");
+    adminDiagnostics.classList.add('at_diagnostics'); //dashboard message editor, acronym
+    adminDiagnostics.innerHTML = `
+    <fieldset>
+        <legend> Diagnostics: </legend>
+        <textarea id="diag_terminal"></textarea>
+        <button onclick="runDiagnostics()"> Run Diagnostics </button>
+    </fieldset>`;
+    // replace admin_internals
+    let admin_internals = document.getElementById('admin_internals');
+    admin_internals.replaceWith(adminDiagnostics);
+    return;
+}
+
+async function getProcs() {
+    return fetch("procDiagTEST")
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("HTTP error " + response.status);
+            }
+            return response.json();
+        }
+    );
+}
+
+async function getProcsByAbbrev(build_ab) {
+    return await fetch('procDiag', {
+        method: "POST",
+        body: build_ab
+    })
+    .then((response) => response.json())
+    .then((json) => {return json;});
+}
+
+function updateDTerm(string) {
+    let term = document.getElementById("diag_terminal");
+    term.value += string;
+    return;
+}
+
+async function runDiagnostics() {
+    updateDTerm("Starting Diagnostics \n");
+    let buildings = await getBuildingList();
+    let baArr = [];
+    // Build Abbreviation Array
+    for(let i = 0; i < buildings.length; i++) {
+        let ba = await getAbbrev(buildings[i]);
+        baArr.push(ba);
+    }
+    //let procData = await getProcs();
+    // Due to a cap in the LSM API requests,
+    // we have to do this in several parts.
+    updateDTerm("Checking for Local LSM Data\n");
+    if (localStorage.getItem("lsm_data") == null) {
+        updateDTerm("No Local LSM Data Found, Retreiving from LSM API\n");
+        let lsm = {
+            data: {}
+        };
+        // Test Request
+        // let test = await getProcs();
+        // console.log("Test Request:\n",test);
+        // Iterate through buildings and get procs for each
+        for(let i = 0; i < buildings.length; i++) {
+            baArr.push(baArr[i]);
+            updateDTerm(`\nGetting Procs for ${baArr[i]} - ${buildings[i]}`);
+            let tmp = await getProcsByAbbrev(baArr[i]);
+            lsm.data[baArr[i]] = tmp.procs;
+            //console.log(tmp);
+        }
+        updateDTerm("\nLSM Data Retreived\n");
+        console.log("Diagnostic DEBUG: lsm_data: \n",lsm.data);
+        localStorage.setItem("lsm_data", JSON.stringify(lsm.data));
+    } else {
+        updateDTerm("Local LSM Data Found, Using Local Data\n");
+    }
+    // Get Database Information to compare against.
+    //  note that lsm_data has a different structure than campData
+    let lsm = JSON.parse(localStorage.getItem("lsm_data"));
+    let campusData = JSON.parse(localStorage.getItem("campData"));
+    // Iterate through building abbreviations and compare data
+    updateDTerm("Comparing LSM Data to Bronson Campus Data\n");
+    // Iterate through buildings
+    for(let i = 0; i < baArr.length; i++) {
+        let b_ab = baArr[i];
+        let b_name = buildings[i];
+        updateDTerm(`\nBuilding: ${b_ab} - ${b_name}\n---------------\n`);
+        let lsmProcs = formatLSMDevices(lsm[b_ab]);
+        let bronPrcs = await getBuildingDeviceInfo(b_name, "PROC");
+        // Compare Data
+        console.log("Bronson Procs: \n", bronPrcs);
+        console.log("LSM Procs: \n", lsmProcs);
+        if (Object.keys(lsmProcs).length > Object.keys(bronPrcs).length) {
+            updateDTerm(`WARNING: LSM shows more processors than Bronson has recorded.\n`);
+            updateDTerm(`${Object.keys(lsmProcs).length - Object.keys(bronPrcs).length} more processors in LSM.\n`);
+        } else if (Object.keys(lsmProcs).length < Object.keys(bronPrcs).length) {
+            updateDTerm(`WARNING: Bronson shows more processors than LSM has recorded.\n`);
+            updateDTerm(`${Object.keys(bronPrcs).length - Object.keys(lsmProcs).length} more processors in Bronson.\n`);
+        } else {
+            updateDTerm(`OK: LSM and Bronson show the same number of processors.\n`);
+        }
+        for (let j = 0; j < lsmProcs.length; j++) {
+            let counterPart = bronPrcs[lsmProcs[j].RoomName];
+        }
+    }
+    return;
+}
+
+// Process Diagnostics
+// LSM outputs a list of objects and we have a complex
+// nested object for campus and this function will
+// take the device type in question and the building and 
+// output and array of objects that make comparisons easier.
+async function getBuildingDeviceInfo(building, deviceType) {
+    let b_ab = await getAbbrev(building);
+    let campusData = JSON.parse(localStorage.getItem("campData"));
+    let bronRooms = campusData[b_ab].rooms;
+    let output = {
+        data: {}
+    }
+    // check each room in bronRooms and grab Proc Hostnames
+    for(let j = 0; j < bronRooms.length; j++) {
+        let roomNum = bronRooms[j].name.split(" ")[1];
+        //let tmpObj = {};
+        //console.log(`Room: ${roomNum}`);
+        let roomPD = bronRooms[j].ping_data; // Room Ping Data
+        for(let k = 0; k < roomPD.length; k++) { // Iterate through devices in room.
+            //console.log("Iterating through roomPD: \n", roomPD[k]);
+            let ip = roomPD[k].ip; // ip Object
+            //console.log("IP: ", ip);
+            let hnObj = roomPD[k].hostname; // hostname Object
+            if(hnObj.dev_type == deviceType) {
+                for(let l = 0; l < hnObj.num; l++) {
+                    let hostnameString = b_ab + "-" + roomNum + "-" + hnObj.dev_type + (l+1);
+                    output.data[bronRooms[j].name] = {
+                        room: bronRooms[j].name,
+                        hostname: hostnameString,
+                        foundViaJackNet: (ip != "x")
+                    }
+                }
+            }
+        }
+    }
+    return output.data;
+}
+
+function formatLSMDevices(lsm_data) {
+    let output = {
+        data: {}
+    };
+    Object.values(lsm_data).forEach(function(device) {
+            output.data[device["RoomName"]] = {
+                room: device["RoomName"],
+                hostname: device["Host Name"],
+                model: device["Model"],
+            }
+        });
+    return output.data;
 }
