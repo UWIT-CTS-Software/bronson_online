@@ -645,8 +645,34 @@ async function setDiag() {
     adminDiagnostics.innerHTML = `
     <fieldset>
         <legend> Diagnostics: </legend>
-        <textarea id="diag_terminal"></textarea>
-        <button onclick="runDiagnostics()"> Run Diagnostics </button>
+        <div id="diag_space">
+            <ol id="diag_list">
+                <details> 
+                    <summary>Sync LSM Data with Local Storage</summary>
+                    <ol id="lsm_sync_list">
+                        <option onclick="syncLSMData('PROC')" class="diagOption"> Sync LSM Processor Data </option>
+                        <option onclick="syncLSMData('DISP')" class="diagOption"> Sync LSM Display Data </option>
+                        <option onclick="syncLSMData('PJ')" class="diagOption"> Sync LSM Projector Data </option>
+                        <option onclick="syncLSMData('TP')" class="diagOption"> Sync LSM Touch Panel Data </option>
+                    </ol>
+                </details>
+                <li> 
+                    <details> 
+                        <summary> Database Diagnostics </summary>
+                        <ol id="db_diag_list">
+                            <option onclick="runLSMCrosscheck('PROC')" class="diagOption"> Examine Processors </option>
+                            <option onclick="runLSMCrosscheck('DISP')" class="diagOption"> Examine Displays </option>
+                            <option onclick="runLSMCrosscheck('PJ')" class="diagOption"> Examine Projectors </option>
+                            <option onclick="runLSMCrosscheck('TP')" class="diagOption"> Examine Touch Panels </option>
+                        </ol>
+                </li>
+            </ol>
+            <textarea id="diag_terminal" spellcheck="false"></textarea>
+        </div>
+        <menu>
+            <button onclick="runDiagnostics()"> Run Diagnostics </button>
+            <button onclick="document.getElementById('diag_terminal').value = ''"> Clear Terminal </button>
+        </menu>
     </fieldset>`;
     // replace admin_internals
     let admin_internals = document.getElementById('admin_internals');
@@ -654,15 +680,38 @@ async function setDiag() {
     return;
 }
 
-async function getProcs() {
-    return fetch("procDiagTEST")
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("HTTP error " + response.status);
-            }
-            return response.json();
+async function syncLSMData(deviceType) {
+    clearDTerm();
+    updateDTerm(`Syncing LSM Data for ${deviceType}...\n`);
+    let lsm = JSON.parse(localStorage.getItem(`lsm_data_${deviceType}`));
+    if (lsm == null) {
+        updateDTerm(`⚠️ WARNING: No Local LSM Data found for ${deviceType}. Running sync...\n`);
+        let buildings = await getBuildingList();
+        let baArr = [];
+        // Build Abbreviation Array
+        for(let i = 0; i < buildings.length; i++) {
+            let ba = await getAbbrev(buildings[i]);
+            baArr.push(ba);
         }
-    );
+        let lsmData = {
+            data: {},
+            timestamp: new Date().toISOString()
+        };
+        // Iterate through building abbreviations and get data
+        for(let i = 0; i < baArr.length; i++) { // After Testing, remove 
+            let b_name = buildings[i];
+            updateDTerm(`Building: ${baArr[i]} - ${b_name}\n---------------\n`);
+            let devData = await getLSMDataByType(baArr[i], deviceType);
+            lsmData.data[baArr[i]] = devData.data;
+            updateDTerm(`-- ✅ OK: Retrieved ${Object.keys(devData).length} ${deviceType.toLowerCase()} records from LSM for ${baArr[i]} - ${b_name}.\n`);
+            updateDTerm('---------------\n');
+        }
+        localStorage.setItem(`lsm_data_${deviceType}`, JSON.stringify(lsmData));
+    } else {
+        updateDTerm(`-- ✅ OK: Local LSM Data found for ${deviceType}, no sync needed.\n`);
+        updateDTerm(`Last Sync: ${lsm.timestamp}\n`);
+    }
+    return;
 }
 
 async function getProcsByAbbrev(build_ab) {
@@ -674,12 +723,92 @@ async function getProcsByAbbrev(build_ab) {
     .then((json) => {return json;});
 }
 
+async function getLSMDataByType(build_ab, deviceType) {
+    return await fetch('lsmData', {
+        method: "POST",
+        body: [build_ab, deviceType]
+    })
+    .then((response) => response.json())
+    .then((json) => {return json;});
+}
+
+function clearDTerm() {
+    let term = document.getElementById("diag_terminal");
+    term.value = '';
+    return;
+}
+
 function updateDTerm(string) {
     let term = document.getElementById("diag_terminal");
     term.value += string;
     return;
 }
 
+// This is supposed to be a general crosscheck function that can be used for any device type.
+// TODO: implement API endpoints for other device types
+//       Make a new post request function that takes device type as a parameter.
+//       Update LocalStorage Object to include other device types.
+async function runLSMCrosscheck(deviceType) {
+    clearDTerm();
+    updateDTerm(`\n\nRunning LSM Crosscheck for ${deviceType}...\n`);
+    let buildings = await getBuildingList();
+    let baArr = [];
+    // Build Abbreviation Array
+    for(let i = 0; i < buildings.length; i++) {
+        let ba = await getAbbrev(buildings[i]);
+        baArr.push(ba);
+    }
+    let lsm = JSON.parse(localStorage.getItem(`lsm_data_${deviceType}`));
+    if (lsm == null) {
+        updateDTerm(`❌ ERROR: No Local LSM Data found for ${deviceType}. Please sync LSM data before running diagnostics.\n`);
+        return;
+    }
+    //let campusData = JSON.parse(localStorage.getItem("campData"));
+    // Iterate through building abbreviations and compare data
+    updateDTerm("Comparing LSM Data to Bronson Campus Data\n");
+    // Iterate through buildings
+    for(let i = 0; i < baArr.length; i++) {
+        let b_ab = baArr[i];
+        let b_name = buildings[i];
+        updateDTerm(`\nBuilding: ${b_ab} - ${b_name}\n---------------\n`);
+        //console.log("Diagnostic DEBUG: LSM Data for ", b_ab, lsm.data[b_ab]);
+        let lsmDevs = await formatLSMDevices(lsm.data[b_ab], deviceType);
+        let bronDevs = await getBuildingDeviceInfo(b_name, deviceType);
+        // Compare Data
+        console.log("Bronson Devices: \n", bronDevs);
+        console.log("LSM Devices: \n", lsmDevs);
+        if (Object.keys(lsmDevs).length > Object.keys(bronDevs).length) {
+            updateDTerm(`⚠️ WARNING: LSM shows more ${deviceType.toLowerCase()}s than Bronson has recorded.\n`);
+            updateDTerm(`${Object.keys(lsmDevs).length - Object.keys(bronDevs).length} more ${deviceType.toLowerCase()}s in LSM.\n`);
+        } else if (Object.keys(lsmDevs).length < Object.keys(bronDevs).length) {
+            updateDTerm(`⚠️ WARNING: Bronson shows more ${deviceType.toLowerCase()}s than LSM has recorded.\n`);
+            updateDTerm(`${Object.keys(bronDevs).length - Object.keys(lsmDevs).length} more ${deviceType.toLowerCase()}s in Bronson .\n`);
+        } else {
+            updateDTerm(`✅ OK: LSM and Bronson show the same number of ${deviceType.toLowerCase()}s.\n`);
+        }
+        for (let j = 0; j < lsmDevs.length; j++) {
+            let counterPart = bronDevs[lsmDevs[j].RoomName];
+            if(counterPart == undefined) {
+                updateDTerm(`⚠️ WARNING: LSM shows a ${deviceType.toLowerCase()} in room ${lsmDevs[j].RoomName}, but Bronson has no record of a ${deviceType.toLowerCase()} in that room.\n`);
+            } else {
+                // Room exists in both datasets, compare Hostnames
+                if(counterPart.hostname.num < lsmDevs[j].NumDevs) {
+                    updateDTerm(`⚠️ WARNING: LSM shows more ${deviceType.toLowerCase()}s in room ${lsmDevs[j].RoomName} than Bronson has recorded.\n`);
+                    updateDTerm(`${lsmDevs[j].NumDevs - counterPart.hostname.num} more ${deviceType.toLowerCase()}s in LSM.\n`);
+                } else if(counterPart.hostname.num > lsmDevs[j].NumDevs) {
+                    updateDTerm(`⚠️ WARNING: Bronson shows more ${deviceType.toLowerCase()}s in room ${lsmDevs[j].RoomName} than LSM has recorded.\n`);
+                    updateDTerm(`${counterPart.hostname.num - lsmDevs[j].NumDevs} more ${deviceType.toLowerCase()}s in Bronson.\n`);
+                } else {
+                    updateDTerm(`✅ OK: LSM and Bronson show the same number of ${deviceType.toLowerCase()}s in room ${lsmDevs[j].RoomName}.\n`);
+                }
+            }
+        }
+    }
+    return;
+}
+
+// This is tied to the run button, but it will be replaced
+// with more specific functions as they are built out.
 async function runDiagnostics() {
     updateDTerm("Starting Diagnostics \n");
     let buildings = await getBuildingList();
@@ -729,16 +858,14 @@ async function runDiagnostics() {
         let lsmProcs = formatLSMDevices(lsm[b_ab]);
         let bronPrcs = await getBuildingDeviceInfo(b_name, "PROC");
         // Compare Data
-        console.log("Bronson Procs: \n", bronPrcs);
-        console.log("LSM Procs: \n", lsmProcs);
         if (Object.keys(lsmProcs).length > Object.keys(bronPrcs).length) {
-            updateDTerm(`WARNING: LSM shows more processors than Bronson has recorded.\n`);
+            updateDTerm(`⚠️ WARNING: LSM shows more processors than Bronson has recorded.\n`);
             updateDTerm(`${Object.keys(lsmProcs).length - Object.keys(bronPrcs).length} more processors in LSM.\n`);
         } else if (Object.keys(lsmProcs).length < Object.keys(bronPrcs).length) {
-            updateDTerm(`WARNING: Bronson shows more processors than LSM has recorded.\n`);
+            updateDTerm(`⚠️ WARNING: Bronson shows more processors than LSM has recorded.\n`);
             updateDTerm(`${Object.keys(bronPrcs).length - Object.keys(lsmProcs).length} more processors in Bronson.\n`);
         } else {
-            updateDTerm(`OK: LSM and Bronson show the same number of processors.\n`);
+            updateDTerm(`✅ OK: LSM and Bronson show the same number of processors.\n`);
         }
         for (let j = 0; j < lsmProcs.length; j++) {
             let counterPart = bronPrcs[lsmProcs[j].RoomName];
@@ -789,6 +916,10 @@ function formatLSMDevices(lsm_data) {
     let output = {
         data: {}
     };
+    if(Object.keys(lsm_data).length == 0) {
+        return output.data;
+    }
+    // lsm_data is an array of objects
     Object.values(lsm_data).forEach(function(device) {
             output.data[device["RoomName"]] = {
                 room: device["RoomName"],

@@ -1315,8 +1315,31 @@ ol li::marker {
     background-color:red;
 }
 
+.diagOption:hover {
+    background-color: #8c8a91;
+}
+
+#diag_space {
+    display: flex;
+
+}
+
+#diag_list {
+    height: 700px;
+    overflow-y: scroll;
+    border: 2px inset rgb(144, 118, 26);
+    margin-right: 5px;
+    padding: 0px 0px 0px 0px;
+    margin: 16px 2px 16px 2px;
+    width: 30%;
+}
+
 #diag_terminal {
-    height: 300px;
+    height: 700px;
+    border-radius: 0px;
+    width: 69%;
+    padding: 0px 0px 0px 0px;
+    margin: 16px 2px 16px 2px;
 }
 
 @media (max-width: 1000px) {
