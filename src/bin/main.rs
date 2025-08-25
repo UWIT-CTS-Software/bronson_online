@@ -463,7 +463,67 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "POST /procDiag HTTP/1.1"             => { // Admin Tools Diagnostics
+        "POST /lsmData HTTP/1.1"              => {
+            let body_str = String::from_utf8(req.body).expect("AT: LSM Data Err, invalid UTF-8");
+            let body_parts: Vec<&str> = body_str.split(',').collect();
+            if body_parts.len() != 2 {
+                res.status(STATUS_500);
+                res.send_contents("Invalid request body.".into());
+                return Some(res);
+            }
+            let building_sel:String = body_parts[0].to_string();
+            let device_type = body_parts[1];
+            let lsm_building = database.get_building_by_abbrev(&building_sel);
+            debug!("AT: LSM Data Debug - Grabbing LSM Data for Diagnostics:\n{:?}", &lsm_building.lsm_name.as_str());
+            let api_endpoint = match device_type {
+                "PROC" => "BuildingProcs",
+                "DISP" => "BuildingDisplays",
+                "PJ" => "BuildingProjectors",
+                "TP"   => "BuildingTouchPanels",
+                _    => {
+                    res.status(STATUS_500);
+                    res.send_contents("Invalid device type.".into());
+                    return Some(res);
+                }
+            };
+            debug!("Diagnostic API Endpoint: {}", api_endpoint);
+            let url_devs = format!(
+                r"https://uwyo.talem3.com/lsm/api/{}?offset=0&p=%7BParentName%3A%22{}%22%7D", 
+                &api_endpoint,
+                &lsm_building.lsm_name.as_str()
+            );
+            // Build and Send Request
+            let req = reqwest::Client::builder()
+                .cookie_store(true)
+                .user_agent("server_lib/1.10.1")
+                .default_headers(construct_headers("lsm", &mut database))
+                .timeout(Duration::from_secs(15))
+                .build()
+                .ok()?
+            ;
+
+            let devs = req.get(url_devs)
+                              .timeout(Duration::from_secs(15))
+                              .send()
+                              .await
+                              .expect("[-] RESPONSE ERROR")
+                              .text()
+                              .await
+                              .expect("[-] PAYLOAD ERROR");
+
+            let v_devs: Value = serde_json::from_str(&devs).expect("Empty");
+            let data_devs: Vec<Value> = match v_devs["data"].as_array() {
+                Some(data) => data.clone(),
+                None => Vec::<Value>::new()
+            };
+            // Pack into JSON response to front-end
+            let contents = json!({
+                 "data": data_devs
+            }).to_string().into();
+            res.status(STATUS_200);
+            res.send_contents(contents);
+        },
+        "POST /procDiag HTTP/1.1"             => { // Admin Tools Diagnostics: TEST Proof of Concept Function
             // TODO: Check User Permissions
             // Get building abbrev
             let building_sel = String::from_utf8(req.body).expect("AT: Diagnostics Err, invalid UTF-8");
