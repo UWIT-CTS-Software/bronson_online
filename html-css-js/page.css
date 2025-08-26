@@ -1332,6 +1332,7 @@ ol li::marker {
     padding: 0px 0px 0px 0px;
     margin: 16px 2px 16px 2px;
     width: 30%;
+    color: white;
 }
 
 #diag_terminal {
