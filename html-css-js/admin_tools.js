@@ -654,12 +654,15 @@ async function setDiag() {
                         <option onclick="syncLSMData('DISP')" class="diagOption"> Sync LSM Display Data </option>
                         <option onclick="syncLSMData('PJ')" class="diagOption"> Sync LSM Projector Data </option>
                         <option onclick="syncLSMData('TP')" class="diagOption"> Sync LSM Touch Panel Data </option>
+                        <option onclick="removeLSMData()" class="diagOption"> Clear Local LSM Data </option>
                     </ol>
                 </details>
                 <li> 
                     <details> 
                         <summary> Database Diagnostics </summary>
                         <ol id="db_diag_list">
+                            <option onclick="showDataDiagInfo()" class="diagOption"> Information </option>
+                            <option onclick="showDatabaseInfo()" class="diagOption"> Show Database Info </option>
                             <option onclick="runLSMCrosscheck('PROC')" class="diagOption"> Examine Processors </option>
                             <option onclick="runLSMCrosscheck('DISP')" class="diagOption"> Examine Displays </option>
                             <option onclick="runLSMCrosscheck('PJ')" class="diagOption"> Examine Projectors </option>
@@ -670,8 +673,7 @@ async function setDiag() {
             <textarea id="diag_terminal" spellcheck="false"></textarea>
         </div>
         <menu>
-            <button onclick="runDiagnostics()"> Run Diagnostics </button>
-            <button onclick="document.getElementById('diag_terminal').value = ''"> Clear Terminal </button>
+            <button onclick="clearDTerm()"> Clear Terminal </button>
         </menu>
     </fieldset>`;
     // replace admin_internals
@@ -774,103 +776,160 @@ async function runLSMCrosscheck(deviceType) {
         //console.log("Diagnostic DEBUG: LSM Data for ", b_ab, lsm.data[b_ab]);
         let lsmDevs = await formatLSMDevices(lsm.data[b_ab], deviceType);
         let bronDevs = await getBuildingDeviceInfo(b_name, deviceType);
+        let bronsonBigger = false;
         // Compare Data
+        console.log("Admin Diagnostic DEBUG: Comparing LSM and Bronson Data for", b_ab, b_name);
         console.log("Bronson Devices: \n", bronDevs);
         console.log("LSM Devices: \n", lsmDevs);
         if (Object.keys(lsmDevs).length > Object.keys(bronDevs).length) {
-            updateDTerm(`⚠️ WARNING: LSM shows more ${deviceType.toLowerCase()}s than Bronson has recorded.\n`);
-            updateDTerm(`${Object.keys(lsmDevs).length - Object.keys(bronDevs).length} more ${deviceType.toLowerCase()}s in LSM.\n`);
+            let diff = Object.keys(lsmDevs).length - Object.keys(bronDevs).length;
+            updateDTerm(`⚠️ WARNING: LSM shows ${diff} more ${deviceType.toLowerCase()}s than Bronson has recorded.\n`);
+            //updateDTerm(`${Object.keys(lsmDevs).length - Object.keys(bronDevs).length} more ${deviceType.toLowerCase()}s in LSM.\n`);
         } else if (Object.keys(lsmDevs).length < Object.keys(bronDevs).length) {
-            updateDTerm(`⚠️ WARNING: Bronson shows more ${deviceType.toLowerCase()}s than LSM has recorded.\n`);
-            updateDTerm(`${Object.keys(bronDevs).length - Object.keys(lsmDevs).length} more ${deviceType.toLowerCase()}s in Bronson .\n`);
+            let diff = Object.keys(bronDevs).length - Object.keys(lsmDevs).length;
+            bronsonBigger = true;
+            updateDTerm(`⚠️ WARNING: Bronson shows ${diff} more ${deviceType.toLowerCase()}s than LSM has recorded.\n`);
+            //updateDTerm(`${Object.keys(bronDevs).length - Object.keys(lsmDevs).length} more ${deviceType.toLowerCase()}s in Bronson .\n`);
         } else {
             updateDTerm(`✅ OK: LSM and Bronson show the same number of ${deviceType.toLowerCase()}s.\n`);
         }
-        for (let j = 0; j < lsmDevs.length; j++) {
-            let counterPart = bronDevs[lsmDevs[j].RoomName];
-            if(counterPart == undefined) {
-                updateDTerm(`⚠️ WARNING: LSM shows a ${deviceType.toLowerCase()} in room ${lsmDevs[j].RoomName}, but Bronson has no record of a ${deviceType.toLowerCase()} in that room.\n`);
-            } else {
-                // Room exists in both datasets, compare Hostnames
-                if(counterPart.hostname.num < lsmDevs[j].NumDevs) {
-                    updateDTerm(`⚠️ WARNING: LSM shows more ${deviceType.toLowerCase()}s in room ${lsmDevs[j].RoomName} than Bronson has recorded.\n`);
-                    updateDTerm(`${lsmDevs[j].NumDevs - counterPart.hostname.num} more ${deviceType.toLowerCase()}s in LSM.\n`);
-                } else if(counterPart.hostname.num > lsmDevs[j].NumDevs) {
-                    updateDTerm(`⚠️ WARNING: Bronson shows more ${deviceType.toLowerCase()}s in room ${lsmDevs[j].RoomName} than LSM has recorded.\n`);
-                    updateDTerm(`${counterPart.hostname.num - lsmDevs[j].NumDevs} more ${deviceType.toLowerCase()}s in Bronson.\n`);
-                } else {
-                    updateDTerm(`✅ OK: LSM and Bronson show the same number of ${deviceType.toLowerCase()}s in room ${lsmDevs[j].RoomName}.\n`);
-                }
-            }
-        }
+        // TODO: Find the difference and report on it
+        let dif = findDiff(lsmDevs, bronDevs, "Bronson");
+        dif.concat(findDiff(bronDevs, lsmDevs, "LSM"));
+        // Print a summary of the comparison
     }
     return;
 }
 
-// This is tied to the run button, but it will be replaced
-// with more specific functions as they are built out.
-async function runDiagnostics() {
-    updateDTerm("Starting Diagnostics \n");
-    let buildings = await getBuildingList();
-    let baArr = [];
-    // Build Abbreviation Array
-    for(let i = 0; i < buildings.length; i++) {
-        let ba = await getAbbrev(buildings[i]);
-        baArr.push(ba);
-    }
-    //let procData = await getProcs();
-    // Due to a cap in the LSM API requests,
-    // we have to do this in several parts.
-    updateDTerm("Checking for Local LSM Data\n");
-    if (localStorage.getItem("lsm_data") == null) {
-        updateDTerm("No Local LSM Data Found, Retreiving from LSM API\n");
-        let lsm = {
-            data: {}
-        };
-        // Test Request
-        // let test = await getProcs();
-        // console.log("Test Request:\n",test);
-        // Iterate through buildings and get procs for each
-        for(let i = 0; i < buildings.length; i++) {
-            baArr.push(baArr[i]);
-            updateDTerm(`\nGetting Procs for ${baArr[i]} - ${buildings[i]}`);
-            let tmp = await getProcsByAbbrev(baArr[i]);
-            lsm.data[baArr[i]] = tmp.procs;
-            //console.log(tmp);
+// takes in bronsonData and lsmData for a given building and device type
+// and returns an array of objects of differences.
+function findDiff(bigArr, smlArr, name) {
+    let tmp = [];
+    let bool = (name == "LSM");
+    for (i in bigArr) {
+        if (!(i in smlArr)) {
+            console.log("Difference found: ", bigArr[i]);
+            tmp.push(bigArr[i]);
+            updateDTerm(`-- ❌ MISSING: ${bigArr[i].room} (${bigArr[i].hostname}) in ${name} data.\n`);
+            if (bool) {
+                if(bigArr[i].foundViaJackNet) {
+                    updateDTerm(`---- ✅ OK: This device was recently FOUND via JackNet, it may need to be added to LSM\n`);
+                } else {
+                    updateDTerm(`---- ⚠️ WARNING: This device was NOT recently found via JackNet, it is likely that it needs to be removed from Bronson\n`);
+                }
+            }
         }
-        updateDTerm("\nLSM Data Retreived\n");
-        console.log("Diagnostic DEBUG: lsm_data: \n",lsm.data);
-        localStorage.setItem("lsm_data", JSON.stringify(lsm.data));
-    } else {
-        updateDTerm("Local LSM Data Found, Using Local Data\n");
     }
-    // Get Database Information to compare against.
-    //  note that lsm_data has a different structure than campData
-    let lsm = JSON.parse(localStorage.getItem("lsm_data"));
+    return tmp;
+}
+
+function showDataDiagInfo() {
+    clearDTerm();
+    updateDTerm("Diagnostics Information: \n");
+    updateDTerm("This page is intended to help identify discrepencies between the data we have\n");
+    updateDTerm("in Bronson's campus.csv and the data we can pull from LSM's API.\n");
+    updateDTerm("The goal is to ensure that our data is as accurate as possible and to\n");
+    updateDTerm("help identify rooms that may have been changed without our knowledge.\n");
+    updateDTerm("Please run the sync functions before running any diagnostics.\n\n");
+    updateDTerm("Note, if a device is missing from LSM, there is a chance it may need to be\n")
+    updateDTerm("removed from our database rather than added to LSM's, or vice versa. Please verify\n");
+    updateDTerm("any changes before making them.\n\n");
+    updateDTerm("Also note, we have special rooms such as auditoriums that have AUD in the room\n");
+    updateDTerm("name rather than a standard room number. These rooms may output a false positive.\n");
+    return;
+}
+
+function showDatabaseInfo() {
+    clearDTerm();
+    updateDTerm("Database Information: \n");
     let campusData = JSON.parse(localStorage.getItem("campData"));
-    // Iterate through building abbreviations and compare data
-    updateDTerm("Comparing LSM Data to Bronson Campus Data\n");
-    // Iterate through buildings
-    for(let i = 0; i < baArr.length; i++) {
-        let b_ab = baArr[i];
-        let b_name = buildings[i];
-        updateDTerm(`\nBuilding: ${b_ab} - ${b_name}\n---------------\n`);
-        let lsmProcs = formatLSMDevices(lsm[b_ab]);
-        let bronPrcs = await getBuildingDeviceInfo(b_name, "PROC");
-        // Compare Data
-        if (Object.keys(lsmProcs).length > Object.keys(bronPrcs).length) {
-            updateDTerm(`⚠️ WARNING: LSM shows more processors than Bronson has recorded.\n`);
-            updateDTerm(`${Object.keys(lsmProcs).length - Object.keys(bronPrcs).length} more processors in LSM.\n`);
-        } else if (Object.keys(lsmProcs).length < Object.keys(bronPrcs).length) {
-            updateDTerm(`⚠️ WARNING: Bronson shows more processors than LSM has recorded.\n`);
-            updateDTerm(`${Object.keys(bronPrcs).length - Object.keys(lsmProcs).length} more processors in Bronson.\n`);
-        } else {
-            updateDTerm(`✅ OK: LSM and Bronson show the same number of processors.\n`);
-        }
-        for (let j = 0; j < lsmProcs.length; j++) {
-            let counterPart = bronPrcs[lsmProcs[j].RoomName];
-        }
+    if (campusData == null) {
+        updateDTerm("⚠️ WARNING: No Campus Data found in local storage.\n");
+        return;
     }
+    // check for LSM Data
+    let lsm1 = JSON.parse(localStorage.getItem("lsm_data_PROC"));
+    let lsm2 = JSON.parse(localStorage.getItem("lsm_data_DISP"));
+    let lsm3 = JSON.parse(localStorage.getItem("lsm_data_PJ"));
+    let lsm4 = JSON.parse(localStorage.getItem("lsm_data_TP"));
+    // Check for each device type w/ helper function
+    //  - bool stays true if all data is present.
+    let bool = checkingLSMData(lsm1, "Processors");
+    bool = bool & checkingLSMData(lsm2, "Displays");
+    bool = bool & checkingLSMData(lsm3, "Projectors");
+    bool = bool & checkingLSMData(lsm4, "Touch Panels");
+    updateDTerm("\nCampus Data Info:\n");
+    // Iterate through data
+    let buildings = Object.keys(campusData);
+    updateDTerm(`We have data for ${buildings.length} buildings:\n`);
+    buildings.forEach(function(building) {
+        let rooms = campusData[building].rooms;
+        updateDTerm(`-- ${building}: ${rooms.length} rooms\n`);
+        rooms.forEach(function(room) {
+            let roomName = room.name;
+            let pingData = room.ping_data;
+            let procCount = 0;
+            let dispCount = 0;
+            let pjCount = 0;
+            let tpCount = 0;
+            pingData.forEach(function(device) {
+                let hnObj = device.hostname; // hostname Object
+                if(hnObj.dev_type == "PROC") {
+                    procCount += hnObj.num;
+                } else if(hnObj.dev_type == "DISP") {
+                    dispCount += hnObj.num;
+                } else if(hnObj.dev_type == "PJ") {
+                    pjCount += hnObj.num;
+                } else if(hnObj.dev_type == "TP") {
+                    tpCount += hnObj.num;
+                }
+            });
+            updateDTerm(`---- ${roomName}: ${procCount} processors, ${dispCount} displays, ${pjCount} projectors, ${tpCount} touch panels\n`);
+        });
+    });
+    // Final check
+    if (bool) {
+        updateDTerm("\n✅ OK: All Local LSM Data found. You may run diagnostics.\n");
+    } else {
+        updateDTerm("\n❌ ERROR: Missing Local LSM Data. Please sync LSM data before running diagnostics.\n");
+        return;
+    }
+    // Output Data on LSM Data
+    updateDTerm("\nLocal LSM Data Info:\n");
+    let lsmBuildings = Object.keys(lsm1.data);
+    updateDTerm(`We have LSM data for ${lsmBuildings.length} buildings:\n`);
+    lsmBuildings.forEach(function(building) {
+        let devicesPrcs = lsm1.data[building];
+        let devicesDisps = lsm2.data[building];
+        let devicesPjs = lsm3.data[building];
+        let devicesTps = lsm4.data[building];
+        let procCount = Object.keys(devicesPrcs).length;
+        let dispCount = Object.keys(devicesDisps).length;
+        let pjCount = Object.keys(devicesPjs).length;
+        let tpCount = Object.keys(devicesTps).length;
+        updateDTerm(`-- ${building}: ${procCount} processors, ${dispCount} displays, ${pjCount} projectors, ${tpCount} touch panels\n`);
+    });
+    return;
+}
+
+function checkingLSMData(lsmObj, type) {
+    if (lsmObj == null) {
+        updateDTerm("⚠️ WARNING: No Local LSM Data found. Please sync LSM data before running diagnostics.\n");
+        return false;
+    } else {
+        updateDTerm(`-- ✅ OK: Local LSM Data for ${type} found.\n`);
+        updateDTerm(`Last Sync: ${lsmObj.timestamp}\n`);
+        return true;
+    }
+}
+
+function removeLSMData() {
+    clearDTerm();
+    localStorage.removeItem("lsm_data_PROC");
+    localStorage.removeItem("lsm_data_DISP");
+    localStorage.removeItem("lsm_data_PJ");
+    localStorage.removeItem("lsm_data_TP");
+    updateDTerm("✅ OK: Local LSM Data removed.\n");
     return;
 }
 
@@ -889,13 +948,9 @@ async function getBuildingDeviceInfo(building, deviceType) {
     // check each room in bronRooms and grab Proc Hostnames
     for(let j = 0; j < bronRooms.length; j++) {
         let roomNum = bronRooms[j].name.split(" ")[1];
-        //let tmpObj = {};
-        //console.log(`Room: ${roomNum}`);
         let roomPD = bronRooms[j].ping_data; // Room Ping Data
         for(let k = 0; k < roomPD.length; k++) { // Iterate through devices in room.
-            //console.log("Iterating through roomPD: \n", roomPD[k]);
             let ip = roomPD[k].ip; // ip Object
-            //console.log("IP: ", ip);
             let hnObj = roomPD[k].hostname; // hostname Object
             if(hnObj.dev_type == deviceType) {
                 for(let l = 0; l < hnObj.num; l++) {
