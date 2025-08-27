@@ -32,7 +32,7 @@ First, update your package index and install the prerequisite packages. <br>
 `sudo pacman -Syu` <br> 
 `sudo pacman -S gnupg wget`
 
-### Fetch PostgreSQL repository
+### Fetch PostgreSQL repository (Debian)
 After the necessary packages are installed, the PostgreSQL repository can be fetched. <br>
 `sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs).pgdg main" > /etc/apt/sources.list.d/pgdg.list'`
 
@@ -56,7 +56,7 @@ Configure the PostgreSQL server. (Any text editor will work) <br>
 `sudo nano /etc/postgresql/16/main/postgresql.conf` (Debian) <br>
 `sudo nano /var/lib/postgres/data/postgresql.conf` (Arch)
 
-Set listen_adresses to allow remote connectivity. <br>
+Uncomment and set listen_adresses to allow remote connectivity. <br>
 `listen_addresses = '*'` <br>
 Save and exit.
 
@@ -67,9 +67,9 @@ Configure PostgreSQL to use MD5 password authentication in the pg_hba.conf file.
 `echo "host all all 0.0.0.0/0 md5" | sudo tee -a /etc/postgresql/16/main/pg_hba.conf` <br>
 
 **Arch**<br>
-`sudo sed -i '/^host/s/ident/md5' /var/lib/postgresql/data/pg_hba.conf` <br>
-`sudo sed -i '/^local/s/peer/trust' /var/lib/postgresql/data/pg_hba.conf` <br>
-`echo "host all all 0.0.0.0/0 md5" | sudo tee -a /var/lib/postgresql/data/pg_hba.conf` <br>
+`sudo sed -i '/^host/s/ident/md5' /var/lib/postgres/data/pg_hba.conf` <br>
+`sudo sed -i '/^local/s/peer/trust' /var/lib/postgres/data/pg_hba.conf` <br>
+`echo "host all all 0.0.0.0/0 md5" | sudo tee -a /var/lib/postgres/data/pg_hba.conf` <br>
 
 Restart the PostgreSQL server to adopt these changes. <br>
 `sudo systemctl restart postgresql`
