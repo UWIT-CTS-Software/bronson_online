@@ -39,6 +39,8 @@ After the necessary packages are installed, the PostgreSQL repository can be fet
 Now that apt knows about the repository, the signing key is necessary for an authorized transaction. <br>
 `curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg`
 
+### Install PostgreSQL from Package Manager
+
 Update the package list. <br> 
 `sudo apt update` (Debian) <br>
 `sudo pacman -Syu` (Arch)
