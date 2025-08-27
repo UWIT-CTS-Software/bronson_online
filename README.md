@@ -54,7 +54,7 @@ Start and enable the PostgreSQL service. <br>
 
 Configure the PostgreSQL server. (Any text editor will work) <br>
 `sudo nano /etc/postgresql/16/main/postgresql.conf` (Debian) <br>
-`sudo nano /var/lib/postgresql/data/postqresql.conf` (Arch)
+`sudo nano /var/lib/postgres/data/postqresql.conf` (Arch)
 
 Set listen_adresses to allow remote connectivity. <br>
 `listen_addresses = '*'` <br>
