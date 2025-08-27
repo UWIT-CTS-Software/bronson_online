@@ -1343,6 +1343,39 @@ ol li::marker {
     margin: 16px 2px 16px 2px;
 }
 
+/* Database Editor Tab */
+.dbRoomInput {
+    width: 40px;
+}
+
+.dbRoomInputName {
+    width: 100px;
+    color: rgb(144, 118, 26);
+    background-color: rgb(50, 50, 50);
+    border: 1px solid rgb(144, 118, 26);
+}
+
+.dbBuildingTable {
+    color: rgb(133, 118, 60);
+    border: 1px inset rgb(216, 192, 104);
+    font-family: 'Courier New', Courier, monospace;
+    font-size: small;
+    width: 100%;
+    text-align: center;
+}
+
+.rmvButton {
+    background-color: rgb(196, 112, 112);
+}
+
+.dbRowChanged {
+    background-color: rgb(114, 104, 60);
+}
+
+.dbRowToBeRemoved {
+    background-color: rgb(167, 74, 74);
+}
+
 @media (max-width: 1000px) {
     #admin_internals {
         width: 900px;
@@ -1698,7 +1731,7 @@ ol li::marker {
 
 /* Other */
 
-input[type=text], input[type=password] {
+.inputText, input[type=password] {
     width: 100%;
     padding: 12px 20px;
     margin: 8px 0;

@@ -93,6 +93,10 @@ async function setAdminTools() {
     <button id="at_diag" onclick="setDiag()" type="button" class="atTab">
         <img class="at_tab_img" src="button2.png"/>
         <span> Diagnostics </span>
+    </button>
+    <button id="at_dbedit" onclick="setDBEditor()" type="button" class="atTab">
+        <img class="at_tab_img" src="button2.png"/>
+        <span> Database Editor </span>
     </button>`;
     // init admin tool guts
     let admin_internals = document.createElement("div");
@@ -983,4 +987,273 @@ function formatLSMDevices(lsm_data) {
             }
         });
     return output.data;
+}
+
+// Database Update Page
+// This is intended to be an interface that allows users to update the
+// inventory database without needing direct access to the database itself.
+function setDBEditor() {
+    // remove currently active status, mark tab has active.
+    let current = document.getElementsByClassName("at_selected");
+    if (current.length != 0) {
+        current[0].classList.remove("at_selected");
+    }
+    let newCurrent = document.getElementById("at_dbedit");
+    newCurrent.classList.add("at_selected");
+    // Get Data to populate page with
+    let campData = JSON.parse(localStorage.getItem("campData"));
+    if (campData == null) {
+        console.error("No Campus Data found in local storage.");
+        return;
+    }
+
+    let db_editor = document.createElement("div");
+    db_editor.setAttribute("id", "admin_internals");
+    db_editor.classList.add('at_dbedit'); //dashboard message editor, acronym
+    db_editor.innerHTML = `<fieldset>
+        <legend> Datbase Editor </legend>
+        <p> Use this interface to update Bronson's database, specifically the inventory side.
+        This page manages the data that JackNet uses to know what and where to look for. Be 
+        careful when making changes here, as it can and will break things if mistakes are made.
+        While updating things below, the changelog will keep track of what changes have been made.
+        The changes will not be applied to the database until you hit "Save Changes to Database."
+        <br>
+        <br>
+        TODO's:
+        This page needs the backend infrastructure that actually updates the PostgreSQL database, 
+        along with updating the campus.csv file. (Maybe make sure the database is updating 
+        correctly before tackling the cmapus.csv file also)</p>
+        <fieldset>
+            <legend> Changelog: </legend>
+            <textarea id="db_changlog" spellcheck="false" rows="8" cols="50" readonly></textarea>
+        </fieldset>
+        <menu>
+            <button onclick="updateDatabaseFromEditor()"> Save Changes to Database </button>
+            <button onclick="setDBEditor()"> Refresh Editor </button>
+        </menu>
+        </fieldset>`;
+    //let tmp = ``;
+    Object.keys(campData).forEach(function(building) {
+        let tmp = ``;
+        let rooms = campData[building].rooms;
+        let buildingName = campData[building].name;
+        tmp += `
+        <fieldset class="dbBuildingFieldset">
+            <legend> Building: ${buildingName} - ${building} </legend>
+            <table class="dbBuildingTable">
+                <thead>
+                    <tr>
+                        <th scope="col">Room</th>
+                        <th scope="col">Processors</th>
+                        <th scope="col">Projectors</th>
+                        <th scope="col">Displays</th>
+                        <th scope="col">Touch Panels</th>
+                        <th scope="col">WyoShares</th>
+                        <th scope="col">Celing Mics</th>
+                        <th scope="col">General Pool</th>
+                    </tr>
+                </thead>
+                <tbody id="${building}-tbody">`;
+        rooms.forEach(function(room) {
+            let roomName = room.name;
+            let pingData = room.ping_data;
+            let procCount = 0;
+            let dispCount = 0;
+            let pjCount = 0;
+            let tpCount = 0;
+            let wsCount = 0;
+            let micCount = 0;
+            let gpBool = room.gp;
+            pingData.forEach(function(device) {
+                let hnObj = device.hostname; // hostname Object
+                if(hnObj.dev_type == "PROC") {
+                    procCount += hnObj.num;
+                } else if(hnObj.dev_type == "DISP") {
+                    dispCount += hnObj.num;
+                } else if(hnObj.dev_type == "PJ") {
+                    pjCount += hnObj.num;
+                } else if(hnObj.dev_type == "TP") {
+                    tpCount += hnObj.num;
+                } else if(hnObj.dev_type == "WS") {
+                    wsCount += hnObj.num;
+                } else if(hnObj.dev_type == "CMIC") {
+                    micCount += hnObj.num;
+                }
+            });
+            tmp += `
+                <tr id="${roomName}-row" oninput="updateRow('${roomName}-row')">
+                    <th scope="row" class="dbRoomName"><input type="text" class="dbRoomInputName" id="${roomName}-text" value="${roomName}"></th>
+                    <td><input type="number" class="dbRoomInput" id="${roomName}-PROC" value="${procCount}" min="0"></td>
+                    <td><input type="number" class="dbRoomInput" id="${roomName}-PJ" value="${pjCount}" min="0"></td>
+                    <td><input type="number" class="dbRoomInput" id="${roomName}-DISP" value="${dispCount}" min="0"></td>
+                    <td><input type="number" class="dbRoomInput" id="${roomName}-TP" value="${tpCount}" min="0"></td>
+                    <td><input type="number" class="dbRoomInput" id="${roomName}-WS" value="${wsCount}" min="0"></td>
+                    <td><input type="number" class="dbRoomInput" id="${roomName}-CMIC" value="${micCount}" min="0"></td>
+                    <td><input type="checkbox" class="dbRoomCheckbox" id="${roomName}-GP" ${gpBool ? 'checked' : ''}></td>
+                    <td><button class="rmvButton" onclick="removeRoomFromBuilding('${roomName}-row')"> Remove </button></td>
+                </tr>`;
+        });
+        tmp += `
+                </tbody>
+            </table>
+            <menu>
+                <button onclick="addRoomToBuilding('${building}-tbody')"> Add Room </button>
+            </menu>
+        </fieldset>`;
+        db_editor.innerHTML += tmp;
+    });
+    // replace admin_internals
+    let admin_internals = document.getElementById('admin_internals');
+    admin_internals.replaceWith(db_editor);
+    return;
+}
+
+//TODO
+// Post the changes made in the editor to the database
+function updateDatabaseFromEditor() {
+    let changelog = document.getElementById("db_changlog");
+    let log = changelog.value.split("\n");
+    // TODO: the post body will have the log contents.
+
+    // TODO: remove all instances of .dbRowChanged, .dbRowToBeRemoved
+    //     and .dbRowToBeAdded.
+
+    // TODO: clear the changelog textarea.
+    return;
+}
+
+function addRoomToBuilding(buildingTableID) {
+    let tableElement = document.getElementById(buildingTableID);
+    // TODO: Generate unique room name
+    //   Idea, update the menu to have a text input for room name
+    //   and grab that value there. Include another button to move forward.
+    let roomName = "NewRoom"; // CHANGE ME ^^^ 
+    // TODO: Add new row to given building with class = dbRowToBeAdded.
+    let tmp = `
+    <tr id="${roomName}-row" class="dbRowToBeAdded" oninput="updateRow('${roomName}-row')">
+        <th scope="row" class="dbRoomName"><input type="text" class="dbRoomInputName" id="${roomName}-text" value="${roomName}"></th>
+        <td><input type="number" class="dbRoomInput" id="${roomName}-PROC" value="0" min="0"></td>
+        <td><input type="number" class="dbRoomInput" id="${roomName}-PJ" value="0" min="0"></td>
+        <td><input type="number" class="dbRoomInput" id="${roomName}-DISP" value="0" min="0"></td>
+        <td><input type="number" class="dbRoomInput" id="${roomName}-TP" value="0" min="0"></td>
+        <td><input type="number" class="dbRoomInput" id="${roomName}-WS" value="0" min="0"></td>
+        <td><input type="number" class="dbRoomInput" id="${roomName}-CMIC" value="0" min="0"></td>
+        <td><input type="checkbox" class="dbRoomCheckbox" id="${roomName}-GP"></td>
+        <td><button class="rmvButton" onclick="removeRoomFromBuilding('${roomName}-row')"> Remove </button></td>
+    </tr>`
+    // Add new Row to Table
+    tableElement.innerHTML += tmp;
+    // TODO: Update ChangeLog
+
+    return;
+}
+
+function removeRoomFromBuilding(rowID) {
+    let rowElement = document.getElementById(rowID);
+    rowElement.classList.add("dbRowToBeRemoved");
+    let tmp = ``;
+    // TODO: Update ChangeLog
+    //    - If removeing a row w/ .dbRowToBeAdded class, remove that row from the changelog.
+    //    - and the row from the table.
+    return;
+}
+
+function updateRow(rowElementID) {
+    let rowElement = document.getElementById(rowElementID);
+    rowElement.classList.add("dbRowChanged");
+    // Go through each input in row and grab values
+    let inputs = rowElement.getElementsByTagName("input");
+    let defaultBool = true;
+    let originalValues = {};
+    let newValues = {};
+    for(let i = 0; i < inputs.length; i++) {
+        let id = inputs[i].getAttribute("id");
+        if (inputs[i].type == "checkbox") {
+            originalValues[id] = inputs[i].defaultChecked;
+            newValues[id] = inputs[i].checked;
+            if (inputs[i].defaultChecked != inputs[i].checked) {
+                defaultBool = false;
+            }
+        } else if (inputs[i].type == "number") {
+            originalValues[id] = parseInt(inputs[i].defaultValue);
+            newValues[id] = parseInt(inputs[i].value);
+            if (inputs[i].defaultValue != inputs[i].value) {
+                defaultBool = false;
+            }
+        } else if (inputs[i].type == "text") {
+            originalValues[id] = inputs[i].defaultValue;
+            newValues[id] = inputs[i].value;
+            if (inputs[i].defaultValue != inputs[i].value) {
+                defaultBool = false;
+            }
+        }
+    }
+    // If value is different from original, add to changelog
+    updateChangelog(rowElement, newValues);
+    // IF ALL values are the same as original, remove dbRowChanged class
+    if (defaultBool) {
+        rowElement.classList.remove("dbRowChanged");
+    }
+    return;
+}
+
+// When elements on the page are changed, this function will place that
+// change in the changelog textarea for review before posting to the database.
+// if a change is reverted, that specific change will be removed from the changelog.
+// 
+// IE:
+//   AB 101 - PROC changed from 1 to 2
+//   AB 101 - PJ changed from 0 to 1
+//   AB 101 - PROC changed from 2 to 1  <- this will remove the first change from the log
+function updateChangelog(roomElement, newValues) {
+    let changelog = document.getElementById("db_changlog");
+    let log = changelog.value.split("\n");
+    console.log("log: ", log);
+    let room = roomElement.id.split("-row")[0];
+    let tmp = [];
+    //console.log("DEBUG: updateChangelog()\n roomElement: ", roomElement, "\n newValues", newValues);
+    let inputs = roomElement.getElementsByTagName("input");
+    // TODO: Iterate through newValue object and compare to default values
+    for(let i = 0; i < inputs.length; i++) {
+        if (inputs[i].type == "checkbox") {
+            if (inputs[i].defaultChecked != inputs[i].checked) {
+                tmp.push(inputs[i]);
+            }
+        } else if (inputs[i].type == "number") {
+            if (inputs[i].defaultValue != inputs[i].value) {
+                tmp.push(inputs[i]);
+            }
+        } else if (inputs[i].type == "text") {
+            if (inputs[i].defaultValue != inputs[i].value) {
+                tmp.push(inputs[i]);
+            }
+        }
+    }
+    console.log(tmp);
+    for(let i =0; i < tmp.length; i++) {
+        let entry = `${room} - ${tmp[i].id.split("-")[1]} changed from ${tmp[i].defaultValue} to ${tmp[i].value}`;
+        // Check existing entries in changelog and determine 
+        // if adding or replacing an entry
+        let tmpEntrySnippet = entry.split("changed from")[0];
+        console.log(tmpEntrySnippet);
+        let logBool = true;
+        for(let j = 0; j < log.length; j++) {
+            console.log("logEntry", log[j]);
+            if (log[j].includes(tmpEntrySnippet)) {
+                log[j] = entry;
+                logBool = false;
+            }
+        }
+        if (logBool) {
+            log.push(entry);
+        }
+    }
+    // Iterate through log and replace contents of changelog
+    changelog.value = ``;
+    for(let i=0; i < log.length; i++) {
+        if(log[i] != '') {
+            changelog.value += log[i] + '\n';
+        }
+    }
+    return;
 }
