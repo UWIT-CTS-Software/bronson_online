@@ -8,38 +8,28 @@
                                                                    _/ |    
                                                                   |__/     
 
-This file contains all code relating to checkboard and will manipulate the DOM in index.html accordingly. There are some simularities to JackNet and it's visualizer.
-
 TOC:
     - getCheckerboardByBuilding(build_ab)
-    - run() ---------------------------------------------------------------------------------- DB_TODO
+    - run()
   HTML
     - FourDigitToTimeFormat(unformattedTime)
     - buildStarterTopper(zone_array)
     - updateTopperElement(topperID, buildingName, numberCheckd, numberRooms)
     - clearVisContainer()
-    - printCBResponse(JSON) ------------------------------------------------------------------ DB_TODO
+    - printCBResponse(JSON)
     - cbJumpTo(entryID)
     - cb_clear()
+    - toggleHideRooms()
     - setChecker()
 
 Notes:
-I am still not completely satisfied with the look, specifically the topper section, there 
-are things to be desired still.
-
 I think the Time and Cookie classes may be better suited for bronson-manager.js
 
 TODO - 
-    [ ] - minimize collapse functionality on the generated tiles
-    [ ] - filter checked rooms / hide them 
-      for this, I think it be best to add a button (or checkbox) to options fieldset.
-      will need to iterate through all the drawn tiles and add some 'hide' tag/class
-      to remove it from the page and do the same to reverse it.
     [ ] - all rooms checked special behavior
       If every room in a building (or zone) is checked, it is an achievement for the tech
       they should get some kinda special message or confetti when this happens.
 */
-
 
 // Run Checkerboard
 async function getCheckerboardByBuilding(build_ab) {
@@ -175,7 +165,14 @@ async function updateTopperElement(topperID, buildingName, numberChecked, number
     // TODO - Make this more fancy
     //topperEntry.innerText = `${buildingName} - Rooms Checked: ${numberChecked} / ${numberRooms} (${percent}%)`;
     topperEntry.innerHTML = `<p class="cbTopperBuildingNameText">${buildingName}</p>
-    <div class="cbTopperBuildingStatus"><p class="cbBStatusText">Rooms Checked: ${numberChecked}/${numberRooms}</p><label class="cbProgLabel" for="${buildingName}_status">${percent}%</label><progress id="${buildingName}_status" class="cbProgress" value="${percent}" max="100"> </progress></div>`;
+    <div class="cbTopperBuildingStatus">
+    <div class="cbTopperLabels">
+    <p class="cbBStatusText">Rooms Checked: ${numberChecked}/${numberRooms}</p>
+    <label class="cbProgLabel" for="${buildingName}_status">${percent}%</label>
+    </div>
+    <progress id="${buildingName}_status" class="cbProgress" value="${percent}" max="100">
+    <span>test</span>
+    </progress></div>`;
     return;
 }
 
@@ -195,7 +192,7 @@ async function printCBResponse(JSON) {
     let numberChecked = 0;
     //console.log("CheckerboardDebug - returned building:\n", building);
     let numberRooms = building['rooms'].length;
-
+    
     // Start building output
     let cbVisContainer = document.createElement('div');
     cbVisContainer.classList.add('cbVisBuildingEntry');
@@ -213,7 +210,11 @@ async function printCBResponse(JSON) {
     let HTML_cbVisRooms = `<ul class="cbVisRooms">`;
     // Iterating through each room in a building
     for(var j = 0; j < rooms.length; j++) {
-        let cbRoomEntry = `<li class=cbVisRoom>`;
+        // Check to see if the checked room filter is on
+        let checkFilter = sessionStorage.getItem("cbHideBool");
+        checkFilter = (checkFilter == 'true') ? true : false;
+        //console.log("CB DEBUG, Check enabled? ",checkFilter);
+        let cbRoomEntry = `<li class="cbVisRoom cbState${rooms[j]['needs_checked']} ${(!checkFilter && !rooms[j]['needs_checked']) ? "hideVisTile" : ""}">`;
         // Maybe add some generalPool/DepartmentShared indicator
         cbRoomEntry += `<p class="cbVisRoomName">${rooms[j]['name']} </p>`;
         //  - ROOM ATTRIBUTES
@@ -271,6 +272,31 @@ function cb_clear() {
     cbVisContainer.innerHTML = ``;
     // clear cache
     sessionStorage.removeItem("CheckerBoard_html");
+    return;
+}
+
+// This adds hideVisTile Class to all checked room tiles (or removes them)
+function toggleHideRooms() {
+    let currentState = sessionStorage.getItem("cbHideBool");
+    let bool = (currentState == 'true');
+    if (!bool) {
+        currentState = true;
+        let label = document.getElementById("cbToggleLabel");
+        label.innerHTML = "Showing Checked Rooms";
+        let tiles = document.getElementsByClassName("cbStatefalse");
+        for(let i=0; i < tiles.length; i++) {
+            tiles[i].classList.remove("hideVisTile");
+        }
+    } else {
+        currentState = false;
+        let label = document.getElementById("cbToggleLabel");
+        label.innerHTML = "Hiding Checked Rooms";
+        let tiles = document.getElementsByClassName("cbStatefalse");
+        for(let i=0; i < tiles.length; i++) {
+            tiles[i].classList.add("hideVisTile");
+        }
+    }
+    sessionStorage.setItem("cbHideBool", currentState);
     return;
 }
 
@@ -361,6 +387,12 @@ async function setChecker() {
                 Run!</button>
             <button id="cb_clear" onclick="cb_clear()" class="headButton">
                 Clear</button>
+            <br>
+            <label id="cbHideChkedRoomsToggle" class="switch">
+                <input id="cbToggleHide" type="checkbox" onclick="toggleHideRooms()">
+                <span class="slider round"></span>
+            </label>
+            <label id="cbToggleLabel" for="cbHideChkedRoomsToggle">Showing Checked Rooms</label>
         </fieldset>`;
 
     // Console Output
@@ -386,5 +418,7 @@ async function setChecker() {
     main_container.classList.add('program_guts');
     progGuts.replaceWith(main_container);
 
+    // Init Hide Bool Variable in session storage
+    sessionStorage.setItem("cbHideBool", true);
     return;
 }
