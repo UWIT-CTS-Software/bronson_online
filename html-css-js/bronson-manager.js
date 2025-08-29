@@ -4,30 +4,17 @@
 ▙▘▌ ▙▌▌▌▄▌▙▌▌▌  ▌▝ ▌█▌▌▌█▌▙▌▙▖▌ ▗  ▌▄▌
                           ▄▌      ▙▌  
 
-Jack Nyman
-6-17-2025
-
-This file is set to host functions that are called throughout bronson suite
- that utilize or update session storage for a user.
- This includes data structs to update the page,
-  - Checkerboard:
-        Zones: {"1":[...],"2":[],"3":[],"4":[]}
-  - campusData
-  - Leaderboard
-
-The scope of this file is not properly defined (sorry), but the idea is this is where we 
-manage and manipulate the user storage session/local. Along with caching tool pages and 
-handling reponses when the user does not have that given tool open (stashes).
-
 TOC:
   Data
     - initLocalStorage()
     - getCampusData()
     - getZoneData()
     - getLeaderboard()
+    - getSpares()
     - getSchedule()
     - setDashboardDefaults()
     - getLocalCampusData()
+        - getBuilding(abbrev)
         - getBuildingList()
         - getRooms(buildingName)
         - getAbbrev(buildingName)
@@ -42,19 +29,32 @@ TOC:
     - storeJNResponse(jnBody) ---------------------------------------------- UNUSED
     - preserveCurrentTool()
   Dashboard Helpers
-    - getDashboardChecker()
     - initCheckerboardStorage()
+    - dashCheckerboardHTML()
     - dashCheckerboard()
-    - dashCheckerboard2()  // Need to rename this to populate_cb_dash() or something
     - setSchedule(buttonID)
     - setUserSchedule(name) ------------------------------------------------ DB_TODO / SSO
     - makeTechTableHeader(firstColumn)
     - makeTechSchdRow(tech, today)
     - getTechSchdTimeBlocks()
     - renderTimeIndicator() ------------------------------------------------ TODO
-    - setLeaderWeek()
-    - setLeaderMonth()
-    - setLeaderSemester()
+    - setLeader(jsonValue)
+    - rawTimeFormat(rawTime)
+    - dashSpares()
+    - isMobile() ----------------------------------------------------------- UNUSED
+
+This file is set to host functions that are called throughout bronson suite
+ that utilize or update session storage for a user.
+ This includes data structs to update the page,
+  - Checkerboard:
+        Zones: {"1":[...],"2":[],"3":[],"4":[]}
+  - campusData
+  - Leaderboard
+
+The scope of this file is not properly defined (sorry), but the idea is this is where we 
+manage and manipulate the user storage session/local. Along with caching tool pages and 
+handling reponses when the user does not have that given tool open (stashes).
+
 Notes:
 There are some pieces from other files that may fit better here, such as building the HTML
 when a tool tab is selected and the Cookie/Time struct from checkerboard.
@@ -72,22 +72,6 @@ These functions are used in Checkerboard, Jacknet, and the dashboard.
 ░▒▓███████▓▒░░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░  ░▒▓█▓▒░░▒▓█▓▒░ 
 */
 
-// class Time {
-//     constructor() { this.time = ''; }
-
-//     setTime(time) { this.time = time; }
-
-//     getTime() { return this.time; }
-// }
-
-// class Cookie {
-//     constructor() { this.value = "none"; }
-
-//     setCookie(id) { this.value = id; }
-
-//     getCookie() { return this.value; }
-// }
-
 const Days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 // Sets local strage for data used by the various tools
 //  - Zone Building list array of room names for each zone
@@ -97,7 +81,7 @@ const Days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 //  the hope is that it keeps things up to date if/when things 
 //  change on the backend.
 async function initLocalStorage() {
-    // Campus Data (Effectively a clone of the hashmap)
+    // Campus Data (Effectively a clone of the database)
     let campData = await getCampusData();
     localStorage.setItem("campData", JSON.stringify(campData));
     
@@ -109,6 +93,10 @@ async function initLocalStorage() {
     // Leaderboard
     let leaderboard = await getLeaderboard();
     localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+    // Spares
+    let spares = await getSpares();
+    console.log(spares["spares"]);
+    localStorage.setItem("spares", JSON.stringify(spares["spares"]));
     // CheckerboardStorage
     if (sessionStorage.getItem("db_checker") == null) {
         initCheckerboardStorage();
@@ -116,9 +104,10 @@ async function initLocalStorage() {
     // Once data is loaded, set default tab selection
     if(document.title.includes("Dashboard")) {
         setDashboardDefaults();
-        dashCheckerboard2(); // poplate cb_dash
+        dashCheckerboard(); // poplate cb_dash
+        dashSpares(); // populate db_spares
     }
-
+    //isMobile();
     return;
 }
 
@@ -155,6 +144,17 @@ async function getLeaderboard() {
     );
 }
 
+async function getSpares() {
+    return fetch("spares")
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("HTTP error " + response.status);
+            }
+            return response.json();
+        }
+    );
+}
+
 async function getSchedule() {
     return fetch("techSchedule")
         .then(response => {
@@ -168,27 +168,12 @@ async function getSchedule() {
         });
 }
 
-async function updateSchedule(schedule) {
-    return fetch("updateSchedule", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Content-Length": JSON.stringify(schedule).length,
-        },
-        body: JSON.stringify(schedule)
-    }).then(response => {
-        if (!response.ok) {
-            throw new Error("HTTP error " + response.status);
-        }
-        return response;
-    });
-}
-
 function setDashboardDefaults() {
     // Default Dashboard Selections
     //  Leaderboard: 7-Days
     //  Schedule: Current-Day
-    setLeaderWeek();
+    //setLeaderWeek();
+    setLeader("7days");
     // Set Schedule
     let today = new Date();
     // Add today class to today's button
@@ -434,7 +419,7 @@ function initCheckerboardStorage() {
 // If cb_body is loaded when setDashboard() is called,
 //  then this is called to load a HTML snippet detailing
 //  the zones in checkerboard.
-async function dashCheckerboard() {
+async function dashCheckerboardHTML() {
     // DATABASE_TODO: get out of local storage (once set up with database)
     let object = JSON.parse(sessionStorage.getItem("db_checker"));
     let cb_dashDiv = document.createElement("div");
@@ -449,9 +434,9 @@ async function dashCheckerboard() {
             let percent = checkedRooms / totalRooms;
             percent = String((100*percent).toFixed(5)).slice(0,5);
             cb_dashDivHTML += `<li> 
-            <p>Zone ${zoneNum}: &emsp; ${checkedRooms} / ${totalRooms} Rooms</p>
-            <label class="cbProgLabel" for="${zoneNum}_prog"> ${percent}%</label>
-            <progress id="${zoneNum}_prog" value="${percent}" max="100"></progress>
+            <div style="display: inline;"><p class="db_cbZonep">Zone ${zoneNum}: </p><p class="db_cbRoomCountp">${checkedRooms} / ${totalRooms}</p>
+            <label class="dbCbProgLabel" for="${zoneNum}_prog"> ${percent}%</label>
+            <progress id="${zoneNum}_prog" value="${percent}" max="100"></progress></div>
             </li>`;
         }
     }
@@ -461,16 +446,16 @@ async function dashCheckerboard() {
 }
 
 // Parses CampusData for information. And places it in db_checker
-async function dashCheckerboard2() {
+async function dashCheckerboard() {
     let cb_dash = JSON.parse(sessionStorage.getItem("db_checker"));
     let zoneObject = JSON.parse(localStorage.getItem("zoneData"));
-    console.log(cb_dash);
+    //console.log(cb_dash);
     // GET ZONE OBJ AND ITERATE OVER THAT AND USE THAT ARRAY TO GRAB
     // ENTRIES OUT OF CAMPOBJECT
     for (zone in zoneObject) {
         let cr = 0; // Checked Rooms
         let tr = 0; // Total Rooms
-        let bl = await getBuildingAbbrevsFromZone(zone)
+        let bl = await getBuildingAbbrevsFromZone(zone);
         for(bldg in bl) {
             let building = await getBuilding(bl[bldg]);
             cr += building.checked_rooms;
@@ -480,11 +465,11 @@ async function dashCheckerboard2() {
         cb_dash[zone-1].checked = cr;
         cb_dash[zone-1].rooms = tr;
     }
-    console.log(cb_dash);
+    //console.log(cb_dash);
     // if good send to session storage
     sessionStorage.setItem("db_checker", JSON.stringify(cb_dash));
     let html_obj = document.getElementById("db_checker");
-    html_obj.replaceWith(await dashCheckerboard());
+    html_obj.replaceWith(await dashCheckerboardHTML());
     return;
 }
 
@@ -623,50 +608,103 @@ function renderTimeIndicator() {
 }
 
 // Leaderboard
-function setLeaderWeek() {
+function setLeader(jsonValue) {
+    // button can be '90days','30days', and '7days'
+    let leader = JSON.parse(localStorage.getItem("leaderboard"))[`${jsonValue}`];
+    // get button ID
+    let buttonId = "";
+    switch (jsonValue) {
+        case '90days':
+            buttonId = "SemesterButton";
+            break;
+        case "30days":
+            buttonId = "MonthButton";
+            break;
+        case "7days":
+            buttonId = "WeekButton";
+            break;
+        default:
+            console.warn("Faulty Leaderboard Behavior Detected, Unsupported Time Option");
+            return;
+    }
+
     let current = document.getElementsByClassName("leader_selected");
     if (current.length != 0) {
         current[0].classList.remove("leader_selected");
     }
-    let newCurrent = document.getElementById("WeekButton");
+    let newCurrent = document.getElementById(`${buttonId}`);
     newCurrent.classList.add("leader_selected");
-    let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["7days"];
+    // number of characters per row
+    //const COL_LIMIT = 28; // 28 Columns On Mobile, 41 On desktop.
+    //let r = window.innerWidth / window.innerHeight;
+    //let col = Math.round(COL_LIMIT * (COL_LIMIT*r) / 41) - 3;
+    let col = Math.round(4*Math.atan(1/70*window.innerWidth - 23.6) + 32);
+    // print
     let leaderString = "";
-    for (let i=0; i<weekLeader.length; i++) {
-        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+    for (let i=0; i<leader.length; i++) {
+        let n = col - leader[i].Name.length;
+        let spacer = n > 0 ? " ".repeat(n) : "";
+        leaderString += `${i+1}. ${leader[i].Name}: ${spacer}${leader[i].Count}\n`;
     }
     let leaderboard = document.getElementById("leaderboard");
     leaderboard.innerHTML = leaderString;
+    return;
 }
 
-function setLeaderMonth() {
-    let current = document.getElementsByClassName("leader_selected");
-    if (current.length != 0) {
-        current[0].classList.remove("leader_selected");
-    }
-    let newCurrent = document.getElementById("MonthButton");
-    newCurrent.classList.add("leader_selected");
-    let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["30days"];
-    let leaderString = "";
-    for (let i=0; i<weekLeader.length; i++) {
-        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
-    }
-    let leaderboard = document.getElementById("leaderboard");
-    leaderboard.innerHTML = leaderString;
+// IE: YEAR-MT-DYT15:59:59Z
+function rawTimeFormat(rawTime) {
+    const MONTHS = ["Janurary","Feburary","March",
+        "April","May","June",
+        "July","August","September",
+        "October","November","December"];
+    let splitTime = rawTime.split("T");
+    let date = splitTime[0].split("-");
+    let timeOfDay = splitTime[1].slice(0,-1); // slice removes the Z
+    let newTimeStr = `${MONTHS[Number(date[1]) - 1]} ${date[2]}, ${date[0]} at ${timeOfDay}`;
+    return newTimeStr;
 }
 
-function setLeaderSemester() {
-    let current = document.getElementsByClassName("leader_selected");
-    if (current.length != 0) {
-        current[0].classList.remove("leader_selected");
+// dashSpares();
+//  Populate the spares widget on the dashboard with information.
+function dashSpares() {
+    let spareDiv = document.getElementById("db_spare");
+    let spareData = JSON.parse(localStorage.getItem("spares"));
+    let tmp = `<fieldset> <legend> PC Spares </legend> <p class="spareHeader"> Deployed Spares </p> <ul>`;
+    let tmp_deployed = ``;
+    let tmp_notDeployed = ``;
+    for(let i = 0; i < spareData.length; i++) {
+        if(spareData[i]["Location"]["name"] == "ITC 0173") {
+            tmp_notDeployed += `<li><span class="sparePCName">${spareData[i]["Asset Tag"]}: </span>
+        <span class="spareLocale">Located in ${spareData[i]["Location"]["name"]} </span><br> 
+        <span class="spareUpdate">Updated ${rawTimeFormat(spareData[i]["Last Updated"])} <br>
+        by ${spareData[i]["User"]["displayName"]}</span></li>`;
+        } else {
+            tmp_deployed += `<li><span class="sparePCName">${spareData[i]["Asset Tag"]}: </span>
+        <span class="spareLocale">Located in ${spareData[i]["Location"]["name"]} </span><br> 
+        <span class="spareUpdate">Updated ${rawTimeFormat(spareData[i]["Last Updated"])} <br>
+        by ${spareData[i]["User"]["displayName"]}</span></li>`;
+        }
     }
-    let newCurrent = document.getElementById("SemesterButton");
-    newCurrent.classList.add("leader_selected");
-    let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["90days"];
-    let leaderString = "";
-    for (let i=0; i<weekLeader.length; i++) {
-        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+    tmp += tmp_deployed;
+    tmp += `</ul><p> Stored in ITC 173 </p><ul>`;
+    tmp += tmp_notDeployed;
+    tmp += `</ul></fieldset>`;
+    spareDiv.innerHTML = tmp;
+    return;
+}
+
+// Not really being used, consider this a proof of concept to give more specific
+// formatting based on user device (this is not perfect)
+function isMobile() {
+    let screenWidth = window.innerWidth;
+    let screenHeight = window.innerHeight;
+    let r = screenWidth / screenHeight;
+    //console.log("Screen Width: ", screenWidth, ", Screen Height: ", screenHeight, " Ratio: ", r);
+    if (r < 1.2) {
+        //console.log("Mobile User Detected");
+        return true;
+    } else {
+        //console.log("Desktop User Detected");
+        return false;
     }
-    let leaderboard = document.getElementById("leaderboard");
-    leaderboard.innerHTML = leaderString;
 }

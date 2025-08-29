@@ -97,11 +97,11 @@
             Room Check Leaderboard: 
           </legend>
           <div class="tab_row leader">
-            <button id="WeekButton" onclick="setLeaderWeek()" type="button" class="leaderTab weekTab"><img class="leader_tab_img" src="button2.png"/><span>
+            <button id="WeekButton" onclick="setLeader('7days')" type="button" class="leaderTab weekTab"><img class="leader_tab_img" src="button2.png"/><span>
               7 days </span></button>
-            <button id="MonthButton" onclick="setLeaderMonth()" type="button" class="leaderTab monthTab"><img class="leader_tab_img" src="button2.png"/><span>
+            <button id="MonthButton" onclick="setLeader('30days')" type="button" class="leaderTab monthTab"><img class="leader_tab_img" src="button2.png"/><span>
               30 days </span></button>
-            <button id="SemesterButton" onclick="setLeaderSemester()" type="button" class="leaderTab semesterTab"><img class="leader_tab_img" src="button2.png"/><span> 
+            <button id="SemesterButton" onclick="setLeader('90days')" type="button" class="leaderTab semesterTab"><img class="leader_tab_img" src="button2.png"/><span> 
               90 days </span></button>
           </div>
           <textarea readonly rows="12" cols="1" class="innerConsole" id="leaderboard" spellcheck="false">
@@ -152,12 +152,18 @@
       // Once initStorageRuns and grabs the schedule data,
       // we will update this table and append <tbody>
       //  - maybe stats on hours in a <tfoot>, unsure.
+      
+      // Spare PC Widget
+      let spares = document.createElement("div");
+      spares.classList.add("db_spares");
+      spares.setAttribute("id", "db_spare");
       db_container.appendChild(consoleOutput);
       db_container.appendChild(leaderboard);
       db_container.appendChild(schedule);
+      db_container.appendChild(spares);
 
       // Check for client-side cached response
-      db_container.append(await dashCheckerboard());
+      db_container.append(await dashCheckerboardHTML());
       if (sessionStorage.getItem("jn_body") != null) {
         //db_container.append(dashJackNet()); //dashJackNet() has nothing, DNE
       }
@@ -226,7 +232,7 @@
               TeamDynamix </button>
             <button id="25lURL" onclick="window.open('https://25live.collegenet.com/pro/uwyo#!/home/dash');" type="button" class="hb_button">
               25Live </button>
-            <button id="campusMapURL" onclick="window.open('https://uwoperations.uwyo.edu/portal/apps/webappviewer/index.html?id=66a9c83b1d92419d8579562ed0a6259b');" type="button" class="hb_button">
+            <button id="campusMapURL" onclick="window.open('https://www.arcgis.com/apps/Viewer/index.html?appid=cff4d95e5911456fac7a91a49e802018');" type="button" class="hb_button">
               Campus Map </button>
           </fieldset>
         </div>
