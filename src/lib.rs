@@ -32,23 +32,28 @@ pub mod models;
 pub mod schema;
 
 use std::{
+	string,
 	str,
 	env,
 	thread,
 	sync::{
 		mpsc, Arc, Mutex,
 	},
-	fmt::Debug,
+	fmt::{ Debug, Display, Formatter, Result as FmtResult, },
 	collections::HashMap,
-	fs::{ read, read_to_string, File }
+	fs::{ read, read_to_string, File },
+	error::Error,
 };
+use cookie::{ CookieJar, Key, };
 use csv::Reader;
-use log::{ warn, };
-use regex::bytes::Regex;
-use serde::{Deserialize, Serialize, };
+use log::{ warn, error, };
+use regex::bytes::Regex as RegBytes;
+use regex::Regex;
+use serde::{ Deserialize, Serialize, };
+use serde_json::json;
 use diesel::{
 	prelude::*,
-	associations::HasTable,
+	/* associations::HasTable, */
 };
 use dotenvy::dotenv;
 use crate::schema::bronson::{
@@ -164,6 +169,7 @@ impl Drop for ThreadPool {
 
 pub struct Database {
 	connection: PgConnection,
+	key: Key,
 }
 
 impl Database {
@@ -173,10 +179,11 @@ impl Database {
 		let db_url = env::var("DATABASE_URL").expect("DATABASE_URL env variable not found.");
 		let connection = PgConnection::establish(&db_url)
 			.unwrap_or_else(|_| panic!("Error connecting to {}", db_url));
-
+		
 		return Database {
 			connection: connection,
-		};
+			key: Key::generate(),
+		}
 	}
 
 	pub fn init_if_empty(&mut self) -> Option<()> {
@@ -199,11 +206,7 @@ impl Database {
 					checked_rooms: 0
 				};
 
-				let _ = diesel::insert_into(buildings::table())
-					.values(&new_bldg)
-					.returning(DB_Building::as_returning())
-					.get_result(&mut self.connection)
-					.expect("SQL_ERR: Error inserting building.");
+				self.update_building(&new_bldg);
 			}
 		}
 
@@ -213,7 +216,7 @@ impl Database {
 			.expect("Error loading rooms.");
 		
 		if room_results.len() == 0 {
-			let room_filter = Regex::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
+			let room_filter = RegBytes::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
 
 			let mut schedules: HashMap<String, Vec<String>> = HashMap::new();
 			let schedule_data = File::open(ROOM_CSV).unwrap();
@@ -276,11 +279,7 @@ impl Database {
 						schedule: room_schedule.to_vec()
 					};
 
-					let _ = diesel::insert_into(rooms::table())
-						.values(&new_room)
-						.returning(DB_Room::as_returning())
-						.get_result(&mut self.connection)
-						.expect("SQL_ERR: Error inserting room");
+					self.update_room(&new_room);
 				}
 			}
 		}
@@ -300,11 +299,7 @@ impl Database {
 					permissions: *perms as i16
 				};
 
-				let _ = diesel::insert_into(users::table())
-					.values(&new_user)
-					.returning(DB_User::as_returning())
-					.get_result(&mut self.connection)
-					.expect("SQL_ERR: Error inserting user");
+				self.update_user(&new_user);
 			}
 
 		}
@@ -324,11 +319,7 @@ impl Database {
 					val: value.clone()
 				};
 
-				let _ = diesel::insert_into(keys::table())
-					.values(&new_key)
-					.returning(DB_Key::as_returning())
-					.get_result(&mut self.connection)
-					.expect("SQL_ERR: Error inserting key");
+				self.update_key(&new_key);
 			}
 		}
 
@@ -338,23 +329,31 @@ impl Database {
 			.expect("Error loading data.");
 
 		if data_results.len() == 0 {
-			let _ = diesel::insert_into(data::table())
-				.values(&DB_DataElement {
-					key: String::from("dashboard"),
-					val: String::from("Welcome to bronson!"),
-				})
-				.returning(DB_DataElement::as_returning())
-				.get_result(&mut self.connection)
-				.expect("SQL_ERR: Error inserting data element");
+			self.update_data(&DB_DataElement {
+				key: String::from("dashboard"),
+				val: String::from("Welcome to bronson!"),
+			});
 
-			let _ = diesel::insert_into(data::table())
-				.values(&DB_DataElement {
-					key: String::from("schedule"),
-					val: String::from("{\"Alex Bryan\":{\"Name\":\"Alex Bryan\",\"Assignment\":\"SysEn\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Cian Melker\":{\"Name\":\"Cian Melker\",\"Assignment\":\"Networking\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Collin Davis\":{\"Name\":\"Collin Davis\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Colton Hopster\":{\"Name\":\"Colton Hopster\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Jack Nyman\":{\"Name\":\"Jack Nyman\",\"Assignment\":\"Coding\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Jarred Heddins\":{\"Name\":\"Jarred Heddins\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Jason Vanlandingham\":{\"Name\":\"Jason Vanlandingham\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Korrin Sutherburg\":{\"Name\":\"Korrin Sutherburg\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Lexus Fermelia\":{\"Name\":\"Lexus Fermelia\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Mario Garcia-Ceballos\":{\"Name\":\"Mario Garcia-Ceballos\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Michael Stoll\":{\"Name\":\"Michael Stoll\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Sofia Newsome\":{\"Name\":\"Sofia Newsome\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},\"Thomas Lockwood\":{\"Name\":\"Thomas Lockwood\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}}}")
-				})
-				.returning(DB_DataElement::as_returning())
-				.get_result(&mut self.connection)
-				.expect("SQL_ERR: Error inserting data element");
+			self.update_data(&DB_DataElement {
+				key: String::from("schedule"),
+				val: String::from(
+"{
+	\"Alex Bryan\":{\"Name\":\"Alex Bryan\",\"Assignment\":\"SysEn\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+	\"Cian Melker\":{\"Name\":\"Cian Melker\",\"Assignment\":\"Networking\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+	\"Collin Davis\":{\"Name\":\"Collin Davis\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+	\"Colton Hopster\":{\"Name\":\"Colton Hopster\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+	\"Jack Nyman\":{\"Name\":\"Jack Nyman\",\"Assignment\":\"Coding\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+	\"Jarred Heddins\":{\"Name\":\"Jarred Heddins\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+	\"Jason Vanlandingham\":{\"Name\":\"Jason Vanlandingham\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+	\"Korrin Sutherburg\":{\"Name\":\"Korrin Sutherburg\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+	\"Lexus Fermelia\":{\"Name\":\"Lexus Fermelia\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+	\"Mario Garcia-Ceballos\":{\"Name\":\"Mario Garcia-Ceballos\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+	\"Michael Stoll\":{\"Name\":\"Michael Stoll\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+	\"Sofia Newsome\":{\"Name\":\"Sofia Newsome\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+	\"Thomas Lockwood\":{\"Name\":\"Thomas Lockwood\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}}
+}"
+				)
+			});
 		}
 
 		Some(())
@@ -397,6 +396,10 @@ impl Database {
 		}
 
 		return ip_vec;
+	}
+
+	pub fn get_cookie_key(&mut self) -> Key {
+		return self.key.clone();
 	}
 
 	pub fn get_campus(&mut self) -> HashMap<String, Building>{
@@ -571,28 +574,15 @@ impl Database {
 
 impl<'a> Clone for Database {
 	fn clone(&self) -> Database {
-		return Database::new();
-	}
-}
+		dotenv().ok();
 
+		let db_url = env::var("DATABASE_URL").expect("DATABASE_URL env variable not found.");
+		let connection = PgConnection::establish(&db_url)
+			.unwrap_or_else(|_| panic!("Error connecting to {}", db_url));
 
-
-// keys struct
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Keys {
-	pub lsm_api: String,
-	pub gh_api: String,
-	pub users: Vec<Vec<String>>
-}
-impl<'a> Clone for Keys {
-	fn clone(&self) -> Keys {
-		let new_lsm_api: Box<str> = <String as Clone>::clone(&self.lsm_api).into_boxed_str();
-		let new_gh_api: Box<str> = <String as Clone>::clone(&self.gh_api).into_boxed_str();
-	
-		return Keys { 
-			lsm_api: String::from(new_lsm_api),
-			gh_api: String::from(new_gh_api),
-			users: self.users.to_vec()
+		return Database {
+			connection: connection,
+			key: self.key.clone(),
 		};
 	}
 }
@@ -633,55 +623,6 @@ impl<'a> Clone for Building {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Room {
-	pub name: String,
-	pub hostnames: Vec<Vec<String>>,
-	pub ips: Vec<Vec<String>>,
-	pub gp: u8,
-	pub checked: String,
-	pub needs_checked: u8,
-	pub schedule: Vec<String>,
-	pub available: u8,
-	pub until: String
-}
-
-// this is very rag-tag - error handling needs to be built-in
-impl Room {
-	pub fn update_checked(&mut self, value: String) {
-		self.checked = value;
-	}
-	pub fn update_ips(&mut self, value: Vec<Vec<String>>) {
-		self.ips = value;
-	}
-	pub fn get_hostnames(&self) -> Vec<Vec<String>> {
-		let mut out_vec = Vec::new();
-		for hn_group in &self.hostnames {
-			out_vec.push(hn_group.to_vec());
-		}
-		return out_vec;
-	}
-}
-impl<'a> Clone for Room {
-	fn clone(&self) -> Room {
-		let new_name: Box<str> = <String as Clone>::clone(&self.name).into_boxed_str();
-		let new_checked: Box<str> = <String as Clone>::clone(&self.checked).into_boxed_str();
-		let new_until: Box<str> = <String as Clone>::clone(&self.until).into_boxed_str();
-
-		return Room {
-			name: String::from(new_name),
-			hostnames: (&self.hostnames).to_vec(),
-			ips: (&self.ips).to_vec(),
-			gp: self.gp,
-			checked: String::from(new_checked),
-			needs_checked: self.needs_checked,
-			schedule:(&self.schedule).to_vec(),
-			available: self.available,
-			until: String::from(new_until),
-		};
-	}
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub struct Request {
 	pub start_line: String,
 	pub headers: HashMap<String, String>,
@@ -689,7 +630,7 @@ pub struct Request {
 }
 
 impl Request {
-	pub fn build(buffer: [u8; BUFF_SIZE]) -> Request {
+	pub fn from(buffer: [u8; BUFF_SIZE]) -> Request {
 		let buf_vec: Vec<u8> = Vec::from(buffer);
 		let mut lines: Vec<Vec<u8>> = Vec::new();
 
@@ -732,6 +673,32 @@ impl Request {
 		}
 
 		return Request{start_line, headers, body: body.to_vec()};
+	}
+
+	pub fn has_valid_cookie(&mut self, database: &mut Database) -> bool {
+		if !self.headers.contains_key("Cookie") {
+			return false;
+		}
+        
+        let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
+        let uname = match username_search.captures(self.headers.get("Cookie").unwrap()) {
+            Some(uname) => uname,
+            None => panic!("Unable to capture username.")
+        };
+        let user = match database.get_user(&uname["username"]) {
+            Some(u) => u,
+            None => DB_User{ username: String::new(), permissions: 0 },
+        };
+
+        let mut jar = CookieJar::new();
+        jar.signed_mut(&database.get_cookie_key()).add((user.username.clone(), user.username.clone()));
+        let signed_val = jar.get(&user.username).cloned().unwrap();
+
+		if signed_val.value() != &uname["key"] {
+			return false;
+		}
+
+		return true;
 	}
 }
 
@@ -806,7 +773,7 @@ impl Response {
 	}
 
 	pub fn insert_onload(&mut self, function: &str) {
-		let pre_post_search = Regex::new(r"(?<preamble>[\d\D]*<body).*(?<postamble>>[\d\D]*)").unwrap();
+		let pre_post_search = RegBytes::new(r"(?<preamble>[\d\D]*<body).*(?<postamble>>[\d\D]*)").unwrap();
 		let pre_contents = &self.body;
 		let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return () };
 		let pre = String::from_utf8(pre_post["preamble"].to_vec()).unwrap();
@@ -846,27 +813,154 @@ impl Response {
 	}
 }
 
+#[derive(Debug)]
+pub enum TerminalError {
+	Unauthorized,
+	EmptyArray,
+	InvalidArgument(String),
+	StrParseError(str::Utf8Error),
+	StringParseError(string::FromUtf8Error),
+	ResponseError(String),
+}
+
+impl Display for TerminalError {
+	fn fmt(&self, f: &mut Formatter) -> FmtResult {
+		match self {
+			TerminalError::Unauthorized => write!(f, "Unauthorized.\n"),
+			TerminalError::EmptyArray => write!(f, "No command found.\n"),
+			TerminalError::InvalidArgument(item) => write!(f, "Invalid argument: {}\n", item),
+			TerminalError::StrParseError(item) => write!(f, "Unable to parse: {}\n", item),
+			TerminalError::StringParseError(item) => write!(f, "Unable to parse: {}", item),
+			TerminalError::ResponseError(item) => write!(f, "An error occured: {}\n", item),
+		}
+	}
+}
+
+impl Error for TerminalError {}
+
+pub struct Terminal;
+impl Terminal {
+    pub fn execute(req: &Request) -> Result<Response, TerminalError> {
+		let mut res = Response::new();
+		let arg_str: &str = match str::from_utf8(&req.body) {
+			Ok(s) => s,
+			Err(e) => {
+				error!("Unable to parse argument string: {}", e);
+				return Err(TerminalError::StrParseError(e));
+			}
+		};
+		let arg_vec: Vec<String> = Self::group_delimited(arg_str.split(" ").collect());
+		
+		if arg_vec.len() == 0 || arg_vec[0].as_str() == "" {
+			return Err(TerminalError::EmptyArray);
+		}
+
+		let mut contents: Vec<u8> = Vec::new();
+		let mut is_file = false;
+		match arg_vec[0].as_str() {
+			"get"    => {
+				if arg_vec.len() == 1 || arg_vec[1] == "" {
+					return Err(TerminalError::InvalidArgument("Unknown `get` argument. See `get -h` for help".to_owned()))
+				}
+
+				match arg_vec[1].as_str() {
+					"-h"        => {
+						contents = "get [log | map | version | alerts | blacklist ]".into();
+					},
+					"log"       => {
+						is_file = true;
+						res.send_file(LOG);
+					},
+					"campus"       => {
+						// WARNING: This function call generates an entirely new Database object that will have a cookie key that is different than the database object in main.
+						// This was done because the only thing being done is data retrieval, not cookie management. I am too lazy to pass a database object to this function.
+						contents = json!(Database::get_campus(&mut Database::new())).to_string().into();
+					},
+					"version"   => {
+						contents = env!("CARGO_PKG_VERSION").into();
+					},
+					"alerts"    => {
+						contents = "none".into();
+					},
+					"blacklist" => {
+						contents = "none".into();
+					},
+					&_          => {
+						return Err(TerminalError::InvalidArgument("Unknown `get` argument. See `get -h` for help.".to_owned())).into();
+					}
+				}
+			},
+			"add"    => {
+				contents = "add page".into();
+			},
+			"update" => {
+				contents = "update page".into();
+			},
+			"delete" => {
+				contents = "delete page".into();
+			},
+			"help"   => {
+				contents = "
+hello  : hello NAME
+get    : get [ log | campus | version | alerts | blacklist ]
+add    : add [ user '{username: permissions}' | data '{key: val}' | key '{key: val}' ]
+update : update []
+delete : delete []
+help   : help
+            ".into();
+			},
+			&_       => {
+				return Err(TerminalError::InvalidArgument("Unknown comand:".to_owned() + &arg_vec[0]));
+			},
+		}
+
+		res.status(STATUS_200);
+		if !is_file {
+			res.send_contents(json!({
+				"response": String::from_utf8(contents).unwrap()
+			}).to_string().into());
+		}
+
+		return Ok(res);
+    }
+
+	pub fn group_delimited(args: Vec<&str>) -> Vec<String> {
+		let mut ret_vec: Vec<String> = Vec::new();
+		let mut agg_string: String = String::new();
+		let mut aggregate = false;
+		let mut q_char: &str = "";
+		for word in args {
+			if word.starts_with("\"") && q_char == "" {
+				q_char = "\"";
+				aggregate = true;
+			} else if word.starts_with("\'") && q_char == "" {
+				q_char = "\'";
+				aggregate = true;
+			}
+			
+			if q_char != "" && word.ends_with(q_char) && !word.ends_with(&("\\".to_owned() + q_char)) {
+				agg_string.push(' ');
+				agg_string.push_str(word);
+				ret_vec.push(agg_string.clone());
+				q_char = "";
+				aggregate = false;
+				continue;
+			}
+
+			if aggregate {
+				agg_string.push_str(word);
+			} else {
+				ret_vec.push(String::from(word));
+			}
+		}
+		ret_vec
+	}
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ZoneRequest {
 	pub zones: Vec<String>,
 }
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct BuildingJSON {
-    pub name: String,
-    pub abbrev: String,
-    pub rooms: Vec<String>
-}
-
-// building.get_building_hostnames()
-//   - Could this be a good idea?
-//   - TODO (?)
-// impl BuildingJSON {
-//     fn get_building_hostnames(&self) -> Vec<String> {
-//         let mut string_vec: Vec<String> = ["EN-0104-PROC1"];
-//         string_vec
-//     }
-// }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PingRequest {
@@ -931,5 +1025,6 @@ pub static KEYS      : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/keys.js
 pub static USERS     : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/users.json");
 pub static STATUS_200: &str = "HTTP/1.1 200 OK";
 pub static STATUS_303: &str = "HTTP/1.1 303 See Other";
+pub static STATUS_401: &str = "HTTP/1.1 401 Unauthorized";
 pub static STATUS_404: &str = "HTTP/1.1 404 Not Found";
 pub static STATUS_500: &str = "HTTP/1.1 500 Internal Server Error";
