@@ -1376,6 +1376,10 @@ ol li::marker {
     background-color: rgb(167, 74, 74);
 }
 
+.dbRowToBeAdded {
+    background-color:#67a742;
+}
+
 @media (max-width: 1000px) {
     #admin_internals {
         width: 900px;

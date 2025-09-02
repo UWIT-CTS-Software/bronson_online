@@ -1090,14 +1090,14 @@ function setDBEditor() {
                     <td><input type="number" class="dbRoomInput" id="${roomName}-WS" value="${wsCount}" min="0"></td>
                     <td><input type="number" class="dbRoomInput" id="${roomName}-CMIC" value="${micCount}" min="0"></td>
                     <td><input type="checkbox" class="dbRoomCheckbox" id="${roomName}-GP" ${gpBool ? 'checked' : ''}></td>
-                    <td><button class="rmvButton" onclick="removeRoomFromBuilding('${roomName}-row')"> Remove </button></td>
+                    <td><button id="${roomName}_rmvBtn" class="rmvButton" onclick="removeRoomFromBuilding('${roomName}-row')"> Remove </button></td>
                 </tr>`;
         });
         tmp += `
                 </tbody>
             </table>
-            <menu>
-                <button onclick="addRoomToBuilding('${building}-tbody')"> Add Room </button>
+            <menu id="${building}-menu">
+                <button onclick="setRoomAddition('${building}-menu', '${building}-tbody')"> Add Room </button>
             </menu>
         </fieldset>`;
         db_editor.innerHTML += tmp;
@@ -1122,13 +1122,53 @@ function updateDatabaseFromEditor() {
     return;
 }
 
-function addRoomToBuilding(buildingTableID) {
+
+// TODO: Need to overhaul
+function setRoomAddition(menuID, buildingTableID) {
+    let tableMenuElement = document.getElementById(menuID);
+    let building = menuID.split("-")[0];
+    tableMenuElement.innerHTML = `
+        <textarea id="${building}-addInput" placeholder="${building} ###"></textarea>    
+    <button onclick="confirmRoomAddition('${building}-addInput', '${buildingTableID}')">
+            Add Room to Table </button>
+    <button onclick="cancelRoomAddition('${menuID}')">
+        Cancel Adding Room </button>`;
+    // Disable Enter Key/Re-assign it to Confirm Button
+    document.getElementById(`${building}-addInput`).addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            confirmRoomAddition(`${building}-addInput`, `${buildingTableID}`);
+        } 
+    });
+    return;
+}
+
+function confirmRoomAddition(textareaID, buildingTableID) {
     let tableElement = document.getElementById(buildingTableID);
-    // TODO: Generate unique room name
-    //   Idea, update the menu to have a text input for room name
-    //   and grab that value there. Include another button to move forward.
-    let roomName = "NewRoom"; // CHANGE ME ^^^ 
-    // TODO: Add new row to given building with class = dbRowToBeAdded.
+    // Get New Room Name and Verify it's legality
+    //  Checking the right abbreivation, exactly 4 numbers in the room number
+    //  In addition, check to see if there is another room of the same name.
+    let textAreaID = document.getElementById(textareaID);
+    let roomName = textAreaID.value;
+    let input_room = roomName.split(" ");
+    let parent_abbrev = buildingTableID.split("-")[0];
+    // TODO: Give this information to the user rather than a console warning.
+    if(input_room[0] != parent_abbrev) { 
+        console.warn("Database Editor: User input does not match target building.");
+        console.log(roomName);
+        return;
+    } else if (input_room[1].length != 4) {
+        console.warn("Database Editor: User input does not match room number schema");
+        console.log(roomName);
+        return;
+    }
+    // Check for duplication
+    let test = document.getElementById(roomName + "-row");
+    if (test != null) {
+        console.warn("Database Editor: Attempt to push duplicate record");
+        console.log(roomName);
+        return;
+    }
+    // Add new row to given building with class = dbRowToBeAdded.
     let tmp = `
     <tr id="${roomName}-row" class="dbRowToBeAdded" oninput="updateRow('${roomName}-row')">
         <th scope="row" class="dbRoomName"><input type="text" class="dbRoomInputName" id="${roomName}-text" value="${roomName}"></th>
@@ -1139,25 +1179,76 @@ function addRoomToBuilding(buildingTableID) {
         <td><input type="number" class="dbRoomInput" id="${roomName}-WS" value="0" min="0"></td>
         <td><input type="number" class="dbRoomInput" id="${roomName}-CMIC" value="0" min="0"></td>
         <td><input type="checkbox" class="dbRoomCheckbox" id="${roomName}-GP"></td>
-        <td><button class="rmvButton" onclick="removeRoomFromBuilding('${roomName}-row')"> Remove </button></td>
-    </tr>`
+        <td><button class="rmvButton" id="${roomName}_rmvBtn" onclick="removeRoomFromBuilding('${roomName}-row')"> Remove </button></td>
+    </tr>`;
     // Add new Row to Table
     tableElement.innerHTML += tmp;
-    // TODO: Update ChangeLog
+    // TODO: Update Changelog, Note because we are adding a room this is a little different than the other changelog update written below.
+    updateChangelogRoomAddition(roomName);
+    // TODO: Revert Building Menu
+    let menuID = parent_abbrev +"-menu";
+    cancelRoomAddition(menuID);
+    return;
+}
 
+function cancelRoomAddition(menuID) {
+    let menuElement = document.getElementById(menuID);
+    let building = menuID.split("-")[0];
+    menuElement.innerHTML = `<button onclick="setRoomAddition('${building}-menu', '${building}-tbody')"> Add Room </button>`;
     return;
 }
 
 function removeRoomFromBuilding(rowID) {
     let rowElement = document.getElementById(rowID);
-    rowElement.classList.add("dbRowToBeRemoved");
-    let tmp = ``;
-    // TODO: Update ChangeLog
-    //    - If removeing a row w/ .dbRowToBeAdded class, remove that row from the changelog.
-    //    - and the row from the table.
+    // Update Button
+    let room = rowID.split('-')[0];
+    let btnID = room + '_rmvBtn';
+    let btn = document.getElementById(btnID);
+    let rmvBool = false; // This indicates if we are adding or removing to changelog
+    // Check to see if row was added in current session
+    if (rowElement.classList.contains("dbRowToBeAdded")) {
+        rowElement.remove();
+        updateChangelogRoomAddition(room);
+        return;
+    }
+    // Move forward with standard behavior
+    if (btn.classList.contains("rmvButton")) {
+        btn.classList.remove("rmvButton");
+        btn.innerHTML = "Add";
+        rowElement.classList.add("dbRowToBeRemoved");
+    } else {
+        btn.classList.add("rmvButton");
+        btn.innerHTML = "Remove";
+        rowElement.classList.remove("dbRowToBeRemoved");
+        rmvBool = true; // Reverting Change
+    }
+    // Update Changelog
+    let changelog = document.getElementById("db_changlog");
+    let log = changelog.value.split("\n").sort();
+    let entry = `${room} - To Be Removed`;
+    if (rmvBool) {
+        console.log("Removing From Changelog");
+        for(let i = 0; i < log.length; i++) {
+            if(log[i] == entry) {
+                log[i] = '';
+            }
+        }
+    } else {
+        console.log("Adding to Changelog");
+        log.push(entry);
+    }
+    // Iterate through log and replace contents of changelog
+    log = log.sort();
+    changelog.value = ``;
+    for(let i=0; i < log.length; i++) {
+        if(log[i] != '') {
+            changelog.value += log[i] + '\n';
+        }
+    }
     return;
 }
 
+// TODO: Fork behavior for speciality treatment for rooms with the class "cbRowToBeAdded"
 function updateRow(rowElementID) {
     let rowElement = document.getElementById(rowElementID);
     rowElement.classList.add("dbRowChanged");
@@ -1189,7 +1280,7 @@ function updateRow(rowElementID) {
         }
     }
     // If value is different from original, add to changelog
-    updateChangelog(rowElement, newValues);
+    updateChangelog(rowElement);
     // IF ALL values are the same as original, remove dbRowChanged class
     if (defaultBool) {
         rowElement.classList.remove("dbRowChanged");
@@ -1204,38 +1295,42 @@ function updateRow(rowElementID) {
 // IE:
 //   AB 101 - PROC changed from 1 to 2
 //   AB 101 - PJ changed from 0 to 1
-//   AB 101 - PROC changed from 2 to 1  <- this will remove the first change from the log
-function updateChangelog(roomElement, newValues) {
+//   AB 101 - PROC changed from 1 to 1  <- this will remove the first change from the log
+function updateChangelog(roomElement) {
     let changelog = document.getElementById("db_changlog");
     let log = changelog.value.split("\n");
-    console.log("log: ", log);
     let room = roomElement.id.split("-row")[0];
     let tmp = [];
-    //console.log("DEBUG: updateChangelog()\n roomElement: ", roomElement, "\n newValues", newValues);
+    let tmp_default = [];
+    // Filter a given row's Input Values
     let inputs = roomElement.getElementsByTagName("input");
-    // TODO: Iterate through newValue object and compare to default values
     for(let i = 0; i < inputs.length; i++) {
         if (inputs[i].type == "checkbox") {
             if (inputs[i].defaultChecked != inputs[i].checked) {
                 tmp.push(inputs[i]);
+            } else {
+                tmp_default.push(inputs[i]);
             }
         } else if (inputs[i].type == "number") {
             if (inputs[i].defaultValue != inputs[i].value) {
                 tmp.push(inputs[i]);
+            } else {
+                tmp_default.push(inputs[i]);
             }
         } else if (inputs[i].type == "text") {
             if (inputs[i].defaultValue != inputs[i].value) {
                 tmp.push(inputs[i]);
+            } else {
+                tmp_default.push(inputs[i]);
             }
         }
     }
-    console.log(tmp);
+    // Prep rows that are changed
     for(let i =0; i < tmp.length; i++) {
         let entry = `${room} - ${tmp[i].id.split("-")[1]} changed from ${tmp[i].defaultValue} to ${tmp[i].value}`;
         // Check existing entries in changelog and determine 
         // if adding or replacing an entry
         let tmpEntrySnippet = entry.split("changed from")[0];
-        console.log(tmpEntrySnippet);
         let logBool = true;
         for(let j = 0; j < log.length; j++) {
             console.log("logEntry", log[j]);
@@ -1248,7 +1343,42 @@ function updateChangelog(roomElement, newValues) {
             log.push(entry);
         }
     }
+    // Find Fields that reverted back to the default and remove them from log
+    for(let i = 0; i < tmp_default.length; i++) {
+        let default_entry = `${room} - ${tmp_default[i].id.split("-")[1]}`;
+        for(let j = 0; j < log.length; j++) {
+            if (log[j].includes(default_entry)) {
+                log[j] = '';
+            }
+        }
+    }
     // Iterate through log and replace contents of changelog
+    log = log.sort();
+    changelog.value = ``;
+    for(let i=0; i < log.length; i++) {
+        if(log[i] != '') {
+            changelog.value += log[i] + '\n';
+        }
+    }
+    return;
+}
+
+function updateChangelogRoomAddition(newRoomName) {
+    let changelog = document.getElementById("db_changlog");
+    let log = changelog.value.split("\n");
+    let entryRemoved = false;
+    // If added room is in the changelog then remove it, otherwise add it.
+    for(let i = 0; i < log.length; i++) {
+        if(log[i].includes(newRoomName)) {
+            log[i] = '';
+            entryRemoved = true;
+        }
+    }
+    if (!entryRemoved) {
+        log.push(`${newRoomName} - To Be Added`);
+    }
+    // Iterate through log and replace contents of changelog
+    log = log.sort();
     changelog.value = ``;
     for(let i=0; i < log.length; i++) {
         if(log[i] != '') {
