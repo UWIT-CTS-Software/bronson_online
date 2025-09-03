@@ -865,7 +865,7 @@ impl Terminal {
 
 				match arg_vec[1].as_str() {
 					"-h"        => {
-						contents = "get [log | map | version | alerts | blacklist ]".into();
+						contents = "get [ log | campus | version | alerts | blacklist ]".into();
 					},
 					"log"       => {
 						is_file = true;
@@ -910,7 +910,7 @@ help   : help
             ".into();
 			},
 			&_       => {
-				return Err(TerminalError::InvalidArgument("Unknown comand:".to_owned() + &arg_vec[0]));
+				return Err(TerminalError::InvalidArgument("Unknown comand: ".to_owned() + &arg_vec[0]));
 			},
 		}
 
