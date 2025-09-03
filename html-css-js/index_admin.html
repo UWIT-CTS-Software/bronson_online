@@ -29,7 +29,6 @@
               if (!response.ok) {
                 this.echo("Error");
               }
-              console.log(response.headers.get("Content-Type"));
               if (response.headers.get("Content-Type") == "application/octet-stream") {
                 return response.blob();
               } else {
