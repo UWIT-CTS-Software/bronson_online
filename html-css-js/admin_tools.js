@@ -27,6 +27,30 @@ Functions
     - updateAllTechSchedules();
     - updateTechSchedule(techID, scheduleData);
     - updateSchedule(schedule);
+  Diagnostics
+    - setDiag()
+    - syncLSMData(deviceType)
+    - getLSMDataByType(build_ab, deviceType)
+    - clearDTerm()
+    - updateDTerm(string)
+    - runLSMCrosscheck(deviceType)
+    - findDiff(bigArr, smlArr, name)
+    - showDataDiagInfo()
+    - showDatabaseInfo()
+    - checkingLSMData(lsmObj, type)
+    - removeLSMData()
+    - getBuildingDeviceInfo(building, deviceType)
+    - formatLSMDevices(lsm_data)
+  Database Editor
+    - setDBEditor()
+    - updateDatabaseFromEditor() -- TODO
+    - setRoomAddition(menuID, buildingTableID)
+    - confirmRoomAddition(textareaID, buildingTableID)
+    - removeRoomFromBuilding(rowID)
+    - updateRow(rowElementID)
+    - updateChangelog(roomElement)
+    - updateChangelogRoomAddition(newRoomName)
+    - validateUserRoomInput(defaultValue, userInput)
     
 */
 // Note, I think it would be good to put the terminal stuff in here that is currently in index_admin.html but it utilizes JQueury in a way that I am not hundred percent sure of so I will not be doing that just yet because I don't want to break anything.
@@ -720,15 +744,6 @@ async function syncLSMData(deviceType) {
     return;
 }
 
-async function getProcsByAbbrev(build_ab) {
-    return await fetch('procDiag', {
-        method: "POST",
-        body: build_ab
-    })
-    .then((response) => response.json())
-    .then((json) => {return json;});
-}
-
 async function getLSMDataByType(build_ab, deviceType) {
     return await fetch('lsmData', {
         method: "POST",
@@ -1025,10 +1040,10 @@ function setDBEditor() {
         correctly before tackling the cmapus.csv file also)</p>
         <fieldset>
             <legend> Changelog: </legend>
-            <textarea id="db_changlog" spellcheck="false" rows="8" cols="50" readonly></textarea>
+            <textarea id="db_changelog" spellcheck="false" rows="8" cols="50" readonly></textarea>
         </fieldset>
         <menu>
-            <button onclick="updateDatabaseFromEditor()"> Save Changes to Database </button>
+            <button id="updateDatabaseButton" onclick="updateDatabaseFromEditor()"> Save Changes to Database </button>
             <button onclick="setDBEditor()"> Refresh Editor </button>
         </menu>
         </fieldset>`;
@@ -1082,7 +1097,7 @@ function setDBEditor() {
             });
             tmp += `
                 <tr id="${roomName}-row" oninput="updateRow('${roomName}-row')">
-                    <th scope="row" class="dbRoomName"><input type="text" class="dbRoomInputName" oninput="validateUserRoomInput('${roomName}-text')" id="${roomName}-text" value="${roomName}"></th>
+                    <th scope="row" class="dbRoomName"><input type="text" class="dbRoomInputName valid" id="${roomName}-text" value="${roomName}"></th>
                     <td><input type="number" class="dbRoomInput" id="${roomName}-PROC" value="${procCount}" min="0"></td>
                     <td><input type="number" class="dbRoomInput" id="${roomName}-PJ" value="${pjCount}" min="0"></td>
                     <td><input type="number" class="dbRoomInput" id="${roomName}-DISP" value="${dispCount}" min="0"></td>
@@ -1110,32 +1125,10 @@ function setDBEditor() {
 
 // TODO
 // Post the changes made in the editor to the database
-//  - Note, Alex is working on terminal functions that will
-//      be doing alot of this, I would like to leverage the
-//      functions he is making to update the database.
-//      This may involved changing the format of changelog
-//      lines to better match whatever syntax he decides on.
 function updateDatabaseFromEditor() {
-    let changelog = document.getElementById("db_changlog");
+    let changelog = document.getElementById("db_changelog");
     let log = changelog.value.split("\n");
-    // TODO: the post body will have the log contents.
-
-    // TODO: remove all instances of .dbRowChanged, .dbRowToBeRemoved
-    //     and .dbRowToBeAdded. 
-    // TODO: clear the changelog textarea.
-    //   OR:
-    //     pull a new campusData and replace the one in localStorage
-    //     and 'refresh the page', this will do the above things and
-    //     the new page will include the changes that were made.
-    return;
-}
-
-// TODO
-//   - We check the validity of user input when adding a room,
-//     BUT not when updating, this function is supposed to do
-//     that, textarea has some built in 'valid' attributes we 
-//     could use for this.
-function validateUserRoomInput(cellID) {
+    
     return;
 }
 
@@ -1186,7 +1179,7 @@ function confirmRoomAddition(textareaID, buildingTableID) {
     // Add new row to given building with class = dbRowToBeAdded.
     let tmp = `
     <tr id="${roomName}-row" class="dbRowToBeAdded" oninput="updateRow('${roomName}-row')">
-        <th scope="row" class="dbRoomName"><input type="text" class="dbRoomInputName" id="${roomName}-text" value="${roomName}"></th>
+        <th scope="row" class="dbRoomName"><input type="text" class="dbRoomInputName valid" id="${roomName}-text" value="${roomName}"></th>
         <td><input type="number" class="dbRoomInput" id="${roomName}-PROC" value="0" min="0"></td>
         <td><input type="number" class="dbRoomInput" id="${roomName}-PJ" value="0" min="0"></td>
         <td><input type="number" class="dbRoomInput" id="${roomName}-DISP" value="0" min="0"></td>
@@ -1198,9 +1191,9 @@ function confirmRoomAddition(textareaID, buildingTableID) {
     </tr>`;
     // Add new Row to Table
     tableElement.innerHTML += tmp;
-    // TODO: Update Changelog, Note because we are adding a room this is a little different than the other changelog update written below.
+    // Update Changelog, Note because we are adding a room this is a little different than the other changelog update written below.
     updateChangelogRoomAddition(roomName);
-    // TODO: Revert Building Menu
+    // Revert Building Menu
     let menuID = parent_abbrev +"-menu";
     cancelRoomAddition(menuID);
     return;
@@ -1238,8 +1231,8 @@ function removeRoomFromBuilding(rowID) {
         rmvBool = true; // Reverting Change
     }
     // Update Changelog
-    let changelog = document.getElementById("db_changlog");
-    let log = changelog.value.split("\n").sort();
+    let changelog = document.getElementById("db_changelog");
+    let log = changelog.value.split("\n");
     let entry = `${room} - To Be Removed`;
     if (rmvBool) {
         console.log("Removing From Changelog");
@@ -1312,11 +1305,16 @@ function updateRow(rowElementID) {
 //   AB 101 - PJ changed from 0 to 1
 //   AB 101 - PROC changed from 1 to 1  <- this will remove the first change from the log
 function updateChangelog(roomElement) {
-    let changelog = document.getElementById("db_changlog");
+    let changelog = document.getElementById("db_changelog");
     let log = changelog.value.split("\n");
+    // Filter Log, No Empty Strings and Warnings (we will regenerate them below)
+    log = log.filter(entry => entry != "");
+    log = log.filter(entry => !entry.includes("Input Error(s)"));
+    // Init Other Variables
     let room = roomElement.id.split("-row")[0];
-    let tmp = [];
-    let tmp_default = [];
+    let tmp = [];           // Changed elements are filtered here
+    let tmp_default = [];   // Elements that have not changed go here.
+    let valid_bool = 0; // Semi Boolean, see validateRoomNameText() Notes.
     // Filter a given row's Input Values
     let inputs = roomElement.getElementsByTagName("input");
     for(let i = 0; i < inputs.length; i++) {
@@ -1333,6 +1331,7 @@ function updateChangelog(roomElement) {
                 tmp_default.push(inputs[i]);
             }
         } else if (inputs[i].type == "text") {
+            valid_bool = validateUserRoomInput(inputs[i].defaultValue, inputs[i].value);
             if (inputs[i].defaultValue != inputs[i].value) {
                 tmp.push(inputs[i]);
             } else {
@@ -1340,9 +1339,26 @@ function updateChangelog(roomElement) {
             }
         }
     }
-    // Prep rows that are changed
+    // Prep rows that have been changed
     for(let i =0; i < tmp.length; i++) {
         let entry = `${room} - ${tmp[i].id.split("-")[1]} changed from ${tmp[i].defaultValue} to ${tmp[i].value}`;
+        // Check text validity variable, print error associated with problem.
+        if (entry.includes("text") && (valid_bool != 1)) {
+            switch(valid_bool) {
+                case 2:
+                    entry += " ❌ ERROR 2, INCORRECT BUILDING ABBREVIATION !!"
+                    break;
+                case 3:
+                    entry += " ❌ ERROR 3, INCORRECT NUMBER SCHEMA (4 Digits Required: ####) !!";
+                    break;
+                case 4:
+                    entry += " ❌ ERROR 4, DUPLICATE OF EXISTING RECORD !!"
+                    break;
+                default:
+                    entry += " ❌ SEVERE PROBLEM DETECTED, CONTACT ADMIN !!";
+                    break;
+            }
+        }
         // Check existing entries in changelog and determine 
         // if adding or replacing an entry
         let tmpEntrySnippet = entry.split("changed from")[0];
@@ -1361,25 +1377,35 @@ function updateChangelog(roomElement) {
     // Find Fields that reverted back to the default and remove them from log
     for(let i = 0; i < tmp_default.length; i++) {
         let default_entry = `${room} - ${tmp_default[i].id.split("-")[1]}`;
-        for(let j = 0; j < log.length; j++) {
-            if (log[j].includes(default_entry)) {
-                log[j] = '';
-            }
-        }
+        log = log.filter(entry => !entry.includes(default_entry));
     }
     // Iterate through log and replace contents of changelog
     log = log.sort();
+    log = log.filter(entry => entry != "");
     changelog.value = ``;
+    let error_bool = false;
     for(let i=0; i < log.length; i++) {
-        if(log[i] != '') {
-            changelog.value += log[i] + '\n';
+        // bool set
+        if(log[i].includes("ERROR")) {
+            error_bool = true;
+        }
+        changelog.value += log[i] + '\n';
+    }
+    // If invalid option is found, disable the push button
+    let btn = document.getElementById("updateDatabaseButton");
+    if(error_bool) {
+        changelog.value += ' ❌ Input Error(s) Found, Please format all entries correctly to enable push button !! \n';
+        btn.disabled = true;
+    } else {
+        if (btn.disabled) {
+            btn.disabled = false;
         }
     }
     return;
 }
 
 function updateChangelogRoomAddition(newRoomName) {
-    let changelog = document.getElementById("db_changlog");
+    let changelog = document.getElementById("db_changelog");
     let log = changelog.value.split("\n");
     let entryRemoved = false;
     // If added room is in the changelog then remove it, otherwise add it.
@@ -1401,4 +1427,44 @@ function updateChangelogRoomAddition(newRoomName) {
         }
     }
     return;
+}
+
+// Checks the validatity of User Input when setting Room Names
+// TODO: numbers instead of bool
+//   - 1: true / Good
+//   - 2: Bad Abbreviation
+//   - 3: Bad Number
+//   - 4: Duplicated Room Name
+function validateUserRoomInput(defaultValue, userInput) {
+    let cellID = defaultValue + "-text";
+    let roomTextArea = document.getElementById(cellID);
+    let text = defaultValue.split(" ");
+    let userText = userInput.split(" ");
+    let validInput = 0;
+    if (text[0] == userText[0]) { // Check Abbreviation
+        if(userText[1].length == 4) { // Check number of characters
+            // Checking if input is unique when compared to existing records
+            if(document.getElementById(userInput + "-text") == undefined){
+                validInput = 1;
+            } else if (defaultValue == userInput) {
+                // the exception is when the input is set back to it's default
+                validInput = 1;
+            } else {
+                validInput = 4;
+            }
+        } else {
+            validInput = 3;
+        }
+    } else {
+        validInput = 2;
+    }
+    // Update Field to be valid or invalid
+    if(validInput == 1) {
+        roomTextArea.classList.remove("invalid");
+        roomTextArea.classList.add("valid");
+    } else {
+        roomTextArea.classList.remove("valid");
+        roomTextArea.classList.add("invalid");
+    }
+    return validInput;
 }
