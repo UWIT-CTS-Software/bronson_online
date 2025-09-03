@@ -32,12 +32,14 @@ First, update your package index and install the prerequisite packages. <br>
 `sudo pacman -Syu` <br> 
 `sudo pacman -S gnupg wget`
 
-### Fetch PostgreSQL repository
+### Fetch PostgreSQL repository (Debian)
 After the necessary packages are installed, the PostgreSQL repository can be fetched. <br>
 `sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs).pgdg main" > /etc/apt/sources.list.d/pgdg.list'`
 
 Now that apt knows about the repository, the signing key is necessary for an authorized transaction. <br>
 `curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg`
+
+### Install PostgreSQL from Package Manager
 
 Update the package list. <br> 
 `sudo apt update` (Debian) <br>
@@ -54,9 +56,9 @@ Start and enable the PostgreSQL service. <br>
 
 Configure the PostgreSQL server. (Any text editor will work) <br>
 `sudo nano /etc/postgresql/16/main/postgresql.conf` (Debian) <br>
-`sudo nano /var/lib/postgresql/data/postqresql.conf` (Arch)
+`sudo nano /var/lib/postgres/data/postgresql.conf` (Arch)
 
-Set listen_adresses to allow remote connectivity. <br>
+Uncomment and set listen_adresses to allow remote connectivity. <br>
 `listen_addresses = '*'` <br>
 Save and exit.
 
@@ -67,9 +69,9 @@ Configure PostgreSQL to use MD5 password authentication in the pg_hba.conf file.
 `echo "host all all 0.0.0.0/0 md5" | sudo tee -a /etc/postgresql/16/main/pg_hba.conf` <br>
 
 **Arch**<br>
-`sudo sed -i '/^host/s/ident/md5' /var/lib/postgresql/data/pg_hba.conf` <br>
-`sudo sed -i '/^local/s/peer/trust' /var/lib/postgresql/data/pg_hba.conf` <br>
-`echo "host all all 0.0.0.0/0 md5" | sudo tee -a /var/lib/postgresql/data/pg_hba.conf` <br>
+`sudo sed -i '/^host/s/ident/md5' /var/lib/postgres/data/pg_hba.conf` <br>
+`sudo sed -i '/^local/s/peer/trust' /var/lib/postgres/data/pg_hba.conf` <br>
+`echo "host all all 0.0.0.0/0 md5" | sudo tee -a /var/lib/postgres/data/pg_hba.conf` <br>
 
 Restart the PostgreSQL server to adopt these changes. <br>
 `sudo systemctl restart postgresql`
@@ -119,15 +121,18 @@ From there, access the ip:port address that is outputted in the previous step in
 
 ## What's included?
 
+### Dashboard
+<img width="1537" height="558" alt="image" src="https://github.com/user-attachments/assets/c222eefb-d075-4a50-bc55-291f4fd8be0b" />
+
 ### Checkerboard
 
-<img width="774" alt="checkerboard screenshot 7 3" src="https://github.com/user-attachments/assets/1f65306e-ea13-46cf-bab7-70528df27b04" />
+<img width="1546" height="632" alt="image" src="https://github.com/user-attachments/assets/36ef648c-dd70-48a9-bc5c-8bb48508ecf9" />
 
 Utilizes LSM RoomCheck history through their API and looks at C.T.S. Technician Schedules and classroom schedules to point techs to open rooms in need of checkups during their shift
 
 ### JackNet
 
-<img width="566" alt="jacknet screenshot 7 3" src="https://github.com/user-attachments/assets/33d7d781-f638-44f2-a295-f2b3c44372b0" />
+<img width="1373" height="552" alt="image" src="https://github.com/user-attachments/assets/563f5fe9-9e5d-4cce-bd83-7f8714ff579c" />
 
 JackNet is a diagnostic tool to monitor the systems on campus. This tool will use a precompiled json file to pull information about each building on campus and which rooms we have systems in. JackNet will use this information to build a database of hostnames defined by our organization's system (ie: a processor example would be EN-1055-PROC1). Then return the user a comprehensive list/csv of all devices that are online and configured correctly. 
 
@@ -135,7 +140,7 @@ This can be used to find rooms that are not online that we did not know about. W
 
 ### CamCode
 
-![image](https://github.com/user-attachments/assets/a6a269c8-a9c2-443a-9c3d-c7a1b713da71)
+<img width="1398" height="651" alt="image" src="https://github.com/user-attachments/assets/25e56a0e-523a-4426-9288-0df75cfbe3e1" />
 
 A classroom programming helper. Given a specific set of parameters describing a specific room configuration, CamCode will present the user with files to be uploaded to the system to expedite configuration time.
 

@@ -174,6 +174,8 @@ pub struct DB_Building {
     pub name: String,
     pub lsm_name: String,
     pub zone: i16,
+    pub checked_rooms: i16,
+    pub total_rooms: i16,
 }
 
 

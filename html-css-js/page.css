@@ -146,6 +146,70 @@ button:-webkit-details-marker {
     display: none;
 }
 
+/* Switch Toggle */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 18px;
+  margin: 5px 2px 2px 2px;
+}
+
+/* Hide default HTML checkbox */
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 12px;
+  width: 12px;
+  left: 2px;
+  bottom: 3px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #a0a742;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #a0a742;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(26px);
+  -ms-transform: translateX(26px);
+  transform: translateX(26px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
 /* Buttons located in the hamburger menu */
 .hb_button {
     display: block;
@@ -306,10 +370,38 @@ button:-webkit-details-marker {
     padding-bottom: 3px;
 }
 
+.db_spares {
+    grid-column: 2/4;
+    grid-row: 3;
+}
+
+.db_spares fieldset ul {
+    padding: 0px 0px 0px 4px;
+    margin: 5px 0px 0px 0px;
+    color:rgb(236, 200, 101);
+    font-family:Verdana, Geneva, Tahoma, sans-serif;
+}
+
+.sparePCName {
+    font-family: "Racing Sans One", serif;
+    font-size: 14pt;
+}
+
+.spareLocale {
+    color:#9b9560;
+}
+
+.spareUpdate {
+    color:#959DA5;
+}
 .db_console {
     grid-column: 4 / 8;
     grid-row: 1 / 2;
     /* width: 59%; */
+}
+
+.db_console fieldset {
+    height: 95%;
 }
 
 .db_leader {
@@ -345,14 +437,57 @@ button:-webkit-details-marker {
 
 .db_checker p {
     font-family: "Racing Sans One", sans-serif;
-    text-align: left;
+    /* text-align: left; */
     font-size: 18pt;
-    padding: 0px 0px 0px 30px;
+    /* padding: 0px 0px 0px 0px; */
     margin: 0px 0px 0px 0px;
+}
+.db_cbZonep {
+    text-align: left;
+    float:left;
+    width: auto;
+    padding: 0px 0px 0px 15px;
+}
+
+.db_cbRoomCountp {
+    text-align:right;
+    float: right;
+    width: auto;
+    padding: 0px 15px 0px 0px;
+}
+
+.dbCbProgLabel {
+    margin:0px 2%;
+    vertical-align: middle;
+    text-align: center;
+    top:5px;
+    position:relative;
 }
 
 .db_checker progress {
-    width: 75%;
+    -webket-appearance: none;
+    width: 92%;
+    height: 20px;
+    padding: 0px 0px 0px 0px;
+    margin: 0px 0px 0px 4px;
+    vertical-align: bottom;
+    text-align: center;
+    position: relative;
+    left: 10px;
+    background-color: rgb(31, 31, 31);
+    border-radius: 10px;
+    border: 2px outset rgb(122,113,45);
+}
+
+.db_checker progress::-webkit-progress-bar {
+    /* background-color: black; */
+}
+
+.db_checker progress::-webkit-progress-value {
+    background-color: rgb(172, 159, 64);
+}
+.db_checker progress::-moz-progress-bar {
+    background-color: rgb(167, 155, 64);
 }
 
 /* Schedule Stuff */
@@ -398,8 +533,25 @@ button:-webkit-details-marker {
 .schdtrue {
     background-color: rgb(49, 125, 64);
 }
+@media(max-width: 1655px) {
+    .db_checker p {
+        font-size: 14pt;
+    }
+    .db_checker progress {
+        width:92%
+    }
+}
 
-@media (max-width: 1000px) {
+@media(max-width: 1410px) {
+    .db_checker p {
+        font-size: 12pt;
+    }
+    .db_checker progress {
+        width:92%
+    }
+}
+
+@media (max-width: 1250px) {
     .db_leader {
         grid-column: 8/11;
     }
@@ -409,10 +561,18 @@ button:-webkit-details-marker {
     .db_checker {
         grid-column: 1/4;
     }
+    .db_spares {
+        grid-column: 1/4;
+    }
     .db_checker progress {
-        width: 50%;
+        width: 92%;
+    }
+    .db_checker p {
+        font-size: 15pt;
+        margin: 0px 0pc 0px 0px
     }
 }
+
 
 /* JackNet Definitions 
        _            _    _   _      _   
@@ -668,6 +828,10 @@ button:-webkit-details-marker {
     color: rgb(236, 200, 101);
 }
 
+#cbToggleLabel {
+    font-size: 12pt;
+}
+
 /* New classes from checkerboard overhaul*/
 /* Topper stuff */
 .cbTopperContainer {
@@ -677,46 +841,102 @@ button:-webkit-details-marker {
 .cbTopperZoneHeader {
     font-weight:bold;
     font-family: "Contrail One", sans-serif;
+    font-size:18pt;
+    margin-left: 25px;
+    margin-bottom:6px;
+    border-radius: 15px;
+    border-bottom:2px solid rgb(0,0,0);
+    width: 90px;
+    text-align: center;
+    
 }
 
 .cbTopperBuildingList {
     margin: 0px 0px 0px 0px;
     padding: 0px 5% 0px 5%;
-    column-count: 2;
+    column-count: 3;
 }
 
 .cbTopperBuilding {
     border: rgb(102,53,54) inset 2px;
     border-radius: 12px;
     cursor: pointer;
-    padding: .5% 1%;
-    margin-bottom: 3px;
+    padding: 0% 0%;
+    margin-bottom: 10px;
     break-inside: avoid;
+    width:100%;
+    background-color:rgb(31, 31, 31);
+    transition-duration: 100ms;
 }
+
+.cbTopperBuilding:hover {
+    box-shadow: 2px 2px 4px;
+    transform: matrix(1.05,0,0,1.05,0,0);
+    position:relative;
+    z-index:2;
+    transition-duration: 100ms;
+}
+
 .cbTopperBuildingNameText {
-    font-family: 'Courier New', Courier, monospace;
-    margin:0px 0px 4px 0px;
+    /*font-family: 'Courier New', Courier, monospace;*/
+    margin:2px 0px 4px 0px;
     font-weight: bold;
-    text-align: left;
+    text-align: center;
+    font-style: italic;
+    font-family: Arial, Helvetica, sans-serif;
+    border-bottom: 2px solid rgb(50,20,20);
+
 }
 
 .cbTopperBuildingStatus {
     margin:0px 0px 0px 0px;
-    display: flex;
-    justify-content: right;
+    height: 20px;
+}
+
+.cbTopperLabels {
+    width: 100%;
 }
 
 .cbBStatusText {
-    margin:0px 4% 0px 4%;
-    width: 100%;
+    margin:0px 0px 0px 12px;
+    width: 70%;
+    float: left;
+    position: relative;
+    z-index: 1;
+    text-align: left;
+    mix-blend-mode: difference;
 }
 
 .cbProgress {
     margin: 0px 0px 0px 0px;
+    width:100%;
+    background-color:rgb(19,19,19);
+    border-radius: 0px 0px 10px 10px;
+    position: relative;
+    top: -23px;
+    height: 24px;
+    border: none;
+}
+
+.cbProgress::-webkit-progress-value {
+    background-color: rgb(13, 255, 0);
+}
+
+.cbProgress::-moz-progress-bar {
+    /* background-color: rgb(126, 170, 61); */
+    background-color: rgb(166, 175, 86);
 }
 
 .cbProgLabel {
-    margin:0px 6px 0px 3%;
+    margin:0px 2%;
+    vertical-align: middle;
+    text-align: center;
+    top:-2px;
+    position:relative;
+    float: right;
+    z-index: 1;
+    width: 18%;
+    mix-blend-mode: difference;
 }
 .cbVisContainer {
     margin-bottom:0px;
@@ -751,7 +971,7 @@ button:-webkit-details-marker {
     padding-top:3px;
     padding-bottom:10px;
     /* Collumn attempt */
-    column-count: 3;
+    column-count: 5;
     column-gap: 10px;
     padding-left: 0px;
 }
@@ -763,12 +983,16 @@ button:-webkit-details-marker {
     break-inside: avoid;
     border: rgb(99, 66, 33) outset 2px;
     border-radius: 20px;
+    background-color: rgb(31,31,31);
 }
 
 .cbVisRoomName {
     margin: 0px;
-    padding-left:20px;
+    padding: 0px 0px 3px 0px;
     border-bottom: rgb(99,66,33) inset 2px;
+    font-family:Arial, Helvetica, sans-serif;
+    font-style:italic;
+    font-weight: bolder;
 }
 
 .cbVisRoomAttributes {
@@ -778,6 +1002,10 @@ button:-webkit-details-marker {
     color:rgb(224, 191, 100);
     column-count: 2;
     gap:0px;
+    height: 60px;
+    font-family: 'Arial', sans-serif;
+    font-weight: bold;
+    font-style:oblique;
 }
 
 .cbVisNotChecked {
@@ -785,6 +1013,8 @@ button:-webkit-details-marker {
     /* border: rgb(94, 46, 17) inset 2px; */
     border-radius: 0px 0px 0px 18px;
     border-right:rgb(75,45,15) outset 1px;
+    height:100%;
+    padding-left:5px;
 }
 
 .cbVisChecked {
@@ -792,6 +1022,8 @@ button:-webkit-details-marker {
     /* border: rgb(33, 39, 33) inset 2px; */
     border-radius: 0px 0px 0px 18px;
     border-right:rgb(75,45,15) outset 1px;
+    height:100%;
+    padding-left:5px;
 }
 
 .cbVisAvailable {
@@ -799,6 +1031,8 @@ button:-webkit-details-marker {
     /* border: rgb(33, 39, 33) inset 2px; */
     border-radius: 0px 0px 18px 0px;
     border-left:rgb(90,60,30) inset 1px;
+    height:100%;
+    padding-right: 5px;
 }
 
 .cbVisNotAvailable {
@@ -806,6 +1040,8 @@ button:-webkit-details-marker {
     /* border: rgb(94, 46, 17) inset 2px; */
     border-radius: 0px 0px 18px 0px;
     border-left:rgb(90,60,30) inset 1px;
+    height:100%;
+    padding-right:5px;
 }
 
 /* Maybe use this instead */
@@ -819,12 +1055,15 @@ button:-webkit-details-marker {
 /* Window Size column changes */
 @media (max-width:1560px) {
     .cbTopperBuildingList {
-        column-count:1;
+        column-count:3;
     }
 }
 
 @media (max-width:1300px) {
     .cbVisRooms {
+        column-count:3;
+    }
+    .cbTopperBuildingList {
         column-count:2;
     }
 }
@@ -832,7 +1071,7 @@ button:-webkit-details-marker {
 
 @media (max-width:800px) {
     .cbVisRooms {
-        column-count:1;
+        column-count:2;
     }
 }
 
@@ -889,7 +1128,7 @@ button:-webkit-details-marker {
     color: rgb(170, 170, 170);
     opacity: 75%;
     padding: 10px;
-    margin: 10px;
+    margin: 24px;
     font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
 }
 
@@ -947,6 +1186,7 @@ ol li::marker {
 
 #terminal {
     position: fixed;
+    z-index:10;
     bottom: 0;
     width: 100%;
     height: 20%;
@@ -987,13 +1227,13 @@ ol li::marker {
 /* Admin Tools -- Schedule Editor */
 /* Top Options */
 #techSchdFilter {
-    width:70%;
+    width:60%;
     height:25px;
     float:right;
 }
 
 .techFilterDiv {
-    width: 25%;
+    width: 35%;
     height: 30px;
     float:right;
 }
@@ -1006,6 +1246,8 @@ ol li::marker {
 .techFieldset {
     padding: 3px 3px 3px 3px;
     display: flex;
+    overflow-x:scroll;
+    min-width:0px;
 }
 
 .techFieldset label {
@@ -1071,6 +1313,13 @@ ol li::marker {
 }
 .setToRemove {
     background-color:red;
+}
+
+@media (max-width: 1000px) {
+    #admin_internals {
+        width: 900px;
+    }
+
 }
 
 /* -------------- Tabs -------------- */
@@ -1279,7 +1528,7 @@ ol li::marker {
 }
 
 .leaderTab.leader_selected, .leaderTab.schedule_selected {
-    transform: matrix(1, 0, 0, .7, 0, 4);
+    transform: matrix(1, 0, 0, .6, 0, 5);
     transition-duration: 0.1s;
     filter: hue-rotate(-60deg);
 }
@@ -1325,7 +1574,7 @@ ol li::marker {
 .admin_tabs {
     margin: -9px 0px 26px 0px;
     padding: 0px 0px 1px 13px;
-    /* width: 350px; */
+    width: 350px;
     display: flex;
 }
 
@@ -1408,6 +1657,15 @@ ol li::marker {
 .at_tab_img {
     width:130px;
     height:30px;
+}
+
+@media (max-width: 1000px) {
+    .leaderTab:active {
+        transform: matrix(1,0,0,.8,0,3);
+    }
+    .atTab:active {
+        transform: matrix(1,0,0,.8,0,3);
+    }
 }
 
 /* Other */
