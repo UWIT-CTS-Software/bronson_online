@@ -885,7 +885,8 @@ impl Terminal {
 					},
 					"campus"       => {
 						// WARNING: This function call generates an entirely new Database object that will have a cookie key that is different than the database object in main.
-						// This was done because the only thing being done is data retrieval, not cookie management. I am too lazy to pass a database object to this function.
+						// This was done because the only thing being done is data retrieval, not cookie management. 
+						// I am too lazy to pass a database object to this function.
 						contents = json!(Database::get_campus(&mut Database::new())).to_string().into();
 					},
 					"version"   => {
