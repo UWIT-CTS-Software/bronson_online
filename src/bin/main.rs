@@ -47,11 +47,11 @@ use server_lib::{
     Building, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
-    CFM_DIR, WIKI_DIR, LOG,
-    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_404,
-    Database,
+    CFM_DIR, WIKI_DIR, /* LOG, */
+    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
+    Database, Terminal, 
     models::{
-        DB_Room, DB_Building, DB_User, DB_DataElement,
+        DB_Room, DB_Building, DB_User, /* DB_DataElement, */
         DB_IpAddress,  
     },
 };
@@ -62,8 +62,9 @@ use std::{
     net::{ TcpListener, IpAddr, Ipv4Addr, },
     fs::{
         read_dir, metadata,
-        File, ReadDir, 
+        File, 
     },
+    path::Path,
     time::{ Duration, SystemTime },
     string::{ String, },
     clone::{ Clone, },
@@ -74,14 +75,17 @@ use reqwest::{
     header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
 use log::{ debug, info, warn, error, }; // trace, };
-use cookie::{ Cookie, };
+use cookie::{ /* Cookie, */ CookieJar, /* Key, */ };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
 use regex::Regex;
 use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta };
 use urlencoding::decode;
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use diesel::{PgConnection, Connection};
+use dotenvy::dotenv;
 // ----------------------------------------------------------------------------
-
+pub const MIGRATIONS : EmbeddedMigrations = embed_migrations!();
 /*
 $$$$$$$\                      $$\                                 $$\ 
 $$  __$$\                     $$ |                                $$ |
@@ -97,9 +101,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // debug setting
     env::set_var("RUST_BACKTRACE", "1");
 
-    let mut database = Database::new();
-    database.init_if_empty();
-
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
     opts.optflag("l", "local", "Run the server using localhost.");
@@ -111,9 +112,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     
     if matches.opt_present("d") {
-        init_logger("debug")?;
+        match init_logger("debug") {
+            Ok(_) => (),
+            Err(e) => error!("Unable to init logger: {}", e)
+        };
     } else {
-        init_logger("info")?;
+        match init_logger("info") {
+            Ok(_) => (),
+            Err(e) => error!("Unable to init logger: {}", e)
+        };
     }
     
     // set TcpListener and initalize
@@ -153,6 +160,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => error!("STDOUT flush failed: {}", e)
     };
 
+    // embed_migrations
+    dotenv().ok(); // Load .env file
+    let database_url = env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set");
+    let mut connection = PgConnection::establish(&database_url)
+        .expect("Error Connecting to Database");
+    connection.run_pending_migrations(MIGRATIONS)
+            .map_err(|e| format!("Failed to run migrations: {}", e))?;
+
+    let mut database = Database::new();
+    database.init_if_empty();
+
     for stream in listener.incoming() {
         let mut stream = match stream {
             Ok(s) => s,
@@ -161,13 +180,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 continue;
             }
         };
-        let clone_db = database.clone();
 
         match stream.read(&mut buffer) {
             Ok(_) => (),
             Err(e) => error!("Error reading to buffer: {}", e)
         };
-        let req = Request::build(buffer.clone());
+        let req = Request::from(buffer.clone());
+        let clone_db = database.clone();
 
         pool.execute(move || {
             let mut res = handle_connection(req, clone_db).unwrap();
@@ -211,23 +230,30 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
 #[tokio::main]
 #[allow(unused_assignments)]
 async fn handle_connection(
-    req: Request,
+    mut req: Request,
     mut database: Database,
-) -> Option<Response> {
-    
+) -> Option<Response> {    
     let mut user_homepage: &str = "html-css-js/login.html";
     if req.headers.contains_key("Cookie") {
-        let username_search = Regex::new("user=(?<username>.*)").unwrap();
-        let Some(username) = username_search.captures(&req.headers.get("Cookie").unwrap()) else { panic!("Empty") };
-        let user = database.get_user(&username["username"]);
-        if user.is_some() {
-            match user.unwrap().permissions {
+        let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
+        let username = match username_search.captures(&req.headers.get("Cookie").unwrap()) {
+            Some(uname) => uname,
+            None => panic!("Unable to capture username.")
+        };
+        let user = match database.get_user(&username["username"]) {
+            Some(u) => u,
+            None => DB_User{ username: String::new(), permissions: 0 },
+        };
+
+        if req.has_valid_cookie(&mut database) {
+            match user.permissions {
                 7 => user_homepage = "html-css-js/index_admin.html",
                 6 => user_homepage = "html-css-js/index_admin.html",
                 0 => user_homepage = "html-css-js/login.html",
                 _ => user_homepage = "html-css-js/index.html",
             }
         }
+        
     }
 
     // Handle requests
@@ -349,6 +375,14 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents(contents);
         },
+        // "GET /dashboard/checker"           => { // Returns zone checked. NOTE: trying method of including information in the ZoneData
+        //     // Get Room Counts
+        //     let contents = json!({
+        //         "contents": database.get_data("dashchecker").val
+        //     }).to_string().into();
+        //     res.status(STATUS_200);
+        //     res.send_contents(contents);
+        // }
         "GET /leaderboard HTTP/1.1"        => {
             let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
             let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
@@ -374,12 +408,10 @@ async fn handle_connection(
                               .expect("[-] PAYLOAD ERROR");
 
             let v_7_days: Value = serde_json::from_str(&body_7_days).expect("Empty");
-            let data_7_days: Vec<Value>;
-            if v_7_days["count"].as_i64() > Some(0) {
-                data_7_days = v_7_days["data"].as_array().unwrap().to_vec();
-            } else {
-                data_7_days = Vec::new();
-            }
+            let data_7_days: Vec<Value> = match v_7_days["data"].as_array() {
+                Some(data) => data.clone(),
+                None => Vec::<Value>::new()
+            };
 
             let body_30_days = req.get(url_30_days)
                               .timeout(Duration::from_secs(15))
@@ -391,12 +423,10 @@ async fn handle_connection(
                               .expect("[-] PAYLOAD ERROR");
 
             let v_30_days: Value = serde_json::from_str(&body_30_days).expect("Empty");
-            let data_30_days: Vec<Value>;
-            if v_30_days["count"].as_i64() > Some(0) {
-                data_30_days = v_30_days["data"].as_array().unwrap().to_vec();
-            } else {
-                data_30_days = Vec::new();
-            }
+            let data_30_days: Vec<Value> = match v_30_days["data"].as_array() {
+                Some(data) => data.clone(),
+                None => Vec::<Value>::new()
+            };
 
             let body_90_days = req.get(url_90_days)
                               .timeout(Duration::from_secs(15))
@@ -408,12 +438,10 @@ async fn handle_connection(
                               .expect("[-] PAYLOAD ERROR");
 
             let v_90_days: Value = serde_json::from_str(&body_90_days).expect("Empty");
-            let data_90_days: Vec<Value>;
-            if v_90_days["count"].as_i64() > Some(0) {
-                data_90_days = v_90_days["data"].as_array().unwrap().to_vec();
-            } else {
-                data_90_days = Vec::new();
-            }
+            let data_90_days: Vec<Value> = match v_90_days["data"].as_array() {
+                Some(data) => data.clone(),
+                None => Vec::<Value>::new()
+            };
 
             let contents = json!({
                  "7days": data_7_days,
@@ -423,79 +451,63 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents(contents);
         },
+        // Testing Spares LSM API Call.
+        "GET /spares HTTP/1.1"             => {
+            let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
+            // Build and Send Request
+            let req = reqwest::Client::builder()
+                .cookie_store(true)
+                .user_agent("server_lib/1.10.1")
+                .default_headers(construct_headers("lsm", &mut database))
+                .timeout(Duration::from_secs(15))
+                .build()
+                .ok()?
+            ;
+
+            let body_spares = req.get(url_spares)
+                              .timeout(Duration::from_secs(15))
+                              .send()
+                              .await
+                              .expect("[-] RESPONSE ERROR")
+                              .text()
+                              .await
+                              .expect("[-] PAYLOAD ERROR");
+
+            let v_spares: Value = serde_json::from_str(&body_spares).expect("Empty");
+            let data_spares: Vec<Value> = match v_spares["data"].as_array() {
+                Some(data) => data.clone(),
+                None => Vec::<Value>::new()
+            };
+            // Pack into JSON response to front-end
+            let contents = json!({
+                 "spares": data_spares
+            }).to_string().into();
+            res.status(STATUS_200);
+            res.send_contents(contents);
+        },
         // Terminal
         // --------------------------------------------------------------------
-        "GET /refresh/all HTTP/1.1"        => {
-            let contents = json!({
-                "body": "[+] All updated successfully."
-            }).to_string().into();
-            res.status(STATUS_200);
-            res.send_contents(contents);
-        },
-        "GET /refresh/threads HTTP/1.1"    => {
-            let contents = json!({
-                "body": "[!] Feature not implemented."
-            }).to_string().into();
-            res.status(STATUS_200);
-            res.send_contents(contents);
-        },
-        "GET /refresh/map HTTP/1.1"        => {
-            let contents = json!({
-                "body": "[+] Map updated successfully."
-            }).to_string().into();
-            res.status(STATUS_200);
-            res.send_contents(contents);
-        },
-        "GET /get/PLACEHOLDER HTTP/1.1"    => {
-            debug!("test!");
-            debug!("{:?}", req.body);
-            res.status(STATUS_200);
-            res.send_contents("".into());
-        },
-        "GET /get/log HTTP/1.1"            => {
-            let mut f = File::open(LOG).unwrap();
-            
-            let mut file_buffer = Vec::new();
-            f.read_to_end(&mut file_buffer).unwrap();
-
-            res.status(STATUS_200);
-            res.insert_header("Content-Type", "application/zip");
-            let filename = "attachment; filename=output.log";
-            res.insert_header("Content-Disposition", &filename);
-            res.send_contents(file_buffer);
-        },
-        "POST /updateSchedule HTTP/1.1"        => {
-            let new_data = DB_DataElement {
-                key: String::from("schedule"),
-                val: String::from_utf8(req.body).expect("Unable to parse body contents")
-            };
-
-            database.update_data(&new_data);
-
-            res.status(STATUS_200);
-            res.send_contents("".into());
-        },
-        "POST /add/user HTTP/1.1"          => {
-            let new_user: DB_User = serde_json::from_str(&String::from_utf8(req.body).unwrap()).unwrap();
-            database.update_user(&new_user);
-
-            res.status(STATUS_200);
-            res.send_contents("User successfully added.".into());
-        },
-        "POST /delete/user HTTP/1.1"          => {
-            let del_user: String = String::from_utf8(req.body).expect("UNKNOWN");
-            database.delete_user(&del_user);
-
-            res.status(STATUS_200);
-            res.send_contents("User successfully deleted.".into());
-        },
-        "POST /update/dash HTTP/1.1"       => {
-            database.update_data(&DB_DataElement {
-                key: String::from("dashboard"),
-                val: String::from_utf8(req.body).expect("Unable to parse body contents"),
-            });
-            res.status(STATUS_200);
-            res.send_contents("".into());
+        "POST /terminal HTTP/1.1"          => {
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                res = match Terminal::execute(&req) {
+                    Ok(resp) => {
+                        resp
+                    },
+                    Err(e) => {
+                        let mut resp = res;
+                        resp.status(STATUS_500);
+                        resp.send_contents(json!({
+                            "response": format!("Internal error: {:?}", e)
+                        }).to_string().into());
+                        resp
+                    }
+                };
+            }
         },
         // --------------------------------------------------------------------
         // make calls to backend functionality
@@ -510,16 +522,19 @@ async fn handle_connection(
                 match &db_user.unwrap().permissions {
                     7 => user_homepage = "html-css-js/index_admin.html",  // admin
                     6 => user_homepage = "html-css-js/index_admin.html", // manager / lead tech
-                    0 => user_homepage = "html-css-js/login.html",       // revoked
-                    _ => user_homepage = "html-css-js/index.html",       // tech default
+                    0 => user_homepage = "html-css-js/login.html",      // revoked
+                    _ => user_homepage = "html-css-js/index.html",     // tech default
                 }
 
             } else {
                 user_homepage = "html-css-js/index.html";
             }
+
+            let mut jar = CookieJar::new();
+            jar.signed_mut(&database.get_cookie_key()).add((user.clone(), user.clone()));
+            let signed_val = jar.get(&user).cloned().unwrap();
         
-            let cookie = Cookie::build(("user", user));
-            res.insert_header("Set-Cookie", cookie.to_string().as_str());
+            res.insert_header("Set-Cookie", &signed_val.to_string());
             res.insert_header("Access-Control-Expose-Headers", "Set-Cookie");
 
             res.status(STATUS_200);
@@ -611,40 +626,76 @@ async fn handle_connection(
             let v: Value = serde_json::from_str(&body).expect("Empty");
             let mut check_map: HashMap<String, String> = HashMap::new();
             if v["count"].as_i64() > Some(0) {
-                let num_entries = v["count"].as_i64().unwrap();
-                let checks: &mut Vec<Value> = &mut v["data"].as_array().unwrap().to_vec();
+                let num_entries = match v["count"].as_i64() {
+                    Some(num) => num,
+                    None => 0
+                };
+                let checks: &mut Vec<Value> = match &mut v["data"].as_array() {
+                    Some(data) => &mut data.clone(),
+                    None => {
+                        error!("Unable to get API data as vec.");
+                        &mut Vec::<Value>::new()
+                    }
+                };
                 checks.reverse();
                 for i in 0..num_entries {
                     let check = checks[i as usize].as_object().unwrap();
-                    check_map.insert(String::from(check["LocationName"].as_str().unwrap()), String::from(check["CompletedOn"].as_str().unwrap()));
+                    check_map.insert(
+                        String::from(check["LocationName"].as_str().unwrap()), 
+                        String::from(check["CompletedOn"].as_str().unwrap())
+                    );
                 }
             }
 
+            // TODO: get checked_rooms
+            // let checked_rooms: i16 = v["count"].as_i64().unwrap().try_into().unwrap();
+            let mut checked_rooms: i16 = 0;
             for mut room in database.get_rooms_by_abbrev(&building_sel) {
                 if check_map.contains_key(&room.name) {
                     // checked Date format may need changed here
-                    debug!("Checkerboard Debug - checked value: \n{:?}", String::from(check_map.get(&room.name).unwrap()));
-                    //room.checked = String::from(check_map.get(&room.name).unwrap().split("T").collect::<Vec<&str>>()[0]);
-                    room.checked = String::from(check_map.get(&room.name).unwrap());
-                    debug!("Checkerboard Debug - Room struct: \n{:?}", room);
+                    room.checked = String::from(match check_map.get(&room.name) {
+                        Some(r) => r,
+                        None => {
+                            warn!("Unable to fetch room, defaulting.");
+                            "2000-01-01T00:00:00Z"
+                        }
+                    });
                     room.needs_checked = check_lsm(&room);
                 }
                 let schedule_params = check_schedule(&room);
                 room.available = schedule_params.0;
                 room.until = schedule_params.1;
-
+                // Check for room check
+                if !room.needs_checked {
+                    checked_rooms += 1;
+                }
                 database.update_room(&room);
             }
-
             let ret_building = database.get_building_by_abbrev(&building_sel);
             let ret_rooms = database.get_rooms_by_abbrev(&ret_building.abbrev);
-            return_body.push(
+            // TODO: Get number of Checked and Total Number of rooms.
+            let number_rooms: i16 = ret_rooms.len().try_into().unwrap();
+            // Note, number_rooms and checked_rooms rely on the rooms inside LSM. 
+            //
+            let new_building: DB_Building = DB_Building {
+                abbrev: ret_building.abbrev,
+                name: ret_building.name,
+                lsm_name: ret_building.lsm_name,
+                zone: ret_building.zone,
+                checked_rooms: checked_rooms,
+                total_rooms: number_rooms,
+            };
+            database.update_building(&new_building);
+
+            return_body.push( 
                 Building {
-                    abbrev: ret_building.abbrev,
-                    name: ret_building.name,
-                    lsm_name: ret_building.lsm_name,
+                    abbrev: new_building.abbrev,
+                    name: new_building.name,
+                    lsm_name: new_building.lsm_name,
                     rooms: ret_rooms,
-                    zone: ret_building.zone,
+                    zone: new_building.zone,
+                    checked_rooms: new_building.checked_rooms,
+                    total_rooms: new_building.total_rooms,
                 }
             );
             // ----------------------------------------------------------------
@@ -685,10 +736,21 @@ async fn handle_connection(
         },
         "POST /cfm_file HTTP/1.1"          => {
             let contents = get_cfm_file(req.body);
-            let mut f = File::open(&contents).unwrap();
+            let mut f = match File::open(&contents) {
+                Ok(file) => file,
+                Err(e) => {
+                    error!("Unable to open file {}: {}", &contents, e);
+                    res.status(STATUS_500);
+                    res.send_contents(format!("File not found: {}", &contents).into());
+                    return Some(res);
+                }
+            };
             
             let mut file_buffer = Vec::new();
-            f.read_to_end(&mut file_buffer).unwrap();
+            match f.read_to_end(&mut file_buffer) {
+                Ok(_) => (),
+                Err(e) => error!("Unable to read to end of file: {}", e)
+            };
 
             res.status(STATUS_200);
             res.insert_header("Content-Type", "application/zip");
@@ -831,7 +893,7 @@ fn execute_ping(body: Vec<u8>, mut database: Database) -> Vec<u8> {
 fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
     let mut pinged_hns: Vec<Option<DB_IpAddress>> = Vec::new();
     for net in net_elements {
-        let hn_string: String = net.clone().unwrap().hostname.to_string();
+        let hn_string: String = net.as_ref().unwrap().hostname.to_string();
         pinged_hns.push(Some(
             DB_IpAddress {
                 hostname: net.unwrap().hostname,
@@ -885,14 +947,38 @@ fn check_schedule(room: &DB_Room) -> (bool, String) {
     let time_filter = Regex::new(r"(?<hours>[0-9]{2}):(?<minutes>[0-9]{2})").unwrap();
     let time = time_filter.captures(&now_str).unwrap();
 
-    let hours: u16 = time["hours"].parse().unwrap();
-    let minutes: u16 = time["minutes"].parse().unwrap();
+    let hours: u16 = match time["hours"].parse() {
+        Ok(h) => h,
+        Err(e) => {
+            error!("Unable to parse schedule hours: {}\nDefaulting to 0.", e);
+            0
+        }
+    };
+    let minutes: u16 = match time["minutes"].parse() {
+        Ok(m) => m,
+        Err(e) => {
+            error!("Unable to parse schedule minutes: {}\nDefaulting to 0.", e);
+            0
+        }
+    };
     let adjusted_time: u16 = (hours * 100) + minutes;
     
     for block in &room.schedule {
         let block_vec: Vec<&str> = block.as_ref().unwrap().split(&[' ', '-']).collect::<Vec<_>>().to_vec();
-        let adjusted_start: u16 = block_vec[1].parse().unwrap();
-        let adjusted_end: u16 = block_vec[2].parse().unwrap();
+        let adjusted_start: u16 = match block_vec[1].parse() {
+            Ok(t) => t,
+            Err(e) => {
+                error!("Unable to parse schedule start time: {}", e);
+                0
+            }
+        };
+        let adjusted_end: u16 = match block_vec[2].parse() {
+            Ok(t) => t,
+            Err(e) => {
+                error!("Unable to parse schedule end time: {}", e);
+                0
+            }
+        };
         if block_vec[0].contains(day_of_week) {
             if adjusted_time < adjusted_start {
                 available = true;
@@ -912,7 +998,13 @@ fn check_schedule(room: &DB_Room) -> (bool, String) {
 fn check_lsm(room: &DB_Room) -> bool {
     let needs_checked;
     // Line below produces -> ParseError(TooShort)
-    let parsed_checked: DateTime<Local> = room.checked.parse().unwrap();
+    let parsed_checked: DateTime<Local> = match room.checked.parse() {
+        Ok(dt) => dt,
+        Err(e) => {
+            error!("Unable to parse incoming DateTime: {}", e);
+            String::from("2000-01-01T00:00:00Z").parse().unwrap()
+        }
+    };
     let time_diff: TimeDelta = Local::now() - parsed_checked;
     if room.gp {
         if time_diff.num_seconds() >= 604800 {
@@ -985,14 +1077,15 @@ fn find_files(building: String, rm: String) -> Vec<String> {
 
 fn get_dir_contents(path: &str) -> Vec<String> {
     let mut strings = Vec::new();
-    /* let paths = match read_dir(&path) {
+    let paths = match read_dir(&path) {
         Ok(p) => p,
         Err(e) => {
-            error!("Malformed directory path(s): {}\nDefaulting to empty.", e);
-            Vec::new()
-        } */
-    let mut paths = read_dir(&path).unwrap();
-    /* }; */
+            error!("Malformed directory path(s): {}", e);
+            let empty_dir_path = Path::new("empty_dir");
+            let _ = std::fs::create_dir_all(&empty_dir_path);
+            read_dir(&empty_dir_path).unwrap()
+        }
+    };
     for p in paths {
         strings.push(p.unwrap().path().display().to_string());
     }

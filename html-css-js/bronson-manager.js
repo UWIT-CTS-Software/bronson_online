@@ -4,32 +4,17 @@
 ▙▘▌ ▙▌▌▌▄▌▙▌▌▌  ▌▝ ▌█▌▌▌█▌▙▌▙▖▌ ▗  ▌▄▌
                           ▄▌      ▙▌  
 
-Jack Nyman
-6-17-2025
-
-This file is set to host functions that are called throughout bronson suite
- that utilize or update session storage for a user.
- This includes data structs to update the page,
-  - Checkerboard:
-        Zones: {"1":[...],"2":[],"3":[],"4":[]}
-  - campusData
-  - Leaderboard
-
-The scope of this file is not properly defined (sorry), but the idea is this is where we 
-manage and manipulate the user storage session/local. Along with caching tool pages and 
-handling reponses when the user does not have that given tool open (stashes).
-
 TOC:
   Data
-    - initLocalStorage() --------------------------------------------------- DB_TODO
+    - initLocalStorage()
     - getCampusData()
     - getZoneData()
     - getLeaderboard()
+    - getSpares()
     - getSchedule()
-    - getDashboardMessage() ------------------------------------------------ DB_TODO
-    - checkForDataUpdates()  ----------------------------------------------- DB_TODO
     - setDashboardDefaults()
     - getLocalCampusData()
+        - getBuilding(abbrev)
         - getBuildingList()
         - getRooms(buildingName)
         - getAbbrev(buildingName)
@@ -44,20 +29,32 @@ TOC:
     - storeJNResponse(jnBody) ---------------------------------------------- UNUSED
     - preserveCurrentTool()
   Dashboard Helpers
-    - getDashboardChecker() ------------------------------------------------ DB_TODO
-    - initCheckerboardStorage() -------------------------------------------- DB_TODO
-    - resetCBDash(zoneArray) ----------------------------------------------- DB_TODO
-    - updateCBDashZone(currentZone, rooms, checked) ------------------------ DB_TODO
-    - dashCheckerboard() --------------------------------------------------- DB_TODO
+    - initCheckerboardStorage()
+    - dashCheckerboardHTML()
+    - dashCheckerboard()
     - setSchedule(buttonID)
     - setUserSchedule(name) ------------------------------------------------ DB_TODO / SSO
     - makeTechTableHeader(firstColumn)
     - makeTechSchdRow(tech, today)
     - getTechSchdTimeBlocks()
     - renderTimeIndicator() ------------------------------------------------ TODO
-    - setLeaderWeek()
-    - setLeaderMonth()
-    - setLeaderSemester()
+    - setLeader(jsonValue)
+    - rawTimeFormat(rawTime)
+    - dashSpares()
+    - isMobile() ----------------------------------------------------------- UNUSED
+
+This file is set to host functions that are called throughout bronson suite
+ that utilize or update session storage for a user.
+ This includes data structs to update the page,
+  - Checkerboard:
+        Zones: {"1":[...],"2":[],"3":[],"4":[]}
+  - campusData
+  - Leaderboard
+
+The scope of this file is not properly defined (sorry), but the idea is this is where we 
+manage and manipulate the user storage session/local. Along with caching tool pages and 
+handling reponses when the user does not have that given tool open (stashes).
+
 Notes:
 There are some pieces from other files that may fit better here, such as building the HTML
 when a tool tab is selected and the Cookie/Time struct from checkerboard.
@@ -75,22 +72,6 @@ These functions are used in Checkerboard, Jacknet, and the dashboard.
 ░▒▓███████▓▒░░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░  ░▒▓█▓▒░░▒▓█▓▒░ 
 */
 
-// class Time {
-//     constructor() { this.time = ''; }
-
-//     setTime(time) { this.time = time; }
-
-//     getTime() { return this.time; }
-// }
-
-// class Cookie {
-//     constructor() { this.value = "none"; }
-
-//     setCookie(id) { this.value = id; }
-
-//     getCookie() { return this.value; }
-// }
-
 const Days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 // Sets local strage for data used by the various tools
 //  - Zone Building list array of room names for each zone
@@ -100,34 +81,33 @@ const Days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 //  the hope is that it keeps things up to date if/when things 
 //  change on the backend.
 async function initLocalStorage() {
-    // Campus Data (Effectively a clone of the hashmap)
-    if(localStorage.getItem("campData") == null) {
-        let campData = await getCampusData();
-        localStorage.setItem("campData", JSON.stringify(campData));
-    }
+    // Campus Data (Effectively a clone of the database)
+    let campData = await getCampusData();
+    localStorage.setItem("campData", JSON.stringify(campData));
+    
     // Zone Arrays
     if (localStorage.getItem("zoneData") == null) {
         let zoneData = await getZoneData();
         localStorage.setItem("zoneData", JSON.stringify(zoneData));
     }
     // Leaderboard
-    if (localStorage.getItem("leaderboard") == null) {
-        let leaderboard = await getLeaderboard();
-        localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
-    }
+    let leaderboard = await getLeaderboard();
+    localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+    // Spares
+    let spares = await getSpares();
+    console.log(spares["spares"]);
+    localStorage.setItem("spares", JSON.stringify(spares["spares"]));
     // CheckerboardStorage
     if (sessionStorage.getItem("db_checker") == null) {
-        // DATABASE_TODO - swap functions / switch to localStorage / more info below
-        // let chkDashboard = getDashboardChecker();
-        // sessionStorage.setItem("db_checker", chkDashboard);
         initCheckerboardStorage();
     }
-    // DATABASE_TODO - check for changes / more info below
-    // checkForDataUpdates();
     // Once data is loaded, set default tab selection
     if(document.title.includes("Dashboard")) {
         setDashboardDefaults();
+        dashCheckerboard(); // poplate cb_dash
+        dashSpares(); // populate db_spares
     }
+    //isMobile();
     return;
 }
 
@@ -164,6 +144,17 @@ async function getLeaderboard() {
     );
 }
 
+async function getSpares() {
+    return fetch("spares")
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("HTTP error " + response.status);
+            }
+            return response.json();
+        }
+    );
+}
+
 async function getSchedule() {
     return fetch("techSchedule")
         .then(response => {
@@ -177,56 +168,12 @@ async function getSchedule() {
         });
 }
 
-async function updateSchedule(schedule) {
-    return fetch("updateSchedule", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Content-Length": JSON.stringify(schedule).length,
-        },
-        body: JSON.stringify(schedule)
-    }).then(response => {
-        if (!response.ok) {
-            throw new Error("HTTP error " + response.status);
-        }
-        return response;
-    });
-}
-
-// DATABASE_TODO: pull the dashboard message from backend
-//  maybe update the textarea inside setDashboardDefaults()
-async function getDashboardMessage() {
-    return;
-}
-
-// move getDashboardChecker() here when ready
-
-// DATABASE_TODO
-//  This function may be a bit heavy in terms of implementation.
-//    Adding this with cookie signing may be good.
-//  Essentially, all these json objects we are receiving and 
-//  storing in local storage may (will) change while they are connnected
-//  this function will be ran when dashboard is loaded via initLocalStorage.
-//  LocalStorage sticks around for a WHILE. therefore we need some way to remove it
-//  and update it. I think the best way to do this is to include an additional field within
-//  the served JSON, which would be a hash of the content inside. We send this hash back
-//  to the backend and we get a boolean value back. If we get all true back, then we simply
-//  return. If we get a false, we remove that entry from the local storage, and we rerun
-//  initLocalStorage(), now that it is a null value it will pull the most recent data.
-//  WARNING, if the hash is messed up then this will easily end up being an infinite loop.
-//    recommendation for debugging, include a count as a function input and increment it
-//    with each call and return without calling initLocalStorage() if it exceeds three.
-//  Hope is we can reuse this all over the site everytime a tab is clicked giving the illusion
-//  of a persistent connection.
-async function checkForDataUpdates() {
-    return;
-}
-
 function setDashboardDefaults() {
     // Default Dashboard Selections
     //  Leaderboard: 7-Days
     //  Schedule: Current-Day
-    setLeaderWeek();
+    //setLeaderWeek();
+    setLeader("7days");
     // Set Schedule
     let today = new Date();
     // Add today class to today's button
@@ -236,11 +183,21 @@ function setDashboardDefaults() {
             buttons[i].classList.remove("today");
         }
     }
-    let todayButton = Days[today.getDay()]+"Button";
+
+    let day;
+    if (today.getDay() == 0 || today.getDay() == 6) {
+        day = 1;
+    } else {
+        day = today.getDay();
+    }
+    let todayButton = Days[day]+"Button";
     let todayButtonObj = document.getElementById(todayButton);
     todayButtonObj.classList.add("today");
     // Set Today's Tab
     setSchedule(todayButton);
+    // populate overview
+    // let db_checker_obj = getElementsByClassName("db_checker")[0];
+    // db_checker_obj.innerHTML = dashCheckerboard();
     return;
 }
 
@@ -250,6 +207,16 @@ function setDashboardDefaults() {
 function getLocalCampusData() {
     let campJSON = localStorage.getItem("campData");
     return JSON.parse(campJSON);
+}
+
+async function getBuilding(abbrev) {
+    let data = await getLocalCampusData();
+    for (building in data) {
+        if(building == abbrev) {
+            return data[building];
+        }
+    }
+    return data[abbrev];
 }
 
 // Returns a list of buildings
@@ -333,13 +300,10 @@ initiated it on. Also handling the dashboard widgets for a given tool.
 //  to prevent loss of data so we are not throwing anything into the void.
 function stashCheckerboard(checkerboardResponse) {
     let stash = JSON.parse(sessionStorage.getItem("CheckerBoard_stash"));
-    //let stash = sessionStorage.getItem("CheckerBoard_stash");
     const newItem = {
         "checkerboardResponse": checkerboardResponse
     };
-    //const newItem = checkerboardResponse;
     if (stash == null) {
-        //sessionStorage.setItem("CheckerBoard_stash", [JSON.stringify(newItem)])
         sessionStorage.setItem("CheckerBoard_stash", JSON.stringify({"stashList": [newItem]}));
     } else {
         stash.stashList.push(newItem);
@@ -347,7 +311,6 @@ function stashCheckerboard(checkerboardResponse) {
     }
     // add indicator to button
     let cbButton = document.getElementById("CBButton");
-    //cbButton.innerHTML = `<img class="tab_img" src="button2.png"/><span>CheckerBoard *</span>`;
     cbButton.classList.add("stashed");
     return;
 }
@@ -367,7 +330,6 @@ function stashJNResponse(formattedPingRequest, buildingName, deviceNames) {
     }
     // add indicator to button
     let jnButton = document.getElementById("JNButton");
-    //jnButton.innerHTML = `<img class="tab_img" src="button2.png"/><span>JackNet *</span>`;
     jnButton.classList.add("stashed");
     return;
 }
@@ -409,23 +371,12 @@ function preserveCurrentTool() {
 }
 
 // ----------- Dashboard Stuff
-
-// DATABASE_TODO
-//  [ ] remove initCheckerboardStorage()
-//             resetCBDash(zoneArray);
-//             updateCBDashZone(currentZone, rooms, checked);
-//  These functions are the frontend calculating the dashboard zone percentages.
-//  the downside is that these figures require a user to run checkerboard on each zone
-//  for it to show up on the dashboard every session. Which is not desired behavior. 
-//  We want the backend to keep an accurate count persistent and these functions will 
-//  be replaced with getDashboardCheckerboard();
-
 // DATABASE_TODO
 // fetch checkerboard zone percentages from backend.
 //  Current Session Object (this could also change): 
 //    - if it changes, make sure to update dashCheckerboard();
 /*
-{zones: [{
+{[{
         zone: "1",
         rooms: 0,
         checked: 0
@@ -443,102 +394,94 @@ function preserveCurrentTool() {
         checked: 0
     }]}
 */
-async function getDashboardChecker() {
-    return await fetch('/dashboard/checker') // DOES NOT EXIST YET (header not final)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("HTTP error" + response.status);
-            }
-            return response.json();
-        }
-    );
-}
 
 // Define the dashboard object, once it gets real values from the backend
 //  users will see it on the dashboard.
 function initCheckerboardStorage() {
     const initEntry = {
-        "1": {
-            zone: "1",
-            rooms: 0,
-            checked: 0
-        },
-        "2": {
-            zone: "2",
-            rooms: 0,
-            checked: 0
-        },
-        "3": {
-            zone: "3",
-            rooms: 0,
-            checked: 0
-        },
-        "4": {
-            zone: "4",
-            rooms: 0,
-            checked: 0
-        }
+        zones: [
+            {
+                zone: 1,
+                rooms: 0,
+                checked: 0
+            },{
+                zone: 2,
+                rooms: 0,
+                checked: 0
+            },{
+                zone: 3,
+                rooms: 0,
+                checked: 0
+            },{
+                zone: 4,
+                rooms: 0,
+                checked: 0
+            }
+        ]
     };
-    sessionStorage.setItem("db_checker", JSON.stringify(initEntry));
-    return;
-}
-
-// sets newly called zones to zero, this is because when calculate the zone percentage,
-// we are adding room numbers to these valus iteratively as they come in.
-function resetCBDash(zoneArray) {
-    let object = JSON.parse(sessionStorage.getItem("db_checker"));
-    zoneArray.forEach(function(z) {
-        object[`${z}`] = {
-            "zone":`${z}`,
-            "rooms":0,
-            "checked":0
-        };
-    });
-    sessionStorage.setItem("db_checker", JSON.stringify(object));
-    return;
-}
-
-// When a building response is received it updates the dash object
-// NOTE: if a user is in the middle of running checkerboard and clicks
-//  dashboard before the zone completes, it will be skewed to only the 
-//  receieved information. To actually update the dashboard widget they
-//  need to go back to checkerboard. This could probably be fixed by 
-//  making this update happen when something is stashed.
-function updateCBDashZone(zone_num, rooms, checked) {
-    let object = JSON.parse(sessionStorage.getItem("db_checker"));
-    let zoneObj = object[`${zone_num}`];
-    zoneObj["rooms"] += rooms;
-    zoneObj["checked"] += checked;
-    sessionStorage.setItem("db_checker", JSON.stringify(object));
+    sessionStorage.setItem("db_checker", JSON.stringify(initEntry.zones));
     return;
 }
 
 // If cb_body is loaded when setDashboard() is called,
 //  then this is called to load a HTML snippet detailing
 //  the zones in checkerboard.
-async function dashCheckerboard() {
+async function dashCheckerboardHTML() {
     // DATABASE_TODO: get out of local storage (once set up with database)
     let object = JSON.parse(sessionStorage.getItem("db_checker"));
     let cb_dashDiv = document.createElement("div");
     cb_dashDiv.classList.add("db_checker");
+    cb_dashDiv.setAttribute("id", "db_checker");
     let cb_dashDivHTML = `<fieldset><legend>Checkerboard Zone Overview</legend><ul>`;
-    Object.values(object).forEach(function(zone) {
-        let percent = zone["checked"] / zone["rooms"];
-        percent = String((100*percent).toFixed(5)).slice(0,5);
-        cb_dashDivHTML += `<li> 
-        <p>Zone ${zone["zone"]}: &emsp; ${zone["checked"]} / ${zone["rooms"]}  Rooms</p>
-        <label class="cbProgLabel" for="${zone["zone"]}_prog"> ${percent}%</label>
-        <progress id="${zone["zone"]}_prog" value="${percent}" max="100"></progress>
-        </li>`;
-    });
+    for (item in object) {
+        if (object[item]["rooms"] != 0) {
+            let zoneNum = object[item]["zone"];
+            let checkedRooms = object[item]["checked"];
+            let totalRooms = object[item]["rooms"];
+            let percent = checkedRooms / totalRooms;
+            percent = String((100*percent).toFixed(5)).slice(0,5);
+            cb_dashDivHTML += `<li> 
+            <div style="display: inline;"><p class="db_cbZonep">Zone ${zoneNum}: </p><p class="db_cbRoomCountp">${checkedRooms} / ${totalRooms}</p>
+            <label class="dbCbProgLabel" for="${zoneNum}_prog"> ${percent}%</label>
+            <progress id="${zoneNum}_prog" value="${percent}" max="100"></progress></div>
+            </li>`;
+        }
+    }
     cb_dashDivHTML += `</ul></fieldset>`;
     cb_dashDiv.innerHTML = cb_dashDivHTML;
     return cb_dashDiv;
 }
 
+// Parses CampusData for information. And places it in db_checker
+async function dashCheckerboard() {
+    let cb_dash = JSON.parse(sessionStorage.getItem("db_checker"));
+    let zoneObject = JSON.parse(localStorage.getItem("zoneData"));
+    //console.log(cb_dash);
+    // GET ZONE OBJ AND ITERATE OVER THAT AND USE THAT ARRAY TO GRAB
+    // ENTRIES OUT OF CAMPOBJECT
+    for (zone in zoneObject) {
+        let cr = 0; // Checked Rooms
+        let tr = 0; // Total Rooms
+        let bl = await getBuildingAbbrevsFromZone(zone);
+        for(bldg in bl) {
+            let building = await getBuilding(bl[bldg]);
+            cr += building.checked_rooms;
+            tr += building.total_rooms;
+        }
+        // add to cb_dash
+        cb_dash[zone-1].checked = cr;
+        cb_dash[zone-1].rooms = tr;
+    }
+    //console.log(cb_dash);
+    // if good send to session storage
+    sessionStorage.setItem("db_checker", JSON.stringify(cb_dash));
+    let html_obj = document.getElementById("db_checker");
+    html_obj.replaceWith(await dashCheckerboardHTML());
+    return;
+}
+
 // Schedule
 async function setSchedule(buttonID) {
-    //console.log(buttonID + " Pressed");
     let current = document.getElementsByClassName("schedule_selected");
     if (current.length != 0) {
         current[0].classList.remove("schedule_selected");
@@ -672,50 +615,103 @@ function renderTimeIndicator() {
 }
 
 // Leaderboard
-function setLeaderWeek() {
+function setLeader(jsonValue) {
+    // button can be '90days','30days', and '7days'
+    let leader = JSON.parse(localStorage.getItem("leaderboard"))[`${jsonValue}`];
+    // get button ID
+    let buttonId = "";
+    switch (jsonValue) {
+        case '90days':
+            buttonId = "SemesterButton";
+            break;
+        case "30days":
+            buttonId = "MonthButton";
+            break;
+        case "7days":
+            buttonId = "WeekButton";
+            break;
+        default:
+            console.warn("Faulty Leaderboard Behavior Detected, Unsupported Time Option");
+            return;
+    }
+
     let current = document.getElementsByClassName("leader_selected");
     if (current.length != 0) {
         current[0].classList.remove("leader_selected");
     }
-    let newCurrent = document.getElementById("WeekButton");
+    let newCurrent = document.getElementById(`${buttonId}`);
     newCurrent.classList.add("leader_selected");
-    let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["7days"];
+    // number of characters per row
+    //const COL_LIMIT = 28; // 28 Columns On Mobile, 41 On desktop.
+    //let r = window.innerWidth / window.innerHeight;
+    //let col = Math.round(COL_LIMIT * (COL_LIMIT*r) / 41) - 3;
+    let col = Math.round(4*Math.atan(1/70*window.innerWidth - 23.6) + 32);
+    // print
     let leaderString = "";
-    for (let i=0; i<weekLeader.length; i++) {
-        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+    for (let i=0; i<leader.length; i++) {
+        let n = col - leader[i].Name.length;
+        let spacer = n > 0 ? " ".repeat(n) : "";
+        leaderString += `${i+1}. ${leader[i].Name}: ${spacer}${leader[i].Count}\n`;
     }
     let leaderboard = document.getElementById("leaderboard");
     leaderboard.innerHTML = leaderString;
+    return;
 }
 
-function setLeaderMonth() {
-    let current = document.getElementsByClassName("leader_selected");
-    if (current.length != 0) {
-        current[0].classList.remove("leader_selected");
-    }
-    let newCurrent = document.getElementById("MonthButton");
-    newCurrent.classList.add("leader_selected");
-    let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["30days"];
-    let leaderString = "";
-    for (let i=0; i<weekLeader.length; i++) {
-        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
-    }
-    let leaderboard = document.getElementById("leaderboard");
-    leaderboard.innerHTML = leaderString;
+// IE: YEAR-MT-DYT15:59:59Z
+function rawTimeFormat(rawTime) {
+    const MONTHS = ["Janurary","Feburary","March",
+        "April","May","June",
+        "July","August","September",
+        "October","November","December"];
+    let splitTime = rawTime.split("T");
+    let date = splitTime[0].split("-");
+    let timeOfDay = splitTime[1].slice(0,-1); // slice removes the Z
+    let newTimeStr = `${MONTHS[Number(date[1]) - 1]} ${date[2]}, ${date[0]} at ${timeOfDay}`;
+    return newTimeStr;
 }
 
-function setLeaderSemester() {
-    let current = document.getElementsByClassName("leader_selected");
-    if (current.length != 0) {
-        current[0].classList.remove("leader_selected");
+// dashSpares();
+//  Populate the spares widget on the dashboard with information.
+function dashSpares() {
+    let spareDiv = document.getElementById("db_spare");
+    let spareData = JSON.parse(localStorage.getItem("spares"));
+    let tmp = `<fieldset> <legend> PC Spares </legend> <p class="spareHeader"> Deployed Spares </p> <ul>`;
+    let tmp_deployed = ``;
+    let tmp_notDeployed = ``;
+    for(let i = 0; i < spareData.length; i++) {
+        if(spareData[i]["Location"]["name"] == "ITC 0173") {
+            tmp_notDeployed += `<li><span class="sparePCName">${spareData[i]["Asset Tag"]}: </span>
+        <span class="spareLocale">Located in ${spareData[i]["Location"]["name"]} </span><br> 
+        <span class="spareUpdate">Updated ${rawTimeFormat(spareData[i]["Last Updated"])} <br>
+        by ${spareData[i]["User"]["displayName"]}</span></li>`;
+        } else {
+            tmp_deployed += `<li><span class="sparePCName">${spareData[i]["Asset Tag"]}: </span>
+        <span class="spareLocale">Located in ${spareData[i]["Location"]["name"]} </span><br> 
+        <span class="spareUpdate">Updated ${rawTimeFormat(spareData[i]["Last Updated"])} <br>
+        by ${spareData[i]["User"]["displayName"]}</span></li>`;
+        }
     }
-    let newCurrent = document.getElementById("SemesterButton");
-    newCurrent.classList.add("leader_selected");
-    let weekLeader = JSON.parse(localStorage.getItem("leaderboard"))["90days"];
-    let leaderString = "";
-    for (let i=0; i<weekLeader.length; i++) {
-        leaderString += `${weekLeader[i].Name}: ${weekLeader[i].Count}\n`;
+    tmp += tmp_deployed;
+    tmp += `</ul><p> Stored in ITC 173 </p><ul>`;
+    tmp += tmp_notDeployed;
+    tmp += `</ul></fieldset>`;
+    spareDiv.innerHTML = tmp;
+    return;
+}
+
+// Not really being used, consider this a proof of concept to give more specific
+// formatting based on user device (this is not perfect)
+function isMobile() {
+    let screenWidth = window.innerWidth;
+    let screenHeight = window.innerHeight;
+    let r = screenWidth / screenHeight;
+    //console.log("Screen Width: ", screenWidth, ", Screen Height: ", screenHeight, " Ratio: ", r);
+    if (r < 1.2) {
+        //console.log("Mobile User Detected");
+        return true;
+    } else {
+        //console.log("Desktop User Detected");
+        return false;
     }
-    let leaderboard = document.getElementById("leaderboard");
-    leaderboard.innerHTML = leaderString;
 }
