@@ -1082,7 +1082,7 @@ function setDBEditor() {
             });
             tmp += `
                 <tr id="${roomName}-row" oninput="updateRow('${roomName}-row')">
-                    <th scope="row" class="dbRoomName"><input type="text" class="dbRoomInputName" id="${roomName}-text" value="${roomName}"></th>
+                    <th scope="row" class="dbRoomName"><input type="text" class="dbRoomInputName" oninput="validateUserRoomInput('${roomName}-text')" id="${roomName}-text" value="${roomName}"></th>
                     <td><input type="number" class="dbRoomInput" id="${roomName}-PROC" value="${procCount}" min="0"></td>
                     <td><input type="number" class="dbRoomInput" id="${roomName}-PJ" value="${pjCount}" min="0"></td>
                     <td><input type="number" class="dbRoomInput" id="${roomName}-DISP" value="${dispCount}" min="0"></td>
@@ -1108,22 +1108,37 @@ function setDBEditor() {
     return;
 }
 
-//TODO
+// TODO
 // Post the changes made in the editor to the database
+//  - Note, Alex is working on terminal functions that will
+//      be doing alot of this, I would like to leverage the
+//      functions he is making to update the database.
+//      This may involved changing the format of changelog
+//      lines to better match whatever syntax he decides on.
 function updateDatabaseFromEditor() {
     let changelog = document.getElementById("db_changlog");
     let log = changelog.value.split("\n");
     // TODO: the post body will have the log contents.
 
     // TODO: remove all instances of .dbRowChanged, .dbRowToBeRemoved
-    //     and .dbRowToBeAdded.
-
+    //     and .dbRowToBeAdded. 
     // TODO: clear the changelog textarea.
+    //   OR:
+    //     pull a new campusData and replace the one in localStorage
+    //     and 'refresh the page', this will do the above things and
+    //     the new page will include the changes that were made.
     return;
 }
 
+// TODO
+//   - We check the validity of user input when adding a room,
+//     BUT not when updating, this function is supposed to do
+//     that, textarea has some built in 'valid' attributes we 
+//     could use for this.
+function validateUserRoomInput(cellID) {
+    return;
+}
 
-// TODO: Need to overhaul
 function setRoomAddition(menuID, buildingTableID) {
     let tableMenuElement = document.getElementById(menuID);
     let building = menuID.split("-")[0];
