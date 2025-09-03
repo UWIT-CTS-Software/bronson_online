@@ -563,7 +563,7 @@ async function setUserSchedule() {
     //    the user name is stored in the cookie, not the user's
     //    name like it is in the schedule data, because of this. 
     //    I have a switch case that will need to be ripped out
-    let username = document.cookie.split("=")[1];
+    let username = document.cookie.split("=")[0];
     console.log(username);
     let name = "name";
     switch (username) {
@@ -581,14 +581,14 @@ async function setUserSchedule() {
     let techObj = schdData[name];
     if (techObj == undefined) {
         console.warn("Dashboard: User does not have a schedule");
-        tbody_HTML += `</tbody><span> No schedule found associated with current user.</span>`
+        tbody_HTML += `</tbody></table><span> No schedule found associated with current user.</span>`
     } else {
         // Build the table
         let weekdays = Days.slice(1,6);
         weekdays.forEach(function(day) {
             tbody_HTML += makeTechSchdRow(techObj, day); 
         });
-        tbody_HTML += `</tbody>`;
+        tbody_HTML += `</tbody></table>`;
     }
     let tbody = document.createElement('tbody');
     tbody.setAttribute("id", "schd_tbody");
