@@ -1561,7 +1561,7 @@ ol li::marker {
     font-family: "Racing Sans One", sans-serif;
     font-size: 14px;
     text-align: center;
-    width:72px;
+    width:83px;
     transition-duration: .2s;
 }
 
@@ -1609,7 +1609,7 @@ ol li::marker {
 }
 
 .leader_tab_img {
-    width:90px;
+    width:101px;
     height:30px;
 }
 
