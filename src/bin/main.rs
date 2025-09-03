@@ -47,11 +47,11 @@ use server_lib::{
     Building, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
-    CFM_DIR, WIKI_DIR, LOG,
-    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_404, STATUS_500, 
-    Database,
+    CFM_DIR, WIKI_DIR, /* LOG, */
+    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
+    Database, Terminal, 
     models::{
-        DB_Room, DB_Building, DB_User, DB_DataElement,
+        DB_Room, DB_Building, DB_User, /* DB_DataElement, */
         DB_IpAddress,  
     },
 };
@@ -75,7 +75,7 @@ use reqwest::{
     header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
 use log::{ debug, info, warn, error, }; // trace, };
-use cookie::{ Cookie, };
+use cookie::{ /* Cookie, */ CookieJar, /* Key, */ };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
 use regex::Regex;
@@ -100,17 +100,6 @@ $$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |  $$ |\$$$$$$$ |
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // debug setting
     env::set_var("RUST_BACKTRACE", "1");
-    // embed_migrations
-    dotenv().ok(); // Load .env file
-    let database_url = env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set");
-    let mut connection = PgConnection::establish(&database_url)
-        .expect("Error Connecting to Database");
-    connection.run_pending_migrations(MIGRATIONS)
-            .map_err(|e| format!("Failed to run migrations: {}", e))?;
-
-    let mut database = Database::new();
-    database.init_if_empty();
 
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
@@ -123,9 +112,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     
     if matches.opt_present("d") {
-        init_logger("debug")?;
+        match init_logger("debug") {
+            Ok(_) => (),
+            Err(e) => error!("Unable to init logger: {}", e)
+        };
     } else {
-        init_logger("info")?;
+        match init_logger("info") {
+            Ok(_) => (),
+            Err(e) => error!("Unable to init logger: {}", e)
+        };
     }
     
     // set TcpListener and initalize
@@ -165,6 +160,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => error!("STDOUT flush failed: {}", e)
     };
 
+    // embed_migrations
+    dotenv().ok(); // Load .env file
+    let database_url = env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set");
+    let mut connection = PgConnection::establish(&database_url)
+        .expect("Error Connecting to Database");
+    connection.run_pending_migrations(MIGRATIONS)
+            .map_err(|e| format!("Failed to run migrations: {}", e))?;
+
+    let mut database = Database::new();
+    database.init_if_empty();
+
     for stream in listener.incoming() {
         let mut stream = match stream {
             Ok(s) => s,
@@ -173,13 +180,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 continue;
             }
         };
-        let clone_db = database.clone();
 
         match stream.read(&mut buffer) {
             Ok(_) => (),
             Err(e) => error!("Error reading to buffer: {}", e)
         };
-        let req = Request::build(buffer.clone());
+        let req = Request::from(buffer.clone());
+        let clone_db = database.clone();
 
         pool.execute(move || {
             let mut res = handle_connection(req, clone_db).unwrap();
@@ -223,23 +230,30 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
 #[tokio::main]
 #[allow(unused_assignments)]
 async fn handle_connection(
-    req: Request,
+    mut req: Request,
     mut database: Database,
-) -> Option<Response> {
-    
+) -> Option<Response> {    
     let mut user_homepage: &str = "html-css-js/login.html";
     if req.headers.contains_key("Cookie") {
-        let username_search = Regex::new("user=(?<username>.*)").unwrap();
-        let Some(username) = username_search.captures(&req.headers.get("Cookie").unwrap()) else { panic!("Empty") };
-        let user = database.get_user(&username["username"]);
-        if user.is_some() {
-            match user.unwrap().permissions {
+        let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
+        let username = match username_search.captures(&req.headers.get("Cookie").unwrap()) {
+            Some(uname) => uname,
+            None => panic!("Unable to capture username.")
+        };
+        let user = match database.get_user(&username["username"]) {
+            Some(u) => u,
+            None => DB_User{ username: String::new(), permissions: 0 },
+        };
+
+        if req.has_valid_cookie(&mut database) {
+            match user.permissions {
                 7 => user_homepage = "html-css-js/index_admin.html",
                 6 => user_homepage = "html-css-js/index_admin.html",
                 0 => user_homepage = "html-css-js/login.html",
                 _ => user_homepage = "html-css-js/index.html",
             }
         }
+        
     }
 
     // Handle requests
@@ -473,88 +487,27 @@ async fn handle_connection(
         },
         // Terminal
         // --------------------------------------------------------------------
-        "GET /refresh/all HTTP/1.1"        => {
-            let contents = json!({
-                "body": "[+] All updated successfully."
-            }).to_string().into();
-            res.status(STATUS_200);
-            res.send_contents(contents);
-        },
-        "GET /refresh/threads HTTP/1.1"    => {
-            let contents = json!({
-                "body": "[!] Feature not implemented."
-            }).to_string().into();
-            res.status(STATUS_200);
-            res.send_contents(contents);
-        },
-        "GET /refresh/map HTTP/1.1"        => {
-            let contents = json!({
-                "body": "[+] Map updated successfully."
-            }).to_string().into();
-            res.status(STATUS_200);
-            res.send_contents(contents);
-        },
-        "GET /get/PLACEHOLDER HTTP/1.1"    => {
-            debug!("test!");
-            debug!("{:?}", req.body);
-            res.status(STATUS_200);
-            res.send_contents("".into());
-        },
-        "GET /get/log HTTP/1.1"            => {
-            let mut f = match File::open(LOG) {
-                Ok(file) => file,
-                Err(e) => {
-                    error!("Unable to open log file: {}", e);
-                    res.status(STATUS_500);
-                    res.send_contents(format!("Unable to open log file: {}", e).into());
-                    return Some(res);
-                }
-            };
-            
-            let mut file_buffer = Vec::new();
-            match f.read_to_end(&mut file_buffer) {
-                Ok(_) => (),
-                Err(e) => error!("Unable to read file: {}", e)
-            };
-
-            res.status(STATUS_200);
-            res.insert_header("Content-Type", "application/zip");
-            let filename = "attachment; filename=output.log";
-            res.insert_header("Content-Disposition", &filename);
-            res.send_contents(file_buffer);
-        },
-        "POST /updateSchedule HTTP/1.1"        => {
-            let new_data = DB_DataElement {
-                key: String::from("schedule"),
-                val: String::from_utf8(req.body).expect("Unable to parse body contents")
-            };
-
-            database.update_data(&new_data);
-
-            res.status(STATUS_200);
-            res.send_contents("".into());
-        },
-        "POST /add/user HTTP/1.1"          => {
-            let new_user: DB_User = serde_json::from_str(&String::from_utf8(req.body).unwrap()).unwrap();
-            database.update_user(&new_user);
-
-            res.status(STATUS_200);
-            res.send_contents("User successfully added.".into());
-        },
-        "POST /delete/user HTTP/1.1"          => {
-            let del_user: String = String::from_utf8(req.body).expect("UNKNOWN");
-            database.delete_user(&del_user);
-
-            res.status(STATUS_200);
-            res.send_contents("User successfully deleted.".into());
-        },
-        "POST /update/dash HTTP/1.1"       => {
-            database.update_data(&DB_DataElement {
-                key: String::from("dashboard"),
-                val: String::from_utf8(req.body).expect("Unable to parse body contents"),
-            });
-            res.status(STATUS_200);
-            res.send_contents("".into());
+        "POST /terminal HTTP/1.1"          => {
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                res = match Terminal::execute(&req) {
+                    Ok(resp) => {
+                        resp
+                    },
+                    Err(e) => {
+                        let mut resp = res;
+                        resp.status(STATUS_500);
+                        resp.send_contents(json!({
+                            "response": format!("Internal error: {:?}", e)
+                        }).to_string().into());
+                        resp
+                    }
+                };
+            }
         },
         // --------------------------------------------------------------------
         // make calls to backend functionality
@@ -576,9 +529,12 @@ async fn handle_connection(
             } else {
                 user_homepage = "html-css-js/index.html";
             }
+
+            let mut jar = CookieJar::new();
+            jar.signed_mut(&database.get_cookie_key()).add((user.clone(), user.clone()));
+            let signed_val = jar.get(&user).cloned().unwrap();
         
-            let cookie = Cookie::build(("user", user));
-            res.insert_header("Set-Cookie", cookie.to_string().as_str());
+            res.insert_header("Set-Cookie", &signed_val.to_string());
             res.insert_header("Access-Control-Expose-Headers", "Set-Cookie");
 
             res.status(STATUS_200);
@@ -694,7 +650,6 @@ async fn handle_connection(
             // TODO: get checked_rooms
             // let checked_rooms: i16 = v["count"].as_i64().unwrap().try_into().unwrap();
             let mut checked_rooms: i16 = 0;
-            //let mut room_check_list: Vec<String> = Vec::new();
             for mut room in database.get_rooms_by_abbrev(&building_sel) {
                 if check_map.contains_key(&room.name) {
                     // checked Date format may need changed here

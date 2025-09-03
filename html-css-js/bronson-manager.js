@@ -183,7 +183,14 @@ function setDashboardDefaults() {
             buttons[i].classList.remove("today");
         }
     }
-    let todayButton = Days[today.getDay()]+"Button";
+
+    let day;
+    if (today.getDay() == 0 || today.getDay() == 6) {
+        day = 1;
+    } else {
+        day = today.getDay();
+    }
+    let todayButton = Days[day]+"Button";
     let todayButtonObj = document.getElementById(todayButton);
     todayButtonObj.classList.add("today");
     // Set Today's Tab
