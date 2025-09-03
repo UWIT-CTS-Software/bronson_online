@@ -1344,15 +1344,23 @@ ol li::marker {
 }
 
 /* Database Editor Tab */
+.invalid {
+    border: 2px solid red;
+}
+
 .dbRoomInput {
     width: 40px;
+}
+
+.valid {
+    border: 1px solid rgb(144, 118, 26);
 }
 
 .dbRoomInputName {
     width: 100px;
     color: rgb(144, 118, 26);
     background-color: rgb(50, 50, 50);
-    border: 1px solid rgb(144, 118, 26);
+    /* border: 1px solid rgb(144, 118, 26); */
 }
 
 .dbBuildingTable {
