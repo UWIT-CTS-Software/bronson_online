@@ -22,11 +22,30 @@
 
       $(function() {
         $('#terminal').terminal(function(command) {
-            fetch("/terminal", {
+            fetch("terminal", {
               method: "POST",
-              body: JSON.stringify({
-                
-              })
+              body: command
+            }).then((response) => {
+              if (!response.ok) {
+                this.echo("Error");
+              }
+              console.log(response.headers.get("Content-Type"));
+              if (response.headers.get("Content-Type") == "application/octet-stream") {
+                return response.blob();
+              } else {
+                return response.json();
+              }
+            }).then((data) => {
+              if (data instanceof Blob) {
+                const url = URL.createObjectURL(data);
+                const a = document.createElement("a");
+
+                a.href = url;
+                a.download = "output.log";
+                a.click();
+              } else {
+                this.echo(data.response);
+              }
             })
         }, {
           checkArity: false,
