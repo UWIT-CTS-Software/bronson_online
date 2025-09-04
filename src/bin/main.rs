@@ -554,6 +554,9 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents("".into());
         },
+        "POST /update/database_room HTTP/1.1"    => {
+            // TODO: Build DB_Room Object from req
+        }
         // Terminal
         // --------------------------------------------------------------------
         "POST /terminal HTTP/1.1"          => {

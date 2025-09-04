@@ -1128,7 +1128,79 @@ function setDBEditor() {
 function updateDatabaseFromEditor() {
     let changelog = document.getElementById("db_changelog");
     let log = changelog.value.split("\n");
-    
+    let packet = {
+        data: []
+    }
+    // Create an object of rooms with changes
+    let changedRows = document.getElementsByClassName("dbRowChanged");
+    // Iterate through changed rows;
+    for(let i = 0; i < changedRows.length; i++) {
+        let inputs = changedRows[i].getElementsByTagName("input");
+        // If text is changed, it is an update
+        let roomObj = {
+            mode: "UPDATE", // UPDATE (stock) or REPLACE (room name change)
+            target: "", // Room Name
+            info: [] // [#dev1, #dev2, ... , #dev6, gp_bool];
+        }
+        for (let j = 0; j < inputs.length; j++) {
+            let id = inputs[j].getAttribute("id");
+            // Examine Room Name
+            if (inputs[j].type == "text") {
+                // When a room name is changed we are doing some strange things.
+                console.log("DE_DEBUG: Default/Input Text", inputs[j].defaultValue, inputs[j].value);
+                if(inputs[j].defaultValue != inputs[j].value) {
+                    roomObj.mode = "REPLACE";
+                    roomObj.target = `${inputs[j].defaultValue},${inputs[j].value}`;
+                } else {
+                    roomObj.target = `${inputs[j].defaultValue}`;
+                }
+            // Examine Attributes (number and checkbox)
+            } else if (inputs[j].type == "number") {
+                roomObj.info.push(inputs[j].value);
+            } else if (inputs[j].type == "checkbox") {
+                roomObj.info.push(inputs[j].checked);
+            }
+        }
+        packet.data.push(roomObj);
+    }
+    // Iterate through rows to be added
+    let addedRows = document.getElementsByClassName("dbRowToBeAdded");
+    for(let i = 0; i < addedRows.length; i++) {
+        let inputs = addedRows[i].getElementsByTagName("input");
+        let roomObj = {
+            mode: "ADD",
+            target: "",
+            info: []
+        }
+        for(let j = 0; j < inputs.length; j++) {
+            switch(inputs[j].type) {
+                case "text":
+                    roomObj.target = inputs[j].value;
+                    break;
+                case "number":
+                    roomObj.info.push(inputs[j].value);
+                    break;
+                case "checked":
+                    roomObj.info.push(inputs[j].value);
+                    break;
+                default:
+                    break;
+            }
+        }
+        packet.data.push(roomObj);
+    }
+    // Iterate through rows that need to be removed
+    let removedRows = document.getElementsByClassName("dbRowToBeRemoved");
+    for(let i = 0; i < removedRows.length; i++) {
+        let rowID = removedRows[i].getAttribute("id").split("-")[0];
+        let roomObj = {
+            mode: "REMOVE",
+            target: rowID
+        };
+        packet.data.push(roomObj);
+    }
+    // Prep Request to Backend
+    console.log(packet);
     return;
 }
 
@@ -1150,6 +1222,8 @@ function setRoomAddition(menuID, buildingTableID) {
     return;
 }
 
+
+// BUG: If there are changes made prior to adding a room, these changes will be lost and values inside the input will revert to the default.
 function confirmRoomAddition(textareaID, buildingTableID) {
     let tableElement = document.getElementById(buildingTableID);
     // Get New Room Name and Verify it's legality
@@ -1191,6 +1265,8 @@ function confirmRoomAddition(textareaID, buildingTableID) {
     </tr>`;
     // Add new Row to Table
     tableElement.innerHTML += tmp;
+    //BUG: Editing innterHTML reverts input fields to default, these changes are tracked in the changelog. Which is where this function comes into play.
+    syncTablesWithChangelog();
     // Update Changelog, Note because we are adding a room this is a little different than the other changelog update written below.
     updateChangelogRoomAddition(roomName);
     // Revert Building Menu
@@ -1203,6 +1279,31 @@ function cancelRoomAddition(menuID) {
     let menuElement = document.getElementById(menuID);
     let building = menuID.split("-")[0];
     menuElement.innerHTML = `<button onclick="setRoomAddition('${building}-menu', '${building}-tbody')"> Add Room </button>`;
+    return;
+}
+
+// This function counteracts a quirk with adding rows to a table with inputs.
+// When this happens, the user-changed values revert to their default. This
+// function is called after we add a row to go through the changelog
+function syncTablesWithChangelog() {
+    console.log("Running Table Sync With Changelog");
+    let changelog = document.getElementById("db_changelog");
+    let log = changelog.value.split('\n');
+    log = log.filter(entry => entry != "");
+    for(let i = 0; i < log.length; i++) {
+        console.log(log[i]);
+        if (!log[i].includes("To Be ")) {
+            let destination = log[i].split(" - ")[0];
+            let category = log[i].split(" - ")[1];
+            category = category.split(" changed from ")[0];
+            let newValue = log[i].split(" to ")[1];
+            console.log("SYNC DEBUG", destination, category, newValue);
+            let inputID = destination + "-" + category;
+            let target = document.getElementById(inputID);
+            console.log(target);
+            target.value = newValue;
+        }
+    }
     return;
 }
 
@@ -1364,7 +1465,7 @@ function updateChangelog(roomElement) {
         let tmpEntrySnippet = entry.split("changed from")[0];
         let logBool = true;
         for(let j = 0; j < log.length; j++) {
-            console.log("logEntry", log[j]);
+            //console.log("logEntry", log[j]);
             if (log[j].includes(tmpEntrySnippet)) {
                 log[j] = entry;
                 logBool = false;
