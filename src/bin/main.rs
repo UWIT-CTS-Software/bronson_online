@@ -296,6 +296,10 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_file("html-css-js/checkerboard.js");
         },
+        "GET /tickex.js HTTP/1.1"    => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/tickex.js");
+        },
         "GET /jacknet.js HTTP/1.1"         => {
             res.status(STATUS_200);
             res.send_file("html-css-js/jacknet.js");
@@ -318,6 +322,11 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_file(user_homepage);
             res.insert_onload("setChecker()");
+        },
+        "GET /tickex HTTP/1.1"       => {
+            res.status(STATUS_200);
+            res.send_file(user_homepage);
+            res.insert_onload("setTickex()");
         },
         "GET /jacknet HTTP/1.1"            => {
             res.status(STATUS_200);
