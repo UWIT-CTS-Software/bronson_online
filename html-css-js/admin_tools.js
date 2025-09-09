@@ -574,6 +574,7 @@ async function updateTechSchedule(tableID, scheduleData) {
         let tmpString = '';
         let multipleShifts = false;
         let shiftStarted = false;
+        //console.log("SE: dailyTimes", dailyTimes);
         for(let j = 0; j < dailyTimes.length - 1; j++) {
             // Init currentTime info
             let time = dailyTimes[j].split('day')[1];
@@ -608,6 +609,11 @@ async function updateTechSchedule(tableID, scheduleData) {
                 }
             }
         }
+        // if there is a single 30 minute block and nothing else, the above block will not see it.
+        if (dailyTimes.length == 1) {
+            let time = dailyTimes[0].split('day')[1];
+            tmpString = time + ' - ' + timeBlocks[timeBlocks.indexOf(time)+1];
+        }
         //console.log(days[i] +' '+ tmpString);
         if (tmpString != '') {
             newSchdObj[days[i]] =  tmpString;
@@ -624,11 +630,6 @@ async function updateTechSchedule(tableID, scheduleData) {
         "Schedule": newSchdObj
     }
     scheduleData[techObj["Name"]] = techObj;
-    // DATABASE_TODO
-    // need to grab this updated schedule object and post it to the backend.
-    // Since this is not something that is managed indepth by the database,
-    // calculating the hash value that we check in 'checkForDataUpdates()'
-    // here may be neccessary.
     return scheduleData;
 }
 
@@ -1004,7 +1005,7 @@ function formatLSMDevices(lsm_data) {
     return output.data;
 }
 
-// Database Update Page
+// Database Editor Page
 // This is intended to be an interface that allows users to update the
 // inventory database without needing direct access to the database itself.
 function setDBEditor() {
@@ -1037,14 +1038,15 @@ function setDBEditor() {
         TODO's:
         This page needs the backend infrastructure that actually updates the PostgreSQL database, 
         along with updating the campus.csv file. (Maybe make sure the database is updating 
-        correctly before tackling the cmapus.csv file also)</p>
+        correctly before tackling the campus.csv file also)</p>
         <fieldset>
             <legend> Changelog: </legend>
-            <textarea id="db_changelog" spellcheck="false" rows="8" cols="50" readonly></textarea>
+            <textarea id="DBE-Changelog" spellcheck="false" rows="8" cols="50" readonly></textarea>
         </fieldset>
         <menu>
             <button id="updateDatabaseButton" onclick="updateDatabaseFromEditor()"> Save Changes to Database </button>
             <button onclick="setDBEditor()"> Refresh Editor </button>
+            <button onclick="setAddDBBuilding()"> Add Building </button>
         </menu>
         </fieldset>`;
     //let tmp = ``;
@@ -1052,52 +1054,74 @@ function setDBEditor() {
         let tmp = ``;
         let rooms = campData[building].rooms;
         let buildingName = campData[building].name;
+        let lsmName = campData[building].lsm_name;
         tmp += `
         <fieldset class="dbBuildingFieldset">
             <legend> Building: ${buildingName} - ${building} </legend>
-            <table class="dbBuildingTable">
-                <thead>
-                    <tr>
-                        <th scope="col">Room</th>
-                        <th scope="col">Processors</th>
-                        <th scope="col">Projectors</th>
-                        <th scope="col">Displays</th>
-                        <th scope="col">Touch Panels</th>
-                        <th scope="col">WyoShares</th>
-                        <th scope="col">Celing Mics</th>
-                        <th scope="col">General Pool</th>
-                    </tr>
-                </thead>
-                <tbody id="${building}-tbody">`;
+            <menu id="${building}-buildingMenu" oninput="updateBuilding('${building}-buildingMenu')">
+            <label for="dbe-${building}-name">Building Name: </label>
+            <input id="dbe-${building}-name" type="text" value="${buildingName}" class="dbBuildingInput">
+            <br>
+            <label for="dbe-${building}-abbrev">Abbreviation: </label>
+            <input type="text" value="${building}" id="dbe-${building}-abbrev" class="dbBuildingSmallInput">
+            <br>
+            <label for="dbe-${building}-lsmName">LSM Name: </label>
+            <input type="text" id="dbe-${building}-lsmName" value="${lsmName}" class="dbBuildingInput"}>
+            <br>
+            <label for="dbe-${building}-zone">Zone: </label>
+            <input id="dbe-${building}-zone" type="number" class="dbBuildingSmallInput" value=${campData[building].zone} min="1" max="4">
+            </menu>
+            <br>
+            <button type="button" class="collapsible" id="${building}-colBtn"> See Rooms</button>
+            <div class="collapse_content">
+                <table class="dbBuildingTable">
+                    <thead>
+                        <tr>
+                            <th scope="col">Room</th>
+                            <th scope="col">Processors</th>
+                            <th scope="col">Projectors</th>
+                            <th scope="col">Displays</th>
+                            <th scope="col">Touch Panels</th>
+                            <th scope="col">WyoShares</th>
+                            <th scope="col">Celing Mics</th>
+                            <th scope="col">General Pool</th>
+                        </tr>
+                    </thead>
+                    <tbody id="${building}-tbody">`;
         rooms.forEach(function(room) {
             let roomName = room.name;
             let pingData = room.ping_data;
-            let procCount = 0;
-            let dispCount = 0;
-            let pjCount = 0;
-            let tpCount = 0;
-            let wsCount = 0;
-            let micCount = 0;
+            let procCount, dispCount, pjCount, tpCount, wsCount, micCount;
+            procCount = dispCount = pjCount = tpCount = wsCount = micCount = 0;
             let gpBool = room.gp;
             pingData.forEach(function(device) {
                 let hnObj = device.hostname; // hostname Object
-                if(hnObj.dev_type == "PROC") {
-                    procCount += hnObj.num;
-                } else if(hnObj.dev_type == "DISP") {
-                    dispCount += hnObj.num;
-                } else if(hnObj.dev_type == "PJ") {
-                    pjCount += hnObj.num;
-                } else if(hnObj.dev_type == "TP") {
-                    tpCount += hnObj.num;
-                } else if(hnObj.dev_type == "WS") {
-                    wsCount += hnObj.num;
-                } else if(hnObj.dev_type == "CMIC") {
-                    micCount += hnObj.num;
+                switch(hnObj.dev_type) {
+                    case "PROC":
+                        procCount += hnObj.num;
+                        break;
+                    case "DISP":
+                        dispCount += hnObj.num;
+                        break;
+                    case "PJ":
+                        pjCount += hnObj.num;
+                        break;
+                    case "TP":
+                        tpCount += hnObj.num;
+                        break;
+                    case "WS":
+                        wsCount += hnObj.num;
+                        break;
+                    case "CMIC":
+                        micCount += hnObj.num;
+                        break;
+                    default:
+                        break;
                 }
             });
             tmp += `
                 <tr id="${roomName}-row" oninput="updateRow('${roomName}-row')">
-                    <th scope="row" class="dbRoomName"><input type="text" class="dbRoomInputName valid" id="${roomName}-text" value="${roomName}"></th>
+                    <th scope="row" class="dbRoomName"><span class="dbRoomInputName" id="${roomName}-text" value="${roomName}">${roomName}</span></th>
                     <td><input type="number" class="dbRoomInput" id="${roomName}-PROC" value="${procCount}" min="0"></td>
                     <td><input type="number" class="dbRoomInput" id="${roomName}-PJ" value="${pjCount}" min="0"></td>
                     <td><input type="number" class="dbRoomInput" id="${roomName}-DISP" value="${dispCount}" min="0"></td>
@@ -1111,8 +1135,13 @@ function setDBEditor() {
         tmp += `
                 </tbody>
             </table>
+            <menu id="${building}-roomMenu">
+                <button onclick="setRoomAddition('${building}-roomMenu', '${building}-tbody')"> Add Room </button>
+                <button id="compareLSMBtn" onclick="compareDBEditLSM('${building}')"> Compare Inventory With LSM </button>
+            </menu>
+            </div>
             <menu id="${building}-menu">
-                <button onclick="setRoomAddition('${building}-menu', '${building}-tbody')"> Add Room </button>
+                <button onclick="markBuildingToRemove(${building})"> Remove Building </button>
             </menu>
         </fieldset>`;
         db_editor.innerHTML += tmp;
@@ -1120,11 +1149,26 @@ function setDBEditor() {
     // replace admin_internals
     let admin_internals = document.getElementById('admin_internals');
     admin_internals.replaceWith(db_editor);
+    // Additional Configurations
+    let collapse = document.getElementsByClassName("collapsible");
+    Array.from(collapse).forEach(function(element) {
+        element.addEventListener("click", function() {
+            this.classList.toggle("active");
+            let content = this.nextElementSibling;
+            if(content.style.display === "block") {
+                content.style.display = "none";
+            } else {
+                content.style.display = "block";
+            }
+        });
+    })
+    // Init Changelog in SessionStorage
+    sessionStorage.setItem("DBEChanges", JSON.stringify({log: []}));
     return;
 }
 
 // TODO
-// Post the changes made in the editor to the database
+// Post the changes made in the editor to the database, need to be progmatic about it. This tab is a mess and I need to clean up the changelog mechanics until I worry about this, but most of whats currently here will not work.
 function updateDatabaseFromEditor() {
     let changelog = document.getElementById("db_changelog");
     let log = changelog.value.split("\n");
@@ -1136,26 +1180,18 @@ function updateDatabaseFromEditor() {
     // Iterate through changed rows;
     for(let i = 0; i < changedRows.length; i++) {
         let inputs = changedRows[i].getElementsByTagName("input");
+        // Get RoomName/ID Info
+        let roomName = inputs[0].getAttribute("id").split("-")[0];
+        //console.log(roomName);
         // If text is changed, it is an update
         let roomObj = {
             mode: "UPDATE", // UPDATE (stock) or REPLACE (room name change)
-            target: "", // Room Name
+            target: roomName, // Room Name
             info: [] // [#dev1, #dev2, ... , #dev6, gp_bool];
         }
         for (let j = 0; j < inputs.length; j++) {
-            let id = inputs[j].getAttribute("id");
-            // Examine Room Name
-            if (inputs[j].type == "text") {
-                // When a room name is changed we are doing some strange things.
-                console.log("DE_DEBUG: Default/Input Text", inputs[j].defaultValue, inputs[j].value);
-                if(inputs[j].defaultValue != inputs[j].value) {
-                    roomObj.mode = "REPLACE";
-                    roomObj.target = `${inputs[j].defaultValue},${inputs[j].value}`;
-                } else {
-                    roomObj.target = `${inputs[j].defaultValue}`;
-                }
             // Examine Attributes (number and checkbox)
-            } else if (inputs[j].type == "number") {
+            if (inputs[j].type == "number") {
                 roomObj.info.push(inputs[j].value);
             } else if (inputs[j].type == "checkbox") {
                 roomObj.info.push(inputs[j].checked);
@@ -1181,7 +1217,7 @@ function updateDatabaseFromEditor() {
                     roomObj.info.push(inputs[j].value);
                     break;
                 case "checked":
-                    roomObj.info.push(inputs[j].value);
+                    roomObj.info.push(inputs[j].checked);
                     break;
                 default:
                     break;
@@ -1204,11 +1240,21 @@ function updateDatabaseFromEditor() {
     return;
 }
 
+// TODO : When a user wants to add a new building that we do not currently have in Bronson, we have some validation things to do, No duplicate Names or ABBREV Names, Test the LSM Name, etc. Need to mimic the RoomAddition functions below
+function setDBBuildingAddition() {
+    return;
+}
+
+function confirmDBBuildingAddition() {
+    return;
+}
+
+// Presents a submenu to the user to fill in Information to load the new room.
 function setRoomAddition(menuID, buildingTableID) {
     let tableMenuElement = document.getElementById(menuID);
     let building = menuID.split("-")[0];
     tableMenuElement.innerHTML = `
-        <textarea id="${building}-addInput" placeholder="${building} ###"></textarea>    
+        <textarea id="${building}-addInput" placeholder="${building} ####"></textarea>
     <button onclick="confirmRoomAddition('${building}-addInput', '${buildingTableID}')">
             Add Room to Table </button>
     <button onclick="cancelRoomAddition('${menuID}')">
@@ -1222,8 +1268,7 @@ function setRoomAddition(menuID, buildingTableID) {
     return;
 }
 
-
-// BUG: If there are changes made prior to adding a room, these changes will be lost and values inside the input will revert to the default.
+// Takes the user input and validates the input, this is called from the submenu when the user clicks 'Add Room'.
 function confirmRoomAddition(textareaID, buildingTableID) {
     let tableElement = document.getElementById(buildingTableID);
     // Get New Room Name and Verify it's legality
@@ -1265,12 +1310,17 @@ function confirmRoomAddition(textareaID, buildingTableID) {
     </tr>`;
     // Add new Row to Table
     tableElement.innerHTML += tmp;
-    //BUG: Editing innterHTML reverts input fields to default, these changes are tracked in the changelog. Which is where this function comes into play.
     syncTablesWithChangelog();
+    // DBChangelog updaet
+    let changeObj = {
+        Type: "ROOM",
+        Destination: roomName,
+        Change: "INSERT"
+    }
     // Update Changelog, Note because we are adding a room this is a little different than the other changelog update written below.
-    updateChangelogRoomAddition(roomName);
+    addToDBEChanges(changeObj);
     // Revert Building Menu
-    let menuID = parent_abbrev +"-menu";
+    let menuID = parent_abbrev +"-roomMenu";
     cancelRoomAddition(menuID);
     return;
 }
@@ -1278,30 +1328,32 @@ function confirmRoomAddition(textareaID, buildingTableID) {
 function cancelRoomAddition(menuID) {
     let menuElement = document.getElementById(menuID);
     let building = menuID.split("-")[0];
-    menuElement.innerHTML = `<button onclick="setRoomAddition('${building}-menu', '${building}-tbody')"> Add Room </button>`;
+    menuElement.innerHTML = `<button onclick="setRoomAddition('${building}-roomMenu', '${building}-tbody')"> Add Room </button>
+    <button id="compareLSMBtn" onclick="compareDBEditLSM('${building}')"> Compare Inventory With LSM </button>`;
     return;
 }
 
-// This function counteracts a quirk with adding rows to a table with inputs.
+// This function counteracts a quirk with adding rows to a table with changed inputs.
 // When this happens, the user-changed values revert to their default. This
 // function is called after we add a row to go through the changelog
 function syncTablesWithChangelog() {
     console.log("Running Table Sync With Changelog");
-    let changelog = document.getElementById("db_changelog");
-    let log = changelog.value.split('\n');
-    log = log.filter(entry => entry != "");
-    for(let i = 0; i < log.length; i++) {
-        console.log(log[i]);
-        if (!log[i].includes("To Be ")) {
-            let destination = log[i].split(" - ")[0];
-            let category = log[i].split(" - ")[1];
-            category = category.split(" changed from ")[0];
-            let newValue = log[i].split(" to ")[1];
-            console.log("SYNC DEBUG", destination, category, newValue);
-            let inputID = destination + "-" + category;
-            let target = document.getElementById(inputID);
-            console.log(target);
-            target.value = newValue;
+    let changelog = JSON.parse(sessionStorage.getItem("DBEChanges"));
+    let changedRows = document.getElementsByClassName("dbRowChanged");
+    for(let i = 0; i < changedRows.length; i++) {
+        let filteredChanges = changelog.log.filter(e => e.Destination == changedRows[i].id.split("-")[0]);
+        if (filteredChanges.length == 1) {
+            let inputValues = filteredChanges[0].NewValue;
+            let inputs = changedRows[i].getElementsByTagName("input");
+            for(let j = 0; j < inputs.length; j++) {
+                if(inputs[j].type == "number") {
+                    inputs[j].value = inputValues[j];
+                } else if (inputs[j].type == "checked") {
+                    inputs[j].checked = inputValues[j];
+                }
+            }
+        } else {
+            console.warn("Filter did not narrow down correctly");
         }
     }
     return;
@@ -1313,11 +1365,16 @@ function removeRoomFromBuilding(rowID) {
     let room = rowID.split('-')[0];
     let btnID = room + '_rmvBtn';
     let btn = document.getElementById(btnID);
-    let rmvBool = false; // This indicates if we are adding or removing to changelog
+    let newChange = {
+        Type: "ROOM",
+        Destination: room,
+        Change: "REMOVE"
+    }
     // Check to see if row was added in current session
     if (rowElement.classList.contains("dbRowToBeAdded")) {
         rowElement.remove();
-        updateChangelogRoomAddition(room);
+        //updateChangelogRoomAddition(room);
+        addToDBEChanges(newChange);
         return;
     }
     // Move forward with standard behavior
@@ -1329,67 +1386,101 @@ function removeRoomFromBuilding(rowID) {
         btn.classList.add("rmvButton");
         btn.innerHTML = "Remove";
         rowElement.classList.remove("dbRowToBeRemoved");
-        rmvBool = true; // Reverting Change
+    }
+    // Send Change to DBEChangelog
+    addToDBEChanges(newChange);
+    return;
+}
+
+// TODO: Building Changes, these are more overreaching, because of this, changing something in the building menu will disable the user's ability to edit a specific room for that building. 
+function updateBuilding(menuID) {
+    let menuElement = document.getElementById(menuID);
+    let inputs = menuElement.getElementsByTagName("input");
+    let building = menuID.split("-")[0];
+    let defaultBool = true;
+    // Init Changelog Data
+    let tmpObj = {
+        Type: "BUILDING",
+        Destination: building,
+        Change: "UPDATE",
+        Field: [],
+        DefaultValue: [],
+        NewValue: []
+    };
+    // Iterate through elements.
+    for(let i = 0; i < inputs.length; i++) {
+        let inputElement = inputs[i];
+        let inputID = inputElement.id;
+        // Change Obj
+        tmpObj.Field.push(inputID.split('-')[2]);
+        if(inputElement.value != inputElement.defaultValue) {
+            defaultBool = false;
+            inputElement.classList.add("dbBuildingChanged");
+        }else if (inputElement.classList.contains("dbBuildingChanged")) {
+            inputElement.classList.remove("dbBuildingChanged");
+        }
+        tmpObj.DefaultValue.push(inputElement.defaultValue);
+        tmpObj.NewValue.push(inputElement.value);
     }
     // Update Changelog
-    let changelog = document.getElementById("db_changelog");
-    let log = changelog.value.split("\n");
-    let entry = `${room} - To Be Removed`;
-    if (rmvBool) {
-        console.log("Removing From Changelog");
-        for(let i = 0; i < log.length; i++) {
-            if(log[i] == entry) {
-                log[i] = '';
-            }
-        }
+    addToDBEChanges(tmpObj);
+    // Check for Default Values, Update Rooms Field.
+    let roomsButton = document.getElementById(building + "-colBtn");
+    if (defaultBool) {
+        roomsButton.disabled = false;
+        roomsButton.innerText= "See Rooms";
     } else {
-        console.log("Adding to Changelog");
-        log.push(entry);
-    }
-    // Iterate through log and replace contents of changelog
-    log = log.sort();
-    changelog.value = ``;
-    for(let i=0; i < log.length; i++) {
-        if(log[i] != '') {
-            changelog.value += log[i] + '\n';
-        }
+        roomsButton.disabled = true;
+        roomsButton.innerText = "See Rooms (Disabled)";
+        let content = roomsButton.nextElementSibling;
+        content.style.display = "none";
     }
     return;
 }
 
-// TODO: Fork behavior for speciality treatment for rooms with the class "cbRowToBeAdded"
+// Called when any of the fields are changed.
 function updateRow(rowElementID) {
     let rowElement = document.getElementById(rowElementID);
+    let roomName = rowElementID.split("-")[0];
     rowElement.classList.add("dbRowChanged");
     // Go through each input in row and grab values
     let inputs = rowElement.getElementsByTagName("input");
     let defaultBool = true;
-    let originalValues = {};
-    let newValues = {};
+
+    let newChange = {
+        Type: "ROOM",
+        Destination: roomName,
+        Change: "UPDATE",
+        Field: [],
+        DefaultValue: [],
+        NewValue: []
+    }
     for(let i = 0; i < inputs.length; i++) {
         let id = inputs[i].getAttribute("id");
+        let devField = id.split("-")[1];
+        newChange.Field.push(devField);
         if (inputs[i].type == "checkbox") {
-            originalValues[id] = inputs[i].defaultChecked;
-            newValues[id] = inputs[i].checked;
             if (inputs[i].defaultChecked != inputs[i].checked) {
                 defaultBool = false;
             }
+            newChange.DefaultValue.push(inputs[i].defaultChecked);
+            newChange.NewValue.push(inputs[i].checked);
         } else if (inputs[i].type == "number") {
-            originalValues[id] = parseInt(inputs[i].defaultValue);
-            newValues[id] = parseInt(inputs[i].value);
             if (inputs[i].defaultValue != inputs[i].value) {
                 defaultBool = false;
             }
+            newChange.DefaultValue.push(inputs[i].defaultValue);
+            newChange.NewValue.push(inputs[i].value);
         } else if (inputs[i].type == "text") {
-            originalValues[id] = inputs[i].defaultValue;
-            newValues[id] = inputs[i].value;
             if (inputs[i].defaultValue != inputs[i].value) {
                 defaultBool = false;
             }
+            newChange.DefaultValue.push(inputs[i].defaultValue);
+            newChange.NewValue.push(inputs[i].value);
         }
     }
-    // If value is different from original, add to changelog
-    updateChangelog(rowElement);
+    // Update Changelog Object
+    addToDBEChanges(newChange);
     // IF ALL values are the same as original, remove dbRowChanged class
     if (defaultBool) {
         rowElement.classList.remove("dbRowChanged");
@@ -1397,141 +1488,148 @@ function updateRow(rowElementID) {
     return;
 }
 
-// When elements on the page are changed, this function will place that
-// change in the changelog textarea for review before posting to the database.
-// if a change is reverted, that specific change will be removed from the changelog.
-// 
-// IE:
-//   AB 101 - PROC changed from 1 to 2
-//   AB 101 - PJ changed from 0 to 1
-//   AB 101 - PROC changed from 1 to 1  <- this will remove the first change from the log
-function updateChangelog(roomElement) {
-    let changelog = document.getElementById("db_changelog");
-    let log = changelog.value.split("\n");
-    // Filter Log, No Empty Strings and Warnings (we will regenerate them below)
-    log = log.filter(entry => entry != "");
-    log = log.filter(entry => !entry.includes("Input Error(s)"));
-    // Init Other Variables
-    let room = roomElement.id.split("-row")[0];
-    let tmp = [];           // Changed elements are filtered here
-    let tmp_default = [];   // Elements that have not changed go here.
-    let valid_bool = 0; // Semi Boolean, see validateRoomNameText() Notes.
-    // Filter a given row's Input Values
-    let inputs = roomElement.getElementsByTagName("input");
-    for(let i = 0; i < inputs.length; i++) {
-        if (inputs[i].type == "checkbox") {
-            if (inputs[i].defaultChecked != inputs[i].checked) {
-                tmp.push(inputs[i]);
-            } else {
-                tmp_default.push(inputs[i]);
+
+function updateDBChangelogHTML(changes) {
+    let tmp_html = []; // This will hold changes.
+    let tmp_buildings = []; // This holds buildings with changes, we use this to exclude changes to rooms if the building object is being changed.
+    // TODO: Look for building changes first.
+    //   Note: For buildings in here, take note when a change is detected
+    //         as we will ignore room changes made prior to building changes.
+    console.log(changes);
+    let buildingChanges = changes.log.filter(element => element.Type == "BUILDING");
+    for (let i = 0; i < buildingChanges.length; i++) {
+        console.log(buildingChanges[i]);
+        tmp_buildings.push(buildingChanges[i].Destination);
+        //....
+        // else, add changes to change log like normal.
+        tmp_html.push(`---- ${buildingChanges[i].Destination}`);
+        if (buildingChanges[i].Change == "UPDATE") {
+            let truple = buildingChanges[i].Field.map((element, index) => {
+                return [element, buildingChanges[i].DefaultValue[index], buildingChanges[i].NewValue[index]];
+            });
+            for(let j = 0; j < truple.length; j++) {
+                if(truple[j][1] != truple[j][2]) {
+                    // NonDefault Value
+                    tmp_html.push(`  ${truple[j][0]} -- Changed from ${truple[j][1]} to ${truple[j][2]}`);
+                }
             }
-        } else if (inputs[i].type == "number") {
-            if (inputs[i].defaultValue != inputs[i].value) {
-                tmp.push(inputs[i]);
-            } else {
-                tmp_default.push(inputs[i]);
-            }
-        } else if (inputs[i].type == "text") {
-            valid_bool = validateUserRoomInput(inputs[i].defaultValue, inputs[i].value);
-            if (inputs[i].defaultValue != inputs[i].value) {
-                tmp.push(inputs[i]);
-            } else {
-                tmp_default.push(inputs[i]);
+        } else if (buildingChanges[i].Change == "REMOVE") {
+            tmp_html.push(`   To Be Removed`);
+        } else if (buildingChanges[i].Change == "INSERT") {
+            tmp_html.push(`   To Be Added`);
+        }
+    }
+    // TODO: Look for room changes
+    let roomChanges = changes.log.filter(element => element.Type == "ROOM");
+    for (let i = 0; i < roomChanges.length; i++) {
+        console.log(roomChanges[i]);
+        let roomParent = roomChanges[i].Destination.split(" ")[0];
+        if (tmp_buildings.includes(roomParent)) {
+            console.warn("Building change detected in ", roomParent, "Excluding changes to rooms within.");
+        } else {
+            // else, add changes to change log like normal.
+            tmp_html.push(`---- ${roomChanges[i].Destination}`);
+            if (roomChanges[i].Change == "UPDATE") {
+                let truple = roomChanges[i].Field.map((element, index) => {
+                    return [element, roomChanges[i].DefaultValue[index], roomChanges[i].NewValue[index]];
+                });
+                for(let j = 0; j < truple.length; j++) {
+                    if(truple[j][1] != truple[j][2]) {
+                        // NonDefault Value
+                        tmp_html.push(`  ${truple[j][0]} -- Changed from ${truple[j][1]} to ${truple[j][2]}`);
+                    }
+                }
+            } else if (roomChanges[i].Change == "REMOVE") {
+                tmp_html.push(`   To Be Removed`);
+            } else if (roomChanges[i].Change == "INSERT") {
+                tmp_html.push(`   To Be Added`);
             }
         }
     }
-    // Prep rows that have been changed
-    for(let i =0; i < tmp.length; i++) {
-        let entry = `${room} - ${tmp[i].id.split("-")[1]} changed from ${tmp[i].defaultValue} to ${tmp[i].value}`;
-        // Check text validity variable, print error associated with problem.
-        if (entry.includes("text") && (valid_bool != 1)) {
-            switch(valid_bool) {
-                case 2:
-                    entry += " ❌ ERROR 2, INCORRECT BUILDING ABBREVIATION !!"
-                    break;
-                case 3:
-                    entry += " ❌ ERROR 3, INCORRECT NUMBER SCHEMA (4 Digits Required: ####) !!";
-                    break;
-                case 4:
-                    entry += " ❌ ERROR 4, DUPLICATE OF EXISTING RECORD !!"
-                    break;
-                default:
-                    entry += " ❌ SEVERE PROBLEM DETECTED, CONTACT ADMIN !!";
-                    break;
+    // TODO: Update Changelog object
+    let changelogElement = document.getElementById("DBE-Changelog");
+    changelogElement.value = '';
+    for(let i = 0; i < tmp_html.length; i++) {
+        changelogElement.value += tmp_html[i] + "\n";
+    }
+    return;
+}
+
+// Interfacing with DBEChanges
+function addToDBEChanges(chgObj) {
+    let removeRowBool = (chgObj.Change == "REMOVE");
+    let changes = JSON.parse(sessionStorage.getItem("DBEChanges"));
+    // If Type == "Building", we need to remove and revert changes within the room table.
+    if(chgObj.Type == "BUILDING") {
+        let changesToRooms = changes.log.filter(e => e.Type == "ROOM");
+        changesToRooms = changesToRooms.filter(e => e.Destination.includes(chgObj.Destination))
+        for(let i = 0; i < changesToRooms.length; i++) {
+            let rmvIndex = changes.log.indexOf(changesToRooms[i]);
+            changes.log.splice(rmvIndex, 1);
+            revertRowChanges(changesToRooms[i].Destination);
+        }
+    }
+    let filtered = changes.log.filter(elemnt => elemnt.Type == chgObj.Type);
+    filtered = filtered.filter(elemnt => elemnt.Destination == chgObj.Destination);
+    // At this point filtered contains the changes specific to that room/building.
+    // If Remove Bool is True, we are removing any UPDATE Changes and reverting
+    //    Changed Values back to default.
+    if(removeRowBool) {
+        let undoChanges = filtered.filter(e => (e.Change == "UPDATE") || (e.Change == "INSERT"));
+        for (i in undoChanges) {
+            let rmvIndex = changes.log.indexOf(undoChanges[i]);
+            changes.log.splice(rmvIndex,1);
+            if(undoChanges[i].Change == "UPDATE") {
+                revertRowChanges(chgObj.Destination);
+            } else if(undoChanges[i].Change == "INSERT") {
+                // Save Updated Changes in SessionStorage and Update HTML Changelog.
+                sessionStorage.setItem("DBEChanges", JSON.stringify(changes));
+                updateDBChangelogHTML(changes);
+                return;
             }
         }
-        // Check existing entries in changelog and determine 
-        // if adding or replacing an entry
-        let tmpEntrySnippet = entry.split("changed from")[0];
-        let logBool = true;
-        for(let j = 0; j < log.length; j++) {
-            //console.log("logEntry", log[j]);
-            if (log[j].includes(tmpEntrySnippet)) {
-                log[j] = entry;
-                logBool = false;
-            }
-        }
-        if (logBool) {
-            log.push(entry);
-        }
     }
-    // Find Fields that reverted back to the default and remove them from log
-    for(let i = 0; i < tmp_default.length; i++) {
-        let default_entry = `${room} - ${tmp_default[i].id.split("-")[1]}`;
-        log = log.filter(entry => !entry.includes(default_entry));
-    }
-    // Iterate through log and replace contents of changelog
-    log = log.sort();
-    log = log.filter(entry => entry != "");
-    changelog.value = ``;
-    let error_bool = false;
-    for(let i=0; i < log.length; i++) {
-        // bool set
-        if(log[i].includes("ERROR")) {
-            error_bool = true;
+    // Filter to specific Change
+    filtered = filtered.filter(elemnt => elemnt.Change == chgObj.Change);
+    if(filtered.length == 1){
+        let roomIndex = changes.log.indexOf(filtered[0]);
+        // If remove is here, then we are reverting that remove
+        if(changes.log[roomIndex].Change == "REMOVE") {
+            changes.log.splice(roomIndex, 1);
+        } else if (chgObj.DefaultValue.every((value, index) => value === chgObj.NewValue[index])) {
+            console.log("Default Values Detected")
+            changes.log.splice(roomIndex, 1);
+        } else {
+            changes.log[roomIndex] = chgObj;
         }
-        changelog.value += log[i] + '\n';
-    }
-    // If invalid option is found, disable the push button
-    let btn = document.getElementById("updateDatabaseButton");
-    if(error_bool) {
-        changelog.value += ' ❌ Input Error(s) Found, Please format all entries correctly to enable push button !! \n';
-        btn.disabled = true;
     } else {
-        if (btn.disabled) {
-            btn.disabled = false;
+        changes.log.push(chgObj);
+    }
+    // Save Updated Changes in SessionStorage and Update HTML Changelog.
+    sessionStorage.setItem("DBEChanges", JSON.stringify(changes));
+    updateDBChangelogHTML(changes);
+    return;
+}
+
+function revertRowChanges(roomName) {
+    // Get Row and Revert back to no changes.
+    let rowElement = document.getElementById(roomName + "-row");
+    if(rowElement.classList.contains("dbRowChanged")) {
+        rowElement.classList.remove("dbRowChanged");
+    }
+    let inputs = rowElement.getElementsByTagName("input");
+    for(let i = 0; i < inputs.length; i++) {
+        if(inputs[i].type == "number") {
+            inputs[i].value = inputs[i].defaultValue;
+        } else if (inputs[i].type == "checkbox") {
+            inputs[i].checked = inputs[i].defaultChecked;
         }
     }
     return;
 }
 
-function updateChangelogRoomAddition(newRoomName) {
-    let changelog = document.getElementById("db_changelog");
-    let log = changelog.value.split("\n");
-    let entryRemoved = false;
-    // If added room is in the changelog then remove it, otherwise add it.
-    for(let i = 0; i < log.length; i++) {
-        if(log[i].includes(newRoomName)) {
-            log[i] = '';
-            entryRemoved = true;
-        }
-    }
-    if (!entryRemoved) {
-        log.push(`${newRoomName} - To Be Added`);
-    }
-    // Iterate through log and replace contents of changelog
-    log = log.sort();
-    changelog.value = ``;
-    for(let i=0; i < log.length; i++) {
-        if(log[i] != '') {
-            changelog.value += log[i] + '\n';
-        }
-    }
-    return;
-}
-
-// Checks the validatity of User Input when setting Room Names
-// TODO: numbers instead of bool
+// Checks the validatity of User Input when setting a new Room Name
+// numbers instead of bool
 //   - 1: true / Good
 //   - 2: Bad Abbreviation
 //   - 3: Bad Number
@@ -1568,4 +1666,8 @@ function validateUserRoomInput(defaultValue, userInput) {
         roomTextArea.classList.add("invalid");
     }
     return validInput;
+}
+
+function compareDBEditLSM(buildingAbbreviation) {
+    return;
 }

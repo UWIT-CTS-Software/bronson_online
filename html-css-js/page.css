@@ -210,6 +210,30 @@ input:checked + .slider:before {
   border-radius: 50%;
 }
 
+/* Collapse Buttons */
+.collapsible {
+    background-color: rgb(139, 139, 99);
+    color: rgb(90,30,30);
+    cursor: pointer;
+    padding: 5px;
+    width: 100%;
+    border: 2px solid rgb(102, 53, 54);
+    text-align: left;
+    outline: none;
+    font-size: 15px;
+}
+
+.active, .collapsible:hover {
+    background-color: rgb(129, 116, 76);
+}
+
+.collapse_content {
+    padding: 0 18px;
+    display: none;
+    overflow: hidden;
+    background-color: #1a1a1a00;
+}
+
 /* Buttons located in the hamburger menu */
 .hb_button {
     display: block;
@@ -1356,6 +1380,18 @@ ol li::marker {
     border: 1px solid rgb(144, 118, 26);
 }
 
+.dbBuildingInput {
+    width: 300px;
+    color: rgb(144, 118, 26);
+    background-color: rgb(50, 50, 50);
+}
+
+.dbBuildingSmallInput {
+    width: 40px;
+    color: rgb(144, 118, 26);
+    background-color: rgb(50, 50, 50);
+}
+
 .dbRoomInputName {
     width: 100px;
     color: rgb(144, 118, 26);
@@ -1378,6 +1414,10 @@ ol li::marker {
 
 .dbRowChanged {
     background-color: rgb(114, 104, 60);
+}
+
+.dbBuildingChanged {
+    background-color: rgb(114,104,60);
 }
 
 .dbRowToBeRemoved {
