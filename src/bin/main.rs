@@ -51,7 +51,7 @@ use server_lib::{
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
     Database, Terminal, 
     models::{
-        DB_Room, DB_Building, DB_User, /* DB_DataElement, */
+        DB_Room, DB_Building, DB_User, DB_DataElement, 
         DB_IpAddress,  
     },
 };
@@ -484,6 +484,23 @@ async fn handle_connection(
             }).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
+        },
+        "POST /updateSchedule HTTP/1.1"        => {
+            let new_data = DB_DataElement {
+                key: String::from("schedule"),
+                val: String::from_utf8(req.body).expect("Unable to parse body contents")
+            };
+            database.update_data(&new_data);
+            res.status(STATUS_200);
+            res.send_contents("".into());
+        },
+        "POST /update/dash HTTP/1.1"       => {
+            database.update_data(&DB_DataElement {
+                key: String::from("dashboard"),
+                val: String::from_utf8(req.body).expect("Unable to parse body contents"),
+            });
+            res.status(STATUS_200);
+            res.send_contents("".into());
         },
         // Terminal
         // --------------------------------------------------------------------
