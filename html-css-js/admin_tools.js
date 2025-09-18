@@ -1016,6 +1016,8 @@ function setDBEditor() {
     }
     let newCurrent = document.getElementById("at_dbedit");
     newCurrent.classList.add("at_selected");
+    // MAYBE: get a new up-to-date copy of campData from the backend when this page is loaded
+    //...
     // Get Data to populate page with
     let campData = JSON.parse(localStorage.getItem("campData"));
     if (campData == null) {
@@ -1026,7 +1028,7 @@ function setDBEditor() {
     let db_editor = document.createElement("div");
     db_editor.setAttribute("id", "admin_internals");
     db_editor.classList.add('at_dbedit'); //dashboard message editor, acronym
-    db_editor.innerHTML = `<fieldset>
+    db_editor.innerHTML = `<fieldset id="DBE_Header">
         <legend> Datbase Editor </legend>
         <p> Use this interface to update Bronson's database, specifically the inventory side.
         This page manages the data that JackNet uses to know what and where to look for. Be 
@@ -1043,10 +1045,10 @@ function setDBEditor() {
             <legend> Changelog: </legend>
             <textarea id="DBE-Changelog" spellcheck="false" rows="8" cols="50" readonly></textarea>
         </fieldset>
-        <menu>
+        <menu id="DBE_MainMenu">
             <button id="updateDatabaseButton" onclick="updateDatabaseFromEditor()"> Save Changes to Database </button>
+            <button onclick="setDBBuildingAddition()"> Add Building </button>
             <button onclick="setDBEditor()"> Refresh Editor </button>
-            <button onclick="setAddDBBuilding()"> Add Building </button>
         </menu>
         </fieldset>`;
     //let tmp = ``;
@@ -1056,20 +1058,27 @@ function setDBEditor() {
         let buildingName = campData[building].name;
         let lsmName = campData[building].lsm_name;
         tmp += `
-        <fieldset class="dbBuildingFieldset">
-            <legend> Building: ${buildingName} - ${building} </legend>
-            <menu id="${building}-buildingMenu" oninput="updateBuilding('${building}-buildingMenu')">
-            <label for="dbe-${building}-name">Building Name: </label>
-            <input id="dbe-${building}-name" type="text" value="${buildingName}" class="dbBuildingInput">
-            <br>
-            <label for="dbe-${building}-abbrev">Abbreviation: </label>
-            <input type="text" value="${building}" id="dbe-${building}-abbrev" class="dbBuildingSmallInput">
-            <br>
-            <label for="dbe-${building}-lsmName">LSM Name: </label>
-            <input type="text" id="dbe-${building}-lsmName" value="${lsmName}" class="dbBuildingInput"}>
-            <br>
-            <label for="dbe-${building}-zone">Zone: </label>
-            <input id="dbe-${building}-zone" type="number" class="dbBuildingSmallInput" value=${campData[building].zone} min="1" max="4">
+        <fieldset class="dbBuildingFieldset" id="${building}-fieldset">
+            <legend> Building: ${buildingName} - (${building}) </legend>
+            <menu id="${building}-buildingMenu" oninput="updateBuilding('${building}-buildingMenu')" class="DBE_Building_Menu">
+            <ul class="DBE_Building_Fields">
+                <li>
+                <label for="dbe-${building}-name" class="DBE_Building_Label" id="dbe-${building}-nameLabel">Building Name: </label>
+                <input id="dbe-${building}-name" type="text" value="${buildingName}" class="dbBuildingInput">
+                </li>
+                <li>
+                <label for="dbe-${building}-abbrev" class="DBE_Building_Label" id="dbe-${building}-abbrevLabel">Abbreviation: </label>
+                <input type="text" value="${building}" id="dbe-${building}-abbrev" class="dbBuildingSmallInput">
+                </li>
+                <li>
+                <label for="dbe-${building}-lsmName" class="DBE_Building_Label" id="dbe-${building}-lsmNameLabel">LSM Name: </label>
+                <input type="text" id="dbe-${building}-lsmName" value="${lsmName}" class="dbBuildingInput"}>
+                </li>
+                <li>
+                <label for="dbe-${building}-zone" class="DBE_Building_Label" id="dbe-${building}-zoneLabel">Zone: </label>
+                <input id="dbe-${building}-zone" type="number" class="dbBuildingSmallInput" value=${campData[building].zone} min="1" max="4">
+                </li>
+            </ul>
             </menu>
             <br>
             <button type="button" class="collapsible" id="${building}-colBtn"> See Rooms</button>
@@ -1120,7 +1129,7 @@ function setDBEditor() {
                 }
             });
             tmp += `
-                <tr id="${roomName}-row" oninput="updateRow('${roomName}-row')">
+                <tr id="${roomName}-row" class="dbeRoomRow" oninput="updateRow('${roomName}-row')">
                     <th scope="row" class="dbRoomName"><span class="dbRoomInputName" id="${roomName}-text" value="${roomName}">${roomName}</span></th>
                     <td><input type="number" class="dbRoomInput" id="${roomName}-PROC" value="${procCount}" min="0"></td>
                     <td><input type="number" class="dbRoomInput" id="${roomName}-PJ" value="${pjCount}" min="0"></td>
@@ -1137,11 +1146,11 @@ function setDBEditor() {
             </table>
             <menu id="${building}-roomMenu">
                 <button onclick="setRoomAddition('${building}-roomMenu', '${building}-tbody')"> Add Room </button>
-                <button id="compareLSMBtn" onclick="compareDBEditLSM('${building}')"> Compare Inventory With LSM </button>
+                <button id="${building}-compareLSMBtn" onclick="compareDBEditLSM('${building}')"> Compare Inventory With LSM </button>
             </menu>
             </div>
             <menu id="${building}-menu">
-                <button onclick="markBuildingToRemove(${building})"> Remove Building </button>
+                <button id="${building}-rmvBtn" class="rmvButton" onclick="markBuildingToRemove('${building}-fieldset')"> Remove Building</button>
             </menu>
         </fieldset>`;
         db_editor.innerHTML += tmp;
@@ -1168,87 +1177,298 @@ function setDBEditor() {
 }
 
 // TODO
-// Post the changes made in the editor to the database, need to be progmatic about it. This tab is a mess and I need to clean up the changelog mechanics until I worry about this, but most of whats currently here will not work.
-function updateDatabaseFromEditor() {
-    let changelog = document.getElementById("db_changelog");
-    let log = changelog.value.split("\n");
-    let packet = {
-        data: []
+// Actually Pushing the Changes to the database out of the DBEChanges array
+// The behaviors for changelog SHOULD make sure no objects pushed here will make
+// problems but be weary when making changes to the DBE.
+async function updateDatabaseFromEditor() {
+    let changelogData = JSON.parse(sessionStorage.getItem("DBEChanges"));
+    // TODO Iterate through Rooms
+    let roomData = changelogData.log.filter(e => e.Type == "ROOM");
+    // Need to Handle Inserts FIRST (Same with Buildings)
+    let insertData = roomData.filter(e => e.Change == "INSERT");
+    for(let i = 0; i < insertData.length; i++) {
+        let endpoint = "insert/database_room";
+        let packet = JSON.stringify({
+            destination: roomData[i].Destination
+        });
+        await postDBChange(endpoint, packet);
     }
-    // Create an object of rooms with changes
-    let changedRows = document.getElementsByClassName("dbRowChanged");
-    // Iterate through changed rows;
-    for(let i = 0; i < changedRows.length; i++) {
-        let inputs = changedRows[i].getElementsByTagName("input");
-        // Get RoomName/ID Info
-        let roomName = inputs[0].getAttribute("id").split("-")[0];
-        //console.log(roomName);
-        // If text is changed, it is an update
-        let roomObj = {
-            mode: "UPDATE", // UPDATE (stock) or REPLACE (room name change)
-            target: roomName, // Room Name
-            info: [] // [#dev1, #dev2, ... , #dev6, gp_bool];
+    let otherData = roomData.filter(e => e.Change != "INSERT");
+    for(let i = 0; i < otherData.length; i++) {
+        let packet = ``;
+        let endpoint = ``;
+        if (otherData[i].Change == "UPDATE") {
+            endpoint = "update/database_room";
+            packet = JSON.stringify({
+                destination: roomData[i].Destination,
+                newValue: otherData[i].NewValue
+            });
+        } else if (otherData[i].Change == "REMOVE") {
+            endpoint = "remove/database_room";
+            packet = JSON.stringify({
+                destination: roomData[i].Destination
+            });
         }
-        for (let j = 0; j < inputs.length; j++) {
-            // Examine Attributes (number and checkbox)
-            if (inputs[j].type == "number") {
-                roomObj.info.push(inputs[j].value);
-            } else if (inputs[j].type == "checkbox") {
-                roomObj.info.push(inputs[j].checked);
-            }
-        }
-        packet.data.push(roomObj);
+        await postDBChange(endpoint, packet);
     }
-    // Iterate through rows to be added
-    let addedRows = document.getElementsByClassName("dbRowToBeAdded");
-    for(let i = 0; i < addedRows.length; i++) {
-        let inputs = addedRows[i].getElementsByTagName("input");
-        let roomObj = {
-            mode: "ADD",
-            target: "",
-            info: []
+    // TODO Iterate through Buildings
+    let buildingData = changelogData.log.filter(e => e.Type == "BUILDING");
+    // CHANGELOG TODO: BUILDING INSERT
+    // insertData = buildingData.filter(e => e.Change == "INSERT");
+    // for(let i = 0; i < insertData.length; i++) {
+    //     let endpoint = "insert/database_building";
+    //     let packet = JSON.stringify({
+    //         destination: roomData[i].Destination
+    //     });
+    //     await postDBChange(endpoint, packet);
+    // }
+    otherData = buildingData.filter(e => e.Change != "INSERT");
+    for(let i = 0; i < otherData.length; i++) {
+        let packet = ``;
+        let endpoint = ``;
+        if (otherData[i].Change == "UPDATE") {
+            endpoint = "update/database_building";
+            packet = JSON.stringify({
+                destination: otherData[i].Destination,
+                newValue: otherData[i].NewValue
+            });
         }
-        for(let j = 0; j < inputs.length; j++) {
-            switch(inputs[j].type) {
-                case "text":
-                    roomObj.target = inputs[j].value;
+        //  CHANGELOG TODO: BUILDING "REMOVE"
+        // } else if (otherData[i].Change == "REMOVE") {
+        //     endpoint = "remove/database_building";
+        //     packet = JSON.stringify({
+        //         destination: otherData[i].Destination
+        //     });
+        // }
+        await postDBChange(endpoint, packet);
+    }
+    return;
+}
+
+async function postDBChange(endpoint, packet) {
+    console.log("DEBUG: Posting to ", endpoint, " with packet ", packet);
+    return fetch(`${endpoint}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Content-Length": packet.length
+        },
+        body: packet
+    }).then(response => {
+        if(!response.ok) {
+            throw new Error("HTTP error " + response.status);
+        }
+        return response;
+    });
+}
+
+// TODO : When a user wants to add a new building that we do not currently have in Bronson, we have some validation things to do, No duplicate Names or ABBREV Names, etc. Need to mimic the RoomAddition functions below
+function setDBBuildingAddition() {
+    let mainMenu = document.getElementById("DBE_MainMenu");
+    let tmp_html = `
+    <ul id="RoomAddition-InputList">
+    <li><label for="dbe-RoomAddition-name" class="DBE_Building_Label">Building Name: </label>
+    <input type="text" class="DBE_AddBuildingInput" id="dbe-RoomAddition-name"></input>
+    </li>
+    <li>
+    <label for="dbe-RoomAddition-abbrev" class="DBE_Building_Label"> Abbreviation: </label>
+    <input type="text" class="DBE_AddBuildingInput" id="dbe-RoomAddition-abbrev"></input>
+    </li>
+    <li>
+    <label for="dbe-RoomAddition-lsmName" class="DBE_Building_Label"> LSM Name: </label>
+    <input type="text" class="DBE_AddBuildingInput" id="dbe-RoomAddition-lsmName"></input>
+    </li>
+    <li>
+    <label for="dbe-RoomAddition-zone" class="DBE_Building_Label"> Zone: </label>
+    <input type="number" class="DBE_AddBuildingInput" id="dbe-RoomAddition-zone" value="1" min="1" max="4"></input>
+    </li>
+    <ul>
+    <button onclick="confirmDBBuildingAddition()"> Add New Building </button>
+    <button onclick="cancelDBBuildingAddition()"> Cancel Addition </button>
+    `;
+    mainMenu.innerHTML = tmp_html;
+    // TODO: Disable Enter Key on inputs
+
+    return;
+}
+
+// Send Changelog Object to Log in SessionStorage and reset Main Menu Buttons.
+function confirmDBBuildingAddition() {
+    // Validate Input (Not sure, Abbreviation is 5 characters fs)
+    let inputs = document.getElementsByClassName("DBE_AddBuildingInput");
+    let building = "";
+    let buildingName = "";
+    let buildingZone = "";
+    let buildingLSMName = "";
+    for(let i = 0; i < inputs.length; i++) {
+        let field = inputs[i].id.split("dbe-RoomAddition-")[1];
+        if (inputs[i].value == "") {
+            console.warn("Fields are not filled out");
+            return;
+        } else {
+            switch(field) {
+                case "name":
+                    buildingName = inputs[i].value;
                     break;
-                case "number":
-                    roomObj.info.push(inputs[j].value);
+                case "lsmName":
+                    buildingLSMName = inputs[i].value;
                     break;
-                case "checked":
-                    roomObj.info.push(inputs[j].checked);
+                case "abbrev":
+                    building = inputs[i].value.toUpperCase();
+                    if(inputs[i].value.length > 5) {
+                        console.warn("Abbreviation Too Long, Please Revise.");
+                        return;
+                    }
+                    break;
+                case "zone":
+                    if(inputs[i].value > 4 || inputs[i].value < 1) {
+                        console.warn("Zone Outside of Range, Please Revise.");
+                        return;
+                    }
+                    console.log("zone value", inputs[i].value);
+                    buildingZone = inputs[i].value;
                     break;
                 default:
                     break;
             }
         }
-        packet.data.push(roomObj);
     }
-    // Iterate through rows that need to be removed
-    let removedRows = document.getElementsByClassName("dbRowToBeRemoved");
-    for(let i = 0; i < removedRows.length; i++) {
-        let rowID = removedRows[i].getAttribute("id").split("-")[0];
-        let roomObj = {
-            mode: "REMOVE",
-            target: rowID
-        };
-        packet.data.push(roomObj);
+    // Check for conflicts with campData
+    let campData = JSON.parse(localStorage.getItem("campData"));
+    let abbrevCCheck = Object.values(campData).filter(e => e.abbrev == building);
+    let nameCCheck = Object.values(campData).filter(e => e.name == buildingName);
+    let lsmCCheck = Object.values(campData).filter(e => e.lsm_name == buildingLSMName);
+    let test = abbrevCCheck.concat(nameCCheck.concat(lsmCCheck));
+    if(test.length != 0) {
+        // Error Conflict Detected.
+        console.warn("Building Addition Fields Detected Duplicate Field with other building records, please revise.");
+        return;
     }
-    // Prep Request to Backend
-    console.log(packet);
+    // Build and Send Changelog Object
+    let changeObj = {
+        Type: "BUILDING",
+        Destination: building,
+        Change: "INSERT",
+        Field: ["name","abbrev","lsmName","zone"],
+        NewValue: [buildingName, building, buildingLSMName, buildingZone]
+    };
+    addToDBEChanges(changeObj);
+    // New HTML / Fieldset
+    let tmp_html = `
+        <legend> Building To Be Added: ${buildingName} - (${building}) </legend>
+        <menu id="${building}-buildingMenu" oninput="updateBuilding('${building}-buildingMenu')" class="DBE_Building_Menu">
+        <ul class="DBE_Building_Fields">
+            <li>
+            <label for="dbe-${building}-name" class="DBE_Building_Label" id="dbe-${building}-nameLabel">Building Name: </label>
+            <input id="dbe-${building}-name" type="text" value="${buildingName}" class="dbBuildingInput">
+            </li>
+            <li>
+            <label for="dbe-${building}-abbrev" class="DBE_Building_Label" id="dbe-${building}-abbrevLabel">Abbreviation: </label>
+            <input type="text" value="${building}" id="dbe-${building}-abbrev" class="dbBuildingSmallInput">
+            </li>
+            <li>
+            <label for="dbe-${building}-lsmName" class="DBE_Building_Label" id="dbe-${building}-lsmNameLabel">LSM Name: </label>
+            <input type="text" id="dbe-${building}-lsmName" value="${buildingLSMName}" class="dbBuildingInput"}>
+            </li>
+            <li>
+            <label for="dbe-${building}-zone" class="DBE_Building_Label" id="dbe-${building}-zoneLabel">Zone: </label>
+            <input id="dbe-${building}-zone" type="number" class="dbBuildingSmallInput" value="${buildingZone}" min="1" max="4">
+            </li>
+        </ul>
+        </menu>
+        <br>
+        <div>
+            <table class="dbBuildingTable">
+                <thead>
+                    <tr>
+                        <th scope="col">Room</th>
+                        <th scope="col">Processors</th>
+                        <th scope="col">Projectors</th>
+                        <th scope="col">Displays</th>
+                        <th scope="col">Touch Panels</th>
+                        <th scope="col">WyoShares</th>
+                        <th scope="col">Celing Mics</th>
+                        <th scope="col">General Pool</th>
+                    </tr>
+                </thead>
+                <tbody id="${building}-tbody">
+                </tbody>
+        </table>
+        <menu id="${building}-roomMenu">
+            <span> Due to the structure of the Backend, inserting a building with room's attached on insertion is not currently supported. This is due to the building record cascading data down to the rooms. The building record must first exist. After inserting this building, please refresh the editor and insert rooms as desired.</span>
+        </menu>
+        </div>
+        <menu id="${building}-menu">
+            <button class="rmvButton" onclick="markBuildingToRemove('${building}-fieldset')"> Remove Building</button>
+        </menu>`;
+    // Add New Building Fieldset
+    let topFieldset = document.getElementById("DBE_Header");
+    let newFieldset = document.createElement('fieldset');
+    newFieldset.classList.add("dbBuildingFieldset");
+    newFieldset.classList.add("dbBuildingToBeAdded");
+    newFieldset.setAttribute('id', `${building}-fieldset`);
+    newFieldset.innerHTML = tmp_html;
+    topFieldset.after(newFieldset);
+    // Reset MainMenu HTML
+    cancelDBBuildingAddition();
     return;
 }
 
-// TODO : When a user wants to add a new building that we do not currently have in Bronson, we have some validation things to do, No duplicate Names or ABBREV Names, Test the LSM Name, etc. Need to mimic the RoomAddition functions below
-function setDBBuildingAddition() {
+function cancelDBBuildingAddition() {
+    let mainMenu = document.getElementById("DBE_MainMenu");
+    mainMenu.innerHTML = `<button id="updateDatabaseButton" onclick="updateDatabaseFromEditor()"> Save Changes to Database </button>
+            <button onclick="setDBEditor()"> Refresh Editor </button>
+            <button onclick="setDBBuildingAddition()"> Add Building</button>`;
     return;
 }
 
-function confirmDBBuildingAddition() {
+// TODO: mark building to be remove, or remove a building that is to be added.
+function markBuildingToRemove(fieldsetID) {
+    let fieldsetEle = document.getElementById(fieldsetID);
+    let buildingAbbrev = fieldsetID.split("-")[0];
+    let buttonID = buildingAbbrev + "-rmvBtn";
+    let buttonEle = document.getElementById(buttonID);
+    let roomsButton = document.getElementById(buildingAbbrev + "-colBtn");
+    let toBeRemoved = false;
+    // Check for Default Values, Update Rooms Field.
+    let newChange = {
+        Type: "BUILDING",
+        Destination: buildingAbbrev,
+        Change: "REMOVE"
+    };
+    if(fieldsetEle.classList.contains("dbBuildingToBeAdded")) {
+        fieldsetEle.remove();
+    } else {
+        if (fieldsetEle.classList.contains("dbBuildingToBeRemoved")) {
+            fieldsetEle.classList.remove("dbBuildingToBeRemoved");
+            buttonEle.classList.add("rmvButton");
+            buttonEle.innerHTML = `Remove Building`;
+            roomsButton.disabled = false;
+            roomsButton.innerText= "See Rooms";
+        } else {
+            toBeRemoved = true;
+            fieldsetEle.classList.add("dbBuildingToBeRemoved");
+            buttonEle.classList.remove("rmvButton");
+            buttonEle.innerHTML = `Add Building`;
+            roomsButton.disabled = true;
+            roomsButton.innerText = "See Rooms (Disabled)";
+            let content = roomsButton.nextElementSibling;
+            content.style.display = "none";
+        }
+    }
+    // Disable/Enable Inputs
+    let inputs = fieldsetEle.getElementsByTagName("input");
+        for(let i = 0; i < inputs.length; i++) {
+        if(toBeRemoved) { //Disable Inputs
+            inputs[i].disabled = true;
+            inputs[i].value = inputs[i].defaultValue;
+        } else { // Enable Inputs
+            inputs[i].disabled = false;
+        }
+    }
+    addToDBEChanges(newChange);
     return;
 }
-
 // Presents a submenu to the user to fill in Information to load the new room.
 function setRoomAddition(menuID, buildingTableID) {
     let tableMenuElement = document.getElementById(menuID);
@@ -1279,6 +1499,7 @@ function confirmRoomAddition(textareaID, buildingTableID) {
     let input_room = roomName.split(" ");
     let parent_abbrev = buildingTableID.split("-")[0];
     // TODO: Give this information to the user rather than a console warning.
+    //   I think some kind of temporary Pop-Up would be well used here.
     if(input_room[0] != parent_abbrev) { 
         console.warn("Database Editor: User input does not match target building.");
         console.log(roomName);
@@ -1411,13 +1632,17 @@ function updateBuilding(menuID) {
     for(let i = 0; i < inputs.length; i++) {
         let inputElement = inputs[i];
         let inputID = inputElement.id;
+        let inputLabelID = inputElement.id + "Label";
+        let labelElement = document.getElementById(inputLabelID);
         // Change Obj
         tmpObj.Field.push(inputID.split('-')[2]);
         if(inputElement.value != inputElement.defaultValue) {
             defaultBool = false;
-            inputElement.classList.add("dbBuildingChanged");
-        }else if (inputElement.classList.contains("dbBuildingChanged")) {
-            inputElement.classList.remove("dbBuildingChanged");
+            //inputElement.classList.add("dbBuildingChanged");
+            labelElement.classList.add("dbBuildingChanged");
+        }else if (labelElement.classList.contains("dbBuildingChanged")) {
+            //inputElement.classList.remove("dbBuildingChanged");
+            labelElement.classList.remove("dbBuildingChanged");
         }
         tmpObj.DefaultValue.push(inputElement.defaultValue);
         tmpObj.NewValue.push(inputElement.value);
@@ -1463,8 +1688,10 @@ function updateRow(rowElementID) {
             if (inputs[i].defaultChecked != inputs[i].checked) {
                 defaultBool = false;
             }
-            newChange.DefaultValue.push(inputs[i].defaultChecked);
-            newChange.NewValue.push(inputs[i].checked);
+            let defaultValue = (inputs[i].defaultChecked ? "1" : "0");
+            let value = (inputs[i].checked ? "1" : "0");
+            newChange.DefaultValue.push(defaultValue);
+            newChange.NewValue.push(value);
         } else if (inputs[i].type == "number") {
             if (inputs[i].defaultValue != inputs[i].value) {
                 defaultBool = false;
@@ -1488,7 +1715,7 @@ function updateRow(rowElementID) {
     return;
 }
 
-
+// Prints changes to the textarea, called after the changelog object gets updated.
 function updateDBChangelogHTML(changes) {
     let tmp_html = []; // This will hold changes.
     let tmp_buildings = []; // This holds buildings with changes, we use this to exclude changes to rooms if the building object is being changed.
@@ -1605,12 +1832,15 @@ function addToDBEChanges(chgObj) {
     } else {
         changes.log.push(chgObj);
     }
+    // TODO: Run Validator ??
+    //... 
     // Save Updated Changes in SessionStorage and Update HTML Changelog.
     sessionStorage.setItem("DBEChanges", JSON.stringify(changes));
     updateDBChangelogHTML(changes);
     return;
 }
 
+// TODO: Need to check to see if room has 'toBeAdded' elements and remove if so.
 function revertRowChanges(roomName) {
     // Get Row and Revert back to no changes.
     let rowElement = document.getElementById(roomName + "-row");
@@ -1634,6 +1864,7 @@ function revertRowChanges(roomName) {
 //   - 2: Bad Abbreviation
 //   - 3: Bad Number
 //   - 4: Duplicated Room Name
+//  Currently Unused... This was from an old iteration of changelog and needs to be updated. See validateUserBuildingInput() to see how this update should look.
 function validateUserRoomInput(defaultValue, userInput) {
     let cellID = defaultValue + "-text";
     let roomTextArea = document.getElementById(cellID);
@@ -1668,6 +1899,195 @@ function validateUserRoomInput(defaultValue, userInput) {
     return validInput;
 }
 
-function compareDBEditLSM(buildingAbbreviation) {
+// This function examines the changes made to a building record and determines if the changes are supported.
+//  - Unique Building Name, Abbreviation, and LSMName.
+//  - Abbreviation is limited to 5 characters
+//  - LSM_Name Accuracy Test (TODO: test new LSM name (if changed) to see if it is a valid endpoint parameter in LSM).
+// The input baseID allows this function to be utilized for every building fieldset on the page, including newly added buildings.
+// Output Mechanism, If a Building is being changed, a changelog object is made. We will pull the changelog from sessionStorage and find the corresponding change record. Once that is obtained we will ADD an "Error" field indicating some problem. Within this function we will also determine if there is a need to remove this Error field. 
+function validateUserBuildingInput(menuID, building) {
+    let idSuffixes = ["name","lsmName","abbrev"];
+    // Data Objects in Use
+    let campData = localStorage.getItem("campData");
+    let changelog = sessionStorage.getItem("DBEChanges");
+    let invalidBool = false;
+    let changeObject = changelog.log.filter(e => e.Destination == building);
+    if (changeObject[0] == undefined) {
+        console.assert("Changed Building Does Not Have an associated Log Object");
+        return;
+    }
+    // Grab Inputs
+    let inputs = document.getElementsByTagName("input");
+    for(let i = 0; i < inputs.length; i++) {
+        let inputId = inputs[i].getAttribute("id");
+        let field = inputID.split("-")[2];
+        let value = inputs[i].value;
+        console.log("Validatiing ", field, " in ", menuID);
+        switch(field) {
+            case "abbrev":
+                if (campData[value] != undefined) {
+                    invalidBool = true;
+                } else if (value.length > 5) {
+                    invalidBool = true;
+                }
+                break;
+            case "lsmName":
+                break;
+            case "name":
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+// This function is designed to quickly and easily display 
+//  discrepencies inside the database with the data inside LSM.
+//  I do not think this is very elegant also...
+async function compareDBEditLSM(buildingAbbreviation) {
+    let tableID = buildingAbbreviation + "-tbody";
+    let tableElement = document.getElementById(tableID);
+    //console.log(tableElement.children);
+    let button = document.getElementById(buildingAbbreviation + "-compareLSMBtn");
+    // For some reason when I try to reassign the onclick function in the button, it is not sticking. SO, I am checking the value of the innerHTML and diverting here instead.
+    if (button.innerHTML == "Hide LSM Comparison") {
+        removeCompareDBEditLSM(buildingAbbreviation);
+        return;
+    }
+    // TODO: Get data for this building.
+    const devices = ["PROC","DISP","PJ","TP"];
+    let data = [];
+    button.disabled = true;
+    button.innerHTML = "Loading Data..."
+    for (i in devices) {
+        let tmp = await getLSMDataByType(buildingAbbreviation, devices[i]);
+        // LSM does not have a formal item type for Room Proccessors like we do
+        //   for projectors/touch panels/etc. Because of this, we have to 
+        //   manually insert that field on the returns for processsors. The LSM 
+        //   endpoint is pulling from a rather large list of model's that have 
+        //   been 'sudo-labeled' as Proc's
+        if(devices[i] == "PROC") {
+            for(let j = 0; j < tmp.data.length; j++) {
+                tmp.data[j]["Item Type"] = "Processor";
+            }
+        }
+        data = data.concat(tmp.data);
+    }
+    //console.log("data", data);
+    let tmpArr = []
+    let tmp_inBronson = []; // Array of objects in data arr that do not have an entry inside Bronson.
+    // Add Rows to each room.
+    for(let i = 0; i < tableElement.children.length; i++) {
+        let tmp = [];
+        let item = tableElement.children[i];
+        let roomName = item.id.split("-")[0];
+        let rowInputs = item.getElementsByTagName("input");
+        tmp_inBronson.push(roomName);
+        let associated_data = data.filter(e => e.RoomName == roomName);
+        tmp.push(`LSM ${roomName}`);
+        //console.log("rowInputs", rowInputs);
+        for(let j = 0; j < rowInputs.length - 3; j++) { // -3 because we do not look at WS, CMIX, or General Pool with that endpoint ATM.
+            let device = rowInputs[j].id.split("-")[1];
+            switch(device) {
+                case "PROC":
+                    device = "Processor";
+                    break;
+                case "DISP":
+                    device = "Display";
+                    break;
+                case "PJ":
+                    device = "Projector";
+                    break;
+                case "TP":
+                    device = "Touch Panel";
+                    break;
+                default:
+                    console.warn("Faulty Behvaior, Detected");
+                    break;
+            }
+            //console.log("Device", device);
+            let dev_data = associated_data.filter(e => e["Item Type"] == device);
+            if(rowInputs[j].value != dev_data.length){
+                tmp.push(`❌ LSM Count: ${dev_data.length}`);
+            } else {
+                tmp.push(`✅`);
+            }
+        }
+        tmpArr.push(tmp);
+    }
+    // Find Rooms That have inventory BUT is not in Bronson
+    let notInBronson_data = data.filter(e => !tmp_inBronson.includes(e.RoomName));
+    //console.log("Rooms with inventory, not in Bronson", notInBronson_data);
+    let unknownRooms = [];
+    for (let i = 0; i < notInBronson_data.length; i++) {
+        if(!unknownRooms.includes(notInBronson_data[i].RoomName)) {
+            unknownRooms.push(notInBronson_data[i].RoomName);
+        }
+    }
+    // These should have their own row section appended after the main comparisons.
+    // Iterate through table and insert rows with data inside tmpArr
+    let tableRowCount = tableElement.children.length;
+    let count = 0;
+    for(let i = 0; i < tableRowCount; i++) {
+        let newRow = tableElement.insertRow(i+1+count);
+        newRow.classList.add("lsmCompareRow");
+        for(let j = 0; j < tmpArr[count].length; j++) {
+            let newCell = newRow.insertCell(j);
+            newCell.innerHTML = tmpArr[count][j];
+        }
+        count++;
+    }
+    // Rooms Not in Bronson
+    for(let i = 0; i < unknownRooms.length; i++) {
+        let unknownData = data.filter(e => e.RoomName == unknownRooms[i]);
+        let newRow = tableElement.insertRow();
+        newRow.classList.add("lsmCompareRow");
+        let newCell = newRow.insertCell();
+        newCell.innerHTML = unknownRooms[i] + " - Not in Bronson DB";
+        for(let j = 0; j < 4; j++) {
+            switch(j) {
+                case 0:
+                    let procCell = newRow.insertCell(1);
+                    let procCount = unknownData.filter(e => e["Item Type"] == "Processor").length;
+                    procCell.innerHTML = procCount;
+                    break;
+                case 1:
+                    let pjCell = newRow.insertCell(2);
+                    let pjCount = unknownData.filter(e => e["Item Type"] == "Projector").length;
+                    pjCell.innerHTML = pjCount;
+                    break;
+                case 2:
+                    let dispCell = newRow.insertCell(3);
+                    let dispCount = unknownData.filter(e => e["Item Type"] == "Display").length;
+                    dispCell.innerHTML = dispCount;
+                    break;
+                case 3:
+                    let tpCell = newRow.insertCell(4);
+                    let tpCount = unknownData.filter(e => e["Item Type"] == "Touch Panel").length;
+                    tpCell.innerHTML = tpCount;
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+    // Update Menu / LSM button
+    button.innerHTML = "Hide LSM Comparison";
+    button.disabled = false;
+    return;
+}
+
+function removeCompareDBEditLSM(buildingAbbrev) {
+    // Remove LSM Rows
+    let tableElement = document.getElementById(buildingAbbrev + "-tbody");
+    let lsmRows = tableElement.getElementsByClassName("lsmCompareRow");
+    for (let i = 0; i < lsmRows.length; i++) {
+        lsmRows[i].remove();
+        i--;
+    }
+    // Update Menu
+    let button = document.getElementById(buildingAbbrev + "-compareLSMBtn");
+    button.innerHTML = "Compare Inventory With LSM";
+    //button.onclick = `compareDBEditLSM(${buildingAbbrev})`;
     return;
 }

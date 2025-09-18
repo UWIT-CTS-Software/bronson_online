@@ -769,3 +769,6 @@ function isMobile() {
         return false;
     }
 }
+
+// TODO: Temporary Pop-up Notification
+//   I think it would be beneficial to have some kind of message banner to alert users for a number of things. A stashed request along with some kind of error handling to give more specific information about what happened. 
