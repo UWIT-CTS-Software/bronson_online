@@ -359,7 +359,7 @@ impl Database {
 		Some(())
 	}
 
-	fn gen_hn(room_name: String, items: &Vec<u8>) -> Vec<Option<DB_Hostname>> {
+	pub fn gen_hn(room_name: String, items: &Vec<u8>) -> Vec<Option<DB_Hostname>> {
 		let mut hn_vec: Vec<Option<DB_Hostname>> = Vec::new(); 
 		for dev_count in 0..items.len() {
 			for dev in 1..=items[dev_count] {
@@ -384,7 +384,7 @@ impl Database {
 		return hn_vec;
 	}
 
-	fn gen_ip(hn_vec: &Vec<Option<DB_Hostname>>) -> Vec<Option<DB_IpAddress>> {
+	pub fn gen_ip(hn_vec: &Vec<Option<DB_Hostname>>) -> Vec<Option<DB_IpAddress>> {
 		let mut ip_vec: Vec<Option<DB_IpAddress>> = Vec::new();
 		for hn in hn_vec {
 			ip_vec.push(
@@ -472,6 +472,16 @@ impl Database {
 		ret_vec
 	}
 
+	pub fn get_room_by_name(&mut self, room_name: &String) -> DB_Room {
+		rooms
+			.find(room_name)
+			.select(DB_Room::as_select())
+			.first(&mut self.connection)
+			.optional()
+			.expect("SQL_ERR: Error loading room by name")
+			.unwrap()
+	}
+
 	pub fn update_room(&mut self, room: &DB_Room) {
 		use crate::schema::bronson::rooms::dsl::name;
 		let _ = diesel::insert_into(rooms)
@@ -482,6 +492,15 @@ impl Database {
 			.returning(DB_Room::as_returning())
 			.get_result(&mut self.connection)
 			.expect("SQL_ERR: Error inserting room");
+	}
+
+	pub fn delete_room(&mut self, id: &String) {
+		use crate::schema::bronson::rooms::dsl::name;
+		let _ = diesel::delete(rooms)
+			.filter(name.eq(id))
+			.returning(DB_Room::as_returning())
+			.get_result(&mut self.connection)
+			.expect("SQL_ERR: Error deleting key");
 	}
 
 	pub fn get_user(&mut self, user: &str) -> Option<DB_User> {
