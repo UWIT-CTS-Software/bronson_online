@@ -592,8 +592,7 @@ async fn handle_connection(
                 new_db_room.ping_data = ping_vec;
                 // Update Database
                 println!("DEBUG Updating DB_Room -> \n {:?}", new_db_room);
-                // database.update_room(&new_db_room); // UNCOMMENT ME WHEN READY
-                
+                database.update_room(&new_db_room); // UNCOMMENT ME WHEN READY
                 res.status(STATUS_200);
                 res.send_contents("".into());
             }
@@ -611,7 +610,7 @@ async fn handle_connection(
                     .as_str()
                     .unwrap()
                     .to_string();
-                let new_values: Vec<u8> = [0,0,0,0,0,0,0].to_vec();;
+                let new_values: Vec<u8> = [0,0,0,0,0,0,0].to_vec();
                 // Note: When we are inserting a new room, we are not providing the inventory in the same call. The intention is that the front-end will send the rooms to insert first and if their is inventory associated with it it will come after.
                 println!("DEBUG INSERTING ROOM INTO DB -> {:?}", new_room);
                 // Build DB_Room Object and insert to Database
@@ -619,8 +618,8 @@ async fn handle_connection(
                 let hn_vec = Database::gen_hn(new_room.clone(), &new_values);
                 let ping_vec = Database::gen_ip(&hn_vec);
                 // Insert New Room to Database
-                let mut new_db_room = DB_Room {
-                    abbrev: new_room.split('-').collect::<Vec<&str>>()[0].to_string(),
+                let new_db_room = DB_Room {
+                    abbrev: new_room.split(' ').collect::<Vec<&str>>()[0].to_string(),
                     name: new_room,
                     checked: "false".to_string(),
                     needs_checked: false,
@@ -630,7 +629,7 @@ async fn handle_connection(
                         _ => false,
                     },
                     available: false,
-                    until: String::from("Missing Schedule Data"),
+                    until: String::from("TOMORROW"),
                     ping_data: ping_vec,
                     schedule: Vec::new(),
                 };
@@ -638,7 +637,7 @@ async fn handle_connection(
                 // Note, the schedule field here is initialized as empty.
                 //   we will require some more tooling to get this data in here.
                 //   whether that be some kind of csv import or a manual page.
-                // database.update_room(&new_db_room); // UNCOMMENT ME WHEN READY
+                database.update_room(&new_db_room); // UNCOMMENT ME WHEN READY
                 res.status(STATUS_200);
                 res.send_contents("".into());
             }
@@ -658,7 +657,7 @@ async fn handle_connection(
                     .to_string();
                 println!("DEBUG REMOVING ROOM -> {:?}", target_room);
                 // Remove Specified Room from Database
-                //database.delete_room(&target_room); // UNCOMMENT ME WHEN READY
+                database.delete_room(&target_room); // UNCOMMENT ME WHEN READY
                 res.status(STATUS_200);
                 res.send_contents("".into());
             }
@@ -680,7 +679,7 @@ async fn handle_connection(
                     .as_array()
                     .map(|arr| {
                         arr.iter()
-                            .map(|v| v.as_str().unwrap().to_string())
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
                             .collect()
                     })
                     .unwrap();
@@ -692,53 +691,69 @@ async fn handle_connection(
                 new_db_building.name = new_values[0].to_string();
                 new_db_building.abbrev = new_values[1].to_string();
                 new_db_building.lsm_name = new_values[2].to_string();
-                new_db_building.zone = new_values[3].parse().unwrap();
+                new_db_building.zone = new_values[3].parse().expect("invalid zone");
                 // Update Database
                 println!("DEBUG Updated Building Record:\n{:?}", &new_db_building);
-                //database.update_building(&new_db_building); // UNCOMMENT ME WHEN READY
+                database.update_building(&new_db_building); // UNCOMMENT ME WHEN READY
                 res.status(STATUS_200);
                 res.send_contents("".into());
             }
         },
-        // "POST /insert/database_building HTTP/1.1" => { // destination, newValue
-        //     if !req.has_valid_cookie(&mut database) {
-        //         res.status(STATUS_401);
-        //         res.send_contents(json!({
-        //             "response": "Unauthorized"
-        //         }).to_string().into());
-        //     } else {
-        //         let body_str = String::from_utf8(req.body).expect("AT: LSM Data Err, invalid UTF-8");
-        //         let body_parts: Vec<&str> = body_str.split(',').collect();
-        //         if body_parts.len() != 5 {
-        //             res.status(STATUS_500);
-        //             res.send_contents("Invalid request body.".into());
-        //             return Some(res);
-        //         }
-        //         let target_building: String = body_parts[0].to_string();
-        //         let new_values = &body_parts[1..];
-        //         println!("{} {:?}", target_building, new_values);
-        //         // TODO ON FRONT END ALSO
-        //     }
-        // },
-        // "POST /remove/database_building HTTP/1.1" => { // destination
-        //     if !req.has_valid_cookie(&mut database) {
-        //         res.status(STATUS_401);
-        //         res.send_contents(json!({
-        //             "response": "Unauthorized"
-        //         }).to_string().into());
-        //     } else {
-        //         let body_str = String::from_utf8(req.body).expect("AT: LSM Data Err, invalid UTF-8");
-        //         let body_parts: Vec<&str> = body_str.split(',').collect();
-        //         if body_parts.len() != 1 {
-        //             res.status(STATUS_500);
-        //             res.send_contents("Invalid request body.".into());
-        //             return Some(res);
-        //         }
-        //         let target_room: String = body_parts[0].to_string();
-        //         println!("{} {:?}", target_room);
-        //         // TODO ON FRONT END ALSO
-        //     }
-        // },
+        "POST /insert/database_building HTTP/1.1" => { // destination, newValue
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                let target_building: String = body_json["destination"]
+                    .as_str()
+                    .unwrap()
+                    .to_string();
+                println!("{:?}", body_json);
+                let new_values: Vec<String> = body_json["newValue"]
+                    .as_array()
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()
+                    })
+                    .unwrap();
+                println!("{} {:?}", target_building, new_values);
+                // Create New DB_Builing with new_values
+                let new_db_building = DB_Building {
+                    name: new_values[0].clone(),
+                    abbrev: new_values[1].clone(),
+                    lsm_name: new_values[2].clone(),
+                    zone: new_values[3].parse().expect("invalid zone"),
+                    checked_rooms: 0,
+                    total_rooms: 0
+                };
+                println!("DEBUG Inserting Building Record:\n {:?}", &new_db_building);
+                database.update_building(&new_db_building); //UNCOMMENT ME WHEN READY
+                res.status(STATUS_200);
+                res.send_contents("".into());
+            }
+        },
+        "POST /remove/database_building HTTP/1.1" => { // destination
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                let target_building: String = body_json["destination"]
+                    .as_str()
+                    .unwrap()
+                    .to_string();
+                println!("Target Building:\n {:?}", target_building);
+                database.delete_building(&target_building);
+                res.status(STATUS_200);
+                res.send_contents("".into());
+            }
+        },
         // Terminal
         // --------------------------------------------------------------------
         "POST /terminal HTTP/1.1"          => {

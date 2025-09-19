@@ -1368,7 +1368,7 @@ ol li::marker {
 }
 
 /* Database Editor Tab */
-.invalid {
+.invalid, .invalidInput {
     border: 2px solid red;
 }
 
@@ -1397,6 +1397,10 @@ ol li::marker {
     grid-template-columns: 2fr 1fr;
     column-gap: 10px;
     padding: 0px;
+}
+
+.dbe-legend {
+    background-color: #302f35;
 }
 
 .dbBuildingInput {
