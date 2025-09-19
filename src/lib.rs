@@ -460,6 +460,15 @@ impl Database {
 			.expect("SQL_ERR: Error inserting building");
 	}
 
+	pub fn delete_building(&mut self, id: &String) {
+		use crate::schema::bronson::buildings::dsl::abbrev;
+		let _ = diesel::delete(buildings)
+			.filter(abbrev.eq(id))
+			.returning(DB_Building::as_returning())
+			.get_result(&mut self.connection)
+			.expect("SQL_ERR: Error deleting building");
+	}
+
 	pub fn get_rooms_by_abbrev(&mut self, bldg_abbrev: &String) -> Vec<DB_Room> {
 		use crate::schema::bronson::rooms::dsl::abbrev;
 		let mut ret_vec = rooms

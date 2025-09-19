@@ -1008,7 +1008,7 @@ function formatLSMDevices(lsm_data) {
 // Database Editor Page
 // This is intended to be an interface that allows users to update the
 // inventory database without needing direct access to the database itself.
-function setDBEditor() {
+async function setDBEditor() {
     // remove currently active status, mark tab has active.
     let current = document.getElementsByClassName("at_selected");
     if (current.length != 0) {
@@ -1017,7 +1017,7 @@ function setDBEditor() {
     let newCurrent = document.getElementById("at_dbedit");
     newCurrent.classList.add("at_selected");
     // MAYBE: get a new up-to-date copy of campData from the backend when this page is loaded
-    //...
+    await initLocalStorage();
     // Get Data to populate page with
     let campData = JSON.parse(localStorage.getItem("campData"));
     if (campData == null) {
@@ -1059,7 +1059,7 @@ function setDBEditor() {
         let lsmName = campData[building].lsm_name;
         tmp += `
         <fieldset class="dbBuildingFieldset" id="${building}-fieldset">
-            <legend> Building: ${buildingName} - (${building}) </legend>
+            <legend class="dbe-legend"> Building: ${buildingName} - (${building}) </legend>
             <menu id="${building}-buildingMenu" oninput="updateBuilding('${building}-buildingMenu')" class="DBE_Building_Menu">
             <ul class="DBE_Building_Fields">
                 <li>
@@ -1214,14 +1214,15 @@ async function updateDatabaseFromEditor() {
     // TODO Iterate through Buildings
     let buildingData = changelogData.log.filter(e => e.Type == "BUILDING");
     // CHANGELOG TODO: BUILDING INSERT
-    // insertData = buildingData.filter(e => e.Change == "INSERT");
-    // for(let i = 0; i < insertData.length; i++) {
-    //     let endpoint = "insert/database_building";
-    //     let packet = JSON.stringify({
-    //         destination: roomData[i].Destination
-    //     });
-    //     await postDBChange(endpoint, packet);
-    // }
+    insertData = buildingData.filter(e => e.Change == "INSERT");
+    for(let i = 0; i < insertData.length; i++) {
+        let endpoint = "insert/database_building";
+        let packet = JSON.stringify({
+            destination: insertData[i].Destination,
+            newValue: insertData[i].NewValue
+        });
+        await postDBChange(endpoint, packet);
+    }
     otherData = buildingData.filter(e => e.Change != "INSERT");
     for(let i = 0; i < otherData.length; i++) {
         let packet = ``;
@@ -1232,16 +1233,17 @@ async function updateDatabaseFromEditor() {
                 destination: otherData[i].Destination,
                 newValue: otherData[i].NewValue
             });
-        }
         //  CHANGELOG TODO: BUILDING "REMOVE"
-        // } else if (otherData[i].Change == "REMOVE") {
-        //     endpoint = "remove/database_building";
-        //     packet = JSON.stringify({
-        //         destination: otherData[i].Destination
-        //     });
-        // }
+        } else if (otherData[i].Change == "REMOVE") {
+            endpoint = "remove/database_building";
+            packet = JSON.stringify({
+                destination: otherData[i].Destination
+            });
+        }
         await postDBChange(endpoint, packet);
     }
+    // Reset Page with new changes (due to init)
+    setDBEditor();
     return;
 }
 
@@ -1262,7 +1264,7 @@ async function postDBChange(endpoint, packet) {
     });
 }
 
-// TODO : When a user wants to add a new building that we do not currently have in Bronson, we have some validation things to do, No duplicate Names or ABBREV Names, etc. Need to mimic the RoomAddition functions below
+// Set the main menu to present inputs for the user.
 function setDBBuildingAddition() {
     let mainMenu = document.getElementById("DBE_MainMenu");
     let tmp_html = `
@@ -1350,12 +1352,13 @@ function confirmDBBuildingAddition() {
         Destination: building,
         Change: "INSERT",
         Field: ["name","abbrev","lsmName","zone"],
-        NewValue: [buildingName, building, buildingLSMName, buildingZone]
+        NewValue: [buildingName, building, buildingLSMName, buildingZone],
+        Error: []
     };
     addToDBEChanges(changeObj);
     // New HTML / Fieldset
     let tmp_html = `
-        <legend> Building To Be Added: ${buildingName} - (${building}) </legend>
+        <legend class="dbe-legend"> Building To Be Added: ${buildingName} - (${building}) </legend>
         <menu id="${building}-buildingMenu" oninput="updateBuilding('${building}-buildingMenu')" class="DBE_Building_Menu">
         <ul class="DBE_Building_Fields">
             <li>
@@ -1417,8 +1420,8 @@ function confirmDBBuildingAddition() {
 function cancelDBBuildingAddition() {
     let mainMenu = document.getElementById("DBE_MainMenu");
     mainMenu.innerHTML = `<button id="updateDatabaseButton" onclick="updateDatabaseFromEditor()"> Save Changes to Database </button>
-            <button onclick="setDBEditor()"> Refresh Editor </button>
-            <button onclick="setDBBuildingAddition()"> Add Building</button>`;
+        <button onclick="setDBBuildingAddition()"> Add Building</button>
+        <button onclick="setDBEditor()"> Refresh Editor </button>`;
     return;
 }
 
@@ -1613,12 +1616,15 @@ function removeRoomFromBuilding(rowID) {
     return;
 }
 
-// TODO: Building Changes, these are more overreaching, because of this, changing something in the building menu will disable the user's ability to edit a specific room for that building. 
+// Building Changes, Preps changelog object and sends it to addToDBEChanges()
 function updateBuilding(menuID) {
     let menuElement = document.getElementById(menuID);
     let inputs = menuElement.getElementsByTagName("input");
     let building = menuID.split("-")[0];
     let defaultBool = true;
+    let campData = JSON.parse(localStorage.getItem("campData"));
+    let exclusiveCD = Object.values(campData).filter(e => e.abbrev != building);
+    //console.log("Filtered CampData (Should Be Excluding Building that got the change)", exclusiveCD);
     // Init Changelog Data
     let tmpObj = {
         Type: "BUILDING",
@@ -1626,7 +1632,8 @@ function updateBuilding(menuID) {
         Change: "UPDATE",
         Field: [],
         DefaultValue: [],
-        NewValue: []
+        NewValue: [],
+        Error: []
     };
     // Iterate through elements.
     for(let i = 0; i < inputs.length; i++) {
@@ -1646,6 +1653,51 @@ function updateBuilding(menuID) {
         }
         tmpObj.DefaultValue.push(inputElement.defaultValue);
         tmpObj.NewValue.push(inputElement.value);
+        // Validate Information / Look for naming conflicts... I worry this will be too slow.
+        let field = inputID.split('-')[2];
+        let value = inputElement.value;
+        switch(field) {
+            case "abbrev":
+                let abbrevCCheck = Object.values(exclusiveCD).filter(e => e.abbrev == value);
+                if (abbrevCCheck.length > 0 || inputs[i].value > 5) {
+                    inputs[i].classList.add("invalidInput");
+                    tmpObj.Error.push(true);
+                } else {
+                    tmpObj.Error.push(false);
+                    inputs[i].classList.remove("invalidInput");
+                }
+                break;
+            case "name":
+                let nameCCheck = Object.values(exclusiveCD).filter(e => e.name == value);
+                console.log(nameCCheck)
+                if(nameCCheck.length > 0) {
+                    inputs[i].classList.add("invalidInput");
+                    tmpObj.Error.push(true);
+                } else {
+                    tmpObj.Error.push(false);
+                    inputs[i].classList.remove("invalidInput");
+                }
+                break;
+            case "lsmName":
+                let lsmCCheck = Object.values(exclusiveCD).filter(e => e.lsm_name == value);
+                if(lsmCCheck.length > 0) {
+                    inputs[i].classList.add("invalidInput");
+                    tmpObj.Error.push(true);
+                } else {
+                    tmpObj.Error.push(false);
+                    inputs[i].classList.remove("invalidInput");
+                }
+            case "zone":
+                if(inputs[i].value > 4 || inputs[i].value < 1) {
+                    inputs[i].classList.add("invalidInput");
+                    tmpObj.Error.push(true);
+                } else {
+                    tmpObj.Error.push(false);
+                    inputs[i].classList.remove("invalidInput");
+                }
+            default:
+                break;
+        }
     }
     // Update Changelog
     addToDBEChanges(tmpObj);
@@ -1668,10 +1720,14 @@ function updateRow(rowElementID) {
     let rowElement = document.getElementById(rowElementID);
     let roomName = rowElementID.split("-")[0];
     rowElement.classList.add("dbRowChanged");
+    
     // Go through each input in row and grab values
     let inputs = rowElement.getElementsByTagName("input");
     let defaultBool = true;
-
+    // If this is an insertion row, we need to remove the first input as it is a text editor for the room name, which we store elsewhere.
+    // if(rowElement.classList.contains("dbRowToBeAdded")) {
+    //     inputs = inputs.filter(e => e.type != "text");
+    // }
     let newChange = {
         Type: "ROOM",
         Destination: roomName,
@@ -1683,7 +1739,9 @@ function updateRow(rowElementID) {
     for(let i = 0; i < inputs.length; i++) {
         let id = inputs[i].getAttribute("id");
         let devField = id.split("-")[1];
-        newChange.Field.push(devField);
+        if (devField != "text") {
+            newChange.Field.push(devField);
+        }
         if (inputs[i].type == "checkbox") {
             if (inputs[i].defaultChecked != inputs[i].checked) {
                 defaultBool = false;
@@ -1702,8 +1760,8 @@ function updateRow(rowElementID) {
             if (inputs[i].defaultValue != inputs[i].value) {
                 defaultBool = false;
             }
-            newChange.DefaultValue.push(inputs[i].defaultValue);
-            newChange.NewValue.push(inputs[i].value);
+            //newChange.DefaultValue.push(inputs[i].defaultValue);
+            //newChange.NewValue.push(inputs[i].value);
         }
     }
     // Update Changelog Object
@@ -1740,10 +1798,16 @@ function updateDBChangelogHTML(changes) {
                     tmp_html.push(`  ${truple[j][0]} -- Changed from ${truple[j][1]} to ${truple[j][2]}`);
                 }
             }
+            if (buildingChanges[i].Error.includes(true)) {
+                tmp_html.push(`   ERRORS DETECTED, Invalid input, potential conflict found. Changes to this object will be ignored.`);
+            }
         } else if (buildingChanges[i].Change == "REMOVE") {
             tmp_html.push(`   To Be Removed`);
         } else if (buildingChanges[i].Change == "INSERT") {
             tmp_html.push(`   To Be Added`);
+            if (buildingChanges[i].Error.includes(true)) {
+                tmp_html.push(`   ERRORS DETECTED, Invalid input, potential conflict found`);
+            }
         }
     }
     // TODO: Look for room changes
@@ -1832,8 +1896,6 @@ function addToDBEChanges(chgObj) {
     } else {
         changes.log.push(chgObj);
     }
-    // TODO: Run Validator ??
-    //... 
     // Save Updated Changes in SessionStorage and Update HTML Changelog.
     sessionStorage.setItem("DBEChanges", JSON.stringify(changes));
     updateDBChangelogHTML(changes);
@@ -1897,48 +1959,6 @@ function validateUserRoomInput(defaultValue, userInput) {
         roomTextArea.classList.add("invalid");
     }
     return validInput;
-}
-
-// This function examines the changes made to a building record and determines if the changes are supported.
-//  - Unique Building Name, Abbreviation, and LSMName.
-//  - Abbreviation is limited to 5 characters
-//  - LSM_Name Accuracy Test (TODO: test new LSM name (if changed) to see if it is a valid endpoint parameter in LSM).
-// The input baseID allows this function to be utilized for every building fieldset on the page, including newly added buildings.
-// Output Mechanism, If a Building is being changed, a changelog object is made. We will pull the changelog from sessionStorage and find the corresponding change record. Once that is obtained we will ADD an "Error" field indicating some problem. Within this function we will also determine if there is a need to remove this Error field. 
-function validateUserBuildingInput(menuID, building) {
-    let idSuffixes = ["name","lsmName","abbrev"];
-    // Data Objects in Use
-    let campData = localStorage.getItem("campData");
-    let changelog = sessionStorage.getItem("DBEChanges");
-    let invalidBool = false;
-    let changeObject = changelog.log.filter(e => e.Destination == building);
-    if (changeObject[0] == undefined) {
-        console.assert("Changed Building Does Not Have an associated Log Object");
-        return;
-    }
-    // Grab Inputs
-    let inputs = document.getElementsByTagName("input");
-    for(let i = 0; i < inputs.length; i++) {
-        let inputId = inputs[i].getAttribute("id");
-        let field = inputID.split("-")[2];
-        let value = inputs[i].value;
-        console.log("Validatiing ", field, " in ", menuID);
-        switch(field) {
-            case "abbrev":
-                if (campData[value] != undefined) {
-                    invalidBool = true;
-                } else if (value.length > 5) {
-                    invalidBool = true;
-                }
-                break;
-            case "lsmName":
-                break;
-            case "name":
-                break;
-            default:
-                break;
-        }
-    }
 }
 
 // This function is designed to quickly and easily display 
