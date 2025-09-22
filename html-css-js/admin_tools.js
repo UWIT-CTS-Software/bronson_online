@@ -1017,13 +1017,8 @@ async function setDBEditor() {
     let newCurrent = document.getElementById("at_dbedit");
     newCurrent.classList.add("at_selected");
     // MAYBE: get a new up-to-date copy of campData from the backend when this page is loaded
-    await initLocalStorage();
-    // Get Data to populate page with
-    let campData = JSON.parse(localStorage.getItem("campData"));
-    if (campData == null) {
-        console.error("No Campus Data found in local storage.");
-        return;
-    }
+    let campData = await getCampusData();
+    localStorage.setItem("campData", JSON.stringify(campData));
 
     let db_editor = document.createElement("div");
     db_editor.setAttribute("id", "admin_internals");
@@ -1036,11 +1031,6 @@ async function setDBEditor() {
         While updating things below, the changelog will keep track of what changes have been made.
         The changes will not be applied to the database until you hit "Save Changes to Database."
         <br>
-        <br>
-        TODO's:
-        This page needs the backend infrastructure that actually updates the PostgreSQL database, 
-        along with updating the campus.csv file. (Maybe make sure the database is updating 
-        correctly before tackling the campus.csv file also)</p>
         <fieldset>
             <legend> Changelog: </legend>
             <textarea id="DBE-Changelog" spellcheck="false" rows="8" cols="50" readonly></textarea>
@@ -1103,26 +1093,27 @@ async function setDBEditor() {
             let procCount, dispCount, pjCount, tpCount, wsCount, micCount;
             procCount = dispCount = pjCount = tpCount = wsCount = micCount = 0;
             let gpBool = room.gp;
+            // Bug:
             pingData.forEach(function(device) {
                 let hnObj = device.hostname; // hostname Object
                 switch(hnObj.dev_type) {
                     case "PROC":
-                        procCount += hnObj.num;
+                        procCount += 1;
                         break;
                     case "DISP":
-                        dispCount += hnObj.num;
+                        dispCount += 1;
                         break;
                     case "PJ":
-                        pjCount += hnObj.num;
+                        pjCount += 1;
                         break;
                     case "TP":
-                        tpCount += hnObj.num;
+                        tpCount += 1;
                         break;
                     case "WS":
-                        wsCount += hnObj.num;
+                        wsCount += 1;
                         break;
                     case "CMIC":
-                        micCount += hnObj.num;
+                        micCount += 1;
                         break;
                     default:
                         break;
@@ -2004,33 +1995,37 @@ async function compareDBEditLSM(buildingAbbreviation) {
         let rowInputs = item.getElementsByTagName("input");
         tmp_inBronson.push(roomName);
         let associated_data = data.filter(e => e.RoomName == roomName);
-        tmp.push(`LSM ${roomName}`);
-        //console.log("rowInputs", rowInputs);
-        for(let j = 0; j < rowInputs.length - 3; j++) { // -3 because we do not look at WS, CMIX, or General Pool with that endpoint ATM.
-            let device = rowInputs[j].id.split("-")[1];
-            switch(device) {
-                case "PROC":
-                    device = "Processor";
-                    break;
-                case "DISP":
-                    device = "Display";
-                    break;
-                case "PJ":
-                    device = "Projector";
-                    break;
-                case "TP":
-                    device = "Touch Panel";
-                    break;
-                default:
-                    console.warn("Faulty Behvaior, Detected");
-                    break;
-            }
-            //console.log("Device", device);
-            let dev_data = associated_data.filter(e => e["Item Type"] == device);
-            if(rowInputs[j].value != dev_data.length){
-                tmp.push(`❌ LSM Count: ${dev_data.length}`);
-            } else {
-                tmp.push(`✅`);
+        if(associated_data.length == 0) {
+            tmp.push(`${roomName} Not found in LSM`);
+        } else {
+            tmp.push(`LSM ${roomName}`);
+            //console.log("rowInputs", rowInputs);
+            for(let j = 0; j < rowInputs.length - 3; j++) { // -3 because we do not look at WS, CMIX, or General Pool with that endpoint ATM.
+                let device = rowInputs[j].id.split("-")[1];
+                switch(device) {
+                    case "PROC":
+                        device = "Processor";
+                        break;
+                    case "DISP":
+                        device = "Display";
+                        break;
+                    case "PJ":
+                        device = "Projector";
+                        break;
+                    case "TP":
+                        device = "Touch Panel";
+                        break;
+                    default:
+                        console.warn("Faulty Behvaior, Detected");
+                        break;
+                }
+                //console.log("Device", device);
+                let dev_data = associated_data.filter(e => e["Item Type"] == device);
+                if(rowInputs[j].value != dev_data.length){
+                    tmp.push(`❌ LSM Count: ${dev_data.length}`);
+                } else {
+                    tmp.push(`✅`);
+                }
             }
         }
         tmpArr.push(tmp);
