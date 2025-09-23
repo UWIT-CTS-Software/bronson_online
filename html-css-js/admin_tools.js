@@ -1039,6 +1039,10 @@ async function setDBEditor() {
             <button id="updateDatabaseButton" onclick="updateDatabaseFromEditor()"> Save Changes to Database </button>
             <button onclick="setDBBuildingAddition()"> Add Building </button>
             <button onclick="setDBEditor()"> Refresh Editor </button>
+            <div class="databaseFilterDiv">
+            <label for="databaseFilter"> Search: </label>
+            <textarea id="databaseFilter" placeholder="Building Name/Abbreviation" onkeyup="filterDatabase()"></textarea>
+            </div>
         </menu>
         </fieldset>`;
     //let tmp = ``;
@@ -1167,7 +1171,28 @@ async function setDBEditor() {
     return;
 }
 
-// TODO
+function filterDatabase() {
+    let filter = document.getElementById("databaseFilter").value;
+    let databaseBuildings = document.getElementsByClassName("dbBuildingFieldset");
+    let tmp = [];
+    if(filter == '') {
+        for(let i = 0; i < databaseBuildings.length; i++) {
+            databaseBuildings[i].hidden = false;
+        }
+        return;
+    }
+    for (let i = 0; i < databaseBuildings.length; i++) {
+        let legend = databaseBuildings[i].getElementsByClassName("dbe-legend");
+        let str = legend[0].innerHTML.split("Building: ")[1];
+        tmp.push(str);
+        if(!str.toLowerCase().includes(filter.toLowerCase())) {
+            databaseBuildings[i].hidden = true;
+        }
+    }
+    console.log(tmp);
+    return;
+}
+
 // Actually Pushing the Changes to the database out of the DBEChanges array
 // The behaviors for changelog SHOULD make sure no objects pushed here will make
 // problems but be weary when making changes to the DBE.
