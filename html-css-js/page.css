@@ -1380,6 +1380,23 @@ ol li::marker {
     border: 1px solid rgb(144, 118, 26);
 }
 
+.databaseFilterDiv {
+    width: 35%;
+    height: 30px;
+    float: right;
+    padding: 0px 15px 0px 0px
+}
+
+.databaseFilterDiv label {
+    font-size: small;
+}
+
+#databaseFilter {
+    width: 80%;
+    height: 25px;
+    float: right;
+}
+
 .DBE_Building_Menu {
     padding: 0px;
     margin: 10px 40px 0px 50px;
