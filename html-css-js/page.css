@@ -1232,6 +1232,14 @@ ol li::marker {
     grid-column: 2/10;
 }
 
+.exeButton {
+    background-color: rgb(62, 156, 59);
+}
+
+.rmvButton {
+    background-color: rgb(196, 112, 112);
+}
+
 #admin_internals {
     border: 1px inset rgb(236,200,101);
     border-radius:15px;
@@ -1266,7 +1274,6 @@ ol li::marker {
 }
 
 /* Tech Tables */
-
 .techFieldset {
     padding: 3px 3px 3px 3px;
     display: flex;
@@ -1397,6 +1404,16 @@ ol li::marker {
     float: right;
 }
 
+.fileUpload {
+    background-color:#302f35;
+    border: 2px dotted rgb(33,66,99);
+    width: 200px;
+    height: 100px;
+    text-align: center;
+    padding: 0px 15px;
+    margin: 5px auto;
+}
+
 .DBE_Building_Menu {
     padding: 0px;
     margin: 10px 40px 0px 50px;
@@ -1446,10 +1463,6 @@ ol li::marker {
     font-size: small;
     width: 100%;
     text-align: center;
-}
-
-.rmvButton {
-    background-color: rgb(196, 112, 112);
 }
 
 .dbRowChanged {
@@ -1839,7 +1852,7 @@ span.psw {
     padding-top: 16px;
 }
 
-.login_imgcontainer {
+.login_imgcontainer, .fileupload_imgcontainer {
     text-align: center;
     margin: 24px 0 12px 0;
     position: relative;

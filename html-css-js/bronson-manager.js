@@ -280,6 +280,17 @@ function getBuildingAbbrevsFromZone(zone_number) {
     
     return data[`${zone_number}`]["building_list"];
 }
+
+// pad()
+//  n     - what you are padding
+//  width - number of space
+//  z     - what you are padding with (optional, default: 0)
+function pad(n, width, z) {
+    z = z || '0';
+    n = n + '';
+    return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+}
+
 /*
  ░▒▓██████▓▒░ ░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓████████▓▒░ 
 ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        

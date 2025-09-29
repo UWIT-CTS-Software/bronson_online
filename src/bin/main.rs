@@ -754,6 +754,28 @@ async fn handle_connection(
                 res.send_contents("".into());
             }
         },
+        "POST /update/database_roomSchedule HTTP/1.1" => { // [Changes to make], [Timestamps to be inserted as db_DataElement]
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                res.status(STATUS_200);
+                res.send_contents("Not Implemented".into());
+            }
+        }
+        "GET roomSchd/timestamps HTTP/1.1" => { // Returns 25Live Report Dates
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                res.status(STATUS_200);
+                res.send_contents("Not Implemented".into());
+            }
+        }
         // Terminal
         // --------------------------------------------------------------------
         "POST /terminal HTTP/1.1"          => {
