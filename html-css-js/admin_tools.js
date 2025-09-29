@@ -62,6 +62,11 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Persistent DataTransfer used to hold dropped room schedule files until
+// the user clicks the Upload button. We use DataTransfer so files behave
+// like an input.files collection and keep the File objects in memory.
+const rsDataTransfer = new DataTransfer();
+
 // Adds the 'Admin Tools' tab to the program header
 function setAdminBronson() {
     // Add Admin Tool Tab
@@ -223,9 +228,9 @@ async function setScheduleEditor() {
     buttonFieldset.innerHTML = `
     <fieldset id="techSchdOptions" className="techSchdOptions">
         <legend> Options </legend>
-        <button onclick="updateAllTechSchedules()"> Save All Schedules </button>
+        <button class="exeButton" onclick="updateAllTechSchedules()"> Save All Schedules </button>
         <button id="addNewTechBttn" onclick="addBlankTechSchedule(0)"> Add a Technician </button>
-        <button onclick="setRemoveMode()"> Remove a Technician </button>
+        <button onclick="setRemoveMode()" class="rmvButton"> Remove a Technician </button>
         <button onclick="exportSchd()"> Export Schedules (CSV)</button>
         <div class="techFilterDiv">
             <label for="techSchdFilter">Filter Technicians:</label>
@@ -1036,9 +1041,10 @@ async function setDBEditor() {
             <textarea id="DBE-Changelog" spellcheck="false" rows="8" cols="50" readonly></textarea>
         </fieldset>
         <menu id="DBE_MainMenu">
-            <button id="updateDatabaseButton" onclick="updateDatabaseFromEditor()"> Save Changes to Database </button>
+            <button id="updateDatabaseButton" class="exeButton" onclick="updateDatabaseFromEditor()"> Save Changes to Database </button>
             <button onclick="setDBBuildingAddition()"> Add Building </button>
             <button onclick="setDBEditor()"> Refresh Editor </button>
+            <button onclick="setDBRoomSchedule()"> Upload Room Schedule </button>
             <div class="databaseFilterDiv">
             <label for="databaseFilter"> Search: </label>
             <textarea id="databaseFilter" placeholder="Building Name/Abbreviation" onkeyup="filterDatabase()"></textarea>
@@ -1150,6 +1156,27 @@ async function setDBEditor() {
         </fieldset>`;
         db_editor.innerHTML += tmp;
     });
+    // Add Pop-Up Modal for file upload (Room Schedule Editor)
+    db_editor.innerHTML += `
+    <div id="fileUploadModal" class="modal" style="display:none;">
+        <form class="modal-content animate">
+            <div class="fileupload_imgcontainer">
+                <span onclick="cancelRSUpload()" class="close" title="Close Modal">&times;</span>
+                <img src="logo.png" alt="Avatar" class="avatar">
+            </div>
+            <div class="modal_container" id="entry_field">
+                <p> Please upload a room schedule file from 25Live. To collect the needed files, please refer to the following guide, <a href="https://github.com/UWIT-CTS-Software/bronson_online/wiki/Exporting-Schedules-From-25Live" target-"_blank"> here </a></p>
+                <br>
+                <label for="updateFile"><b>File Upload: </b></label>
+                <div class="fileUpload" id="updateFile"><p>Drag the five csv files to this <i> drop zone</i>.</p></div>
+                <p id="output"></p>
+            </div>
+            <div class="modal_container">
+                <button type="button" onclick="cancelRSUpload()">Cancel</button>
+                <button id="uploadButton" type="button" style="float: right;" class="exeButton">Upload</button>
+            </div>
+        </form>
+    </div>`;
     // replace admin_internals
     let admin_internals = document.getElementById('admin_internals');
     admin_internals.replaceWith(db_editor);
@@ -1166,6 +1193,24 @@ async function setDBEditor() {
             }
         });
     })
+    // TODO: Configure the Modal Pop-Up / Drag and Drop
+    const dropZone = document.getElementById("updateFile");
+    const output = document.getElementById("output");
+    dropZone.addEventListener("drop", dropHandler);
+    window.addEventListener("dragover", (e) => {
+        e.preventDefault();
+    });
+    window.addEventListener("drop", (e) => {
+        e.preventDefault();
+    });
+    // Disable Enter Key in Filter
+    document.getElementById('databaseFilter').addEventListener('keydown',
+        function(event) {
+            if(event.key === "Enter") {
+                event.preventDefault();
+            }
+        }
+    );
     // Init Changelog in SessionStorage
     sessionStorage.setItem("DBEChanges", JSON.stringify({log: []}));
     return;
@@ -1189,7 +1234,244 @@ function filterDatabase() {
             databaseBuildings[i].hidden = true;
         }
     }
-    console.log(tmp);
+    //console.log(tmp);
+    return;
+}
+
+// Room Schedule Upload Functions
+function setDBRoomSchedule() {
+    document.getElementById('fileUploadModal').style.display='block';
+    document.getElementById('uploadButton').disabled = true;
+    document.getElementById('terminal').style.display = 'none';
+    return;
+}
+
+function cancelRSUpload() {
+    document.getElementById('fileUploadModal').style.display='none';
+    document.getElementById('output').innerHTML = '';
+    for(let i = 0; i < rsDataTransfer.items.length; i++) {
+        rsDataTransfer.items.remove(i);
+    }
+    document.getElementById('terminal').style.display = 'block';
+    return;
+}
+
+// Notes:
+//   This is a new functionality yet to be implemented in Bronson.
+//   The idea is that this will process files that are dropped into
+//   the drop area.
+//     I want this to add the newly dropped files to a list. When a
+//   file is dropped it will need to be added to a list with an option
+//   to remove. It is currently overwriting with every drop, which I am 
+//   not partial too. In addition, in order to enable the push button, 
+//   a total of 5 files need to be uploaded with each one corresponding to 
+//   "schedule_M-F.csv". Once these five files have been collected. we can
+//   move forward to processRSUpload(). THERE we basically port the python
+//   scripts aggregate_schedule.py and process-csv.py. Once that is done,
+//   we will post the new schedule data to the backend and update everything.
+//     Note, that we should also make sure none of the rooms in our database
+//   left out of the new files, and prompt the user with these conflicts.
+//   This tool will not touch rooms that are not included in the upload.
+//   Also inform the user a list of rooms that bronson does not have and 
+//   is ignoring.
+function dropHandler(ev) {
+    // Prevent default behavior (Browsers opening the file)
+    ev.preventDefault();
+    let result = "";
+
+    // Use the DataTransfer.files from the drop event. We store files in
+    // `rsDataTransfer` (declared near top of file) so they are available later
+    // when the user clicks the Upload button.
+    const files = ev.dataTransfer.files;
+    const targets = ['schedule_M.csv','schedule_T.csv','schedule_W.csv','schedule_R.csv','schedule_F.csv'];
+
+    // Add any valid files from this drop to the persistent rsDataTransfer so
+    // users can drag multiple times (e.g., drop one file at a time).
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (targets.includes(file.name.toString())) {
+            // Remove any previously stored file with same name so the latest
+            // dropped version replaces the old one.
+            for (let j = 0; j < rsDataTransfer.items.length; j++) {
+                const existing = rsDataTransfer.items[j].getAsFile();
+                if (existing && existing.name === file.name) {
+                    rsDataTransfer.items.remove(j);
+                    break;
+                }
+            }
+            rsDataTransfer.items.add(file);
+        } 
+    }
+    // Show what files are currently inside rsDataTransfer
+    for(let i = 0; i < rsDataTransfer.files.length; i++) {
+        const file = rsDataTransfer.files[i];
+        result += `${file.name} added<br>`;
+    }
+
+    // Determine which targets are still missing by comparing rsDataTransfer
+    const presentNames = Array.from(rsDataTransfer.files).map(f => f.name);
+    const missing = targets.filter(t => !presentNames.includes(t));
+    if (missing.length === 0) {
+        result += "All required files are present. Ready to upload.\n";
+        const uploadBtn = document.getElementById("uploadButton");
+        uploadBtn.disabled = false;
+        uploadBtn.onclick = processRSUpload;
+    } else {
+        result += `Missing files: ${missing.join(', ')}\n`;
+        document.getElementById("uploadButton").disabled = true;
+    }
+
+    output.innerHTML = result;
+}
+
+async function processRSUpload() {
+    // Access files stored in rsDataTransfer
+    if (!rsDataTransfer || rsDataTransfer.files.length === 0) {
+        console.warn('No files ready for upload.');
+        return;
+    }
+    let arr = [];
+    for(let i = 0; i < rsDataTransfer.files.length; i++) {
+        const file = rsDataTransfer.files[i];
+        console.log("Uploading file: ", rsDataTransfer.files[i].name);
+        let text = await readFileAsync(file);
+        arr.push(text);
+    }
+    parseRSUpload(arr);
+    return;
+}
+
+function readFileAsync(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onloadend = (event => {
+            resolve(event.target.result);
+        });
+        reader.onerror = (event => {
+            reject(event.target.error);
+        });
+        reader.readAsText(file);
+    });
+}
+
+// Effectively Port Python scripts from /src
+    //   - aggrgate_csv.py
+    //   - process-csv.py
+    // The end result being an array of room updates. Structured somewhat
+    // similarily to campData, but flattened one level.
+async function parseRSUpload(arr) {
+    let roomObjs = [];
+    let timestamp = [];
+    for(let i = 0; i < arr.length; i++) {
+        let csvRows = await arr[i].split("\n");
+        // First Row is always the day of the report, we will save that.
+        timestamp.push(csvRows.splice(0,1)); // Remove Timestamp
+        let collectMode = false; // For Loop Behavior Boolean
+        let rmObj = { // Temporary Room Object
+            name: '',
+            schedule: []
+        };
+        for(let j = 1; j < csvRows.length-1; j++) {
+            if(!collectMode){
+                if(csvRows[j].includes("Event Times")) {
+                    collectMode = true;
+                    rmObj.name = csvRows[j-1].split(',')[0];
+                }
+            } else {
+                if(csvRows[j+1].includes("Event Times") || j == csvRows.length - 2) {
+                    collectMode = false;
+                    // roomObjs insert/update
+                    let rmObjFilter = roomObjs.filter(e => e.name == rmObj.name);
+                    let ind = roomObjs.indexOf(rmObjFilter[0]);
+                    if(roomObjs[ind] != undefined) {
+                        roomObjs[ind].schedule = [...new Set(roomObjs[ind].schedule.concat(rmObj.schedule))];
+                    } else {
+                        roomObjs.push(rmObj);
+                    }
+                    rmObj = {name: '', schedule: []};
+                } else {
+                    let ufRow = csvRows[j].split(',')[2];
+                    ufRow = ufRow.split(' CLAS ')[0];
+                    if(ufRow[0] == ' ' && ufRow != '') {
+                        rmObj.schedule.push(ufRow.slice(1));
+                    }
+                }
+            }
+        }
+    }
+    // Change Oddball Values in roomObjs
+    const oddballs_rooms = {"BU AUD": "BU 0057", "AG AUD": "AG 0133", "AC 404A": "AC 0404", "ED AUD": "ED 0055", "CB GYM": "CB 0155"}; // Potential, ED AUD -> ED 0055, CB GYM -> CB 0155, 
+    const oddballs_buildings = {"ESB":"ES", "STEM":"ST"};
+    for (ob in oddballs_rooms) {
+        let filter = roomObjs.filter(e => e.name == ob);
+        let ind = roomObjs.indexOf(filter[0]);
+        if(roomObjs[ind] != undefined) {
+            roomObjs[ind].name = oddballs_rooms[ob];
+        }
+    }
+    for (ob in oddballs_buildings) { // Prefix
+        let filter = roomObjs.filter(e => e.name.startsWith(ob));
+        for (fi in filter) {
+            let ind = roomObjs.indexOf(filter[fi]);
+            if(roomObjs[ind] != undefined) {
+                let tmp = roomObjs[ind].name.split(" ")[1];
+                roomObjs[ind].name = oddballs_buildings[ob] + " " + tmp;
+            }
+        }
+    }
+    // Filter Out Rooms NOT in campData before sending to backend
+    // Take note of those that are not present in either data.
+    let campdata = JSON.parse(localStorage.getItem("campData"));
+    let notFound = [];
+    roomObjs = roomObjs.filter(function(room) {
+        let b_ab = room.name.split(" ")[0];
+        let b_rm = room.name.split(" ")[1]; // Pad this to four
+        b_rm = pad(b_rm, 4);
+        room.name = b_ab + " " + b_rm;
+        // Check if building exists
+        if(campdata[b_ab] != undefined) {
+            let rmFilter = campdata[b_ab].rooms.filter(e => e.name == room.name);
+            if(rmFilter.length == 0) {
+                notFound.push(room.name);
+                return false;
+            } else {
+                return true;
+            }
+        } else {
+            notFound.push(room.name);
+            return false;
+        }
+    });
+    // Cross check roomObjs to find rooms that are not included in the upload (Approximately missing 150 rooms at the time of writing.)
+    let missingInUpload = [];
+    Object.keys(campdata).forEach(function(building) {
+        let rooms = campdata[building].rooms;
+        rooms.forEach(function(room) {
+            let roomName = room.name;
+            let filter = roomObjs.filter(e => e.name == roomName);
+            if(filter.length == 0) {
+                missingInUpload.push(roomName);
+            }
+        });
+    });
+    // Alert Message
+    if(missingInUpload.length != 0 || notFound.length != 0) {
+        let str0 = missingInUpload.join(", ");
+        let str1 = notFound.join(", ");
+        alert(`⚠️ WARNING: The following rooms (${missingInUpload.length} rooms) were not included in the upload and will not be updated: ${str0} \n ⚠️ WARNING: The following rooms (${notFound.length} rooms) were not found in Bronson's database and will be ignored: ${str1}`);
+    }
+    // TODO: Wipe the Modal and display the difference in the union of 25Live and Bronson.
+    // Some kind of are you sure? and display the impacts.
+    // ...
+    // Create Object to send to backend
+    output = {
+        rooms: roomObjs,
+        schedule_timestamps: timestamp
+    };
+    console.log(output);
+    // TODO: On Backend...
+    //postDBChange("update/database_roomSchedule", output);
     return;
 }
 
@@ -1198,14 +1480,14 @@ function filterDatabase() {
 // problems but be weary when making changes to the DBE.
 async function updateDatabaseFromEditor() {
     let changelogData = JSON.parse(sessionStorage.getItem("DBEChanges"));
-    // TODO Iterate through Rooms
+    // Iterate through Rooms
     let roomData = changelogData.log.filter(e => e.Type == "ROOM");
     // Need to Handle Inserts FIRST (Same with Buildings)
     let insertData = roomData.filter(e => e.Change == "INSERT");
     for(let i = 0; i < insertData.length; i++) {
         let endpoint = "insert/database_room";
         let packet = JSON.stringify({
-            destination: roomData[i].Destination
+            destination: insertData[i].Destination
         });
         await postDBChange(endpoint, packet);
     }
@@ -1216,20 +1498,19 @@ async function updateDatabaseFromEditor() {
         if (otherData[i].Change == "UPDATE") {
             endpoint = "update/database_room";
             packet = JSON.stringify({
-                destination: roomData[i].Destination,
+                destination: otherData[i].Destination,
                 newValue: otherData[i].NewValue
             });
         } else if (otherData[i].Change == "REMOVE") {
             endpoint = "remove/database_room";
             packet = JSON.stringify({
-                destination: roomData[i].Destination
+                destination: otherData[i].Destination
             });
         }
         await postDBChange(endpoint, packet);
     }
-    // TODO Iterate through Buildings
+    // Iterate through Building related changes
     let buildingData = changelogData.log.filter(e => e.Type == "BUILDING");
-    // CHANGELOG TODO: BUILDING INSERT
     insertData = buildingData.filter(e => e.Change == "INSERT");
     for(let i = 0; i < insertData.length; i++) {
         let endpoint = "insert/database_building";
