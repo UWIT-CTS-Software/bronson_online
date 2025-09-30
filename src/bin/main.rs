@@ -754,17 +754,73 @@ async fn handle_connection(
                 res.send_contents("".into());
             }
         },
-        "POST /update/database_roomSchedule HTTP/1.1" => { // [Changes to make], [Timestamps to be inserted as db_DataElement]
+        "POST /update/database_roomSchedule HTTP/1.1" => { // [Changes to make]
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
                     "response": "Unauthorized"
                 }).to_string().into());
             } else {
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                // Parse Request Body
+                let rooms = body_json["rooms"]
+                    .as_array()
+                    .unwrap();
+                // Iterate through rooms and update each one.
+                for room in rooms {
+                    let target_room: String = room["name"]
+                        .as_str()
+                        .unwrap()
+                        .to_string();
+                    let new_schedule: Vec<Option<String>> = room["schedule"]
+                        .as_array()
+                        .map(|arr| {
+                            arr.iter()
+                                .map(|v| v.as_str().map(|s| s.to_string()))
+                                .collect()
+                        })
+                        .unwrap();
+                    // Get Existing Room Record from database
+                    let mut new_db_room : DB_Room = database.get_room_by_name(&target_room);
+                    println!("DEBUG Existing DB_Room (Pre-Update) -> \n {:?}", new_db_room.schedule);
+                    // Update Schedule
+                    new_db_room.schedule = new_schedule.clone();
+                    // Update Database
+                    database.update_room(&new_db_room);
+                    println!("DEBUG Updating Room: {} with Schedule:\n {:?}", target_room, new_schedule);
+                }
                 res.status(STATUS_200);
-                res.send_contents("Not Implemented".into());
+                res.send_contents("Room Schedules in Database Updated".into());
             }
-        }
+        },
+        "POST /update/roomSchd/timestamps HTTP/1.1" => { // Updates the timestamps stored in DB_DataElement
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                let timestamps: Vec<String> = body_json["timestamps"]
+                    .as_array()
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()
+                    })
+                    .unwrap();
+                println!("DEBUG Updating Timestamps:\n {:?}", timestamps);
+                // Create DB_DataElement and update database.
+                let new_timestamps = DB_DataElement {
+                    key: String::from("report_timestamps"),
+                    val: serde_json::to_string(&timestamps).unwrap()
+                };
+                // Uncomment when ready...
+                database.update_data(&new_timestamps);
+                res.status(STATUS_200);
+                res.send_contents("Successful Room Schedule Timestamps Update".into());
+            }
+        },
         "GET roomSchd/timestamps HTTP/1.1" => { // Returns 25Live Report Dates
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
@@ -772,10 +828,14 @@ async fn handle_connection(
                     "response": "Unauthorized"
                 }).to_string().into());
             } else {
+                let timestamps = database.get_data("report_timestamps").val;
+                let contents = json!({
+                    "timestamps": timestamps
+                }).to_string().into();
                 res.status(STATUS_200);
-                res.send_contents("Not Implemented".into());
+                res.send_contents(contents);
             }
-        }
+        },
         // Terminal
         // --------------------------------------------------------------------
         "POST /terminal HTTP/1.1"          => {

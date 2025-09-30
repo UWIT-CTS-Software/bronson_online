@@ -1366,7 +1366,7 @@ async function parseRSUpload(arr) {
     for(let i = 0; i < arr.length; i++) {
         let csvRows = await arr[i].split("\n");
         // First Row is always the day of the report, we will save that.
-        timestamp.push(csvRows.splice(0,1)); // Remove Timestamp
+        timestamp.push(csvRows.splice(0,1)[0].split('"')[1]); // Remove Timestamp
         let collectMode = false; // For Loop Behavior Boolean
         let rmObj = { // Temporary Room Object
             name: '',
@@ -1392,17 +1392,37 @@ async function parseRSUpload(arr) {
                     rmObj = {name: '', schedule: []};
                 } else {
                     let ufRow = csvRows[j].split(',')[2];
-                    ufRow = ufRow.split(' CLAS ')[0];
-                    if(ufRow[0] == ' ' && ufRow != '') {
-                        rmObj.schedule.push(ufRow.slice(1));
+                    // if (ufRow.includes(' CLAS ')) {
+                    //     ufRow = ufRow.split(' CLAS ')[0];
+                    // } else if (ufRow.includes(' NONE ')) {
+                    //     ufRow = ufRow.split(' NONE ')[0];
+                    // } else if (ufRow.includes(' F2F ')) {
+                    //     ufRow = ufRow.split(' F2F ')[0];
+                    // }
+                    // if(ufRow[0] == ' ' && ufRow != '') {
+                    //     rmObj.schedule.push(ufRow.slice(1));
+                    // }
+                    //const re = new RegExp("[MTWRF]{1,5}\s\d{4}-\d{4}");
+                    const re = new RegExp("[MTWRF]+ [0-9]{4}-[0-9]{4}", 'g');
+                    //let tmp = re.exec(ufRow);
+                    let tmp = re.exec(csvRows[j]);
+                    console.log("Parsed UF Row: ", ufRow, tmp);
+                    if(tmp != null) {
+                        rmObj.schedule.push(tmp[0]);
                     }
                 }
             }
         }
     }
     // Change Oddball Values in roomObjs
-    const oddballs_rooms = {"BU AUD": "BU 0057", "AG AUD": "AG 0133", "AC 404A": "AC 0404", "ED AUD": "ED 0055", "CB GYM": "CB 0155"}; // Potential, ED AUD -> ED 0055, CB GYM -> CB 0155, 
-    const oddballs_buildings = {"ESB":"ES", "STEM":"ST"};
+    const oddballs_rooms = {"BU AUD": "BU 0057", "AG AUD": "AG 0133", "AC 404A": "AC 0404", "ED AUD": "ED 0055", "CB GYM": "CB 0151", "CL 502H":"CL 0502", "EERB Lobby":"EERB 0105", "GE 311G":"GE 0311","HA 223C":"HA 0223"}; 
+    // Added, ED AUD -> ED 0055, CB GYM -> CB 0155,
+    //, "CL 502H":"CL 0502"
+    //, "EERB Lobby":"EERB 0005"
+    //, "GE 311B":"GE 0311" or_maybe "GE 311G":"GE 0311"
+    //, "HA 223C":"HA 0223"
+    //, "
+    const oddballs_buildings = {"ESB":"ES", "STEM":"ST", "AC":"AHC", "BE":"BH"};
     for (ob in oddballs_rooms) {
         let filter = roomObjs.filter(e => e.name == ob);
         let ind = roomObjs.indexOf(filter[0]);
@@ -1461,17 +1481,22 @@ async function parseRSUpload(arr) {
         let str1 = notFound.join(", ");
         alert(`⚠️ WARNING: The following rooms (${missingInUpload.length} rooms) were not included in the upload and will not be updated: ${str0} \n ⚠️ WARNING: The following rooms (${notFound.length} rooms) were not found in Bronson's database and will be ignored: ${str1}`);
     }
-    // TODO: Wipe the Modal and display the difference in the union of 25Live and Bronson.
-    // Some kind of are you sure? and display the impacts.
-    // ...
+    // Send to Backend in Chunks of 25 rooms at a time.
+    let result = [];
+    for (let i = 0; i < roomObjs.length; i += 25) {
+        result.push(roomObjs.slice(i, i + 25));
+    }
     // Create Object to send to backend
-    output = {
-        rooms: roomObjs,
-        schedule_timestamps: timestamp
-    };
-    console.log(output);
-    // TODO: On Backend...
-    //postDBChange("update/database_roomSchedule", output);
+    for (let i = 0; i < result.length; i++) {
+        output = JSON.stringify({
+            rooms: result[i]
+        });
+        console.log(`Result Chunk ${i}:\n`, result[i]);
+        // TODO: On Backend...
+        await postDBChange("update/database_roomSchedule", output); 
+    }
+    await postDBChange("update/roomSchd/timestamps", JSON.stringify({timestamps: timestamp}));
+    // Reset page once changes are done. (TODO: Handle Errors)
     return;
 }
 
@@ -1545,7 +1570,7 @@ async function updateDatabaseFromEditor() {
 }
 
 async function postDBChange(endpoint, packet) {
-    console.log("DEBUG: Posting to ", endpoint, " with packet ", packet);
+    //console.log("DEBUG: Posting to ", endpoint, " with packet ", packet);
     return fetch(`${endpoint}`, {
         method: "POST",
         headers: {
