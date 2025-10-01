@@ -328,6 +328,16 @@ async fn handle_connection(
             res.send_file(user_homepage);
             res.insert_onload("setTickex()");
         },
+        "GET /api/dummy_ticket HTTP/1.1" => {
+            if let Some(contents) = get_dummy_ticket() {
+                res.status(STATUS_200);
+                res.insert_header("Content-Type", "application/json");
+                res.send_contents(contents.into());
+            } else {
+               res.status(STATUS_404);
+                res.send_contents("{\"error\": \"Dummy ticket not found\"}".into());
+            }
+        },   
         "GET /jacknet HTTP/1.1"            => {
             res.status(STATUS_200);
             res.send_file(user_homepage);
@@ -359,6 +369,11 @@ async fn handle_connection(
         "GET /button2.png HTTP/1.1"        => {
             res.status(STATUS_200);
             res.send_file("assets/button2.png");
+        },
+        "GET /tdx_logo.png HTTP/1.1"        => {
+            res.status(STATUS_200);
+            res.insert_header("Content-Type", "image/png");
+            res.send_file("assets/tdx_logo.png");
         },
         // Data Requests
         "GET /techSchedule HTTP/1.1"  => {
@@ -1293,6 +1308,32 @@ fn get_cfm_dir(body: Vec<u8>) -> Vec<u8> {
 
     return json_return.to_string().into();
 }
+
+/*
+$$$$$$$$\ $$\           $$\                           
+\__$$  __|\__|          $$ |                          
+   $$ |   $$\  $$$$$$$\ $$ |  $$\  $$$$$$\  $$\   $$\ 
+   $$ |   $$ |$$  _____|$$ | $$  |$$  __$$\ \$$\ $$  |
+   $$ |   $$ |$$ /      $$$$$$  / $$$$$$$$ | \$$$$  / 
+   $$ |   $$ |$$ |      $$  _$$<  $$   ____| $$  $$<  
+   $$ |   $$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$  /\$$\ 
+   \__|   \__| \_______|\__|  \__| \_______|\__/  \__|
+*/
+
+
+fn get_dummy_ticket() -> Option<String> {
+    use std::fs::read_to_string;
+    use server_lib::DMY_TICK;
+
+    match read_to_string(DMY_TICK) {
+        Ok(contents) => Some(contents),
+        Err(e) => {
+            error!("Error reading ticket: {}", e);
+            None
+        }
+    }
+}                           
+
 
 /*
 $$\      $$\ $$\ $$\       $$\ 

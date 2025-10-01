@@ -1,0 +1,18 @@
+{
+    "_comment": "This is just a placeholder ticket with all the data I'll need for development purposes",
+    "ticket_title": "This is a TEST TICKET",
+    "ticket_id": "00000001",
+    "location": "IT 137",
+    "date_created": "Mon 9/8/25 10:38 AM",
+    "date_last_modified": "Tue 9/9/25 10:39 AM",
+    "status": "New",
+    "description": "My room, IT 137, is broken. Please fix it!!!",
+    "account_department": "Information Technology",
+    "type": "Instructional Technology & Classroom Support / General Classroom Issue",
+    "service": "Classroom Technology Support / I need help with my classroom.",
+    "urgency": "Medium",
+    "priority": "Medium",
+    "responsibility": "Classroom Technology Support (CTS)",
+    "requestor": "John Smith",
+    "creator": "Lexus Fermelia"
+}
