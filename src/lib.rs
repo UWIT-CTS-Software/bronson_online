@@ -569,14 +569,13 @@ impl Database {
 			.expect("SQL_ERR: Error deleting key");
 	}
 
-	pub fn get_data(&mut self, data_key: &str) -> DB_DataElement {
+	pub fn get_data(&mut self, data_key: &str) -> Option<DB_DataElement> {
 		data
 			.select(DB_DataElement::as_select())
 			.filter(key.eq(data_key))
 			.first(&mut self.connection)
 			.optional()
 			.expect("SQL_ERR: Error loading data element")
-			.unwrap()
 	}
 
 	pub fn update_data(&mut self, element: &DB_DataElement) {

@@ -353,7 +353,7 @@ async fn handle_connection(
         },
         // Data Requests
         "GET /techSchedule HTTP/1.1"  => {
-            let contents = database.get_data("schedule").val.into();
+            let contents = database.get_data("schedule").unwrap().val.into();
             res.status(STATUS_200);
             //res.send_file("data/techSchedule.json");
             res.send_contents(contents);
@@ -370,7 +370,7 @@ async fn handle_connection(
         },
         "GET /dashContents HTTP/1.1"       => { // Dashboard Message
             let contents = json!({
-                "contents": database.get_data("dashboard").val
+                "contents": database.get_data("dashboard").unwrap().val
             }).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
@@ -821,19 +821,66 @@ async fn handle_connection(
                 res.send_contents("Successful Room Schedule Timestamps Update".into());
             }
         },
-        "GET roomSchd/timestamps HTTP/1.1" => { // Returns 25Live Report Dates
+        "GET /roomSchd/timestamps HTTP/1.1" => { // Returns 25Live Report Dates
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
                     "response": "Unauthorized"
                 }).to_string().into());
             } else {
-                let timestamps = database.get_data("report_timestamps").val;
+                let timestamps = database.get_data("report_timestamps").unwrap_or( DB_DataElement {key:"report_timestamps".to_string(),val:"[\"Timestamp Not Found\"]".to_string()}).val;
+                //println!("DEBUG Fetched Timestamps:\n {:?}", &timestamps);
                 let contents = json!({
                     "timestamps": timestamps
                 }).to_string().into();
                 res.status(STATUS_200);
                 res.send_contents(contents);
+            }
+        },
+        "GET /aliasTable HTTP/1.1"                 => {
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let alias_table = database.get_data("alias_table")
+                    .unwrap_or(DB_DataElement {
+                        key: "alias_table".to_string(),
+                        val: "Alias Table has not been updated".to_string()
+                    })
+                    .val;
+                let contents = json!({
+                    "response": alias_table
+                }).to_string().into();
+                res.status(STATUS_200);
+                res.send_contents(contents);
+            }
+        },
+        "POST /setAliasTable HTTP/1.1"              => {
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                // Parse Request Body
+                println!("Update Set Alias Packet: \n{:?}", body_json);
+                let alias_rooms = body_json["rooms"]
+                    .as_array()
+                    .unwrap();
+                println!("Alias Rooms: \n{:?}", alias_rooms);
+                //  TODO: Iterate through the rooms and find hostname exceptions,
+                // if found, update it's ping_Data, compare to previous update and see if anything has been changed and revert to default if so.
+                // ...
+                let alias_table = DB_DataElement {
+                    key: "alias_table".to_string(),
+                    val: String::from_utf8(req.body).expect("Unable to parse body contents")
+                };
+                database.update_data(&alias_table);
+                res.status(STATUS_200);
+                res.send_contents("Database Alias Table Updated".into());
             }
         },
         // Terminal
