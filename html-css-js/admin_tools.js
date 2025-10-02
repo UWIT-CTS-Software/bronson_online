@@ -83,9 +83,6 @@ async function setAdminTools() {
     await sleep(200);
     preserveCurrentTool();
 
-    //   DATABASE_TODO - once functional, uncomment line below.
-    // await checkForDataUpdates()
-
     document.title = "Admin Tools - Bronson";
     // remove currently active status mark tab has active.
     // let active_tab_header = document.querySelector('.active_tab_header');
@@ -119,13 +116,17 @@ async function setAdminTools() {
         <img class="at_tab_img" src="button2.png"/>
         <span> Schedule Editor </span>
     </button>
-    <button id="at_diag" onclick="setDiag()" type="button" class="atTab">
-        <img class="at_tab_img" src="button2.png"/>
-        <span> Diagnostics </span>
-    </button>
     <button id="at_dbedit" onclick="setDBEditor()" type="button" class="atTab">
         <img class="at_tab_img" src="button2.png"/>
         <span> Database Editor </span>
+    </button>
+    <button id="at_alias" onclick="setAliasEditor()" type="button" class="atTab">
+        <img class="at_tab_img" src="button2.png"/>
+        <span> Alias Editor </span>
+    </button>
+    <button id="at_diag" onclick="setDiag()" type="button" class="atTab">
+        <img class="at_tab_img" src="button2.png"/>
+        <span> Diagnostics </span>
     </button>`;
     // init admin tool guts
     let admin_internals = document.createElement("div");
@@ -149,7 +150,6 @@ async function setAdminTools() {
 // MESSAGE EDITOR
 
 // Set MessageEditor
-// TODO - Check permissions here
 function setMessageEditor() {
     // remove currently active status, mark tab has active.
     let current = document.getElementsByClassName("at_selected");
@@ -222,7 +222,6 @@ async function setScheduleEditor() {
         console.assert("Error: schedule not found in local storage.");
         return;
     }
-    
     let buttonFieldset = document.createElement('div');
     buttonFieldset.classList.add("schdEditorButtonsDiv");
     buttonFieldset.innerHTML = `
@@ -253,7 +252,7 @@ async function setScheduleEditor() {
             event.preventDefault();
         } 
     });
-    // update hours for everyone
+    // Update hours for everyone
     Object.values(scheduleData).forEach(function(tech) {
         updateHours(`tech${tech.Name}`,`${tech.Name.split(" ")[1]}Hours`);
         // Disable enter on name fields
@@ -296,7 +295,6 @@ async function setRemoveMode() {
     } else {
         document.getElementById("techSchdRemoveTech").replaceWith(fireSomeoneMenu);
     }
-    
     return;
 }
 
@@ -1156,6 +1154,39 @@ async function setDBEditor() {
         </fieldset>`;
         db_editor.innerHTML += tmp;
     });
+    // Get timestamps for last room schedule update, sort them by weekday
+    let rsTimestamp = await getLastRoomScheduleUpdate();
+    console.log(rsTimestamp);
+    let ts_arr = JSON.parse(rsTimestamp["timestamps"]);
+    let tmp_ts = ["", "", "", "", ""];
+    if(ts_arr.length == 1) {
+        tmp_ts = ["No File Pack has been uploaded yet"];
+    } else {
+        ts_arr.forEach(function(item) {
+            let day = item.slice(0,2);
+            console.log(day);
+            switch(day) {
+                case "Mo":
+                    tmp_ts[0] = item;
+                    break;
+                case "Tu":
+                    tmp_ts[1] = item;
+                    break;
+                case "We":
+                    tmp_ts[2] = item;
+                    break;
+                case "Th":
+                    tmp_ts[3] = item;
+                    break;
+                case "Fr":
+                    tmp_ts[4] = item;
+                    break;
+                default:
+                    break;
+            }
+        });
+    }
+    console.log("Room Schedule Timestamps: ", tmp_ts);
     // Add Pop-Up Modal for file upload (Room Schedule Editor)
     db_editor.innerHTML += `
     <div id="fileUploadModal" class="modal" style="display:none;">
@@ -1165,10 +1196,11 @@ async function setDBEditor() {
                 <img src="logo.png" alt="Avatar" class="avatar">
             </div>
             <div class="modal_container" id="entry_field">
-                <p> Please upload a room schedule file from 25Live. To collect the needed files, please refer to the following guide, <a href="https://github.com/UWIT-CTS-Software/bronson_online/wiki/Exporting-Schedules-From-25Live" target-"_blank"> here </a></p>
+                <p> Please upload a room schedule file from 25Live. To collect the needed files, please refer to the following guide, <a href="https://github.com/UWIT-CTS-Software/bronson_online/wiki/Exporting-Schedules-From-25Live" target="_blank"> here </a></p>
                 <br>
                 <label for="updateFile"><b>File Upload: </b></label>
                 <div class="fileUpload" id="updateFile"><p>Drag the five csv files to this <i> drop zone</i>.</p></div>
+                <p id="lastUpdated-RS">Last Updated: ${tmp_ts.join(', ')}<p>
                 <p id="output"></p>
             </div>
             <div class="modal_container">
@@ -1214,6 +1246,17 @@ async function setDBEditor() {
     // Init Changelog in SessionStorage
     sessionStorage.setItem("DBEChanges", JSON.stringify({log: []}));
     return;
+}
+
+async function getLastRoomScheduleUpdate() {
+    return fetch('roomSchd/timestamps')
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error("HTTP error " + response.status);
+            }
+            return response.json();
+        }
+    );
 }
 
 function filterDatabase() {
@@ -1391,22 +1434,11 @@ async function parseRSUpload(arr) {
                     }
                     rmObj = {name: '', schedule: []};
                 } else {
-                    let ufRow = csvRows[j].split(',')[2];
-                    // if (ufRow.includes(' CLAS ')) {
-                    //     ufRow = ufRow.split(' CLAS ')[0];
-                    // } else if (ufRow.includes(' NONE ')) {
-                    //     ufRow = ufRow.split(' NONE ')[0];
-                    // } else if (ufRow.includes(' F2F ')) {
-                    //     ufRow = ufRow.split(' F2F ')[0];
-                    // }
-                    // if(ufRow[0] == ' ' && ufRow != '') {
-                    //     rmObj.schedule.push(ufRow.slice(1));
-                    // }
-                    //const re = new RegExp("[MTWRF]{1,5}\s\d{4}-\d{4}");
+                    //let ufRow = csvRows[j].split(',')[2];
                     const re = new RegExp("[MTWRF]+ [0-9]{4}-[0-9]{4}", 'g');
                     //let tmp = re.exec(ufRow);
                     let tmp = re.exec(csvRows[j]);
-                    console.log("Parsed UF Row: ", ufRow, tmp);
+                    //console.log("Parsed UF Row: ", ufRow, tmp);
                     if(tmp != null) {
                         rmObj.schedule.push(tmp[0]);
                     }
@@ -1414,14 +1446,11 @@ async function parseRSUpload(arr) {
             }
         }
     }
+    // TODO: These oddball values are hardcoded. These can change in the event that the external sources also change. We will need to retrieve these from a yet to be created source within Bronson. Requiring another tab.
     // Change Oddball Values in roomObjs
     const oddballs_rooms = {"BU AUD": "BU 0057", "AG AUD": "AG 0133", "AC 404A": "AC 0404", "ED AUD": "ED 0055", "CB GYM": "CB 0151", "CL 502H":"CL 0502", "EERB Lobby":"EERB 0105", "GE 311G":"GE 0311","HA 223C":"HA 0223"}; 
     // Added, ED AUD -> ED 0055, CB GYM -> CB 0155,
-    //, "CL 502H":"CL 0502"
-    //, "EERB Lobby":"EERB 0005"
-    //, "GE 311B":"GE 0311" or_maybe "GE 311G":"GE 0311"
-    //, "HA 223C":"HA 0223"
-    //, "
+    //, "CL 502H":"CL 0502", "EERB Lobby":"EERB 0005", "GE 311G":"GE 0311", "HA 223C":"HA 0223"
     const oddballs_buildings = {"ESB":"ES", "STEM":"ST", "AC":"AHC", "BE":"BH"};
     for (ob in oddballs_rooms) {
         let filter = roomObjs.filter(e => e.name == ob);
@@ -1491,12 +1520,13 @@ async function parseRSUpload(arr) {
         output = JSON.stringify({
             rooms: result[i]
         });
-        console.log(`Result Chunk ${i}:\n`, result[i]);
-        // TODO: On Backend...
+        //console.log(`Result Chunk ${i}:\n`, result[i]);
         await postDBChange("update/database_roomSchedule", output); 
     }
     await postDBChange("update/roomSchd/timestamps", JSON.stringify({timestamps: timestamp}));
-    // Reset page once changes are done. (TODO: Handle Errors)
+    // Reset page once changes are done. (TODO: Handle Errors ?)
+    cancelRSUpload();
+    setDBEditor();
     return;
 }
 
@@ -1741,13 +1771,18 @@ function confirmDBBuildingAddition() {
 
 function cancelDBBuildingAddition() {
     let mainMenu = document.getElementById("DBE_MainMenu");
-    mainMenu.innerHTML = `<button id="updateDatabaseButton" onclick="updateDatabaseFromEditor()"> Save Changes to Database </button>
-        <button onclick="setDBBuildingAddition()"> Add Building</button>
-        <button onclick="setDBEditor()"> Refresh Editor </button>`;
+    mainMenu.innerHTML = `
+        <button id="updateDatabaseButton" class="exeButton" onclick="updateDatabaseFromEditor()"> Save Changes to Database </button>
+        <button onclick="setDBBuildingAddition()"> Add Building </button>
+        <button onclick="setDBEditor()"> Refresh Editor </button>
+        <button onclick="setDBRoomSchedule()"> Upload Room Schedule </button>
+        <div class="databaseFilterDiv">
+        <label for="databaseFilter"> Search: </label>
+        <textarea id="databaseFilter" placeholder="Building Name/Abbreviation" onkeyup="filterDatabase()"></textarea></div>`;
     return;
 }
 
-// TODO: mark building to be remove, or remove a building that is to be added.
+// Mark building to be remove, or remove a building that is to be added.
 function markBuildingToRemove(fieldsetID) {
     let fieldsetEle = document.getElementById(fieldsetID);
     let buildingAbbrev = fieldsetID.split("-")[0];
@@ -1808,7 +1843,7 @@ function setRoomAddition(menuID, buildingTableID) {
     document.getElementById(`${building}-addInput`).addEventListener('keydown', function(event) {
         if (event.key === 'Enter') {
             confirmRoomAddition(`${building}-addInput`, `${buildingTableID}`);
-        } 
+        }
     });
     return;
 }
@@ -2436,4 +2471,376 @@ function removeCompareDBEditLSM(buildingAbbrev) {
     button.innerHTML = "Compare Inventory With LSM";
     //button.onclick = `compareDBEditLSM(${buildingAbbrev})`;
     return;
+}
+
+// Alias Editor
+async function setAliasEditor() {
+    // remove currently active status, mark tab has active.
+    let current = document.getElementsByClassName("at_selected");
+    if (current.length != 0) {
+        current[0].classList.remove("at_selected");
+    }
+    let newCurrent = document.getElementById("at_alias");
+    newCurrent.classList.add("at_selected");
+    // TODO: Get Data
+    let aliasData = await getAliasData();
+    let nondefaultAlias = false;
+    if(aliasData.response != undefined) {
+        nondefaultAlias = true;
+        aliasData = JSON.parse(aliasData.response);
+        console.log("Current Backend Alias Data: \n", aliasData)
+    }
+    // Add Alias Page
+    let alias_editor = document.createElement("div");
+    alias_editor.setAttribute("id", "admin_internals");
+    alias_editor.classList.add('at_aliasEditor'); 
+    alias_editor.innerHTML = `
+    <fieldset>
+        <legend> Edit Alias Table: </legend>
+        <p> Room Name Aliases: </p>
+        <div class="tableDiv">
+            <table id="roomAliasTable">
+                <thead>
+                    <tr>
+                        <th scope="col"> Bronson </th>
+                        <th scope="col"> LSM </th>
+                        <th scope="col"> 25Live </th>
+                        <th scope="col"> Hostname Exceptions </th>
+                        <th scope="col"> Options </th>
+                    </tr>
+                </thead>
+                <tbody id="alias-tbody">
+                <tr></tr>
+                </tbody>
+            </table>
+        </div>
+        <p> Building Name Aliases: </p>
+        <div class="tableDiv">
+            <table id="buildingAliasTable">
+                <thead>
+                    <tr>
+                        <th scope="col"> Bronson </th>
+                        <th scope="col"> LSM </th>
+                        <th scope="col"> 25Live </th>
+                        <th scope="col"> Options </th>
+                    </tr>
+                </thead>
+                <tbody id="alias-tbody">
+                    <tr></tr>
+                </tbody>
+            </table>
+        </div>
+        <div>
+            <menu>
+                <button class="exeButton" onclick="postAliasTable()"> Save Alias Table </button>
+                <button id="addRoomAliasButton" onclick="addRoomAliasRow()"> Add Room Alias </button>
+                <button id="addBuildingAliasButton" onclick="addBuildingAliasRow()"> Add Building Alias </button>
+            </menu>
+        </div>
+    </fieldset>`;
+    // replace admin_internals
+    let admin_internals = document.getElementById('admin_internals');
+    admin_internals.replaceWith(alias_editor);
+    // Update Page with Data from backend and save object in sessionStorage to update with changes.
+    if(nondefaultAlias) {
+        sessionStorage.setItem("aliasData", JSON.stringify(aliasData));
+    } else {
+        sessionStorage.setItem("aliasData", JSON.stringify({buildings:[],rooms:[]}));
+    }
+    drawAliasTables();
+    return;
+}
+
+// Current Backend DataElement for AliasData
+async function getAliasData() {
+    return fetch('aliasTable')
+        .then((response) => {
+            if(!response.ok) {
+                throw new Error("HTTP error " + response.status);
+            }
+            return response.json();
+        }
+    );
+}
+
+// Draw Alias Table from sessionStorage Object
+function drawAliasTables() {
+    let aliasData = JSON.parse(sessionStorage.getItem("aliasData"));
+    let roomTable = document.getElementById("roomAliasTable").getElementsByTagName('tbody')[0];
+    // Clear roomTable
+    roomTable.innerHTML = `<tr></tr>`;
+    // Rooms
+    console.log("roomTable, drawAliasTables()", roomTable);
+    let roomRows = aliasData.rooms;
+    console.log(roomRows);
+    for(let i = 0; i < roomRows.length; i++) {
+        console.log("Ineserting Row for ", roomRows[i]);
+        let newRow = roomTable.insertRow();
+        newRow.classList.add("aliasRow");
+        if(roomRows[i].status != undefined) {
+            newRow.classList.add("toBeAdded");
+            delete roomRows[i].status;
+        }
+        newRow.setAttribute("id", `${roomRows[i].name}-row`);
+        let bronsonCell = newRow.insertCell(0);
+        let lsmCell = newRow.insertCell(1);
+        let liveCell = newRow.insertCell(2);
+        let hostCell = newRow.insertCell(3);
+        let optionCell = newRow.insertCell(4);
+        bronsonCell.innerHTML = `<span id="${roomRows[i].name}-alias-bronson-text">${roomRows[i].name}</span>`;
+        lsmCell.innerHTML = `<input type="text" class="aliasInput" id="alias-lsm-text" placeholder="LSM Room Name" value="${roomRows[i].lsmName}">`;
+        liveCell.innerHTML = `<input type="text" class="aliasInput" id="${roomRows[i].name}-alias-live-text" placeholder="25Live Room Name" value="${roomRows[i].liveName}">`;
+        hostCell.innerHTML = `<input type="text" class="aliasInput" id="${roomRows[i].name}-alias-host-text" placeholder="Hostname Exception" value="${roomRows[i].hostnameExeception}">`;
+        optionCell.innerHTML = `<button class="rmvButton" onclick="removeAliasRow('${roomRows[i].name}-row')"> Remove Alias </button>`;
+    }
+    aliasData.rooms = roomRows;
+    // Buildings
+    let buildingRows = aliasData.buildings;
+    let buildingTable = document.getElementById("buildingAliasTable").getElementsByTagName('tbody')[0];
+    // Clear buildingTable
+    buildingTable.innerHTML = `<tr></tr>`;
+    for(let i = 0; i < buildingRows.length; i++) {
+        let newRow = buildingTable.insertRow();
+        newRow.classList.add("aliasRow");
+        if(buildingRows[i].status != undefined) {
+            newRow.classList.add("toBeAdded");
+            delete buildingRows[i].status;
+        }
+        newRow.setAttribute("id", `${buildingRows[i].key}-row`);
+        let bronsonCell = newRow.insertCell(0);
+        let lsmCell = newRow.insertCell(1);
+        let liveCell = newRow.insertCell(2);
+        let optionCell = newRow.insertCell(3);
+        bronsonCell.innerHTML = `<span id="${buildingRows[i].name}-alias-bronson-text">${buildingRows[i].name}</span>`;
+        lsmCell.innerHTML = `<input type="text" class="aliasInput" id="${buildingRows[i].name}-alias-lsm-text" placeholder="LSM Building Name" value="${buildingRows[i].lsmName}">`;
+        liveCell.innerHTML = `<input type="text" class="aliasInput" id="${buildingRows[i].name}-alias-live-text" placeholder="25Live Building Name" value="${buildingRows[i].liveName}">`;
+        optionCell.innerHTML = `<button class="rmvButton" onclick="removeAliasRow('${buildingRows[i].key}-row')"> Remove Alias </button>`;
+    }
+    aliasData.buildings = buildingRows;
+    // Update aliasData with removed status field
+    sessionStorage.setItem("aliasData", JSON.stringify(aliasData));
+    return;
+}
+
+function addRoomAliasRow() {
+    let table = document.getElementById("roomAliasTable").getElementsByTagName('tbody')[0];
+    let count = document.getElementsByClassName("aliasRow").length;
+    // Add New Row and populate with inputs.
+    let newRow = table.insertRow();
+    newRow.classList.add("aliasRow");
+    newRow.classList.add("tmpDBRecord");
+    newRow.setAttribute("id",`tmpRow-${count}`);
+    let bronsonCell = newRow.insertCell(0);
+    let lsmCell = newRow.insertCell(1);
+    let liveCell = newRow.insertCell(2);
+    let hostCell = newRow.insertCell(3);
+    let optionCell = newRow.insertCell(4);
+    bronsonCell.innerHTML = `<input type="text" class="aliasInput" id="alias-bronson-text" placeholder="Bronson Room Name">`;
+    lsmCell.innerHTML = `<input type="text" class="aliasInput" id="alias-lsm-text" placeholder="LSM Room Name">`;
+    liveCell.innerHTML = `<input type="text" class="aliasInput" id="alias-live-text" placeholder="25Live Room Name">`;
+    hostCell.innerHTML = `<input type="text" class="aliasInput" id="alias-host-text" placeholder="Hostname Exception">`;
+    optionCell.innerHTML = `<button onclick="confirmAliasRow('tmpRow-${count}')"> Confirm</button>
+    <button onclick="cancelAliasRow('tmpRow-${count}')"> Cancel </button>`;
+    // Disable Enterkey on New Inputs
+    let newInputs = newRow.getElementsByTagName("input");
+    for(let i = 0; i < newInputs.length; i++) {
+        newInputs[i].addEventListener('keydown',
+            function(event) {
+                if(event.key === "Enter") {
+                    event.preventDefault();
+                }
+            }
+        );
+    }
+    // Disable Room Alias Button
+    document.getElementById("addRoomAliasButton").disabled = true;
+    return;
+}
+
+// TODO: Add Building Alias Row, similar to addRoomAliasRow()
+function addBuildingAliasRow() {
+    let table = document.getElementById("buildingAliasTable").getElementsByTagName('tbody')[0];
+    let count = document.getElementsByClassName("aliasRow").length;
+    // Create New Row...
+    let newRow = table.insertRow();
+    newRow.classList.add("aliasRow");
+    newRow.classList.add("tmpDBRecord");
+    newRow.setAttribute("id",`tmpRow-${count}`);
+    let bronsonCell = newRow.insertCell(0);
+    let lsmCell = newRow.insertCell(1);
+    let liveCell = newRow.insertCell(2);
+    let optionCell = newRow.insertCell(3);
+    bronsonCell.innerHTML = `<input type="text" class="aliasInput" id="alias-bronson-text" placeholder="Bronson Building Name">`;
+    lsmCell.innerHTML = `<input type="text" class="aliasInput" id="alias-lsm-text" placeholder="LSM Building Name">`;
+    liveCell.innerHTML = `<input type="text" class="aliasInput" id="alias-live-text" placeholder="25Live Building Name">`;
+    optionCell.innerHTML = `<button onclick="confirmAliasRow('tmpRow-${count}')"> Confirm</button>
+    <button onclick="cancelAliasRow('tmpRow-${count}')"> Cancel </button>`;
+    // Disable Enterkey on New Inputs
+    let newInputs = newRow.getElementsByTagName("input");
+    for(let i = 0; i < newInputs.length; i++) {
+        newInputs[i].addEventListener('keydown',
+            function(event) {
+                if(event.key === "Enter") {
+                    event.preventDefault();
+                }
+            }
+        );
+    }
+    //
+    document.getElementById("addBuildingAliasButton").disabled = true;
+    return;
+}
+
+// Remove from page
+function cancelAliasRow(rowId) {
+    let row = document.getElementById(rowId);
+    row.remove();
+    return;
+}
+
+// TODO: Add to sessionStorage Object
+function confirmAliasRow(rowId) {
+    let row = document.getElementById(rowId);
+    let inputs = row.getElementsByTagName("input");
+    let name = row.cells[0].querySelector('input').value;
+    let roomBool = inputs.length == 4 ? true : false;
+    // Does this name exist inside of bronson?
+    let campData = JSON.parse(localStorage.getItem("campData"));
+    let filter = Object.values(campData).filter(e => e.name == name);
+    console.log("Alias Filter: \n", filter);
+    if(filter == []) {
+        console.log("Alias Error: Destination Alias does not exist in Bronson");
+        return;
+    }
+    // Get Alias Data from storage
+    let aliasData = JSON.parse(sessionStorage.getItem("aliasData"));
+    // New Alias Object, insert to correct nested object.
+    if(roomBool) {
+        let newAlias = {
+            name: name,
+            lsmName: row.cells[1].querySelector('input').value,
+            liveName: row.cells[2].querySelector('input').value,
+            hostnameExeception: row.cells[3].querySelector('input').value,
+            status: "toBeAdded"
+        };
+        aliasData.rooms.push(newAlias);
+        document.getElementById("addRoomAliasButton").disabled = false;
+    } else {
+        let newAlias = {
+            name: name,
+            lsmName: row.cells[1].querySelector('input').value,
+            liveName: row.cells[2].querySelector('input').value,
+            status: "toBeAdded"
+        };
+        aliasData.buildings.push(newAlias);
+        document.getElementById("addBuildingAliasButton").disabled = true;
+    }
+    // Push to 'aliasData'
+    sessionStorage.setItem('aliasData', JSON.stringify(aliasData));
+    // Remove Tmp-Row from page, redraw from Alias Table.
+    row.remove();
+    drawAliasTables();
+    return;
+}
+
+// TODO: Remove from sessionStorageObject, add toBeRemoved classobj
+function removeAliasRow(rowID) {
+    let row = document.getElementById(rowID);
+    row.classList.add("aliasToBeRemoved");
+    let optionsButton = row.getElementsByTagName("button")[0];
+    // Remove from AliasData
+    let aliasData = JSON.parse(sessionStorage.getItem("aliasData"));
+    let roomName = rowID.split("-")[0];
+    let roomBool = roomName.length > 5 ? true : false;
+    let backup = ``;
+    
+    if(roomBool) {
+        let targetIndex = aliasData.rooms.findIndex(e => e.name == roomName);
+        backup = JSON.stringify(aliasData.rooms[targetIndex]);
+        aliasData.rooms.splice(targetIndex, 1);
+    } else {
+        let targetIndex = aliasData.buildings.findIndex(e => e.name == roomName);
+        backup = JSON.stringify(aliasData.buildings[targetIndex]);
+        aliasData.buildings.splice(targetIndex, 1);
+    }
+    sessionStorage.setItem("aliasData", JSON.stringify(aliasData));
+    optionsButton.setAttribute("onclick",`undoAliasRowRemoval('${rowID}','${backup}')`);
+    optionsButton.innerHTML = "Undo";
+    optionsButton.classList.remove("rmvButton");
+    optionsButton.classList.add("exeButton");
+    return;
+}
+
+function undoAliasRowRemoval(rowId, stringifiedBackup) {
+    let row = document.getElementById(rowId);
+    row.classList.remove("aliasToBeRemoved");
+    // Readd object to aliasData
+    let aliasData = JSON.parse(sessionStorage.getItem("aliasData"));
+    let backup = JSON.parse(stringifiedBackup);
+    console.log("Backup (Post-Parse): ", backup);
+    if (backup.hostnameExeception != undefined) {
+        let target = aliasData.rooms.findIndex(e => e.name == backup.name);
+        aliasData.rooms.splice(target, 0, backup);
+    } else {
+        let target = aliasData.buildings.findIndex(e => e.name == backup.name);
+        aliasData.buildings.splice(target, 0, backup);
+    }
+    sessionStorage.setItem("aliasData", JSON.stringify(aliasData));
+    // Reset Button
+    let optionsButton = row.getElementsByTagName("button")[0];
+    optionsButton.classList.remove("exeButton");
+    optionsButton.classList.add("rmvButton");
+    optionsButton.innerHTML = "Remove Alias";
+    optionsButton.setAttribute("onclick", `removeAliasRow('${rowId}')`);
+    return;
+}
+
+// Collect Information from tables and package them into json to send to packend.
+// "Bronson Name" : {lsmName:"",liveName:"",hostnameException:""};
+function postAliasTable() {
+    // Get Room Alias Data
+    let aliasData = JSON.parse(sessionStorage.getItem("aliasData"));
+    // Get existing rows and update sessionStorage Object
+    let rows = document.getElementsByClassName("aliasRow");
+    for(let i = 0; i < rows.length; i++) {
+        // Get Bronson name
+        let name = rows[i].cells[0].innerText;
+        console.log("name from row: ", name);
+        // determine if building alias or room alias.
+        let roomBool = name.length > 5 ? true : false;
+        // Get index of current row inside of aliasData
+        if (roomBool) {
+            let target = aliasData.rooms.findIndex(e => e.name == name);
+            let aliasObj = aliasData.rooms[target];
+            aliasObj.lsmName = rows[i].cells[1].querySelector('input').value;
+            aliasObj.liveName = rows[i].cells[2].querySelector('input').value;
+            aliasObj.hostnameExeception = rows[i].cells[3].querySelector('input').value;
+            aliasData.rooms[target] = aliasObj;
+        } else {
+            let target = aliasData.buildings.findIndex(e => e.name == name);
+            let aliasObj = aliasData.buildings[target];
+            aliasObj.lsmName = rows[i].cells[1].querySelector('input').value;
+            aliasObj.liveName = rows[i].cells[2].querySelector('input').value;
+            aliasData.buildings[target] = aliasObj;
+        }
+        // If value is different than default, update aliasData;
+        // ...
+        console.log(rows[i]);
+    }
+    // Post to backend.
+    let packet = JSON.stringify(aliasData);
+    return fetch('setAliasTable', {
+        method: 'POST',
+        headers: {
+            "Content-Type": "applciation/json",
+            "Content-Length": packet.length
+        },
+        body: packet
+    }).then((response) => {
+        if(!response.ok) {
+            throw new Error("HTTP error " + response.status);
+        }
+        setAliasEditor();
+        return response.json();
+    })
 }
