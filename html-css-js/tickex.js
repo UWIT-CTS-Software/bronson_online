@@ -16,7 +16,7 @@ HTML
 Notes:
 
 
-TODO - Popup for ticket details/editing
+TODO - Popup for ticket details/editing (https://www.youtube.com/watch?v=VO3HOri1TEw)
     - Add real ticket fetching from TDX API 
     - Add ticket editing/saving to TDX API (if we get write access)
     - Add "send to ASU"/"send to help desk" button (if we get write access)
@@ -36,6 +36,23 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 \__|  \__|   \__|   \__|     \__|\________|
 */
 
+
+function showPopup() {
+    let showPopupButton = document.querySelector('.tx_tempButton');
+    let popupContainer = document.querySelector('.tx_popupContainer');
+
+    showPopupButton.onclick = () => {
+        popupContainer.classList.add('active');
+    };
+}
+
+function hidePopup() {
+    let popupContainer = document.querySelector('.tx_popupContainer.active');
+
+    if (popupContainer) {
+        popupContainer.classList.remove('active');
+    }
+}
 
 async function fetchDummyTicket() {
     const response = await fetch('/api/dummy_ticket');
@@ -95,12 +112,12 @@ async function setTickex() {
     if (ticket) {
         ticketHtml = `
             <fieldset>
-              <legend>${ticket.ticket_title || "No Title"}</legend>
-              <p>ID: ${ticket.ticket_id || ""}</p>
-              <p>Location: ${ticket.location || ""}</p>
-              <p>Status: ${ticket.status || ""}</p>
-              <p>Description: ${ticket.description || ""}</p>
-              <p>Requestor: ${ticket.requestor || ""}</p>
+                <legend>${ticket.ticket_title || "No Title"}</legend>
+                <p>ID: ${ticket.ticket_id || ""}</p>
+                <p>Location: ${ticket.location || ""}</p>
+                <p>Status: ${ticket.status || ""}</p>
+                <p>Description: ${ticket.description || ""}</p>
+                <p>Requestor: ${ticket.requestor || ""}</p>
             </fieldset>
         `;
     }
@@ -115,10 +132,11 @@ async function setTickex() {
     let tdxHotlink = document.createElement("div");
     tdxHotlink.classList.add("tx_tdxHotlink");
     tdxHotlink.innerHTML = `
-    <legend>Link to TDX</legend>
-    <a href="https://uwyo.teamdynamix.com/TDWorkManagement/" target="_blank" rel="noopener noreferrer">
-        <img src="/tdx_logo.png" alt="TeamDynamix" style="height:45px; vertical-align:middle; cursor:pointer;" />
-    </a>`;
+        <legend>Link to TDX</legend>
+        <a href="https://uwyo.teamdynamix.com/TDWorkManagement/" target="_blank" rel="noopener noreferrer">
+            <img src="/tdx_logo.png" alt="TeamDynamix" style="height:45px; vertical-align:middle; cursor:pointer;" />
+        </a>
+    `;
 
 
     let infoBox = document.createElement("div");
@@ -166,13 +184,30 @@ async function setTickex() {
         </fieldset>
     `;
 
+    let tempButton = document.createElement("div");
+    tempButton.classList.add("tx_tempButton");
+    tempButton.innerHTML = `
+        <button onClick="showPopup()">Test Ticket Info</button>
+    `;
+
+    let popupContainer = document.createElement("div");
+    popupContainer.classList.add("tx_popupContainer");
+    popupContainer.innerHTML = `
+        <div class="tx_popupBox">
+            <span>Ticket Details</span>
+            <p>More details coming soon...</p>
+            <button class="popup_closeButton" onClick="hidePopup()">Close</button>
+        </div>
+    `;
+
     tx_container.append(tdxHotlink);
     tx_container.append(infoBox);
     tx_container.append(newTickets);
     tx_container.append(catchAll);
     tx_container.append(closedTickets);
     tx_container.append(ticketInfo);
-
+    tx_container.append(tempButton);
+    tx_container.append(popupContainer);
 
     let main_container = document.createElement('div');
     main_container.appendChild(tx_container);

@@ -245,7 +245,7 @@ input:checked + .slider:before {
 /* Bronson icon in top left, brings out hamburger menu */
 .site_header {
     color: rgb(118, 66, 28);
-    background-color: rgb(205, 177, 99);
+    background-color: rgb(224, 193, 108);
     text-align: center;
     font-family: "Racing Sans One", sans-serif;
     font-weight: 400;
@@ -1246,6 +1246,57 @@ ol li::marker {
 .tx_closedTickets {
     background-color: rgb(50, 50, 50);
     grid-column: 8 / 10;
+}
+
+.tx_tempButton {
+    background-color: rgb(50, 50, 50);
+    grid-column: 5 / 6;
+    grid-row: 4 / 5;
+    place-self: center;
+}
+
+.tx_popupContainer {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: .4s ease;
+}
+
+.tx_popupContainer.active {
+    opacity: 1;
+    pointer-events: auto;
+    transition: .4s ease;
+}
+
+.tx_popupContainer .tx_popupBox {
+    width: 500px;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(65, 65, 65);
+    border-radius: 6px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.tx_popupBox span {
+    color: rgb(118, 66, 28);
+    background-color: rgb(224, 193, 108);
+    font-family: "Contrail One", sans-serif;
+    font-size: large;
+    font-weight: 400;
+    font-style: normal;
+    text-align: left;
+    padding: 0px 5px 1px 5px;
+    margin: 0px 0px;
+    width: 90%
+}
+
+.popup_closeButton {
+    float: right;
 }
 
 
