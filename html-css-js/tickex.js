@@ -54,6 +54,14 @@ function hidePopup() {
     }
 }
 
+function sendToASU() {
+    alert("This feature is not yet implemented. -Lex");
+}
+
+function sendToHelpDesk() {
+    alert("This feature is not yet implemented. -Lex");
+}
+
 async function fetchDummyTicket() {
     const response = await fetch('/api/dummy_ticket');
 
@@ -111,14 +119,26 @@ async function setTickex() {
 
     if (ticket) {
         ticketHtml = `
-            <fieldset>
-                <legend>${ticket.ticket_title || "No Title"}</legend>
-                <p>ID: ${ticket.ticket_id || ""}</p>
-                <p>Location: ${ticket.location || ""}</p>
-                <p>Status: ${ticket.status || ""}</p>
-                <p>Description: ${ticket.description || ""}</p>
-                <p>Requestor: ${ticket.requestor || ""}</p>
-            </fieldset>
+        <div class="tx_popupBox">
+            <span>${ticket.ticket_title || "No Title"}</span>
+            <p>Ticket ID: ${ticket.ticket_id || ""}</p>
+            <p>Location: ${ticket.location || ""}</p>
+            <p>Status: ${ticket.status || ""}</p>
+            <p>Description: ${ticket.description || ""}</p>
+            <p>Requestor: ${ticket.requestor || ""}</p>
+            <p>Creator: ${ticket.creator || ""}</p>
+            <p>Responsibility: ${ticket.responsibility || ""}</p>
+            <p>Service: ${ticket.service || ""}</p>
+            <p>Account Department: ${ticket.account_department || ""}</p>
+            <p>Type: ${ticket.type || ""}</p>
+            <p>Urgency: ${ticket.urgency || ""}</p>
+            <p>Priority: ${ticket.priority || ""}</p>
+            <p>Date Created: ${ticket.date_created || ""}</p>
+            <p>Last Modified: ${ticket.date_last_modified || ""}</p>
+            <button class="popup_closeButton" onClick="hidePopup()">Close</button>
+            <button class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
+            <button class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
+        </div>
         `;
     }
 
@@ -145,16 +165,6 @@ async function setTickex() {
         <legend>Welcome to Tickex!</legend>
         <p>Tickex is a Ticket Management System designed to help you track and manage CTS tickets from TeamDynamix.</p>
         <ul>
-    `;
-
-    let ticketInfo = document.createElement("div");
-    ticketInfo.classList.add("tx_ticketInfo");
-    ticketInfo.innerHTML = ticketHtml || `
-        <fieldset>
-          <legend>Test Field</legend>
-          <p>This is a test field for Tickex.</p>
-          <p>You can add your content here.</p>
-        </fieldset>
     `;
 
     let newTickets = document.createElement("div");
@@ -192,11 +202,14 @@ async function setTickex() {
 
     let popupContainer = document.createElement("div");
     popupContainer.classList.add("tx_popupContainer");
-    popupContainer.innerHTML = `
+    popupContainer.innerHTML = ticketHtml || `
         <div class="tx_popupBox">
             <span>Ticket Details</span>
-            <p>More details coming soon...</p>
+            <p>Ticket Details</p>
+            <p>If you're seeing this text, something broke...</p>
             <button class="popup_closeButton" onClick="hidePopup()">Close</button>
+            <button class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
+            <button class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
         </div>
     `;
 
@@ -205,7 +218,6 @@ async function setTickex() {
     tx_container.append(newTickets);
     tx_container.append(catchAll);
     tx_container.append(closedTickets);
-    tx_container.append(ticketInfo);
     tx_container.append(tempButton);
     tx_container.append(popupContainer);
 
