@@ -866,14 +866,37 @@ async fn handle_connection(
             } else {
                 let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
                 // Parse Request Body
-                println!("Update Set Alias Packet: \n{:?}", body_json);
                 let alias_rooms = body_json["rooms"]
                     .as_array()
                     .unwrap();
-                println!("Alias Rooms: \n{:?}", alias_rooms);
-                //  TODO: Iterate through the rooms and find hostname exceptions,
-                // if found, update it's ping_Data, compare to previous update and see if anything has been changed and revert to default if so.
-                // ...
+                //  Iterate through the rooms and find hostname exceptions,
+                for alias_record in alias_rooms.iter() {
+                    debug!("Alias Record \n {}", alias_record);
+                    let hostname_exception = alias_record.get("hostnameException")
+                        .unwrap()
+                        .to_string()
+                        .replace("\"","");
+                    let room_name = alias_record.get("name")
+                        .unwrap()
+                        .to_string()
+                        .replace("\"","");
+                    //println!("{}", room_name.len());
+                    if hostname_exception != "" {
+                        debug!("Alias Hostname Exception: \n {} at {}", hostname_exception, room_name);
+                        let mut room : DB_Room = database.get_room_by_name(&room_name);
+                        let mut pd = room.ping_data.clone();
+                        for ping_record in &mut pd {
+                            ping_record
+                                .as_mut()
+                                .unwrap()
+                                .hostname.room = hostname_exception.clone();
+                        }
+                        room.ping_data = pd;
+                        //println!("{:?}", room);
+                        database.update_room(&room);
+                    }
+                }
+                // Save Alias Table to database as dataElement
                 let alias_table = DB_DataElement {
                     key: "alias_table".to_string(),
                     val: String::from_utf8(req.body).expect("Unable to parse body contents")
@@ -881,6 +904,38 @@ async fn handle_connection(
                 database.update_data(&alias_table);
                 res.status(STATUS_200);
                 res.send_contents("Database Alias Table Updated".into());
+            }
+        },
+        "POST /resetAlias HTTP/1.1"        => {
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                // Get List of Rooms from body_json
+                let target_rooms = body_json["rooms"]
+                    .as_array()
+                    .unwrap();
+                // Change ping_data.hostname.room to original name
+                for room in target_rooms.iter() {
+                    let mut room = database.get_room_by_name(&room.to_string().replace("\"",""));
+                    let room_name = room.name.clone();
+                    let mut pd = room.ping_data.clone();
+                    for ping_record in &mut pd {
+                        ping_record
+                            .as_mut()
+                            .unwrap()
+                            .hostname.room = room_name.clone();
+                    }
+                    room.ping_data = pd;
+                    //println!("Reset room {}:\n{:?}", &room_name, &room);
+                    database.update_room(&room);
+                }
+                debug!("Reverting Alias Change for target_rooms, {:?}", &target_rooms);
+                res.status(STATUS_200);
+                res.send_contents("Reset Requested Rooms".into());
             }
         },
         // Terminal
