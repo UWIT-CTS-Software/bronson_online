@@ -68,7 +68,7 @@ function sleep(ms) {
 const rsDataTransfer = new DataTransfer();
 
 // Adds the 'Admin Tools' tab to the program header
-function setAdminBronson() {
+async function setAdminBronson() {
     // Add Admin Tool Tab
     siteheader = document.getElementById("middle");
     adminTabs = document.createElement("div");
@@ -76,6 +76,35 @@ function setAdminBronson() {
     adminTabs.classList.add("admin_tab");
     adminTabs.innerHTML = `<button id="adminButton" class="toolTab adminTab" onclick="setAdminTools()" type=button><img class="tab_img" src=button2.png></img><span>Admin Tools</span></button>`;
     siteheader.appendChild(adminTabs);
+    // Add Admin Buttons to hamburger button
+    //  - Hide Terminal
+    hamburger = document.getElementById("hb_menu");
+    hamburger.innerHTML += `<fieldset>
+    <legend>Admin Buttons</legend>
+    <button id="admin_terminalButton" class="hb_button" onclick="hideTerminal()">Hide Terminal</button>
+    </fieldset>`;
+    // Update storageObjs
+    let aliasData = await getAliasData();
+    if(aliasData.response != "Alias Table has not been updated") {
+        aliasData = JSON.parse(aliasData.response);
+        sessionStorage.setItem("aliasData", JSON.stringify(aliasData));
+    } else {
+        sessionStorage.setItem("aliasData", JSON.stringify({buildings:[],rooms:[]}));
+    }
+}
+
+function hideTerminal() {
+    //console.log("Changing visability of the terminal");
+    let termButton = document.getElementById("admin_terminalButton");
+    //console.log(termButton.innerHTML);
+    if(termButton.innerHTML == "Hide Terminal") {
+        document.getElementById('terminal').style.display = 'none';
+        termButton.innerHTML = "Show Terminal";
+    } else {
+        document.getElementById('terminal').style.display = 'block';
+        termButton.innerHTML = "Hide Terminal";
+    }
+    return;
 }
 
 // Set Admin Tool Page on program guts
@@ -202,7 +231,6 @@ function clearEditor() {
 }
 
 // SCHEDULE EDITOR
-
 async function setScheduleEditor() {
     // remove currently active status, mark tab has active.
     let current = document.getElementsByClassName("at_selected");
@@ -748,13 +776,47 @@ async function syncLSMData(deviceType) {
     return;
 }
 
+// ALIAS_TODO : Need to crosscheck with Alias Table and replace room names with bronson friendly counterpart. Doing that here will cascade through.
 async function getLSMDataByType(build_ab, deviceType) {
     return await fetch('lsmData', {
         method: "POST",
         body: [build_ab, deviceType]
     })
     .then((response) => response.json())
-    .then((json) => {return json;});
+    .then((json) => {
+        let aliasData = JSON.parse(sessionStorage.getItem("aliasData"));
+        // Alias Rooms
+        let filteredAlias = aliasData.rooms.filter(e => e.name.includes(build_ab));
+        if(filteredAlias.length > 0) {
+            let alias = {};
+            for(let i = 0; i < filteredAlias.length; i++) {
+                alias[filteredAlias[i].lsmName] = filteredAlias[i].name;
+            }
+            // Iterate through json return and change any occurance of an alias
+            for(let j = 0; j < json.data.length; j++) {
+                let targets = Object.keys(alias);
+                if (targets.includes(json.data[j].RoomName)) {
+                    console.log("Alias Room Hit:", json.data[j].RoomName);
+                    json.data[j].RoomName = alias[json.data[j].RoomName];
+                }
+            }
+        }
+        // Alias Buildings
+        filteredAlias = aliasData.buildings.filter(e => e.name.includes(build_ab));
+        if(filteredAlias.length == 1) {
+            let alias = '';
+            for(let i = 0; i < filteredAlias.length; i++) {
+                alias = filteredAlias[i].name;
+            }
+            // Iterate through JSON and change all building prefixes.
+            for(let j = 0; j < json.data.length; j++) {
+                console.log("Alias Building Hit", json.data[j].RoomName);
+                let roomNumber = json.data[j].RoomName.split(" ")[1];
+                json.data[j].RoomName = `${alias} ${roomNumber}`;
+            }
+        }
+        return json;
+    });
 }
 
 function clearDTerm() {
@@ -1156,7 +1218,6 @@ async function setDBEditor() {
     });
     // Get timestamps for last room schedule update, sort them by weekday
     let rsTimestamp = await getLastRoomScheduleUpdate();
-    console.log(rsTimestamp);
     let ts_arr = JSON.parse(rsTimestamp["timestamps"]);
     let tmp_ts = ["", "", "", "", ""];
     if(ts_arr.length == 1) {
@@ -1164,7 +1225,6 @@ async function setDBEditor() {
     } else {
         ts_arr.forEach(function(item) {
             let day = item.slice(0,2);
-            console.log(day);
             switch(day) {
                 case "Mo":
                     tmp_ts[0] = item;
@@ -1403,8 +1463,9 @@ function readFileAsync(file) {
     //   - process-csv.py
     // The end result being an array of room updates. Structured somewhat
     // similarily to campData, but flattened one level.
+// ALIAS_TODO: replace oddball rooms with data from the alias table instead.
 async function parseRSUpload(arr) {
-    let roomObjs = [];
+    let roomObjs  = [];
     let timestamp = [];
     for(let i = 0; i < arr.length; i++) {
         let csvRows = await arr[i].split("\n");
@@ -1448,10 +1509,33 @@ async function parseRSUpload(arr) {
     }
     // TODO: These oddball values are hardcoded. These can change in the event that the external sources also change. We will need to retrieve these from a yet to be created source within Bronson. Requiring another tab.
     // Change Oddball Values in roomObjs
-    const oddballs_rooms = {"BU AUD": "BU 0057", "AG AUD": "AG 0133", "AC 404A": "AC 0404", "ED AUD": "ED 0055", "CB GYM": "CB 0151", "CL 502H":"CL 0502", "EERB Lobby":"EERB 0105", "GE 311G":"GE 0311","HA 223C":"HA 0223"}; 
+    //const oddballs_rooms = {"BU AUD": "BU 0057", "AG AUD": "AG 0133", "AC 404A": "AC 0404", "ED AUD": "ED 0055", "CB GYM": "CB 0151", "CL 502H":"CL 0502", "EERB Lobby":"EERB 0105", "GE 311G":"GE 0311","HA 223C":"HA 0223"}; 
     // Added, ED AUD -> ED 0055, CB GYM -> CB 0155,
     //, "CL 502H":"CL 0502", "EERB Lobby":"EERB 0005", "GE 311G":"GE 0311", "HA 223C":"HA 0223"
-    const oddballs_buildings = {"ESB":"ES", "STEM":"ST", "AC":"AHC", "BE":"BH"};
+    //const oddballs_buildings = {"ESB":"ES", "STEM":"ST", "AC":"AHC", "BE":"BH"};
+    // Pull AliasData from Backend.
+    let aliasData = await getAliasData();
+    let nondefaultAlias = false;
+    if(aliasData.response != "Alias Table has not been updated") {
+        nondefaultAlias = true;
+        aliasData = JSON.parse(aliasData.response);
+        console.log("Current Backend Alias Data: \n", aliasData)
+    }
+    let oddballs_rooms = {};
+    let oddballs_buildings = {};
+    if (nondefaultAlias) {
+        for(let i = 0; i < aliasData.rooms.length; i++) {
+            console.log(aliasData.rooms[i]);
+            oddballs_rooms[aliasData.rooms[i].liveName] = aliasData.rooms[i].name;
+        }
+        for(let i = 0; i < aliasData.buildings.length; i++) {
+            console.log(aliasData.buildings[i]);
+            oddballs_buildings[aliasData.buildings[i].liveName] = aliasData.buildings[i].name;
+        }
+    }
+    console.log(oddballs_rooms);
+    console.log(oddballs_buildings);
+    //
     for (ob in oddballs_rooms) {
         let filter = roomObjs.filter(e => e.name == ob);
         let ind = roomObjs.indexOf(filter[0]);
@@ -1508,7 +1592,7 @@ async function parseRSUpload(arr) {
     if(missingInUpload.length != 0 || notFound.length != 0) {
         let str0 = missingInUpload.join(", ");
         let str1 = notFound.join(", ");
-        alert(`⚠️ WARNING: The following rooms (${missingInUpload.length} rooms) were not included in the upload and will not be updated: ${str0} \n ⚠️ WARNING: The following rooms (${notFound.length} rooms) were not found in Bronson's database and will be ignored: ${str1}`);
+        alert(`${nondefaultAlias ? "" : "⚠️ WARNING: ALIAS TABLE HAS NOT BEEN SET YET, ROOMS THAT DIFFER IN NAME FROM 25LIVE TO BRONSON WILL NOT BE UPDATED\n"}⚠️ WARNING: The following rooms (${missingInUpload.length} rooms) were not included in the upload and will not be updated: ${str0} \n ⚠️ WARNING: The following rooms (${notFound.length} rooms) were not found in Bronson's database and will be ignored: ${str1}`);
     }
     // Send to Backend in Chunks of 25 rooms at a time.
     let result = [];
@@ -2497,7 +2581,9 @@ async function setAliasEditor() {
     alias_editor.innerHTML = `
     <fieldset>
         <legend> Edit Alias Table: </legend>
-        <p> TODO: The alias table is currently not implemented anywhere. There needs to be checks and conversions in Diagnostics, Database Editor "Compare with LSM" Button, and the 25Live Upload document replacing the 'oddballs' constant. And, then updating the 'pingData' struct in room records that have an hostname exception.</p>
+        <p> The Alias table is designed to bridge gaps in various naming schema from all of our external systems. 25Live and LSM utilize different naming schemes for different rooms. This tool will allow Bronson to adjust incoming data to work nicely in our database. 
+        <br>
+        TODO: Checkerboard makes updates to the database when it receives results from LSM and these updates need to be crosschecked with the Alias table.</p>
         <p> Room Name Aliases: </p>
         <div class="tableDiv">
             <table id="roomAliasTable">

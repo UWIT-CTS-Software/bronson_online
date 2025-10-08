@@ -782,12 +782,12 @@ async fn handle_connection(
                         .unwrap();
                     // Get Existing Room Record from database
                     let mut new_db_room : DB_Room = database.get_room_by_name(&target_room);
-                    println!("DEBUG Existing DB_Room (Pre-Update) -> \n {:?}", new_db_room.schedule);
+                    //println!("DEBUG Existing DB_Room (Pre-Update) -> \n {:?}", new_db_room.schedule);
                     // Update Schedule
                     new_db_room.schedule = new_schedule.clone();
                     // Update Database
                     database.update_room(&new_db_room);
-                    println!("DEBUG Updating Room: {} with Schedule:\n {:?}", target_room, new_schedule);
+                    debug!("Updating Room: {} with Schedule:\n {:?}", target_room, new_schedule);
                 }
                 res.status(STATUS_200);
                 res.send_contents("Room Schedules in Database Updated".into());
@@ -809,7 +809,7 @@ async fn handle_connection(
                             .collect()
                     })
                     .unwrap();
-                println!("DEBUG Updating Timestamps:\n {:?}", timestamps);
+                debug!("Updating Timestamps:\n {:?}", timestamps);
                 // Create DB_DataElement and update database.
                 let new_timestamps = DB_DataElement {
                     key: String::from("report_timestamps"),
@@ -1128,7 +1128,7 @@ async fn handle_connection(
             let ret_rooms = database.get_rooms_by_abbrev(&ret_building.abbrev);
             // TODO: Get number of Checked and Total Number of rooms.
             let number_rooms: i16 = ret_rooms.len().try_into().unwrap();
-            // Note, number_rooms and checked_rooms rely on the rooms inside LSM. 
+            // Note, number_rooms and checked_rooms rely on the rooms inside LSM.
             //
             let new_building: DB_Building = DB_Building {
                 abbrev: ret_building.abbrev,
@@ -1140,7 +1140,7 @@ async fn handle_connection(
             };
             database.update_building(&new_building);
 
-            return_body.push( 
+            return_body.push(
                 Building {
                     abbrev: new_building.abbrev,
                     name: new_building.name,
@@ -1152,10 +1152,8 @@ async fn handle_connection(
                 }
             );
             // ----------------------------------------------------------------
-
             // parse rooms map to load statuses for return
             // ----------------------------------------------------------------
-
             let json_return = json!({
                 "cb_body": return_body,
             });
