@@ -1910,7 +1910,7 @@ function cancelRoomAddition(menuID) {
     let menuElement = document.getElementById(menuID);
     let building = menuID.split("-")[0];
     menuElement.innerHTML = `<button onclick="setRoomAddition('${building}-roomMenu', '${building}-tbody')"> Add Room </button>
-    <button id="compareLSMBtn" onclick="compareDBEditLSM('${building}')"> Compare Inventory With LSM </button>`;
+    <button id="${building}-compareLSMBtn" onclick="compareDBEditLSM('${building}')"> Compare Inventory With LSM </button>`;
     return;
 }
 
@@ -2485,7 +2485,7 @@ async function setAliasEditor() {
     // TODO: Get Data
     let aliasData = await getAliasData();
     let nondefaultAlias = false;
-    if(aliasData.response != undefined) {
+    if(aliasData.response != "Alias Table has not been updated") {
         nondefaultAlias = true;
         aliasData = JSON.parse(aliasData.response);
         console.log("Current Backend Alias Data: \n", aliasData)
@@ -2497,6 +2497,7 @@ async function setAliasEditor() {
     alias_editor.innerHTML = `
     <fieldset>
         <legend> Edit Alias Table: </legend>
+        <p> TODO: The alias table is currently not implemented anywhere. There needs to be checks and conversions in Diagnostics, Database Editor "Compare with LSM" Button, and the 25Live Upload document replacing the 'oddballs' constant. And, then updating the 'pingData' struct in room records that have an hostname exception.</p>
         <p> Room Name Aliases: </p>
         <div class="tableDiv">
             <table id="roomAliasTable">
@@ -2543,10 +2544,13 @@ async function setAliasEditor() {
     admin_internals.replaceWith(alias_editor);
     // Update Page with Data from backend and save object in sessionStorage to update with changes.
     if(nondefaultAlias) {
+        aliasData.rooms = aliasData.rooms.sort((a,b) => a.name.localeCompare(b.name));
+        aliasData.buildings = aliasData.buildings.sort((a,b) => a.name.localeCompare(b.name));
         sessionStorage.setItem("aliasData", JSON.stringify(aliasData));
     } else {
         sessionStorage.setItem("aliasData", JSON.stringify({buildings:[],rooms:[]}));
     }
+    sessionStorage.setItem("aliasReset", JSON.stringify({rooms: []}));
     drawAliasTables();
     return;
 }
@@ -2570,16 +2574,16 @@ function drawAliasTables() {
     // Clear roomTable
     roomTable.innerHTML = `<tr></tr>`;
     // Rooms
-    console.log("roomTable, drawAliasTables()", roomTable);
+    //console.log("roomTable, drawAliasTables()", roomTable);
     let roomRows = aliasData.rooms;
-    console.log(roomRows);
+    //console.log(roomRows);
     for(let i = 0; i < roomRows.length; i++) {
-        console.log("Ineserting Row for ", roomRows[i]);
+        //console.log("Inserting Row for ", roomRows[i]);
         let newRow = roomTable.insertRow();
         newRow.classList.add("aliasRow");
         if(roomRows[i].status != undefined) {
             newRow.classList.add("toBeAdded");
-            delete roomRows[i].status;
+            //delete roomRows[i].status;
         }
         newRow.setAttribute("id", `${roomRows[i].name}-row`);
         let bronsonCell = newRow.insertCell(0);
@@ -2590,7 +2594,7 @@ function drawAliasTables() {
         bronsonCell.innerHTML = `<span id="${roomRows[i].name}-alias-bronson-text">${roomRows[i].name}</span>`;
         lsmCell.innerHTML = `<input type="text" class="aliasInput" id="alias-lsm-text" placeholder="LSM Room Name" value="${roomRows[i].lsmName}">`;
         liveCell.innerHTML = `<input type="text" class="aliasInput" id="${roomRows[i].name}-alias-live-text" placeholder="25Live Room Name" value="${roomRows[i].liveName}">`;
-        hostCell.innerHTML = `<input type="text" class="aliasInput" id="${roomRows[i].name}-alias-host-text" placeholder="Hostname Exception" value="${roomRows[i].hostnameExeception}">`;
+        hostCell.innerHTML = `<input type="text" class="aliasInput" id="${roomRows[i].name}-alias-host-text" placeholder="Hostname Exception" value="${roomRows[i].hostnameException}">`;
         optionCell.innerHTML = `<button class="rmvButton" onclick="removeAliasRow('${roomRows[i].name}-row')"> Remove Alias </button>`;
     }
     aliasData.rooms = roomRows;
@@ -2606,7 +2610,7 @@ function drawAliasTables() {
             newRow.classList.add("toBeAdded");
             delete buildingRows[i].status;
         }
-        newRow.setAttribute("id", `${buildingRows[i].key}-row`);
+        newRow.setAttribute("id", `${buildingRows[i].name}-row`);
         let bronsonCell = newRow.insertCell(0);
         let lsmCell = newRow.insertCell(1);
         let liveCell = newRow.insertCell(2);
@@ -2614,7 +2618,7 @@ function drawAliasTables() {
         bronsonCell.innerHTML = `<span id="${buildingRows[i].name}-alias-bronson-text">${buildingRows[i].name}</span>`;
         lsmCell.innerHTML = `<input type="text" class="aliasInput" id="${buildingRows[i].name}-alias-lsm-text" placeholder="LSM Building Name" value="${buildingRows[i].lsmName}">`;
         liveCell.innerHTML = `<input type="text" class="aliasInput" id="${buildingRows[i].name}-alias-live-text" placeholder="25Live Building Name" value="${buildingRows[i].liveName}">`;
-        optionCell.innerHTML = `<button class="rmvButton" onclick="removeAliasRow('${buildingRows[i].key}-row')"> Remove Alias </button>`;
+        optionCell.innerHTML = `<button class="rmvButton" onclick="removeAliasRow('${buildingRows[i].name}-row')"> Remove Alias </button>`;
     }
     aliasData.buildings = buildingRows;
     // Update aliasData with removed status field
@@ -2657,7 +2661,7 @@ function addRoomAliasRow() {
     return;
 }
 
-// TODO: Add Building Alias Row, similar to addRoomAliasRow()
+// Add Building Alias Row, similar to addRoomAliasRow()
 function addBuildingAliasRow() {
     let table = document.getElementById("buildingAliasTable").getElementsByTagName('tbody')[0];
     let count = document.getElementsByClassName("aliasRow").length;
@@ -2695,10 +2699,23 @@ function addBuildingAliasRow() {
 function cancelAliasRow(rowId) {
     let row = document.getElementById(rowId);
     row.remove();
+    // Determine Room/Building and re-enable it's button.
+    // The rowId in THIS context is the same for both 
+    // room and building (tmpRow). So, we look at both
+    // tables for the existence of a 'tmpRow'.
+    // ===
+    let roomTable = document.getElementById("roomAliasTable").getElementsByClassName('tmpDBRecord');
+    if (roomTable.length == 0) {
+        document.getElementById('addRoomAliasButton').disabled = false;
+    }
+    let buildingTable = document.getElementById("buildingAliasTable").getElementsByClassName('tmpDBRecord');
+    if(buildingTable.length == 0) {
+        document.getElementById('addBuildingAliasButton').disabled = false;
+    }
     return;
 }
 
-// TODO: Add to sessionStorage Object
+// Add to sessionStorage Object
 function confirmAliasRow(rowId) {
     let row = document.getElementById(rowId);
     let inputs = row.getElementsByTagName("input");
@@ -2706,9 +2723,21 @@ function confirmAliasRow(rowId) {
     let roomBool = inputs.length == 4 ? true : false;
     // Does this name exist inside of bronson?
     let campData = JSON.parse(localStorage.getItem("campData"));
-    let filter = Object.values(campData).filter(e => e.name == name);
-    console.log("Alias Filter: \n", filter);
-    if(filter == []) {
+    console.log("object values campData", Object.values(campData));
+    let filter = [];
+    if(roomBool) {
+        let targetBuilding = name.split(" ")[0];
+        let bldData = campData[targetBuilding];
+        if (bldData == undefined) {
+            console.log("Alias Error: Destination Room's building is not found.");
+            return;
+        }
+        filter = bldData.rooms.filter(e => e.name == name);
+    } else {
+        filter = Object.values(campData).filter(e => e.abbrev == name);
+        console.log("Alias Filter: \n", filter);
+    }
+    if(filter.length == 0) {
         console.log("Alias Error: Destination Alias does not exist in Bronson");
         return;
     }
@@ -2720,7 +2749,7 @@ function confirmAliasRow(rowId) {
             name: name,
             lsmName: row.cells[1].querySelector('input').value,
             liveName: row.cells[2].querySelector('input').value,
-            hostnameExeception: row.cells[3].querySelector('input').value,
+            hostnameException: row.cells[3].querySelector('input').value,
             status: "toBeAdded"
         };
         aliasData.rooms.push(newAlias);
@@ -2733,7 +2762,7 @@ function confirmAliasRow(rowId) {
             status: "toBeAdded"
         };
         aliasData.buildings.push(newAlias);
-        document.getElementById("addBuildingAliasButton").disabled = true;
+        document.getElementById("addBuildingAliasButton").disabled = false;
     }
     // Push to 'aliasData'
     sessionStorage.setItem('aliasData', JSON.stringify(aliasData));
@@ -2743,17 +2772,18 @@ function confirmAliasRow(rowId) {
     return;
 }
 
-// TODO: Remove from sessionStorageObject, add toBeRemoved classobj
+// Remove from sessionStorageObject, add toBeRemoved classobj
+//   Not super satisfied with the backup method given we will need to figure out when to update ping data when we remove an alias.
 function removeAliasRow(rowID) {
     let row = document.getElementById(rowID);
-    row.classList.add("aliasToBeRemoved");
+    row.classList.add("toBeRemoved");
     let optionsButton = row.getElementsByTagName("button")[0];
     // Remove from AliasData
     let aliasData = JSON.parse(sessionStorage.getItem("aliasData"));
     let roomName = rowID.split("-")[0];
     let roomBool = roomName.length > 5 ? true : false;
     let backup = ``;
-    
+    // Add Backup to a secondary variable... Maybe
     if(roomBool) {
         let targetIndex = aliasData.rooms.findIndex(e => e.name == roomName);
         backup = JSON.stringify(aliasData.rooms[targetIndex]);
@@ -2763,6 +2793,11 @@ function removeAliasRow(rowID) {
         backup = JSON.stringify(aliasData.buildings[targetIndex]);
         aliasData.buildings.splice(targetIndex, 1);
     }
+    // Add room name to alias reset array.
+    let aliasReset = JSON.parse(sessionStorage.getItem("aliasReset"));
+    aliasReset.rooms.push(roomName);
+    sessionStorage.setItem("aliasReset", JSON.stringify(aliasReset));
+    // Update Options Button and push updated aliasData.
     sessionStorage.setItem("aliasData", JSON.stringify(aliasData));
     optionsButton.setAttribute("onclick",`undoAliasRowRemoval('${rowID}','${backup}')`);
     optionsButton.innerHTML = "Undo";
@@ -2773,12 +2808,12 @@ function removeAliasRow(rowID) {
 
 function undoAliasRowRemoval(rowId, stringifiedBackup) {
     let row = document.getElementById(rowId);
-    row.classList.remove("aliasToBeRemoved");
+    row.classList.remove("toBeRemoved");
     // Readd object to aliasData
     let aliasData = JSON.parse(sessionStorage.getItem("aliasData"));
     let backup = JSON.parse(stringifiedBackup);
     console.log("Backup (Post-Parse): ", backup);
-    if (backup.hostnameExeception != undefined) {
+    if (backup.hostnameException != undefined) {
         let target = aliasData.rooms.findIndex(e => e.name == backup.name);
         aliasData.rooms.splice(target, 0, backup);
     } else {
@@ -2786,6 +2821,10 @@ function undoAliasRowRemoval(rowId, stringifiedBackup) {
         aliasData.buildings.splice(target, 0, backup);
     }
     sessionStorage.setItem("aliasData", JSON.stringify(aliasData));
+    // Update Alias Array
+    let aliasReset = JSON.parse(sessionStorage.getItem("aliasReset"));
+    aliasReset.rooms = aliasReset.rooms.filter(e => e != backup.name);
+    sessionStorage.setItem("aliasReset", JSON.stringify(aliasReset));
     // Reset Button
     let optionsButton = row.getElementsByTagName("button")[0];
     optionsButton.classList.remove("exeButton");
@@ -2797,7 +2836,7 @@ function undoAliasRowRemoval(rowId, stringifiedBackup) {
 
 // Collect Information from tables and package them into json to send to packend.
 // "Bronson Name" : {lsmName:"",liveName:"",hostnameException:""};
-function postAliasTable() {
+async function postAliasTable() {
     // Get Room Alias Data
     let aliasData = JSON.parse(sessionStorage.getItem("aliasData"));
     // Get existing rows and update sessionStorage Object
@@ -2805,31 +2844,45 @@ function postAliasTable() {
     for(let i = 0; i < rows.length; i++) {
         // Get Bronson name
         let name = rows[i].cells[0].innerText;
-        console.log("name from row: ", name);
+        //console.log("name from row: ", name);
         // determine if building alias or room alias.
         let roomBool = name.length > 5 ? true : false;
         // Get index of current row inside of aliasData
         if (roomBool) {
             let target = aliasData.rooms.findIndex(e => e.name == name);
             let aliasObj = aliasData.rooms[target];
-            aliasObj.lsmName = rows[i].cells[1].querySelector('input').value;
-            aliasObj.liveName = rows[i].cells[2].querySelector('input').value;
-            aliasObj.hostnameExeception = rows[i].cells[3].querySelector('input').value;
-            aliasData.rooms[target] = aliasObj;
+            delete aliasObj.status;
+            if(aliasObj != undefined) {
+                aliasObj.lsmName = rows[i].cells[1].querySelector('input').value;
+                aliasObj.liveName = rows[i].cells[2].querySelector('input').value;
+                aliasObj.hostnameException = rows[i].cells[3].querySelector('input').value;
+                // IF hostname exception is empty (''), add it to the aliasReset array
+                if (aliasObj.hostnameException == '') {
+                    console.log("Empty Hostname Exception Found on row ", name);
+                    let aliasReset = JSON.parse(sessionStorage.getItem("aliasReset"));
+                    aliasReset.rooms.push(name);
+                    sessionStorage.setItem("aliasReset", JSON.stringify(aliasReset));
+                }
+                aliasData.rooms[target] = aliasObj;
+            }
         } else {
             let target = aliasData.buildings.findIndex(e => e.name == name);
             let aliasObj = aliasData.buildings[target];
-            aliasObj.lsmName = rows[i].cells[1].querySelector('input').value;
-            aliasObj.liveName = rows[i].cells[2].querySelector('input').value;
-            aliasData.buildings[target] = aliasObj;
+            if(aliasObj != undefined) {
+                aliasObj.lsmName = rows[i].cells[1].querySelector('input').value;
+                aliasObj.liveName = rows[i].cells[2].querySelector('input').value;
+                aliasData.buildings[target] = aliasObj;
+            }
         }
         // If value is different than default, update aliasData;
         // ...
-        console.log(rows[i]);
+        //console.log(rows[i]);
     }
+    let resetReturn = await postAliasReset();
+    console.log("Alias Reset Return:", resetReturn);
     // Post to backend.
     let packet = JSON.stringify(aliasData);
-    return fetch('setAliasTable', {
+    return await fetch('setAliasTable', {
         method: 'POST',
         headers: {
             "Content-Type": "applciation/json",
@@ -2841,6 +2894,26 @@ function postAliasTable() {
             throw new Error("HTTP error " + response.status);
         }
         setAliasEditor();
-        return response.json();
+        return response;
+    })
+}
+
+// When an alias is removed, or the hostname exception is removed we need to reset the inner 'room' field of ping_data to it's previous value.
+async function postAliasReset() {
+    let aliasReset = JSON.parse(sessionStorage.getItem("aliasReset"));
+    console.log("Reseting Hostname Exception on following Rooms", aliasReset.rooms);
+    let packet = JSON.stringify(aliasReset);
+    return fetch('resetAlias', {
+        method: 'POST',
+        headers: {
+            "Content-Type": "application/json",
+            "Content-Length": packet.length
+        },
+        body: packet
+    }).then((response) => {
+        if(!response.ok) {
+            throw new Error("HTTP error " + response.status);
+        }
+        return response;
     })
 }
