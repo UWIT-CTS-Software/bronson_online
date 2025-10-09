@@ -1067,6 +1067,32 @@ async fn handle_connection(
                 .ok()?
             ;
 
+            // Get Alias Table, to swap incoming room_names from LSM with
+            //   Bronson friendly naming. We filter Alias Table to only contain
+            //   rooms that are relevant to current LSM request.
+            let alias_table : DB_DataElement = database.get_data("alias_table")
+                .expect("Alias_table has not been set yet.");
+            let alias_obj: Value = serde_json::from_str(&alias_table.val)
+                .expect("Unable to Parse Alias Table Contents.");
+            let alias_rooms = alias_obj.get("rooms");
+            //println!("{:?}", alias_rooms);
+            //
+            let mut alias_vec: Vec<(String, String)> = Vec::new();
+            if let Some(arr) = alias_rooms?.as_array() {
+                for item in arr {
+                    //println!("Array Item: {:?}", item);
+                    //println!("Building Item: {:?}", item.get("name").unwrap().as_str());
+                    //println!("LSM Item: {:?}", item.get("lsmName").unwrap().as_str());
+                    let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
+                    if alias_name.contains(&lsm_building.abbrev.as_str()) {
+                        debug!("Relevant Alias Found");
+                        let alias_lsm = item.get("lsmName").unwrap().as_str().unwrap().to_string();
+                        alias_vec.push((alias_name, alias_lsm));
+                    }
+                }
+            }
+            //println!("Alias Vec: {:?}", alias_vec);
+            // Process Request to LSM
             let body = req.get(url)
                               .timeout(Duration::from_secs(15))
                               .send()
@@ -1083,24 +1109,32 @@ async fn handle_connection(
                     Some(num) => num,
                     None => 0
                 };
-                let checks: &mut Vec<Value> = match &mut v["data"].as_array() {
-                    Some(data) => &mut data.clone(),
+                let mut checks: Vec<Value> = match &mut v["data"].as_array() {
+                    Some(data) => data.clone(),
                     None => {
                         error!("Unable to get API data as vec.");
-                        &mut Vec::<Value>::new()
+                        Vec::<Value>::new()
                     }
                 };
                 checks.reverse();
                 for i in 0..num_entries {
-                    let check = checks[i as usize].as_object().unwrap();
+                    let mut check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
+                    // Look to see if check["LocationName"] is in the alias_obj, replace it if so.
+                    //println!("check[locationName] = {:?}", check["LocationName"].as_str().unwrap());
+                    //let tmp_locale = &mut check["LocationName"].as_str().unwrap();
+                    for tuple in &alias_vec {
+                        if tuple.1 == check["LocationName"].as_str().unwrap() {
+                            debug!("Alias Struck, {:?} to be replaced with {:?}", check["LocationName"].as_str().unwrap(), tuple.0);
+                            check["LocationName"] = serde_json::Value::String(tuple.0.clone());
+                        }
+                    }
                     check_map.insert(
                         String::from(check["LocationName"].as_str().unwrap()), 
                         String::from(check["CompletedOn"].as_str().unwrap())
                     );
                 }
             }
-
-            // TODO: get checked_rooms
+            // Get checked_rooms
             // let checked_rooms: i16 = v["count"].as_i64().unwrap().try_into().unwrap();
             let mut checked_rooms: i16 = 0;
             for mut room in database.get_rooms_by_abbrev(&building_sel) {
