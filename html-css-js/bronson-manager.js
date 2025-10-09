@@ -22,26 +22,27 @@ TOC:
     - getLocalZoneData()
         - getBuildingNamesFromZone(zone_number)
         - getBuildingAbbrevsFromZone(zone_numebr)
-  Cache
+    - pad(n, width, z)
+  Cache/Stash
     - stashCheckerboard(checkerboardResponse)
     - stashJNResponse(formattedPingRequest, buildingName, deviceNames)
-    - storeCBResponse(cbBody) ---------------------------------------------- UNUSED
-    - storeJNResponse(jnBody) ---------------------------------------------- UNUSED
+    - storeCBResponse(cbBody) --------------------------------------- UNUSED
+    - storeJNResponse(jnBody) --------------------------------------- UNUSED
     - preserveCurrentTool()
   Dashboard Helpers
     - initCheckerboardStorage()
     - dashCheckerboardHTML()
     - dashCheckerboard()
     - setSchedule(buttonID)
-    - setUserSchedule(name) ------------------------------------------------ DB_TODO / SSO
+    - setUserSchedule() ------------------------------------- DB_TODO / SSO
     - makeTechTableHeader(firstColumn)
-    - makeTechSchdRow(tech, today)
+    - makeTechSchdRow(techObj, today)
     - getTechSchdTimeBlocks()
-    - renderTimeIndicator() ------------------------------------------------ TODO
+    - renderTimeIndicator() ---------------------------------------- TODO
     - setLeader(jsonValue)
     - rawTimeFormat(rawTime)
     - dashSpares()
-    - isMobile() ----------------------------------------------------------- UNUSED
+    - isMobile() -------------------------------------------------- UNUSED
 
 This file is set to host functions that are called throughout bronson suite
  that utilize or update session storage for a user.
@@ -95,7 +96,7 @@ async function initLocalStorage() {
     localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
     // Spares
     let spares = await getSpares();
-    console.log(spares["spares"]);
+    //console.log(spares["spares"]);
     localStorage.setItem("spares", JSON.stringify(spares["spares"]));
     // CheckerboardStorage
     if (sessionStorage.getItem("db_checker") == null) {
@@ -345,6 +346,7 @@ function stashJNResponse(formattedPingRequest, buildingName, deviceNames) {
 }
 
 // Session Storage Stuff (Tool Responses)
+// Unused
 //  we store the most recent response for a given request in Checkerboard
 //  and JackNet. These should become pretty redundant once the backend starts 
 //  caching responses.
@@ -354,6 +356,7 @@ function storeCBResponse(cbBody) {
 }
 
 // Jack Net functions
+// Unused
 function storeJNResponse(jnBody) {
     sessionStorage.setItem("jn_body", JSON.stringify(jnBody));
     return;
@@ -575,7 +578,7 @@ async function setUserSchedule() {
     //    name like it is in the schedule data, because of this. 
     //    I have a switch case that will need to be ripped out
     let username = document.cookie.split("=")[0];
-    console.log(username);
+    //console.log(username);
     let name = "name";
     switch (username) {
         case "jnyman1":
