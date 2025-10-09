@@ -1683,8 +1683,10 @@ ol li::marker {
 }
 
 .schedule {
-    transform: translate(90px, 6px);
+    transform: translate(90px, -11px);
     width: 500px;
+    z-index: 2;
+    position: absolute;
 }
 
 .leaderTab {
