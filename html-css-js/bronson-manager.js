@@ -226,7 +226,6 @@ async function getBuildingList() {
     for(const abbrev in data) {
         bl.push(data[abbrev].name);
     }
-
     return bl.sort();
 }
 
@@ -281,6 +280,17 @@ function getBuildingAbbrevsFromZone(zone_number) {
     
     return data[`${zone_number}`]["building_list"];
 }
+
+// pad()
+//  n     - what you are padding
+//  width - number of space
+//  z     - what you are padding with (optional, default: 0)
+function pad(n, width, z) {
+    z = z || '0';
+    n = n + '';
+    return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+}
+
 /*
  ░▒▓██████▓▒░ ░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓████████▓▒░ 
 ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        
@@ -527,7 +537,7 @@ async function setSchedule(buttonID) {
     let tbody = document.createElement('tbody');
     tbody.setAttribute("id", "schd_tbody");
     tbody.innerHTML = tbody_HTML;
-    // append to table
+    // Place Table on Dashboard
     let table = document.getElementById("schd_tbody");
     table.replaceWith(tbody);
     return;
@@ -546,8 +556,57 @@ async function setSchedule(buttonID) {
 // 5 rows with the day in the left index column rather than name. This has already
 // been done in the admin tools, moving that variant function over here may be a 
 // good idea. Also utilize makeTechTableHeader("Weekday");
-function setUserSchedule(name) {
-    // let schdData = getSchedule();
+async function setUserSchedule() {
+    let current = document.getElementsByClassName("schedule_selected");
+    if (current.length != 0) {
+        current[0].classList.remove("schedule_selected");
+    }
+    let newCurrent = document.getElementById("UserButton");
+    newCurrent.classList.add("schedule_selected");
+    // Get schedule data
+    let schdData = await getSchedule();
+    if (schdData == null) {
+        console.assert("Error: Schedule Data does not exist here");
+        return;
+    }
+    // get user's name 
+    // HOTFIX: This will change when the server is mounted 
+    //    the user name is stored in the cookie, not the user's
+    //    name like it is in the schedule data, because of this. 
+    //    I have a switch case that will need to be ripped out
+    let username = document.cookie.split("=")[0];
+    console.log(username);
+    let name = "name";
+    switch (username) {
+        case "jnyman1":
+            name = "Jack Nyman";
+            break;
+        case "abryan9":
+            name = "Alex Bryan";
+            break;
+        default:
+            break;
+    }
+    // Get Tech Obj for Current User, check against stored data.
+    let tbody_HTML = `<tbody>`;
+    let techObj = schdData[name];
+    if (techObj == undefined) {
+        console.warn("Dashboard: User does not have a schedule");
+        tbody_HTML += `</tbody></table><span> No schedule found associated with current user.</span>`
+    } else {
+        // Build the table
+        let weekdays = Days.slice(1,6);
+        weekdays.forEach(function(day) {
+            tbody_HTML += makeTechSchdRow(techObj, day); 
+        });
+        tbody_HTML += `</tbody></table>`;
+    }
+    let tbody = document.createElement('tbody');
+    tbody.setAttribute("id", "schd_tbody");
+    tbody.innerHTML = tbody_HTML;
+    // Place Table on Dashboard
+    let table = document.getElementById("schd_tbody");
+    table.replaceWith(tbody);
     return;
 }
 
@@ -562,16 +621,22 @@ function makeTechTableHeader(firstColumn) {
     return html;
 }
 
-function makeTechSchdRow(tech, today) {
+function makeTechSchdRow(techObj, today) {
+    // Check If UserButton is selected (Left Hand Column Changes Based off this)
+    let weekdayBool = true;
+    if (document.getElementById("UserButton").classList.contains("schedule_selected")) {
+        weekdayBool = false;
+    }
+    // Build HTML
     let html = `
     <tr>
-        <th scope="row">${tech.Name}</th>`;
+        <th scope="row">${weekdayBool ? techObj.Name : today}</th>`;
     // get schedule timeblocks
     let timeBlocks = getTechSchdTimeBlocks();
     timeBlocks.push("7:30PM");
     // get techs schedule for the day
     let timeSwitches = [];
-    let shift = tech.Schedule[today].split(",");
+    let shift = techObj.Schedule[today].split(",");
     for (let i = 0; i < shift.length; i++) {
         timeSwitches.push(shift[i].split(' - '))
     }
@@ -592,7 +657,7 @@ function makeTechSchdRow(tech, today) {
             }
         }
         if(onClock) {
-            html += `<td class="schd${onClock}" colspan=${endShiftIndex - startShiftIndex}>${tech.Assignment}\t</td>`;
+            html += `<td class="schd${onClock}" colspan=${endShiftIndex - startShiftIndex}>${techObj.Assignment}\t</td>`;
             startShiftIndex, endShiftIndex = 0;
             onClock = !onClock;
             ++timeIndex;
@@ -715,3 +780,6 @@ function isMobile() {
         return false;
     }
 }
+
+// TODO: Temporary Pop-up Notification
+//   I think it would be beneficial to have some kind of message banner to alert users for a number of things. A stashed request along with some kind of error handling to give more specific information about what happened. 
