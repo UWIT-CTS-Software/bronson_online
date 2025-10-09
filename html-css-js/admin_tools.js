@@ -43,14 +43,45 @@ Functions
     - formatLSMDevices(lsm_data)
   Database Editor
     - setDBEditor()
-    - updateDatabaseFromEditor() -- TODO
+    - getLastRoomScheduleUpdate()
+    - filterDatabase()
+    - setDBRoomSchedule()
+    - cancelRSUpload()
+    - dropHandler(ev)
+    - processRSUpload()
+    - readFileAsync(file)
+    - parseRSUpload(arr)
+    - updateDatabaseFromEditor()
+    - postDBChange(endpoint, packet)
+    - setDBBuildingAddition()
+    - confirmDBBuildingAddition()
+    - cancelDBBuildingAddition()
+    - markBuildingToRemove(fieldsetID)
     - setRoomAddition(menuID, buildingTableID)
     - confirmRoomAddition(textareaID, buildingTableID)
+    - cancelRoomAddition(menuID)
+    - syncTablesWithChangelog()
     - removeRoomFromBuilding(rowID)
+    - updateBuilding(menuID)
     - updateRow(rowElementID)
-    - updateChangelog(roomElement)
-    - updateChangelogRoomAddition(newRoomName)
-    - validateUserRoomInput(defaultValue, userInput)
+    - updateDBChangelogHTML(changes)
+    - addToDBEChanges(chgObj)
+    - revertRowChanges(roomName)
+    - validateUserRoomInput(defaultValue, userInput) -- Unused
+    - compareDBEditLSM(buildingAbbreviation)
+    - removeCompareDBEditLSM(buildingAbbrev)
+  Alias Editor
+    - setAliasEditor()
+    - getAliasData()
+    - drawAliasTables()
+    - addRoomAliasRow()
+    - addBuildingAliasRow()
+    - cancelAliasRow(rowId)
+    - confirmAliasRow(rowId)
+    - removeAliasTable(rowID)
+    - undoAliasRowRemoval(rowId, stringifiedBackup)
+    - postAliasTable()
+    - postAliasReset()
     
 */
 // Note, I think it would be good to put the terminal stuff in here that is currently in index_admin.html but it utilizes JQueury in a way that I am not hundred percent sure of so I will not be doing that just yet because I don't want to break anything.
@@ -2361,7 +2392,7 @@ function revertRowChanges(roomName) {
     return;
 }
 
-// Checks the validatity of User Input when setting a new Room Name
+// UNUSED: Checks the validatity of User Input when setting a new Room Name
 // numbers instead of bool
 //   - 1: true / Good
 //   - 2: Bad Abbreviation
@@ -2581,9 +2612,7 @@ async function setAliasEditor() {
     alias_editor.innerHTML = `
     <fieldset>
         <legend> Edit Alias Table: </legend>
-        <p> The Alias table is designed to bridge gaps in various naming schema from all of our external systems. 25Live and LSM utilize different naming schemes for different rooms. This tool will allow Bronson to adjust incoming data to work nicely in our database. 
-        <br>
-        TODO: Checkerboard makes updates to the database when it receives results from LSM and these updates need to be crosschecked with the Alias table.</p>
+        <p> The Alias table is designed to bridge gaps in various naming schema from all of our external systems. 25Live and LSM utilize different naming schemes for different rooms. This tool will allow Bronson to adjust incoming data to work nicely in our database. Checkerboard also utilizes the Alias Table to resolve room check destinations to Bronson's Database.</p>
         <p> Room Name Aliases: </p>
         <div class="tableDiv">
             <table id="roomAliasTable">
@@ -2694,7 +2723,6 @@ function drawAliasTables() {
         newRow.classList.add("aliasRow");
         if(buildingRows[i].status != undefined) {
             newRow.classList.add("toBeAdded");
-            delete buildingRows[i].status;
         }
         newRow.setAttribute("id", `${buildingRows[i].name}-row`);
         let bronsonCell = newRow.insertCell(0);
@@ -2809,28 +2837,33 @@ function confirmAliasRow(rowId) {
     let roomBool = inputs.length == 4 ? true : false;
     // Does this name exist inside of bronson?
     let campData = JSON.parse(localStorage.getItem("campData"));
-    console.log("object values campData", Object.values(campData));
+    //console.log("object values campData", Object.values(campData));
     let filter = [];
     if(roomBool) {
         let targetBuilding = name.split(" ")[0];
         let bldData = campData[targetBuilding];
         if (bldData == undefined) {
-            console.log("Alias Error: Destination Room's building is not found.");
+            console.warn("Alias Error: Destination Room's building is not found.");
             return;
         }
         filter = bldData.rooms.filter(e => e.name == name);
     } else {
         filter = Object.values(campData).filter(e => e.abbrev == name);
-        console.log("Alias Filter: \n", filter);
+        //console.log("Alias Filter: \n", filter);
     }
     if(filter.length == 0) {
-        console.log("Alias Error: Destination Alias does not exist in Bronson");
+        console.warn("Alias Error: Destination Alias does not exist in Bronson");
         return;
     }
     // Get Alias Data from storage
     let aliasData = JSON.parse(sessionStorage.getItem("aliasData"));
     // New Alias Object, insert to correct nested object.
     if(roomBool) {
+        // Check for duplcate record
+        if(aliasData.rooms.filter(e => e.name == name)) {
+            console.warn("Alias Error: Record for new room already exists");
+            return;
+        }
         let newAlias = {
             name: name,
             lsmName: row.cells[1].querySelector('input').value,
@@ -2841,6 +2874,10 @@ function confirmAliasRow(rowId) {
         aliasData.rooms.push(newAlias);
         document.getElementById("addRoomAliasButton").disabled = false;
     } else {
+        if(aliasData.buildings.filter(e => e.name == name).length > 0) {
+            console.warn("Alias Error: Record for new building already exists");
+            return;
+        }
         let newAlias = {
             name: name,
             lsmName: row.cells[1].querySelector('input').value,
