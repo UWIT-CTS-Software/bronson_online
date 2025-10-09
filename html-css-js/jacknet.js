@@ -119,16 +119,6 @@ async function getSelectedBuilding() {
     }
 }
 
-// pad()
-//  n     - what you are padding
-//  width - number of space
-//  z     - what you are padding with (optional, default: 0)
-function pad(n, width, z) {
-    z = z || '0';
-    n = n + '';
-    return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
-}
-
 /*
 $$$$$$$$\                                          $$\     
 $$  _____|                                         $$ |    
