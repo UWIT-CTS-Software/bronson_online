@@ -210,6 +210,30 @@ input:checked + .slider:before {
   border-radius: 50%;
 }
 
+/* Collapse Buttons */
+.collapsible {
+    background-color: rgb(139, 139, 99);
+    color: rgb(90,30,30);
+    cursor: pointer;
+    padding: 5px;
+    width: 100%;
+    border: 2px solid rgb(102, 53, 54);
+    text-align: left;
+    outline: none;
+    font-size: 15px;
+}
+
+.active, .collapsible:hover {
+    background-color: rgb(129, 116, 76);
+}
+
+.collapse_content {
+    padding: 0 18px;
+    display: none;
+    overflow: hidden;
+    background-color: #1a1a1a00;
+}
+
 /* Buttons located in the hamburger menu */
 .hb_button {
     display: block;
@@ -1208,6 +1232,14 @@ ol li::marker {
     grid-column: 2/10;
 }
 
+.exeButton {
+    background-color: rgb(62, 156, 59);
+}
+
+.rmvButton {
+    background-color: rgb(196, 112, 112);
+}
+
 #admin_internals {
     border: 1px inset rgb(236,200,101);
     border-radius:15px;
@@ -1222,6 +1254,18 @@ ol li::marker {
     border:2px inset rgb(122,113,45);
     padding-bottom: 5px;
     margin-bottom:5px;
+}
+
+.tmpDBRecord {
+    background-color: #5e5b3b;
+}
+
+.toBeAdded {
+    background-color:#3d643f;
+}
+
+.toBeRemoved {
+    background-color: #8b4040;
 }
 
 /* Admin Tools -- Schedule Editor */
@@ -1242,7 +1286,6 @@ ol li::marker {
 }
 
 /* Tech Tables */
-
 .techFieldset {
     padding: 3px 3px 3px 3px;
     display: flex;
@@ -1315,11 +1358,185 @@ ol li::marker {
     background-color:red;
 }
 
+.diagOption:hover {
+    background-color: #8c8a91;
+}
+
+#diag_space {
+    display: flex;
+}
+
+#diag_list {
+    height: 700px;
+    overflow-y: scroll;
+    border: 2px inset rgb(144, 118, 26);
+    margin-right: 5px;
+    padding: 0px 0px 0px 0px;
+    margin: 16px 2px 16px 2px;
+    width: 30%;
+    color: white;
+}
+
+#diag_terminal {
+    height: 700px;
+    border-radius: 0px;
+    width: 69%;
+    padding: 0px 0px 0px 0px;
+    margin: 16px 2px 16px 2px;
+}
+
+/* Database Editor Tab */
+.invalid, .invalidInput {
+    border: 2px solid red;
+}
+
+.dbRoomInput {
+    width: 40px;
+}
+
+.valid {
+    border: 1px solid rgb(144, 118, 26);
+}
+
+.databaseFilterDiv {
+    width: 35%;
+    height: 30px;
+    float: right;
+    padding: 0px 15px 0px 0px
+}
+
+.databaseFilterDiv label {
+    font-size: small;
+}
+
+#databaseFilter {
+    width: 80%;
+    height: 25px;
+    float: right;
+}
+
+.fileUpload {
+    background-color:#302f35;
+    border: 2px dotted rgb(33,66,99);
+    width: 200px;
+    height: 100px;
+    text-align: center;
+    padding: 0px 15px;
+    margin: 5px auto;
+}
+
+#lastUpdated-RS {
+    font-size: small;
+    text-align: center;
+    margin-top: 5px;
+    color: rgb(144, 118, 26);
+}
+
+.DBE_Building_Menu {
+    padding: 0px;
+    margin: 10px 40px 0px 50px;
+}
+
+.DBE_Building_Label {
+    width: 130px;
+    display: inline-block;
+    text-align: right;
+}
+
+.DBE_Building_Fields {
+    column-count:2;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    column-gap: 10px;
+    padding: 0px;
+}
+
+.dbe-legend {
+    background-color: #302f35;
+}
+
+.dbBuildingInput {
+    width: 380px;
+    color: rgb(144, 118, 26);
+    background-color: rgb(50, 50, 50);
+}
+
+.dbBuildingSmallInput {
+    width: 40px;
+    color: rgb(144, 118, 26);
+    background-color: rgb(50, 50, 50);
+}
+
+.dbRoomInputName {
+    width: 100px;
+    color: rgb(144, 118, 26);
+    background-color: rgb(50, 50, 50);
+    /* border: 1px solid rgb(144, 118, 26); */
+}
+
+.dbBuildingTable {
+    color: rgb(133, 118, 60);
+    border: 1px inset rgb(216, 192, 104);
+    font-family: 'Courier New', Courier, monospace;
+    font-size: small;
+    width: 100%;
+    text-align: center;
+}
+
+.dbRowChanged {
+    background-color: rgb(114, 104, 60);
+}
+
+.dbBuildingChanged {
+    background-color: rgb(114,104,60);
+}
+
+.dbRowToBeRemoved, .dbBuildingToBeRemoved {
+    background-color: rgb(167, 74, 74);
+}
+
+.dbRowToBeAdded, .dbBuildingToBeAdded {
+    background-color:#67a742;
+}
+
 @media (max-width: 1000px) {
     #admin_internals {
         width: 900px;
     }
+}
 
+.tableDiv {
+    font-weight:100;
+    font-size:small;
+    font-family:'Courier New', Courier, monospace;
+    border: 1px inset rgb(216, 192, 104);
+    color:rgb(194, 181, 124);
+    border-radius: 4px;
+    padding-bottom: 5px;
+    width:100%;
+    height:165px;
+    overflow-y: scroll;
+}
+
+.tableDiv th {
+    border: 2px solid rgb(114, 104, 60);
+    width: 1%;
+}
+
+.tableDiv tr {
+    gap: 0px;
+}
+
+.tableDiv td {
+    border-top: 1px solid rgb(129, 116, 76);
+    border-bottom: 1px solid rgb(129, 116, 76);
+}
+
+.aliasInput {
+    width: 80%;
+    color: rgb(144, 118, 26);
+    background-color: rgb(50, 50, 50);
+    margin: 0px 10%;
 }
 
 /* -------------- Tabs -------------- */
@@ -1466,8 +1683,10 @@ ol li::marker {
 }
 
 .schedule {
-    transform: translate(90px, 6px);
+    transform: translate(90px, -11px);
     width: 500px;
+    z-index: 2;
+    position: absolute;
 }
 
 .leaderTab {
@@ -1496,7 +1715,7 @@ ol li::marker {
     font-family: "Racing Sans One", sans-serif;
     font-size: 14px;
     text-align: center;
-    width:72px;
+    width:67px;
     transition-duration: .2s;
 }
 
@@ -1527,13 +1746,70 @@ ol li::marker {
     box-shadow: none;
 }
 
-.leaderTab.leader_selected, .leaderTab.schedule_selected {
+.scheduleTab {
+    margin: -12px -6px;
+    opacity: 100%;
+    grid-row: 1;
+    text-align: center;
+    border: none;
+    background-color: transparent;
+    box-sizing: content-box;
+    box-shadow: none;
+}
+
+.scheduleTab span { 
+    position: absolute;
+    top: 3px;
+    left: 11px;
+    bottom: 0px;
+    color: rgb(180, 142, 79);
+    background: rgb(88,79,51);
+    border: rgb(135,62,9) solid 2px;
+    border-bottom: none;
+    border-radius: 10px;
+    padding: 0px 0px 0px 0px;
+    margin: 2px 0px 10px 0px;
+    font-family: "Racing Sans One", sans-serif;
+    font-size: 14px;
+    text-align: center;
+    width:83px;
+    transition-duration: .2s;
+}
+
+.scheduleTab:hover{
+    text-decoration: none;
+    transition-duration: 0.1s;
+    transform: matrix(1,0,0,1.1,0,-1.5);
+    background: transparent;
+    filter: hue-rotate(10deg);
+}
+
+.scheduleTab:active span {
+    transform: matrix(1,0,0,1.5,0,-30);
+    top: 4px;
+    bottom: -3px;
+    left: 14px;
+    padding: 0px 0px 0px 0px;
+    transition-duration: .1s;
+    border: none;
+}
+
+.scheduleTab:active {
+    background: transparent;
+    transform: matrix(1,0,0,.5,0,6);
+    transition-duration:.1s;
+    filter: hue-rotate(35deg);
+    padding-top:0px;
+    box-shadow: none;
+}
+
+.leaderTab.leader_selected, .scheduleTab.schedule_selected {
     transform: matrix(1, 0, 0, .6, 0, 5);
     transition-duration: 0.1s;
     filter: hue-rotate(-60deg);
 }
 
-.leaderTab.leader_selected span, .leaderTab.schedule_selected span {
+.leaderTab.leader_selected span, .scheduleTab.schedule_selected span {
     transform: scaleY(1.6);
     top: 0px;
     bottom: 5px;
@@ -1544,7 +1820,12 @@ ol li::marker {
 }
 
 .leader_tab_img {
-    width:90px;
+    width:85px;
+    height:30px;
+}
+
+.schedule_tab_img {
+    width:101px;
     height:30px;
 }
 
@@ -1670,7 +1951,7 @@ ol li::marker {
 
 /* Other */
 
-input[type=text], input[type=password] {
+.inputText, input[type=password] {
     width: 100%;
     padding: 12px 20px;
     margin: 8px 0;
@@ -1686,7 +1967,7 @@ span.psw {
     padding-top: 16px;
 }
 
-.login_imgcontainer {
+.login_imgcontainer, .fileupload_imgcontainer {
     text-align: center;
     margin: 24px 0 12px 0;
     position: relative;
