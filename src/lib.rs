@@ -370,8 +370,8 @@ impl Database {
 							0 => DeviceType::PROC,
 							1 => DeviceType::PJ,
 							2 => DeviceType::DISP,
-							3 => DeviceType::WS,
-							4 => DeviceType::TP,
+							3 => DeviceType::TP,
+							4 => DeviceType::WS,
 							5 => DeviceType::CMIC,
 							_ => DeviceType::UNKNOWN
 						},
