@@ -545,11 +545,12 @@ async function postJNVis(formPing, building, totalDevices, totalNotFound, devTyp
             let dev_type = hnElement.hostname.dev_type;
             let num = hnElement.hostname.num;
             let ip = hnElement.ip; 
-            let alert = hnElement.alert
+            let alert = hnElement.alert;
+            let error_msg = hnElement.error_message;
             if (hnElement.alert == 0) {
                 devsObj[dev_type].push(`<li class="visRoomDeviceItem visTrue" title="Hostname: ${room}-${dev_type}${num}\n                IP: ${ip}"> _ </li>`);
             } else {
-                devsObj[dev_type].push(`<li class="visRoomDeviceItem visFalse" title="${room}-${dev_type}${num} not found\nMissed Pings: ${alert}"> _ </li>`);
+                devsObj[dev_type].push(`<li class="visRoomDeviceItem visFalse" title="${room}-${dev_type}${num} not found\nMissed Pings: ${alert}\nError: ${error_msg}"> _ </li>`);
             }
         }
 
