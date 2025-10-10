@@ -1277,7 +1277,7 @@ async function setDBEditor() {
             }
         });
     }
-    console.log("Room Schedule Timestamps: ", tmp_ts);
+    //console.log("Room Schedule Timestamps: ", tmp_ts);
     // Add Pop-Up Modal for file upload (Room Schedule Editor)
     db_editor.innerHTML += `
     <div id="fileUploadModal" class="modal" style="display:none;">
@@ -2007,7 +2007,7 @@ function confirmRoomAddition(textareaID, buildingTableID) {
     // Add new Row to Table
     tableElement.innerHTML += tmp;
     syncTablesWithChangelog();
-    // DBChangelog updaet
+    // DBChangelog update
     let changeObj = {
         Type: "ROOM",
         Destination: roomName,
@@ -2037,11 +2037,17 @@ function syncTablesWithChangelog() {
     let changelog = JSON.parse(sessionStorage.getItem("DBEChanges"));
     let changedRows = document.getElementsByClassName("dbRowChanged");
     for(let i = 0; i < changedRows.length; i++) {
-        let filteredChanges = changelog.log.filter(e => e.Destination == changedRows[i].id.split("-")[0]);
+        let filteredChanges = changelog.log.filter(e => e.Destination == changedRows[i].id.split("-")[0] && e.Change == "UPDATE");
         if (filteredChanges.length == 1) {
             let inputValues = filteredChanges[0].NewValue;
             let inputs = changedRows[i].getElementsByTagName("input");
+            // Edge-Case: Row is 'toBeAdded', extra text-input shifts order
+            if(changedRows[i].classList.contains("dbRowToBeAdded")) {
+                inputValues.unshift("0");
+            }
+            // Iterate through inputs
             for(let j = 0; j < inputs.length; j++) {
+                //console.log(inputs[j].id);
                 if(inputs[j].type == "number") {
                     inputs[j].value = inputValues[j];
                 } else if (inputs[j].type == "checked") {
@@ -2049,7 +2055,7 @@ function syncTablesWithChangelog() {
                 }
             }
         } else {
-            console.warn("Filter did not narrow down correctly");
+            console.warn("Changelog Sync Error: Filter did not narrow down correctly");
         }
     }
     return;
@@ -2480,8 +2486,11 @@ async function compareDBEditLSM(buildingAbbreviation) {
             tmp.push(`${roomName} Not found in LSM`);
         } else {
             tmp.push(`LSM ${roomName}`);
-            //console.log("rowInputs", rowInputs);
-            for(let j = 0; j < rowInputs.length - 3; j++) { // -3 because we do not look at WS, CMIX, or General Pool with that endpoint ATM.
+            
+            for(let j = (item.classList.contains("dbRowToBeAdded") ? 1 : 0); j < rowInputs.length - 3; j++) { 
+                // Funky for-loop:
+                // Textbox is included as input when a room is to be added, we ignore that.
+                // -3 to the length because we do not look at WS, CMIX, or General Pool with that endpoint atm.
                 let device = rowInputs[j].id.split("-")[1];
                 switch(device) {
                     case "PROC":
@@ -2497,7 +2506,7 @@ async function compareDBEditLSM(buildingAbbreviation) {
                         device = "Touch Panel";
                         break;
                     default:
-                        console.warn("Faulty Behvaior, Detected");
+                        console.warn("Faulty Behvaior Detected, Invalid Device from LSM: ", device);
                         break;
                 }
                 //console.log("Device", device);
