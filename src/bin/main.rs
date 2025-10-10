@@ -575,10 +575,10 @@ async fn handle_connection(
                             .collect()
                     })
                     .unwrap();
-                println!("DEBUG Updating Target Room:{}\n New Values: {:?}", target_room, new_values);
+                debug!("Updating Target Room:{}\n New Values: {:?}", target_room, new_values);
                 // Get Existing Room Record from database
                 let mut new_db_room : DB_Room = database.get_room_by_name(&target_room);
-                println!("DEBUG Existing DB_Room (Pre-Update) -> \n {:?}", new_db_room);
+                //println!("DEBUG Existing DB_Room (Pre-Update) -> \n {:?}", new_db_room);
                 // Update General Pool Status
                 new_db_room.gp = match new_values[6] { 
                     1 => true,
@@ -591,7 +591,7 @@ async fn handle_connection(
                 // Update Ping Data in room
                 new_db_room.ping_data = ping_vec;
                 // Update Database
-                println!("DEBUG Updating DB_Room -> \n {:?}", new_db_room);
+                //println!("DEBUG Updating DB_Room -> \n {:?}", new_db_room);
                 database.update_room(&new_db_room); // UNCOMMENT ME WHEN READY
                 res.status(STATUS_200);
                 res.send_contents("".into());
