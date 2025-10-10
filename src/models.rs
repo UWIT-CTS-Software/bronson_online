@@ -140,14 +140,20 @@ impl DB_Hostname {
 pub struct DB_IpAddress {
     pub hostname: DB_Hostname,
     pub ip: String,
+    pub last_ping: String,
+    pub alert: i32,
+    pub error_message: String,
 }
 
 impl ToSql<IpAddress, Pg> for DB_IpAddress {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
-        <dyn serialize::WriteTuple::<(DB_Hostname, Text)>>::write_tuple(
+        <dyn serialize::WriteTuple::<(DB_Hostname, Text, Text, Integer, Text)>>::write_tuple(
             &(
                 &self.hostname,
                 &self.ip,
+                &self.last_ping,
+                &self.alert,
+                &self.error_message
             ),
             &mut out.reborrow(),
         )
@@ -156,11 +162,14 @@ impl ToSql<IpAddress, Pg> for DB_IpAddress {
 
 impl FromSql<IpAddress, Pg> for DB_IpAddress {
     fn from_sql(bytes: PgValue) -> deserialize::Result<Self> {
-        let (hostname, ip) = FromSql::<Record<(DB_Hostname, Text)>, Pg>::from_sql(bytes)?;
+        let (hostname, ip, last_ping, alert, error_message) = FromSql::<Record<(DB_Hostname, Text, Text, Integer, Text)>, Pg>::from_sql(bytes)?;
 
         Ok(DB_IpAddress {
             hostname,
             ip,
+            last_ping,
+            alert,
+            error_message
         })
     }
 }

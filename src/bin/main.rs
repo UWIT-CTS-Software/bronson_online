@@ -706,10 +706,6 @@ async fn handle_connection(
                 }).to_string().into());
             } else {
                 let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-                let target_building: String = body_json["destination"]
-                    .as_str()
-                    .unwrap()
-                    .to_string();
                 //println!("{:?}", body_json);
                 let new_values: Vec<String> = body_json["newValue"]
                     .as_array()
@@ -1113,7 +1109,16 @@ async fn handle_connection(
                               .await
                               .expect("[-] PAYLOAD ERROR");
 
-            let v: Value = serde_json::from_str(&body).expect("Empty");
+            let v: Value = match serde_json::from_str(&body) {
+                Ok(val) => val,
+                Err(_)      => {
+                    warn!("LSM_ERR: API call returned error.");
+                    json!({
+                    "count": -1,
+                    "data": "LSM Busy: Please try again"
+                    })
+                }
+            };
             let mut check_map: HashMap<String, String> = HashMap::new();
             if v["count"].as_i64() > Some(0) {
                 let num_entries = match v["count"].as_i64() {
@@ -1131,7 +1136,6 @@ async fn handle_connection(
                 for i in 0..num_entries {
                     let mut check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
                     // Look to see if check["LocationName"] is in the alias_obj, replace it if so.
-                    println!("check[locationName] = {:?}", check["LocationName"].as_str().unwrap());
                     //let tmp_locale = &mut check["LocationName"].as_str().unwrap();
                     for tuple in &alias_vec {
                         if tuple.1 == check["LocationName"].as_str().unwrap() {
@@ -1402,9 +1406,21 @@ fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress
     for net in net_elements {
         let hn_string: String = net.as_ref().unwrap().hostname.to_string();
         pinged_hns.push(Some(
-            DB_IpAddress {
-                hostname: net.unwrap().hostname,
-                ip: ping_this(&hn_string)
+            match ping_this(&hn_string) {
+                Ok(ip) => DB_IpAddress {
+                    hostname: net.clone().unwrap().hostname,
+                    ip: ip,
+                    last_ping: String::from(format!("{}", chrono::Utc::now())),
+                    alert: 0,
+                    error_message: String::new()
+                },
+                Err(m)      => DB_IpAddress {
+                    hostname: net.clone().unwrap().hostname,
+                    ip: String::from("x"),
+                    last_ping: String::from(format!("{}", chrono::Utc::now())),
+                    alert: net.clone().unwrap().alert + 1,
+                    error_message: String::from(m)
+                }
             }
         ))
     }

@@ -17,7 +17,10 @@ CREATE TYPE bronson.hostname AS (
 
 CREATE TYPE bronson.ip_address AS (
     "hostname" bronson.hostname,
-    "ip" TEXT
+    "ip" TEXT,
+    "last_ping" TEXT,
+    "alert" INTEGER,
+    "error_message" TEXT
 );
 
 CREATE TABLE IF NOT EXISTS bronson.buildings (
