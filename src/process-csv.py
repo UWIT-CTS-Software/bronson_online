@@ -11,7 +11,7 @@ def pad(in_string, buff_char, out_len):
     
 for day_of_week in days:
     sched_file = "schedule_" + day_of_week + ".csv"
-    config_file = "roomConfig" + day_of_week + ".csv"
+    config_file = "roomConfig_" + day_of_week + ".csv"
 
     with open(sched_file) as file:
         reader = csv.reader(file, delimiter=',')
