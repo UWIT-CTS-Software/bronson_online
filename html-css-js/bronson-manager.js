@@ -73,6 +73,7 @@ These functions are used in Checkerboard, Jacknet, and the dashboard.
 */
 
 const Days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DevTypes = ["PROC", "PJ", "DISP", "TP", "WS", "CMIC"]
 // Sets local strage for data used by the various tools
 //  - Zone Building list array of room names for each zone
 //  - Campus.json used for various things in jacknet
