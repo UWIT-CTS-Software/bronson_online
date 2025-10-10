@@ -1091,6 +1091,18 @@ async fn handle_connection(
                     }
                 }
             }
+            // Alias Building
+            let alias_buildings = alias_obj.get("buildings");
+            let mut alias_abbrev : (String, String) = ("NOTSET".to_string(),"NOTSET".to_string());
+            if let Some(arr) = alias_buildings?.as_array() {
+                for item in arr {
+                    let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
+                    if alias_name == lsm_building.abbrev.as_str() {
+                        alias_abbrev.0 = item.get("lsmName").unwrap().as_str().unwrap().to_string();
+                        alias_abbrev.1 = item.get("name").unwrap().as_str().unwrap().to_string();
+                    }
+                }
+            }
             //println!("Alias Vec: {:?}", alias_vec);
             // Process Request to LSM
             let body = req.get(url)
@@ -1127,6 +1139,17 @@ async fn handle_connection(
                             debug!("Alias Struck, {:?} to be replaced with {:?}", check["LocationName"].as_str().unwrap(), tuple.0);
                             check["LocationName"] = serde_json::Value::String(tuple.0.clone());
                         }
+                    }
+                    // Replace Abbrevition if exists
+                    if alias_abbrev.0 != "NOTSET" {
+                        // check["LocationName"]
+                        debug!("Building Alias Struck, {:?} to be replaced with {:?}",alias_abbrev.0, alias_abbrev.1);
+                        check["LocationName"] = serde_json::Value::String(
+                            check["LocationName"]
+                                .as_str()
+                                .unwrap()
+                                .replace(&alias_abbrev.0, &alias_abbrev.1)
+                        );
                     }
                     check_map.insert(
                         String::from(check["LocationName"].as_str().unwrap()), 
