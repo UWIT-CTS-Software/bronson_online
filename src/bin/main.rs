@@ -912,9 +912,21 @@ fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress
     for net in net_elements {
         let hn_string: String = net.as_ref().unwrap().hostname.to_string();
         pinged_hns.push(Some(
-            DB_IpAddress {
-                hostname: net.unwrap().hostname,
-                ip: ping_this(&hn_string)
+            match ping_this(&hn_string) {
+                Ok(ip) => DB_IpAddress {
+                    hostname: net.clone().unwrap().hostname,
+                    ip: ip,
+                    last_ping: String::from(format!("{}", chrono::Utc::now())),
+                    alert: 0,
+                    error_message: String::new()
+                },
+                _      => DB_IpAddress {
+                    hostname: net.clone().unwrap().hostname,
+                    ip: String::from("x"),
+                    last_ping: String::from(format!("{}", chrono::Utc::now())),
+                    alert: net.clone().unwrap().alert + 1,
+                    error_message: String::from("test error")
+                }
             }
         ))
     }

@@ -390,7 +390,10 @@ impl Database {
 			ip_vec.push(
 				Some(DB_IpAddress {
 					hostname: hn.clone().unwrap().clone(),
-					ip: String::from("x")
+					ip: String::from("x"),
+					last_ping: String::from("2000-01-01T00:00:00Z"),
+					alert: 0,
+					error_message: String::new()
 				})
 			);
 		}
@@ -458,6 +461,17 @@ impl Database {
 			.returning(DB_Building::as_returning())
 			.get_result(&mut self.connection)
 			.expect("SQL_ERR: Error inserting building");
+	}
+
+	pub fn get_room(&mut self, room_name: &String) -> Option<DB_Room> {
+		use crate::schema::bronson::rooms::dsl::name;
+
+		rooms
+			.select(DB_Room::as_select())
+			.filter(name.eq(room_name))
+			.first(&mut self.connection)
+			.optional()
+			.expect("SQL_ERR: Error loading room")
 	}
 
 	pub fn get_rooms_by_abbrev(&mut self, bldg_abbrev: &String) -> Vec<DB_Room> {
