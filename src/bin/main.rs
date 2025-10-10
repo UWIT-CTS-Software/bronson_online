@@ -612,7 +612,6 @@ async fn handle_connection(
                     .to_string();
                 let new_values: Vec<u8> = [0,0,0,0,0,0,0].to_vec();
                 // Note: When we are inserting a new room, we are not providing the inventory in the same call. The intention is that the front-end will send the rooms to insert first and if their is inventory associated with it it will come after.
-                println!("DEBUG INSERTING ROOM INTO DB -> {:?}", new_room);
                 // Build DB_Room Object and insert to Database
                 // Ping Data Vector
                 let hn_vec = Database::gen_hn(new_room.clone(), &new_values);
@@ -622,7 +621,7 @@ async fn handle_connection(
                     abbrev: new_room.split(' ').collect::<Vec<&str>>()[0].to_string(),
                     name: new_room,
                     checked: "2000-01-01T00:00:00Z".to_string(),
-                    needs_checked: false,
+                    needs_checked: true,
                     gp: match new_values[6] { 
                         1 => true,
                         0 => false,
@@ -633,7 +632,7 @@ async fn handle_connection(
                     ping_data: ping_vec,
                     schedule: Vec::new(),
                 };
-                println!("DEBUG INSERTING DB_ROOM => \n {:?}", new_db_room);
+                debug!("INSERTING DB_ROOM => \n {:?}", new_db_room);
                 // Note, the schedule field here is initialized as empty.
                 //   we will require some more tooling to get this data in here.
                 //   whether that be some kind of csv import or a manual page.
@@ -655,7 +654,7 @@ async fn handle_connection(
                     .as_str()
                     .unwrap()
                     .to_string();
-                println!("DEBUG REMOVING ROOM -> {:?}", target_room);
+                debug!("REMOVING ROOM -> {:?}", target_room);
                 // Remove Specified Room from Database
                 database.delete_room(&target_room); // UNCOMMENT ME WHEN READY
                 res.status(STATUS_200);
@@ -1132,7 +1131,7 @@ async fn handle_connection(
                 for i in 0..num_entries {
                     let mut check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
                     // Look to see if check["LocationName"] is in the alias_obj, replace it if so.
-                    //println!("check[locationName] = {:?}", check["LocationName"].as_str().unwrap());
+                    println!("check[locationName] = {:?}", check["LocationName"].as_str().unwrap());
                     //let tmp_locale = &mut check["LocationName"].as_str().unwrap();
                     for tuple in &alias_vec {
                         if tuple.1 == check["LocationName"].as_str().unwrap() {
