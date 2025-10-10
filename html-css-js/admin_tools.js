@@ -2860,7 +2860,7 @@ function confirmAliasRow(rowId) {
     // New Alias Object, insert to correct nested object.
     if(roomBool) {
         // Check for duplcate record
-        if(aliasData.rooms.filter(e => e.name == name)) {
+        if(aliasData.rooms.filter(e => e.name == name).length == 1) {
             console.warn("Alias Error: Record for new room already exists");
             return;
         }
@@ -2974,8 +2974,10 @@ async function postAliasTable() {
         if (roomBool) {
             let target = aliasData.rooms.findIndex(e => e.name == name);
             let aliasObj = aliasData.rooms[target];
-            delete aliasObj.status;
             if(aliasObj != undefined) {
+                if(aliasObj.status != undefined) {
+                    delete aliasObj.status;
+                }
                 aliasObj.lsmName = rows[i].cells[1].querySelector('input').value;
                 aliasObj.liveName = rows[i].cells[2].querySelector('input').value;
                 aliasObj.hostnameException = rows[i].cells[3].querySelector('input').value;
@@ -2992,6 +2994,9 @@ async function postAliasTable() {
             let target = aliasData.buildings.findIndex(e => e.name == name);
             let aliasObj = aliasData.buildings[target];
             if(aliasObj != undefined) {
+                if(aliasObj.status != undefined) {
+                    delete aliasObj.status;
+                }
                 aliasObj.lsmName = rows[i].cells[1].querySelector('input').value;
                 aliasObj.liveName = rows[i].cells[2].querySelector('input').value;
                 aliasData.buildings[target] = aliasObj;
