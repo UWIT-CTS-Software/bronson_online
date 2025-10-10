@@ -1144,11 +1144,11 @@ async function setDBEditor() {
         </fieldset>`;
     //let tmp = ``;
     Object.keys(campData).forEach(function(building) {
-        let tmp = ``;
+        let tmp = [];
         let rooms = campData[building].rooms;
         let buildingName = campData[building].name;
         let lsmName = campData[building].lsm_name;
-        tmp += `
+        tmp.push(`
         <fieldset class="dbBuildingFieldset" id="${building}-fieldset">
             <legend class="dbe-legend"> Building: ${buildingName} - (${building}) </legend>
             <menu id="${building}-buildingMenu" oninput="updateBuilding('${building}-buildingMenu')" class="DBE_Building_Menu">
@@ -1187,14 +1187,14 @@ async function setDBEditor() {
                             <th scope="col">General Pool</th>
                         </tr>
                     </thead>
-                    <tbody id="${building}-tbody">`;
+                    <tbody id="${building}-tbody">`);
         rooms.forEach(function(room) {
             let roomName = room.name;
             let pingData = room.ping_data;
             let procCount, dispCount, pjCount, tpCount, wsCount, micCount;
             procCount = dispCount = pjCount = tpCount = wsCount = micCount = 0;
             let gpBool = room.gp;
-            // Bug:
+            
             pingData.forEach(function(device) {
                 let hnObj = device.hostname; // hostname Object
                 switch(hnObj.dev_type) {
@@ -1220,7 +1220,7 @@ async function setDBEditor() {
                         break;
                 }
             });
-            tmp += `
+            tmp.push(`
                 <tr id="${roomName}-row" class="dbeRoomRow" oninput="updateRow('${roomName}-row')">
                     <th scope="row" class="dbRoomName"><span class="dbRoomInputName" id="${roomName}-text" value="${roomName}">${roomName}</span></th>
                     <td><input type="number" class="dbRoomInput" id="${roomName}-PROC" value="${procCount}" min="0"></td>
@@ -1231,9 +1231,9 @@ async function setDBEditor() {
                     <td><input type="number" class="dbRoomInput" id="${roomName}-CMIC" value="${micCount}" min="0"></td>
                     <td><input type="checkbox" class="dbRoomCheckbox" id="${roomName}-GP" ${gpBool ? 'checked' : ''}></td>
                     <td><button id="${roomName}_rmvBtn" class="rmvButton" onclick="removeRoomFromBuilding('${roomName}-row')"> Remove </button></td>
-                </tr>`;
+                </tr>`);
         });
-        tmp += `
+        tmp.push(`
                 </tbody>
             </table>
             <menu id="${building}-roomMenu">
@@ -1244,8 +1244,8 @@ async function setDBEditor() {
             <menu id="${building}-menu">
                 <button id="${building}-rmvBtn" class="rmvButton" onclick="markBuildingToRemove('${building}-fieldset')"> Remove Building</button>
             </menu>
-        </fieldset>`;
-        db_editor.innerHTML += tmp;
+        </fieldset>`);
+        db_editor.innerHTML += tmp.join();
     });
     // Get timestamps for last room schedule update, sort them by weekday
     let rsTimestamp = await getLastRoomScheduleUpdate();

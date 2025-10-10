@@ -683,7 +683,7 @@ async fn handle_connection(
                     })
                     .unwrap();
                 
-                println!("DEBUG Updating Building -> {} {:?}", target_building, new_values);
+                //println!("DEBUG Updating Building -> {} {:?}", target_building, new_values);
                 // Get Existing Building Record from database
                 let mut new_db_building : DB_Building = database.get_building_by_abbrev(&target_building);
                 // Update Building Values
@@ -692,7 +692,7 @@ async fn handle_connection(
                 new_db_building.lsm_name = new_values[2].to_string();
                 new_db_building.zone = new_values[3].parse().expect("invalid zone");
                 // Update Database
-                println!("DEBUG Updated Building Record:\n{:?}", &new_db_building);
+                debug!("Updated Building Record:\n{:?}", &new_db_building);
                 database.update_building(&new_db_building); // UNCOMMENT ME WHEN READY
                 res.status(STATUS_200);
                 res.send_contents("".into());
@@ -710,7 +710,7 @@ async fn handle_connection(
                     .as_str()
                     .unwrap()
                     .to_string();
-                println!("{:?}", body_json);
+                //println!("{:?}", body_json);
                 let new_values: Vec<String> = body_json["newValue"]
                     .as_array()
                     .map(|arr| {
@@ -719,7 +719,7 @@ async fn handle_connection(
                             .collect()
                     })
                     .unwrap();
-                println!("{} {:?}", target_building, new_values);
+                //println!("{} {:?}", target_building, new_values);
                 // Create New DB_Builing with new_values
                 let new_db_building = DB_Building {
                     name: new_values[0].clone(),
@@ -729,7 +729,7 @@ async fn handle_connection(
                     checked_rooms: 0,
                     total_rooms: 0
                 };
-                println!("DEBUG Inserting Building Record:\n {:?}", &new_db_building);
+                debug!("Inserting Building Record:\n {:?}", &new_db_building);
                 database.update_building(&new_db_building); //UNCOMMENT ME WHEN READY
                 res.status(STATUS_200);
                 res.send_contents("".into());
@@ -747,7 +747,7 @@ async fn handle_connection(
                     .as_str()
                     .unwrap()
                     .to_string();
-                println!("Target Building:\n {:?}", target_building);
+                debug!("DB Target Building to remove:\n {:?}", target_building);
                 database.delete_building(&target_building);
                 res.status(STATUS_200);
                 res.send_contents("".into());
