@@ -1685,7 +1685,7 @@ ol li::marker {
 .schedule {
     transform: translate(90px, -11px);
     width: 500px;
-    z-index: 2;
+    z-index: 0;
     position: absolute;
 }
 
