@@ -390,7 +390,10 @@ impl Database {
 			ip_vec.push(
 				Some(DB_IpAddress {
 					hostname: hn.clone().unwrap().clone(),
-					ip: String::from("x")
+					ip: String::from("x"),
+					last_ping: String::from("2000-01-01T00:00:00Z"),
+					alert: 0,
+					error_message: String::new()
 				})
 			);
 		}
