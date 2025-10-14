@@ -151,7 +151,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("[!] ... {}:{} ...", host_ip, host_port.to_string());
     debug!("Server mounted!");
 
-    let pool = ThreadPool::new(6);
+    let pool = ThreadPool::new(6); // Thread pool for handling requests
+    let data_pool = ThreadPool::new(2); // Thread pool for database operations
     let mut buffer = [0; BUFF_SIZE];
 
     // ----------------------------------------------------------------------
@@ -160,7 +161,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => error!("STDOUT flush failed: {}", e)
     };
 
-    // embed_migrations
+    // embed_migrations (iffy on this)
     dotenv().ok(); // Load .env file
     let database_url = env::var("DATABASE_URL")
         .expect("DATABASE_URL must be set");
@@ -172,6 +173,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut database = Database::new();
     database.init_if_empty();
 
+    // Data Thread Pool
+    let thread_schedule = DB_DataElement {
+        key: String::from("thread_schedule"),
+        val: String::from(
+            "{
+                \"print1\": {
+                    \"duration\": \"60\",
+                    \"timestamp\": \"2000-01-01T00:00:00Z\"
+                },
+                \"print2\": {
+                    \"duration\": \"60\",
+                    \"timestamp\": \"2000-01-01T00:00:00Z\"
+                }
+            }"),
+    }; // values are seconds between runs, these will be replaced by endpoints that go outside of bronson.
+    database.update_data(&thread_schedule);
+    let () = loop {
+        let data_clone = database.clone();
+        data_pool.execute(move || {
+            data_sync(data_clone);
+        });
+    };
+
+    // User Requests / User Thread Pool
     for stream in listener.incoming() {
         let mut stream = match stream {
             Ok(s) => s,
@@ -225,6 +250,56 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
         .apply()?;
     
     return Ok(());
+}
+
+#[tokio::main]
+#[allow(unused_assignments)]
+async fn data_sync(
+    mut database: Database,
+) -> Option<Response> {
+    let mut res: Response = Response::new();
+    let thread_schedule: DB_DataElement = database.get_data("thread_schedule")
+        .expect("Unable to get thread_schedule from database");
+    let thread_obj: Value = serde_json::from_str(&thread_schedule.val)
+        .expect("Unable to parse thread_schedule");
+    // iterate through thread_obj...
+    if let Some(mut object_map) = thread_obj.as_object().clone() {
+        for (task, mut parameters) in object_map.clone() {
+            let timestamp: DateTime<Local> = parameters["timestamp"]
+                .as_str()
+                .unwrap()
+                .parse()
+                .unwrap();
+            let duration = parameters["duration"]
+                .as_str()
+                .unwrap()
+                .parse()
+                .unwrap();
+            let time_diff: TimeDelta = Local::now() - timestamp;
+            match &task[..] {
+                "print1" => {
+                    if time_diff.num_seconds() >= duration {
+                        println!("Global Threading Test: Print Statement 1");
+                        parameters["timestamp"] = serde_json::from_str(&Local::now().to_string())
+                            .expect("Unable to timestamps");
+                    }
+                },
+                "print2" => {
+                    if time_diff.num_seconds() >= duration {
+                        println!("Global Threading Test: Print Statement 2");
+                        parameters["timestamp"] = serde_json::from_str(&Local::now().to_string())
+                            .expect("Unable to parse timestamps");
+                    }
+                },
+                _ => {
+                    println!("Unhandled task found in thread_schedule");
+                }
+            }
+        }
+    }
+    // TODO: Set thread_schedule w/ updated timestamps
+    //...
+    return Some(res);
 }
 
 #[tokio::main]
@@ -375,7 +450,7 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "GET /leaderboard HTTP/1.1"        => { // Dashboard Leaderboard
+        "GET /leaderboard HTTP/1.1"        => { // OUTGOING, Dashboard Leaderboard
             let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
             let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
             let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
@@ -444,7 +519,7 @@ async fn handle_connection(
             res.send_contents(contents);
         },
         // Testing Spares LSM API Call.
-        "GET /spares HTTP/1.1"             => { // Dashboard Spares
+        "GET /spares HTTP/1.1"             => { // OUTGOING, Dashboard Spares
             let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
             // Build and Send Request
             let req = reqwest::Client::builder()
@@ -477,7 +552,7 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "POST /lsmData HTTP/1.1"              => {
+        "POST /lsmData HTTP/1.1"              => { // OUTGOING
             let body_str = String::from_utf8(req.body).expect("AT: LSM Data Err, invalid UTF-8");
             let body_parts: Vec<&str> = body_str.split(',').collect();
             if body_parts.len() != 2 {
@@ -832,7 +907,7 @@ async fn handle_connection(
                 res.send_contents(contents);
             }
         },
-        "GET /aliasTable HTTP/1.1"                 => {
+        "GET /aliasTable HTTP/1.1"         => {
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -852,7 +927,7 @@ async fn handle_connection(
                 res.send_contents(contents);
             }
         },
-        "POST /setAliasTable HTTP/1.1"              => {
+        "POST /setAliasTable HTTP/1.1"     => {
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -1034,13 +1109,13 @@ async fn handle_connection(
             res.send_file(user_homepage);
         },
         // Jacknet
-        "POST /ping HTTP/1.1"              => {
+        "POST /ping HTTP/1.1"              => { // OUTGOING
             let contents = execute_ping(req.body, database); // JN
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         // Checkerboard
-        "POST /run_cb HTTP/1.1"            => {
+        "POST /run_cb HTTP/1.1"            => { // OUTGOING
             // get zone selection from request and store
             // ----------------------------------------------------------------
             let building_sel = String::from_utf8(req.body).expect("CheckerBoard Err, invalid UTF-8");
@@ -1070,14 +1145,10 @@ async fn handle_connection(
             let alias_obj: Value = serde_json::from_str(&alias_table.val)
                 .expect("Unable to Parse Alias Table Contents.");
             let alias_rooms = alias_obj.get("rooms");
-            //println!("{:?}", alias_rooms);
             //
             let mut alias_vec: Vec<(String, String)> = Vec::new();
             if let Some(arr) = alias_rooms?.as_array() {
                 for item in arr {
-                    //println!("Array Item: {:?}", item);
-                    //println!("Building Item: {:?}", item.get("name").unwrap().as_str());
-                    //println!("LSM Item: {:?}", item.get("lsmName").unwrap().as_str());
                     let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
                     if alias_name.contains(&lsm_building.abbrev.as_str()) {
                         debug!("Relevant Alias Found");
@@ -1098,7 +1169,6 @@ async fn handle_connection(
                     }
                 }
             }
-            //println!("Alias Vec: {:?}", alias_vec);
             // Process Request to LSM
             let body = req.get(url)
                               .timeout(Duration::from_secs(15))
@@ -1125,18 +1195,18 @@ async fn handle_connection(
                     Some(num) => num,
                     None => 0
                 };
-                let mut checks: Vec<Value> = match &mut v["data"].as_array() {
+                let checks: Vec<Value> = match &mut v["data"].as_array() {
                     Some(data) => data.clone(),
                     None => {
                         error!("Unable to get API data as vec.");
                         Vec::<Value>::new()
                     }
                 };
-                checks.reverse();
+                //checks.reverse();
                 for i in 0..num_entries {
                     let mut check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
                     // Look to see if check["LocationName"] is in the alias_obj, replace it if so.
-                    //let tmp_locale = &mut check["LocationName"].as_str().unwrap();
+                    //println!("Current Check: {:?}", &check);
                     for tuple in &alias_vec {
                         if tuple.1 == check["LocationName"].as_str().unwrap() {
                             debug!("Alias Struck, {:?} to be replaced with {:?}", check["LocationName"].as_str().unwrap(), tuple.0);
@@ -1160,12 +1230,11 @@ async fn handle_connection(
                     );
                 }
             }
+            //println!("check_map: {:?}", check_map);
             // Get checked_rooms
-            // let checked_rooms: i16 = v["count"].as_i64().unwrap().try_into().unwrap();
             let mut checked_rooms: i16 = 0;
             for mut room in database.get_rooms_by_abbrev(&building_sel) {
                 if check_map.contains_key(&room.name) {
-                    // checked Date format may need changed here
                     room.checked = String::from(match check_map.get(&room.name) {
                         Some(r) => r,
                         None => {
@@ -1173,8 +1242,8 @@ async fn handle_connection(
                             "2000-01-01T00:00:00Z"
                         }
                     });
-                    room.needs_checked = check_lsm(&room);
                 }
+                room.needs_checked = check_lsm(&room);
                 let schedule_params = check_schedule(&room);
                 room.available = schedule_params.0;
                 room.until = schedule_params.1;
@@ -1186,7 +1255,6 @@ async fn handle_connection(
             }
             let ret_building = database.get_building_by_abbrev(&building_sel);
             let ret_rooms = database.get_rooms_by_abbrev(&ret_building.abbrev);
-            // TODO: Get number of Checked and Total Number of rooms.
             let number_rooms: i16 = ret_rooms.len().try_into().unwrap();
             // Note, number_rooms and checked_rooms rely on the rooms inside LSM.
             //
