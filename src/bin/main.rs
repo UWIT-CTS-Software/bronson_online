@@ -183,7 +183,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     \"timestamp\": \"2000-01-01T00:00:00Z\"
                 },
                 \"print2\": {
-                    \"duration\": \"60\",
+                    \"duration\": \"120\",
                     \"timestamp\": \"2000-01-01T00:00:00Z\"
                 }
             }"),
@@ -281,7 +281,7 @@ async fn data_sync(
                     if time_diff.num_seconds() >= duration {
                         println!("Global Threading Test: Print Statement 1");
                         parameters["timestamp"] = serde_json::from_str(&Local::now().to_string())
-                            .expect("Unable to timestamps");
+                            .expect("Unable to parse timestamps");
                     }
                 },
                 "print2" => {
