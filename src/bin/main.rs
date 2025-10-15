@@ -179,26 +179,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ThreadSchedule Init
     //use chrono::Utc;
-    let mut schedule = ThreadSchedule::new();
-    schedule.tasks.insert("print1".to_string(), TaskSchedule {
+    let mut thread_schedule = ThreadSchedule::new();
+    thread_schedule.tasks.insert("print1".to_string(), TaskSchedule {
         duration: 60,
         timestamp: Utc::now(),
     });
-    schedule.tasks.insert("print2".to_string(), TaskSchedule {
+    thread_schedule.tasks.insert("print2".to_string(), TaskSchedule {
         duration: 120,
         timestamp: Utc::now(),
     });
     
-    let thread_schedule = DB_DataElement {
-        key: String::from("thread_schedule"),
-        val: schedule.to_json().expect("Failed to serialize schedule"),
-    };
-    // EXAMPLE ON Arc / RwLock WITH DATABASE, LOCK IS FREED AFTER SCOPE
-    {
-        let init_db = Arc::clone(&database);
-        let mut init_db_lock = init_db.write().unwrap();
-        init_db_lock.update_data(&thread_schedule);
-    }
+    // let thread_schedule_data = DB_DataElement {
+    //     key: String::from("thread_schedule_data"),
+    //     val: thread_schedule.to_json().expect("Failed to serialize schedule"),
+    // };
+    // // EXAMPLE ON Arc / RwLock WITH DATABASE, LOCK IS FREED AFTER SCOPE
+    // {
+    //     let init_db = Arc::clone(&database);
+    //     let mut init_db_lock = init_db.write().unwrap();
+    //     init_db_lock.update_data(&thread_schedule_data);
+    // }
     
     // Data Thread Pool Loop
     let dt_database = Arc::clone(&database);
@@ -207,7 +207,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             //let data_clone = Arc::clone(&dt_database);
             //let mut dt_db = data_clone.lock().unwrap();
             //data_sync(&mut dt_db);
-            data_sync(&dt_database);
+            thread_schedule = data_sync(&dt_database, thread_schedule);
         }
     });
 
@@ -274,39 +274,45 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
 #[allow(unused_assignments)]
 async fn data_sync(
     database: &Arc<RwLock<Database>>,
-) -> Option<String> {
+    schedule: ThreadSchedule,
+) -> ThreadSchedule {
     let now = Utc::now();
-    let mut dt_db = database.write().unwrap();
+    let mut updated_schedule = schedule.clone();
+    //let mut dt_db = database.write().unwrap();
     // This big nested statement needs broken up.
     // Once the threadSchedule obj is retrieved a new scope
     // should be made to allow the database to reopen.
-    if let Some(schedule_data) = dt_db.get_data("thread_schedule") {
+    /*
+    // This is just the old way.
+    if let Some(schedule_data) = dt_db.get_data("thread_schedule_data") {
         if let Ok(schedule) = ThreadSchedule::from_json(&schedule_data.val) {
-            for (task_name, task) in schedule.tasks.iter() {
-                if (now - task.timestamp).num_seconds() as u64 >= task.duration {
-                    // Execute task based on task_name
-                    match task_name.as_str() {
-                        "print1" => info!("One minute task executed"),
-                        "print2" => info!("Two minute task executed"),
-                         _    => warn!("Unknown task: {}", task_name),
-                    }
-                    // Update timestamp
-                    let mut updated_schedule = schedule.clone();
-                    if let Some(task) = updated_schedule.tasks.get_mut(task_name) {
-                        task.timestamp = now;
-                    }
-                    let updated_data = DB_DataElement {
-                        key: String::from("thread_schedule"),
-                        val: updated_schedule.to_json().expect("Failed to serialize schedule"),
-                    };
-                    dt_db.update_data(&updated_data);
-                }
+        // for loop here    
+        }
+    }
+    */
+    for (task_name, task) in schedule.tasks.iter() {
+        if (now - task.timestamp).num_seconds() as u64 >= task.duration {
+            // Execute task based on task_name
+            match task_name.as_str() {
+                "print1" => println!("One minute task executed"),
+                "print2" => println!("Two minute task executed"),
+                 _    => warn!("Unknown task: {}", task_name),
             }
+            // Update timestamp
+            updated_schedule = schedule.clone();
+            if let Some(task) = updated_schedule.tasks.get_mut(task_name) {
+                task.timestamp = now;
+            }
+            //let updated_data = DB_DataElement {
+            //    key: String::from("thread_schedule"),
+            //    val: updated_schedule.to_json().expect("Failed to serialize schedule"),
+            //};
+            //dt_db.update_data(&updated_data);
         }
     }
     // Sleep for a short duration to prevent busy-waiting
     std::thread::sleep(std::time::Duration::from_secs(1));
-    return None;
+    return updated_schedule;
 }
 
 #[tokio::main]
