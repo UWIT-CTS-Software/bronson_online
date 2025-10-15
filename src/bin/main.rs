@@ -43,7 +43,7 @@ Wiki
 // ----------------------------------------------------------------------------
 use server_lib::{
     BUFF_SIZE, 
-    ThreadPool, PingRequest, 
+    ThreadPool, ThreadSchedule, TaskSchedule, PingRequest, 
     Building, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
@@ -67,6 +67,7 @@ use std::{
     path::Path,
     time::{ Duration, SystemTime },
     string::{ String, },
+    sync::{Arc, /*Mutex,*/ RwLock},
     clone::{ Clone, },
     option::{ Option, },
     collections::{ HashMap, },
@@ -79,7 +80,7 @@ use cookie::{ /* Cookie, */ CookieJar, /* Key, */ };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
 use regex::Regex;
-use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta };
+use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta,Utc };
 use urlencoding::decode;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
@@ -170,31 +171,45 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     connection.run_pending_migrations(MIGRATIONS)
             .map_err(|e| format!("Failed to run migrations: {}", e))?;
 
-    let mut database = Database::new();
-    database.init_if_empty();
+    let database = Arc::new(RwLock::new(Database::new()));
+    {
+        database.write().unwrap().init_if_empty();
+    }
+    //database.init_if_empty();
 
-    // Data Thread Pool
+    // ThreadSchedule Init
+    //use chrono::Utc;
+    let mut schedule = ThreadSchedule::new();
+    schedule.tasks.insert("print1".to_string(), TaskSchedule {
+        duration: 60,
+        timestamp: Utc::now(),
+    });
+    schedule.tasks.insert("print2".to_string(), TaskSchedule {
+        duration: 120,
+        timestamp: Utc::now(),
+    });
+    
     let thread_schedule = DB_DataElement {
         key: String::from("thread_schedule"),
-        val: String::from(
-            "{
-                \"print1\": {
-                    \"duration\": \"60\",
-                    \"timestamp\": \"2000-01-01T00:00:00Z\"
-                },
-                \"print2\": {
-                    \"duration\": \"120\",
-                    \"timestamp\": \"2000-01-01T00:00:00Z\"
-                }
-            }"),
-    }; // values are seconds between runs, these will be replaced by endpoints that go outside of bronson.
-    database.update_data(&thread_schedule);
-    let () = loop {
-        let data_clone = database.clone();
-        data_pool.execute(move || {
-            data_sync(data_clone);
-        });
+        val: schedule.to_json().expect("Failed to serialize schedule"),
     };
+    // EXAMPLE ON Arc / RwLock WITH DATABASE, LOCK IS FREED AFTER SCOPE
+    {
+        let init_db = Arc::clone(&database);
+        let mut init_db_lock = init_db.write().unwrap();
+        init_db_lock.update_data(&thread_schedule);
+    }
+    
+    // Data Thread Pool Loop
+    let dt_database = Arc::clone(&database);
+    data_pool.execute(move || {
+        loop {
+            //let data_clone = Arc::clone(&dt_database);
+            //let mut dt_db = data_clone.lock().unwrap();
+            //data_sync(&mut dt_db);
+            data_sync(&dt_database);
+        }
+    });
 
     // User Requests / User Thread Pool
     for stream in listener.incoming() {
@@ -211,10 +226,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(e) => error!("Error reading to buffer: {}", e)
         };
         let req = Request::from(buffer.clone());
-        let clone_db = database.clone();
+        //let clone_db = database.clone();
 
+        let rq_database = Arc::clone(&database);
         pool.execute(move || {
-            let mut res = handle_connection(req, clone_db).unwrap();
+            //let mut rq_db = rq_database.write().unwrap();
+            //let mut res = handle_connection(req, clone_db).unwrap(); //original
+            let mut res = handle_connection(req, &rq_database).unwrap();
             stream.write(&res.build()).unwrap();
             stream.flush().unwrap();
             stdout().flush().unwrap();
@@ -255,59 +273,49 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
 #[tokio::main]
 #[allow(unused_assignments)]
 async fn data_sync(
-    mut database: Database,
-) -> Option<Response> {
-    let mut res: Response = Response::new();
-    let thread_schedule: DB_DataElement = database.get_data("thread_schedule")
-        .expect("Unable to get thread_schedule from database");
-    let thread_obj: Value = serde_json::from_str(&thread_schedule.val)
-        .expect("Unable to parse thread_schedule");
-    // iterate through thread_obj...
-    if let Some(mut object_map) = thread_obj.as_object().clone() {
-        for (task, mut parameters) in object_map.clone() {
-            let timestamp: DateTime<Local> = parameters["timestamp"]
-                .as_str()
-                .unwrap()
-                .parse()
-                .unwrap();
-            let duration = parameters["duration"]
-                .as_str()
-                .unwrap()
-                .parse()
-                .unwrap();
-            let time_diff: TimeDelta = Local::now() - timestamp;
-            match &task[..] {
-                "print1" => {
-                    if time_diff.num_seconds() >= duration {
-                        println!("Global Threading Test: Print Statement 1");
-                        parameters["timestamp"] = serde_json::from_str(&Local::now().to_string())
-                            .expect("Unable to parse timestamps");
+    database: &Arc<RwLock<Database>>,
+) -> Option<String> {
+    let now = Utc::now();
+    let mut dt_db = database.write().unwrap();
+    // This big nested statement needs broken up.
+    // Once the threadSchedule obj is retrieved a new scope
+    // should be made to allow the database to reopen.
+    if let Some(schedule_data) = dt_db.get_data("thread_schedule") {
+        if let Ok(schedule) = ThreadSchedule::from_json(&schedule_data.val) {
+            for (task_name, task) in schedule.tasks.iter() {
+                if (now - task.timestamp).num_seconds() as u64 >= task.duration {
+                    // Execute task based on task_name
+                    match task_name.as_str() {
+                        "print1" => info!("One minute task executed"),
+                        "print2" => info!("Two minute task executed"),
+                         _    => warn!("Unknown task: {}", task_name),
                     }
-                },
-                "print2" => {
-                    if time_diff.num_seconds() >= duration {
-                        println!("Global Threading Test: Print Statement 2");
-                        parameters["timestamp"] = serde_json::from_str(&Local::now().to_string())
-                            .expect("Unable to parse timestamps");
+                    // Update timestamp
+                    let mut updated_schedule = schedule.clone();
+                    if let Some(task) = updated_schedule.tasks.get_mut(task_name) {
+                        task.timestamp = now;
                     }
-                },
-                _ => {
-                    println!("Unhandled task found in thread_schedule");
+                    let updated_data = DB_DataElement {
+                        key: String::from("thread_schedule"),
+                        val: updated_schedule.to_json().expect("Failed to serialize schedule"),
+                    };
+                    dt_db.update_data(&updated_data);
                 }
             }
         }
     }
-    // TODO: Set thread_schedule w/ updated timestamps
-    //...
-    return Some(res);
+    // Sleep for a short duration to prevent busy-waiting
+    std::thread::sleep(std::time::Duration::from_secs(1));
+    return None;
 }
 
 #[tokio::main]
 #[allow(unused_assignments)]
 async fn handle_connection(
     mut req: Request,
-    mut database: Database,
-) -> Option<Response> {    
+    arc_database: &Arc<RwLock<Database>>,
+) -> Option<Response> {
+    let mut database = arc_database.write().unwrap();
     let mut user_homepage: &str = "html-css-js/login.html";
     if req.headers.contains_key("Cookie") {
         let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
@@ -1110,7 +1118,7 @@ async fn handle_connection(
         },
         // Jacknet
         "POST /ping HTTP/1.1"              => { // OUTGOING
-            let contents = execute_ping(req.body, database); // JN
+            let contents = execute_ping(req.body, arc_database.clone()); // JN
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -1438,7 +1446,7 @@ NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
       CAMPUS_STR -> "html-css-js/campus.json"
 */
 // call ping_this executible here
-fn execute_ping(body: Vec<u8>, mut database: Database) -> Vec<u8> {
+fn execute_ping(body: Vec<u8>, mut database: Arc<RwLock<Database>>) -> Vec<u8> {
     let tmp = String::from_utf8(body).expect("Err, invalid UTF-8");
     debug!("JacknetClientRequest: {:?}", tmp);
     // Prep Request into Struct
@@ -1450,23 +1458,30 @@ fn execute_ping(body: Vec<u8>, mut database: Database) -> Vec<u8> {
     //   NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
     //         CAMPUS_STR -> "html-css-js/campus.json" 
 
-    let rooms_to_ping: Vec<DB_Room> = database.get_rooms_by_abbrev(&pr.building);
+    {
+        let ping_database = Arc::clone(&database);
+        let mut ping_db = ping_database.write().unwrap();
+        let rooms_to_ping: Vec<DB_Room> = ping_db.get_rooms_by_abbrev(&pr.building);
 
-    for rm in rooms_to_ping {
-        std::thread::scope(|s| {
-            s.spawn(|| {
-                let mut room = rm.clone();
-                room.ping_data = ping_room(room.ping_data);
-                database.update_room(&room);
+        for rm in rooms_to_ping {
+            std::thread::scope(|s| {
+                let ping_db = Arc::clone(&database);
+                s.spawn(move || {
+                    let mut room = rm.clone();
+                    room.ping_data = ping_room(room.ping_data);
+                    let mut db = ping_db.write().unwrap();
+                    db.update_room(&room);
+                });
             });
-        });
-    }
+        }
 
-    let json_return = json!({
-        "jn_body": database.get_rooms_by_abbrev(&pr.building),
-    });
-    // Return JSON with ping results
-    return json_return.to_string().into();
+        let json_return = json!({
+            "jn_body": ping_db.get_rooms_by_abbrev(&pr.building),
+        });
+    
+        // Return JSON with ping results
+        return json_return.to_string().into();
+    };
 }
 
 fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
