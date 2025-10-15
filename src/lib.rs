@@ -356,26 +356,6 @@ impl Database {
 			});
 		}
 
-		// Tickex dummy ticket load test
-		let dummy_ticket_file: String = read_to_string(DMY_TICK).ok()?;
-		let dummy_ticket_json: serde_json::Value = serde_json::from_str(&dummy_ticket_file).ok()?;
-
-		// access fields
-		let ticket_title = dummy_ticket_json.get("ticket_title")?.as_str().unwrap_or("");
-		let ticket_id = dummy_ticket_json.get("ticket_id")?.as_str().unwrap_or("");
-		let ticket_location = dummy_ticket_json.get("location")?.as_str().unwrap_or("");
-		let ticket_description = dummy_ticket_json.get("description")?.as_str().unwrap_or("");
-		let ticket_requestor = dummy_ticket_json.get("requestor")?.as_str().unwrap_or("");
-		let ticket_status = dummy_ticket_json.get("status")?.as_str().unwrap_or("");
-
-		// Use the data as needed
-		println!("Dummy Ticket Title: {}", ticket_title);
-		println!("Dummy Ticket ID: {}", ticket_id);
-		println!("Dummy Ticket Location: {}", ticket_location);
-		println!("Dummy Ticket Description: {}", ticket_description);
-		println!("Dummy Ticket Requestor: {}", ticket_requestor);
-		println!("Dummy Ticket Status: {}", ticket_status);
-
 		Some(())
 	}
 
@@ -1038,7 +1018,7 @@ pub static TSCH_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/techSch
 pub static BLDG_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/buildings.json");
 pub static CAMPUS_STR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.json");
 pub static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
-pub static DMY_TICK	 : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/dummy_ticket.json");
+pub static TICKET	 : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/tickets.json");
 pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
 pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/roomConfig_agg.csv");
 pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.csv");

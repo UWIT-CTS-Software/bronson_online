@@ -328,14 +328,14 @@ async fn handle_connection(
             res.send_file(user_homepage);
             res.insert_onload("setTickex()");
         },
-        "GET /api/dummy_ticket HTTP/1.1" => {
-            if let Some(contents) = get_dummy_ticket() {
+        "GET /api/tickets HTTP/1.1" => {
+            if let Some(contents) = get_tickets() {
                 res.status(STATUS_200);
                 res.insert_header("Content-Type", "application/json");
                 res.send_contents(contents.into());
             } else {
                res.status(STATUS_404);
-                res.send_contents("{\"error\": \"Dummy ticket not found\"}".into());
+                res.send_contents("{\"error\": \"Tickets were not found\"}".into());
             }
         },   
         "GET /jacknet HTTP/1.1"            => {
@@ -1321,18 +1321,18 @@ $$$$$$$$\ $$\           $$\
 */
 
 
-fn get_dummy_ticket() -> Option<String> {
+fn get_tickets() -> Option<String> {
     use std::fs::read_to_string;
-    use server_lib::DMY_TICK;
+    use server_lib::TICKET;
 
-    match read_to_string(DMY_TICK) {
+    match read_to_string(TICKET) {
         Ok(contents) => Some(contents),
         Err(e) => {
-            error!("Error reading ticket: {}", e);
+            error!("Error reading tickets: {}", e);
             None
         }
     }
-}                           
+} 
 
 
 /*

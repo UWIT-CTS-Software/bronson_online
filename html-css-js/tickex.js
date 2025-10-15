@@ -8,7 +8,7 @@
                                   _/ |
                                  |__/
 TOC:
-    - fetchDummyTicket()
+    - fetchTickets()
 
 HTML
     - setTickex()
@@ -36,14 +36,44 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 \__|  \__|   \__|   \__|     \__|\________|
 */
 
+function showPopup(ticket) {
+    if (!ticket) {
+        console.error("Ticket data not found");
+        return;
+    }
 
-function showPopup() {
-    let showPopupButton = document.querySelector('.tx_tempButton');
-    let popupContainer = document.querySelector('.tx_popupContainer');
+    console.log(ticket);
 
-    showPopupButton.onclick = () => {
-        popupContainer.classList.add('active');
-    };
+    const popupContainer = document.querySelector('.tx_popupContainer');
+    if (!popupContainer) {
+        console.error("Popup container not found");
+        return;
+    }
+
+    popupContainer.classList.add('active');
+
+    popupContainer.innerHTML = `
+        <div class="tx_popupBox">
+            <span>${ticket.ticket_title || "No Title"}</span>
+            <p>Ticket ID: ${ticket.ticket_id || ""}</p>
+            <p>Location: ${ticket.location || ""}</p>
+            <p>Status: ${ticket.status || ""}</p>
+            <p>Description: ${ticket.description || ""}</p>
+            <p>Requestor: ${ticket.requestor || ""}</p>
+            <p>Creator: ${ticket.creator || ""}</p>
+            <p>Responsibility: ${ticket.responsibility || ""}</p>
+            <p>Service: ${ticket.service || ""}</p>
+            <p>Account Department: ${ticket.account_department || ""}</p>
+            <p>Type: ${ticket.type || ""}</p>
+            <p>Urgency: ${ticket.urgency || ""}</p>
+            <p>Priority: ${ticket.priority || ""}</p>
+            <p>Date Created: ${ticket.date_created || ""}</p>
+            <p>Last Modified: ${ticket.date_last_modified || ""}</p>
+            <button class="popup_closeButton" onClick="hidePopup()">Close</button>
+            <button class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
+            <button class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
+        </div>
+    `;
 }
 
 function hidePopup() {
@@ -62,11 +92,25 @@ function sendToHelpDesk() {
     alert("This feature is not yet implemented. -Lex");
 }
 
-async function fetchDummyTicket() {
-    const response = await fetch('/api/dummy_ticket');
+function addTicketsToBoard(tickets) {
+    return tickets.map(ticket => {
+        const safeJson = JSON.stringify(ticket).replace(/"/g, '&quot;');
+        return `
+        <tr class="tx_ticket" id="${ticket.ticket_id}" onclick="showPopup(${safeJson})">
+            <td>${ticket.ticket_title}</td>
+            <td>${ticket.ticket_id}</td>
+            <td>${ticket.location || 'N/A'}</td>
+            <td>${ticket.status}</td>
+        </tr>
+    `;
+    }).join('');
+}
+
+async function fetchTickets() {
+    const response = await fetch('/api/tickets');
 
     if (!response.ok) {
-        console.error('Failed to fetch dummy ticket');
+        console.error('Failed to fetch tickets');
         return null;
     }
     
@@ -74,6 +118,7 @@ async function fetchDummyTicket() {
 }
 
 async function setTickex() {
+
     preserveCurrentTool();
 
     // TEMPORARY:
@@ -114,35 +159,9 @@ async function setTickex() {
         }
     }
 
-    let ticket = await fetchDummyTicket();
-    let ticketHtml = "";
-
-    if (ticket) {
-        ticketHtml = `
-        <div class="tx_popupBox">
-            <span>${ticket.ticket_title || "No Title"}</span>
-            <p>Ticket ID: ${ticket.ticket_id || ""}</p>
-            <p>Location: ${ticket.location || ""}</p>
-            <p>Status: ${ticket.status || ""}</p>
-            <p>Description: ${ticket.description || ""}</p>
-            <p>Requestor: ${ticket.requestor || ""}</p>
-            <p>Creator: ${ticket.creator || ""}</p>
-            <p>Responsibility: ${ticket.responsibility || ""}</p>
-            <p>Service: ${ticket.service || ""}</p>
-            <p>Account Department: ${ticket.account_department || ""}</p>
-            <p>Type: ${ticket.type || ""}</p>
-            <p>Urgency: ${ticket.urgency || ""}</p>
-            <p>Priority: ${ticket.priority || ""}</p>
-            <p>Date Created: ${ticket.date_created || ""}</p>
-            <p>Last Modified: ${ticket.date_last_modified || ""}</p>
-            <button class="popup_closeButton" onClick="hidePopup()">Close</button>
-            <button class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
-            <button class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
-        </div>
-        `;
-    }
-
-
+    let response = await fetchTickets();
+    let tickets = response?.tickets || [];
+    let ticketsHtml = addTicketsToBoard(tickets);
     
     // -- No HTML Cache found, build from scratch
     let tx_container = document.createElement("div");
@@ -171,8 +190,22 @@ async function setTickex() {
     newTickets.classList.add("tx_newTickets");
     newTickets.innerHTML = `
         <fieldset>
-          <legend>New CTS Tickets</legend>
-          <p>(Placeholder text) This is where new tickets will be displayed.</p>
+            <legend>New CTS Tickets</legend>
+            <div class="tx_ticketContainer">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>ID</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                        </tr>
+                </thead>
+                    <tbody>
+                        ${ticketsHtml}
+                    </tbody>
+                </table>
+            </div>
         </fieldset>
     `;
 
@@ -180,8 +213,8 @@ async function setTickex() {
     catchAll.classList.add("tx_catchAllTickets");
     catchAll.innerHTML = `
         <fieldset>
-          <legend>CTS Catch All Tickets</legend>
-          <p>(Placeholder text) This is where all CTS tickets will be displayed.</p>
+            <legend>CTS Catch All Tickets</legend>
+            <p>(Placeholder text) This is where all CTS tickets will be displayed.</p>
         </fieldset>
     `;
 
@@ -189,37 +222,32 @@ async function setTickex() {
     closedTickets.classList.add("tx_closedTickets");
     closedTickets.innerHTML = `
         <fieldset>
-          <legend>CTS Catch All Tickets</legend>
-          <p>(Placeholder text) This is where all closed tickets will be displayed.</p>
+            <legend>CTS Closed Tickets</legend>
+            <p>(Placeholder text) This is where all closed tickets will be displayed.</p>
         </fieldset>
-    `;
-
-    let tempButton = document.createElement("div");
-    tempButton.classList.add("tx_tempButton");
-    tempButton.innerHTML = `
-        <button onClick="showPopup()">Test Ticket Info</button>
     `;
 
     let popupContainer = document.createElement("div");
     popupContainer.classList.add("tx_popupContainer");
-    popupContainer.innerHTML = ticketHtml || `
-        <div class="tx_popupBox">
-            <span>Ticket Details</span>
-            <p>Ticket Details</p>
-            <p>If you're seeing this text, something broke...</p>
-            <button class="popup_closeButton" onClick="hidePopup()">Close</button>
-            <button class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
-            <button class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
-        </div>
-    `;
+
 
     tx_container.append(tdxHotlink);
     tx_container.append(infoBox);
+    tx_container.append(popupContainer);
     tx_container.append(newTickets);
     tx_container.append(catchAll);
     tx_container.append(closedTickets);
-    tx_container.append(tempButton);
-    tx_container.append(popupContainer);
+
+    // Closes popup if escape key is pressed
+    document.addEventListener('keydown', (e) => {
+        const pressedKey = e.key;
+
+        if (pressedKey == 'Escape') {
+            if (document.querySelector('.tx_popupContainer.active')) {
+                hidePopup();
+            }
+        }
+    });
 
     let main_container = document.createElement('div');
     main_container.appendChild(tx_container);
