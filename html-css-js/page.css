@@ -1217,15 +1217,18 @@ ol li::marker {
 
 .tx_tdxHotlink {
     background-color: rgb(50, 50, 50);
-    grid-column: 2 / 3;
+    grid-column: 3 / 4;
     grid-row: 1 / 3;
     place-self: center;
+    height: 100px;
 }
 
 .tx_infoBox {
     background-color: rgb(50, 50, 50);
-    grid-column: 3 / 10;
+    grid-column: 4 / 9;
     grid-row: 1 / 3;
+    height: 100px;
+
 }
 
 .tx_ticketInfo {
@@ -1238,6 +1241,45 @@ ol li::marker {
     grid-column: 2 / 5;
 }
 
+.tx_ticketContainer {
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+}
+
+.tx_ticketContainer table {
+    width: 100%;
+    table-layout: fixed;
+    text-align: center;
+}
+
+.tx_ticketContainer th {
+    color: rgb(236, 200, 101);
+    border-bottom: 1px solid rgb(144, 118, 26);
+    text-align: center;
+}
+
+.tx_ticketContainer table td:nth-child(1) {
+    text-align: left;}
+
+.tx_ticketContainer table td:nth-child(1),
+.tx_ticketContainer table th:nth-child(1) {
+    max-width: 46%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tx_ticketContainer table td:not(:nth-child(1)),
+.tx_ticketContainer table th:not(:nth-child(1)) {
+    width: 18%;
+}
+
+.tx_ticket {
+    cursor: pointer;
+    color: rgb(236, 200, 101);
+}
+
 .tx_catchAllTickets {
     background-color: rgb(50, 50, 50);
     grid-column: 5 / 8;
@@ -1248,16 +1290,8 @@ ol li::marker {
     grid-column: 8 / 10;
 }
 
-.tx_tempButton {
-    background-color: rgb(50, 50, 50);
-    grid-column: 5 / 6;
-    grid-row: 4 / 5;
-    place-self: center;
-}
-
 .tx_popupContainer {
     position: absolute;
-    /* background: rgba(0, 0, 0, 0.3); */
     width: 100%;
     height: 150%;
     display: flex;
