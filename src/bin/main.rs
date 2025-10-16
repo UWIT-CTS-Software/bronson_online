@@ -296,6 +296,10 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_file("html-css-js/checkerboard.js");
         },
+        "GET /tickex.js HTTP/1.1"    => {
+            res.status(STATUS_200);
+            res.send_file("html-css-js/tickex.js");
+        },
         "GET /jacknet.js HTTP/1.1"         => {
             res.status(STATUS_200);
             res.send_file("html-css-js/jacknet.js");
@@ -319,6 +323,21 @@ async fn handle_connection(
             res.send_file(user_homepage);
             res.insert_onload("setChecker()");
         },
+        "GET /tickex HTTP/1.1"       => {
+            res.status(STATUS_200);
+            res.send_file(user_homepage);
+            res.insert_onload("setTickex()");
+        },
+        "GET /api/tickets HTTP/1.1" => {
+            if let Some(contents) = get_tickets() {
+                res.status(STATUS_200);
+                res.insert_header("Content-Type", "application/json");
+                res.send_contents(contents.into());
+            } else {
+               res.status(STATUS_404);
+                res.send_contents("{\"error\": \"Tickets were not found\"}".into());
+            }
+        },   
         "GET /jacknet HTTP/1.1"            => {
             res.status(STATUS_200);
             res.send_file(user_homepage);
@@ -350,6 +369,11 @@ async fn handle_connection(
         "GET /button2.png HTTP/1.1"        => {
             res.status(STATUS_200);
             res.send_file("assets/button2.png");
+        },
+        "GET /tdx_logo.png HTTP/1.1"        => {
+            res.status(STATUS_200);
+            res.insert_header("Content-Type", "image/png");
+            res.send_file("assets/tdx_logo.png");
         },
         // Data Requests
         "GET /techSchedule HTTP/1.1"  => {
@@ -1790,6 +1814,32 @@ fn get_cfm_dir(body: Vec<u8>) -> Vec<u8> {
 
     return json_return.to_string().into();
 }
+
+/*
+$$$$$$$$\ $$\           $$\                           
+\__$$  __|\__|          $$ |                          
+   $$ |   $$\  $$$$$$$\ $$ |  $$\  $$$$$$\  $$\   $$\ 
+   $$ |   $$ |$$  _____|$$ | $$  |$$  __$$\ \$$\ $$  |
+   $$ |   $$ |$$ /      $$$$$$  / $$$$$$$$ | \$$$$  / 
+   $$ |   $$ |$$ |      $$  _$$<  $$   ____| $$  $$<  
+   $$ |   $$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$  /\$$\ 
+   \__|   \__| \_______|\__|  \__| \_______|\__/  \__|
+*/
+
+
+fn get_tickets() -> Option<String> {
+    use std::fs::read_to_string;
+    use server_lib::TICKET;
+
+    match read_to_string(TICKET) {
+        Ok(contents) => Some(contents),
+        Err(e) => {
+            error!("Error reading tickets: {}", e);
+            None
+        }
+    }
+} 
+
 
 /*
 $$\      $$\ $$\ $$\       $$\ 
