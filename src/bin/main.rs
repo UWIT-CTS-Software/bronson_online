@@ -51,7 +51,7 @@ use server_lib::{
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
     Database, Terminal, 
     models::{
-        DB_Room, DB_Building, DB_User, DB_DataElement, 
+        DB_Room, DB_Building, DB_User, DB_DataElement,
         DB_IpAddress,  
     },
 };
@@ -377,7 +377,7 @@ async fn handle_connection(
         },
         // Data Requests
         "GET /techSchedule HTTP/1.1"  => {
-            let contents = database.get_data("schedule").val.into();
+            let contents = database.get_data("schedule").unwrap().val.into();
             res.status(STATUS_200);
             //res.send_file("data/techSchedule.json");
             res.send_contents(contents);
@@ -392,22 +392,14 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "GET /dashContents HTTP/1.1"       => {
+        "GET /dashContents HTTP/1.1"       => { // Dashboard Message
             let contents = json!({
-                "contents": database.get_data("dashboard").val
+                "contents": database.get_data("dashboard").unwrap().val
             }).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        // "GET /dashboard/checker"           => { // Returns zone checked. NOTE: trying method of including information in the ZoneData
-        //     // Get Room Counts
-        //     let contents = json!({
-        //         "contents": database.get_data("dashchecker").val
-        //     }).to_string().into();
-        //     res.status(STATUS_200);
-        //     res.send_contents(contents);
-        // }
-        "GET /leaderboard HTTP/1.1"        => {
+        "GET /leaderboard HTTP/1.1"        => { // Dashboard Leaderboard
             let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
             let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
             let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
@@ -476,7 +468,7 @@ async fn handle_connection(
             res.send_contents(contents);
         },
         // Testing Spares LSM API Call.
-        "GET /spares HTTP/1.1"             => {
+        "GET /spares HTTP/1.1"             => { // Dashboard Spares
             let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
             // Build and Send Request
             let req = reqwest::Client::builder()
@@ -509,6 +501,66 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents(contents);
         },
+        "POST /lsmData HTTP/1.1"              => {
+            let body_str = String::from_utf8(req.body).expect("AT: LSM Data Err, invalid UTF-8");
+            let body_parts: Vec<&str> = body_str.split(',').collect();
+            if body_parts.len() != 2 {
+                res.status(STATUS_500);
+                res.send_contents("Invalid request body.".into());
+                return Some(res);
+            }
+            let building_sel:String = body_parts[0].to_string();
+            let device_type = body_parts[1];
+            let lsm_building = database.get_building_by_abbrev(&building_sel);
+            debug!("AT: LSM Data Debug - Grabbing LSM Data for Diagnostics:\n{:?}", &lsm_building.lsm_name.as_str());
+            let api_endpoint = match device_type {
+                "PROC" => "BuildingProcs",
+                "DISP" => "BuildingDisplays",
+                "PJ" => "BuildingProjectors",
+                "TP"   => "BuildingTouchPanels",
+                _    => {
+                    res.status(STATUS_500);
+                    res.send_contents("Invalid device type.".into());
+                    return Some(res);
+                }
+            };
+            debug!("Diagnostic API Endpoint: {}", api_endpoint);
+            let url_devs = format!(
+                r"https://uwyo.talem3.com/lsm/api/{}?offset=0&p=%7BParentName%3A%22{}%22%7D", 
+                &api_endpoint,
+                &lsm_building.lsm_name.as_str()
+            );
+            // Build and Send Request
+            let req = reqwest::Client::builder()
+                .cookie_store(true)
+                .user_agent("server_lib/1.10.1")
+                .default_headers(construct_headers("lsm", &mut database))
+                .timeout(Duration::from_secs(15))
+                .build()
+                .ok()?
+            ;
+
+            let devs = req.get(url_devs)
+                              .timeout(Duration::from_secs(15))
+                              .send()
+                              .await
+                              .expect("[-] RESPONSE ERROR")
+                              .text()
+                              .await
+                              .expect("[-] PAYLOAD ERROR");
+
+            let v_devs: Value = serde_json::from_str(&devs).expect("Empty");
+            let data_devs: Vec<Value> = match v_devs["data"].as_array() {
+                Some(data) => data.clone(),
+                None => Vec::<Value>::new()
+            };
+            // Pack into JSON response to front-end
+            let contents = json!({
+                 "data": data_devs
+            }).to_string().into();
+            res.status(STATUS_200);
+            res.send_contents(contents);
+        },
         "POST /updateSchedule HTTP/1.1"        => {
             let new_data = DB_DataElement {
                 key: String::from("schedule"),
@@ -525,6 +577,385 @@ async fn handle_connection(
             });
             res.status(STATUS_200);
             res.send_contents("".into());
+        },
+        "POST /update/database_room HTTP/1.1"     => { // destination, newValue
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                // Parse Request Body
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                let target_room: String = body_json["destination"]
+                    .as_str()
+                    .unwrap()
+                    .to_string();
+                let new_values: Vec<u8> = body_json["newValue"]
+                    .as_array()
+                    .map(|arr| {
+                        arr.iter()
+                            .map(|v| v.as_str().unwrap_or("0").parse().unwrap_or(0))
+                            .collect()
+                    })
+                    .unwrap();
+                debug!("Updating Target Room:{}\n New Values: {:?}", target_room, new_values);
+                // Get Existing Room Record from database
+                let mut new_db_room : DB_Room = database.get_room_by_name(&target_room);
+                //println!("DEBUG Existing DB_Room (Pre-Update) -> \n {:?}", new_db_room);
+                // Update General Pool Status
+                new_db_room.gp = match new_values[6] { 
+                    1 => true,
+                    0 => false,
+                    _ => false,
+                };
+                // Build Updated Ping Data Vector
+                let hn_vec = Database::gen_hn(String::from(target_room), &new_values);
+                let ping_vec = Database::gen_ip(&hn_vec);
+                // Update Ping Data in room
+                new_db_room.ping_data = ping_vec;
+                // Update Database
+                //println!("DEBUG Updating DB_Room -> \n {:?}", new_db_room);
+                database.update_room(&new_db_room); // UNCOMMENT ME WHEN READY
+                res.status(STATUS_200);
+                res.send_contents("".into());
+            }
+        },
+        "POST /insert/database_room HTTP/1.1"     => { // destination
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                // Parse Request Body
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                let new_room: String = body_json["destination"]
+                    .as_str()
+                    .unwrap()
+                    .to_string();
+                let new_values: Vec<u8> = [0,0,0,0,0,0,0].to_vec();
+                // Note: When we are inserting a new room, we are not providing the inventory in the same call. The intention is that the front-end will send the rooms to insert first and if their is inventory associated with it it will come after.
+                // Build DB_Room Object and insert to Database
+                // Ping Data Vector
+                let hn_vec = Database::gen_hn(new_room.clone(), &new_values);
+                let ping_vec = Database::gen_ip(&hn_vec);
+                // Insert New Room to Database
+                let new_db_room = DB_Room {
+                    abbrev: new_room.split(' ').collect::<Vec<&str>>()[0].to_string(),
+                    name: new_room,
+                    checked: "2000-01-01T00:00:00Z".to_string(),
+                    needs_checked: true,
+                    gp: match new_values[6] { 
+                        1 => true,
+                        0 => false,
+                        _ => false,
+                    },
+                    available: false,
+                    until: String::from("TOMORROW"),
+                    ping_data: ping_vec,
+                    schedule: Vec::new(),
+                };
+                debug!("INSERTING DB_ROOM => \n {:?}", new_db_room);
+                // Note, the schedule field here is initialized as empty.
+                //   we will require some more tooling to get this data in here.
+                //   whether that be some kind of csv import or a manual page.
+                database.update_room(&new_db_room); // UNCOMMENT ME WHEN READY
+                res.status(STATUS_200);
+                res.send_contents("".into());
+            }
+        },
+        "POST /remove/database_room HTTP/1.1"     => { // destination
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                // Parse Request Body
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                let target_room: String = body_json["destination"]
+                    .as_str()
+                    .unwrap()
+                    .to_string();
+                debug!("REMOVING ROOM -> {:?}", target_room);
+                // Remove Specified Room from Database
+                database.delete_room(&target_room); // UNCOMMENT ME WHEN READY
+                res.status(STATUS_200);
+                res.send_contents("".into());
+            }
+        },
+        "POST /update/database_building HTTP/1.1" => { // destination, newValue
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                // Parse Request Body
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                let target_building: String = body_json["destination"]
+                    .as_str()
+                    .unwrap()
+                    .to_string();
+                let new_values: Vec<String> = body_json["newValue"]
+                    .as_array()
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()
+                    })
+                    .unwrap();
+                
+                //println!("DEBUG Updating Building -> {} {:?}", target_building, new_values);
+                // Get Existing Building Record from database
+                let mut new_db_building : DB_Building = database.get_building_by_abbrev(&target_building);
+                // Update Building Values
+                new_db_building.name = new_values[0].to_string();
+                new_db_building.abbrev = new_values[1].to_string();
+                new_db_building.lsm_name = new_values[2].to_string();
+                new_db_building.zone = new_values[3].parse().expect("invalid zone");
+                // Update Database
+                debug!("Updated Building Record:\n{:?}", &new_db_building);
+                database.update_building(&new_db_building); // UNCOMMENT ME WHEN READY
+                res.status(STATUS_200);
+                res.send_contents("".into());
+            }
+        },
+        "POST /insert/database_building HTTP/1.1" => { // destination, newValue
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                //println!("{:?}", body_json);
+                let new_values: Vec<String> = body_json["newValue"]
+                    .as_array()
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()
+                    })
+                    .unwrap();
+                //println!("{} {:?}", target_building, new_values);
+                // Create New DB_Builing with new_values
+                let new_db_building = DB_Building {
+                    name: new_values[0].clone(),
+                    abbrev: new_values[1].clone(),
+                    lsm_name: new_values[2].clone(),
+                    zone: new_values[3].parse().expect("invalid zone"),
+                    checked_rooms: 0,
+                    total_rooms: 0
+                };
+                debug!("Inserting Building Record:\n {:?}", &new_db_building);
+                database.update_building(&new_db_building); //UNCOMMENT ME WHEN READY
+                res.status(STATUS_200);
+                res.send_contents("".into());
+            }
+        },
+        "POST /remove/database_building HTTP/1.1" => { // destination
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                let target_building: String = body_json["destination"]
+                    .as_str()
+                    .unwrap()
+                    .to_string();
+                debug!("DB Target Building to remove:\n {:?}", target_building);
+                database.delete_building(&target_building);
+                res.status(STATUS_200);
+                res.send_contents("".into());
+            }
+        },
+        "POST /update/database_roomSchedule HTTP/1.1" => { // [Changes to make]
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                // Parse Request Body
+                let rooms = body_json["rooms"]
+                    .as_array()
+                    .unwrap();
+                // Iterate through rooms and update each one.
+                for room in rooms {
+                    let target_room: String = room["name"]
+                        .as_str()
+                        .unwrap()
+                        .to_string();
+                    let new_schedule: Vec<Option<String>> = room["schedule"]
+                        .as_array()
+                        .map(|arr| {
+                            arr.iter()
+                                .map(|v| v.as_str().map(|s| s.to_string()))
+                                .collect()
+                        })
+                        .unwrap();
+                    // Get Existing Room Record from database
+                    let mut new_db_room : DB_Room = database.get_room_by_name(&target_room);
+                    //println!("DEBUG Existing DB_Room (Pre-Update) -> \n {:?}", new_db_room.schedule);
+                    // Update Schedule
+                    new_db_room.schedule = new_schedule.clone();
+                    // Update Database
+                    database.update_room(&new_db_room);
+                    debug!("Updating Room: {} with Schedule:\n {:?}", target_room, new_schedule);
+                }
+                res.status(STATUS_200);
+                res.send_contents("Room Schedules in Database Updated".into());
+            }
+        },
+        "POST /update/roomSchd/timestamps HTTP/1.1" => { // Updates the timestamps stored in DB_DataElement
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                let timestamps: Vec<String> = body_json["timestamps"]
+                    .as_array()
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()
+                    })
+                    .unwrap();
+                debug!("Updating Timestamps:\n {:?}", timestamps);
+                // Create DB_DataElement and update database.
+                let new_timestamps = DB_DataElement {
+                    key: String::from("report_timestamps"),
+                    val: serde_json::to_string(&timestamps).unwrap()
+                };
+                // Uncomment when ready...
+                database.update_data(&new_timestamps);
+                res.status(STATUS_200);
+                res.send_contents("Successful Room Schedule Timestamps Update".into());
+            }
+        },
+        "GET /roomSchd/timestamps HTTP/1.1" => { // Returns 25Live Report Dates
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let timestamps = database.get_data("report_timestamps").unwrap_or( DB_DataElement {key:"report_timestamps".to_string(),val:"[\"Timestamp Not Found\"]".to_string()}).val;
+                //println!("DEBUG Fetched Timestamps:\n {:?}", &timestamps);
+                let contents = json!({
+                    "timestamps": timestamps
+                }).to_string().into();
+                res.status(STATUS_200);
+                res.send_contents(contents);
+            }
+        },
+        "GET /aliasTable HTTP/1.1"                 => {
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let alias_table = database.get_data("alias_table")
+                    .unwrap_or(DB_DataElement {
+                        key: "alias_table".to_string(),
+                        val: "Alias Table has not been updated".to_string()
+                    })
+                    .val;
+                let contents = json!({
+                    "response": alias_table
+                }).to_string().into();
+                res.status(STATUS_200);
+                res.send_contents(contents);
+            }
+        },
+        "POST /setAliasTable HTTP/1.1"              => {
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                // Parse Request Body
+                let alias_rooms = body_json["rooms"]
+                    .as_array()
+                    .unwrap();
+                //  Iterate through the rooms and find hostname exceptions,
+                for alias_record in alias_rooms.iter() {
+                    debug!("Alias Record \n {}", alias_record);
+                    let hostname_exception = alias_record.get("hostnameException")
+                        .unwrap()
+                        .to_string()
+                        .replace("\"","");
+                    let room_name = alias_record.get("name")
+                        .unwrap()
+                        .to_string()
+                        .replace("\"","");
+                    //println!("{}", room_name.len());
+                    if hostname_exception != "" {
+                        debug!("Alias Hostname Exception: \n {} at {}", hostname_exception, room_name);
+                        let mut room : DB_Room = database.get_room_by_name(&room_name);
+                        let mut pd = room.ping_data.clone();
+                        for ping_record in &mut pd {
+                            ping_record
+                                .as_mut()
+                                .unwrap()
+                                .hostname.room = hostname_exception.clone();
+                        }
+                        room.ping_data = pd;
+                        //println!("{:?}", room);
+                        database.update_room(&room);
+                    }
+                }
+                // Save Alias Table to database as dataElement
+                let alias_table = DB_DataElement {
+                    key: "alias_table".to_string(),
+                    val: String::from_utf8(req.body).expect("Unable to parse body contents")
+                };
+                database.update_data(&alias_table);
+                res.status(STATUS_200);
+                res.send_contents("Database Alias Table Updated".into());
+            }
+        },
+        "POST /resetAlias HTTP/1.1"        => {
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                // Get List of Rooms from body_json
+                let target_rooms = body_json["rooms"]
+                    .as_array()
+                    .unwrap();
+                // Change ping_data.hostname.room to original name
+                for room in target_rooms.iter() {
+                    let mut room = database.get_room_by_name(&room.to_string().replace("\"",""));
+                    let room_name = room.name.clone();
+                    let mut pd = room.ping_data.clone();
+                    for ping_record in &mut pd {
+                        ping_record
+                            .as_mut()
+                            .unwrap()
+                            .hostname.room = room_name.clone();
+                    }
+                    room.ping_data = pd;
+                    //println!("Reset room {}:\n{:?}", &room_name, &room);
+                    database.update_room(&room);
+                }
+                debug!("Reverting Alias Change for target_rooms, {:?}", &target_rooms);
+                res.status(STATUS_200);
+                res.send_contents("Reset Requested Rooms".into());
+            }
         },
         // Terminal
         // --------------------------------------------------------------------
@@ -655,6 +1086,44 @@ async fn handle_connection(
                 .ok()?
             ;
 
+            // Get Alias Table, to swap incoming room_names from LSM with
+            //   Bronson friendly naming. We filter Alias Table to only contain
+            //   rooms that are relevant to current LSM request.
+            let alias_table : DB_DataElement = database.get_data("alias_table")
+                .expect("Alias_table has not been set yet.");
+            let alias_obj: Value = serde_json::from_str(&alias_table.val)
+                .expect("Unable to Parse Alias Table Contents.");
+            let alias_rooms = alias_obj.get("rooms");
+            //println!("{:?}", alias_rooms);
+            //
+            let mut alias_vec: Vec<(String, String)> = Vec::new();
+            if let Some(arr) = alias_rooms?.as_array() {
+                for item in arr {
+                    //println!("Array Item: {:?}", item);
+                    //println!("Building Item: {:?}", item.get("name").unwrap().as_str());
+                    //println!("LSM Item: {:?}", item.get("lsmName").unwrap().as_str());
+                    let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
+                    if alias_name.contains(&lsm_building.abbrev.as_str()) {
+                        debug!("Relevant Alias Found");
+                        let alias_lsm = item.get("lsmName").unwrap().as_str().unwrap().to_string();
+                        alias_vec.push((alias_name, alias_lsm));
+                    }
+                }
+            }
+            // Alias Building
+            let alias_buildings = alias_obj.get("buildings");
+            let mut alias_abbrev : (String, String) = ("NOTSET".to_string(),"NOTSET".to_string());
+            if let Some(arr) = alias_buildings?.as_array() {
+                for item in arr {
+                    let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
+                    if alias_name == lsm_building.abbrev.as_str() {
+                        alias_abbrev.0 = item.get("lsmName").unwrap().as_str().unwrap().to_string();
+                        alias_abbrev.1 = item.get("name").unwrap().as_str().unwrap().to_string();
+                    }
+                }
+            }
+            //println!("Alias Vec: {:?}", alias_vec);
+            // Process Request to LSM
             let body = req.get(url)
                               .timeout(Duration::from_secs(15))
                               .send()
@@ -664,31 +1133,58 @@ async fn handle_connection(
                               .await
                               .expect("[-] PAYLOAD ERROR");
 
-            let v: Value = serde_json::from_str(&body).expect("Empty");
+            let v: Value = match serde_json::from_str(&body) {
+                Ok(val) => val,
+                Err(_)      => {
+                    warn!("LSM_ERR: API call returned error.");
+                    json!({
+                    "count": -1,
+                    "data": "LSM Busy: Please try again"
+                    })
+                }
+            };
             let mut check_map: HashMap<String, String> = HashMap::new();
             if v["count"].as_i64() > Some(0) {
                 let num_entries = match v["count"].as_i64() {
                     Some(num) => num,
                     None => 0
                 };
-                let checks: &mut Vec<Value> = match &mut v["data"].as_array() {
-                    Some(data) => &mut data.clone(),
+                let mut checks: Vec<Value> = match &mut v["data"].as_array() {
+                    Some(data) => data.clone(),
                     None => {
                         error!("Unable to get API data as vec.");
-                        &mut Vec::<Value>::new()
+                        Vec::<Value>::new()
                     }
                 };
                 checks.reverse();
                 for i in 0..num_entries {
-                    let check = checks[i as usize].as_object().unwrap();
+                    let mut check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
+                    // Look to see if check["LocationName"] is in the alias_obj, replace it if so.
+                    //let tmp_locale = &mut check["LocationName"].as_str().unwrap();
+                    for tuple in &alias_vec {
+                        if tuple.1 == check["LocationName"].as_str().unwrap() {
+                            debug!("Alias Struck, {:?} to be replaced with {:?}", check["LocationName"].as_str().unwrap(), tuple.0);
+                            check["LocationName"] = serde_json::Value::String(tuple.0.clone());
+                        }
+                    }
+                    // Replace Abbrevition if exists
+                    if alias_abbrev.0 != "NOTSET" {
+                        // check["LocationName"]
+                        debug!("Building Alias Struck, {:?} to be replaced with {:?}",alias_abbrev.0, alias_abbrev.1);
+                        check["LocationName"] = serde_json::Value::String(
+                            check["LocationName"]
+                                .as_str()
+                                .unwrap()
+                                .replace(&alias_abbrev.0, &alias_abbrev.1)
+                        );
+                    }
                     check_map.insert(
                         String::from(check["LocationName"].as_str().unwrap()), 
                         String::from(check["CompletedOn"].as_str().unwrap())
                     );
                 }
             }
-
-            // TODO: get checked_rooms
+            // Get checked_rooms
             // let checked_rooms: i16 = v["count"].as_i64().unwrap().try_into().unwrap();
             let mut checked_rooms: i16 = 0;
             for mut room in database.get_rooms_by_abbrev(&building_sel) {
@@ -716,7 +1212,7 @@ async fn handle_connection(
             let ret_rooms = database.get_rooms_by_abbrev(&ret_building.abbrev);
             // TODO: Get number of Checked and Total Number of rooms.
             let number_rooms: i16 = ret_rooms.len().try_into().unwrap();
-            // Note, number_rooms and checked_rooms rely on the rooms inside LSM. 
+            // Note, number_rooms and checked_rooms rely on the rooms inside LSM.
             //
             let new_building: DB_Building = DB_Building {
                 abbrev: ret_building.abbrev,
@@ -728,7 +1224,7 @@ async fn handle_connection(
             };
             database.update_building(&new_building);
 
-            return_body.push( 
+            return_body.push(
                 Building {
                     abbrev: new_building.abbrev,
                     name: new_building.name,
@@ -740,10 +1236,8 @@ async fn handle_connection(
                 }
             );
             // ----------------------------------------------------------------
-
             // parse rooms map to load statuses for return
             // ----------------------------------------------------------------
-
             let json_return = json!({
                 "cb_body": return_body,
             });
@@ -936,9 +1430,21 @@ fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress
     for net in net_elements {
         let hn_string: String = net.as_ref().unwrap().hostname.to_string();
         pinged_hns.push(Some(
-            DB_IpAddress {
-                hostname: net.unwrap().hostname,
-                ip: ping_this(&hn_string)
+            match ping_this(&hn_string) {
+                Ok(ip) => DB_IpAddress {
+                    hostname: net.clone().unwrap().hostname,
+                    ip: ip,
+                    last_ping: String::from(format!("{}", chrono::Utc::now())),
+                    alert: 0,
+                    error_message: String::new()
+                },
+                Err(m)      => DB_IpAddress {
+                    hostname: net.clone().unwrap().hostname,
+                    ip: String::from("x"),
+                    last_ping: String::from(format!("{}", chrono::Utc::now())),
+                    alert: net.clone().unwrap().alert + 1,
+                    error_message: String::from(m)
+                }
             }
         ))
     }
