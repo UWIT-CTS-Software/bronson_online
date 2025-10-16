@@ -91,7 +91,7 @@
     },
     "CB": {
         "name"    : "Corbett",
-        "lsm_name": "Corbett%20(CB)",
+        "lsm_name": "Corbett%20Building%20(CB)",
         "abbrev"  : "CB",
         "zone"    : 4,
         "total_rooms": 0,
@@ -307,7 +307,7 @@
     },
     "ST": {
         "name"    : "Enzi STEM",
-        "lsm_name": "Michael%20B.%20Enzi%20STEM%20(ST)",
+        "lsm_name": "Michael%20B%2E%20Enzi%20STEM%20(ST)",
         "abbrev"  : "ST",
         "zone"    : 1,
         "total_rooms": 0,
