@@ -1125,14 +1125,13 @@ async fn handle_connection(
                     Some(num) => num,
                     None => 0
                 };
-                let mut checks: Vec<Value> = match &mut v["data"].as_array() {
+                let checks: Vec<Value> = match &mut v["data"].as_array() {
                     Some(data) => data.clone(),
                     None => {
                         error!("Unable to get API data as vec.");
                         Vec::<Value>::new()
                     }
                 };
-                checks.reverse();
                 for i in 0..num_entries {
                     let mut check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
                     // Look to see if check["LocationName"] is in the alias_obj, replace it if so.
@@ -1173,8 +1172,8 @@ async fn handle_connection(
                             "2000-01-01T00:00:00Z"
                         }
                     });
-                    room.needs_checked = check_lsm(&room);
                 }
+                room.needs_checked = check_lsm(&room);
                 let schedule_params = check_schedule(&room);
                 room.available = schedule_params.0;
                 room.until = schedule_params.1;
