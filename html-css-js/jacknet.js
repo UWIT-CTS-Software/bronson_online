@@ -130,6 +130,18 @@ async function getSelectedBuilding() {
     }
 }
 
+function devTypeToName(devType) {
+    switch (devType) {
+        case "PROC": return "Processor"
+        case "PJ": return "Projector(s)"
+        case "DISP": return "Display(s)"
+        case "WS": return "Wyo Share"
+        case "TP": return "Touch Panel"
+        case "CMIC": return "Ceiling Mic(s)"
+        default: return "Unknown"
+    }
+}
+
 /*
 $$$$$$$$\                                          $$\     
 $$  _____|                                         $$ |    
@@ -279,7 +291,7 @@ async function runSearch() {
         if (document.title != "JackNet - Bronson") {
             console.log("Response from JackNet Received, placing in a queue");
             userOnPage = false;
-            stashJNResponse(formPR, bdl[i], deviceNames);
+            stashJNResponse(formPR, bdl[i], devTypes);
         } else {
             // temp: eventually pingResult will return as this form
             let rms   = await printPR(formPR, bdl[i], devTypes);
@@ -536,7 +548,7 @@ async function postJNVis(formPing, building, totalDevices, totalNotFound, devTyp
     HTML_table += `</tr>`;
     let devsObj = {};
     for (var a=0; a<devTypes.length; a++) {
-        devsObj[devTypes[a]] = [`<td class="visIndexItem">${devTypes[a]} </td><td><ul class="visRoomDeviceList">`];
+        devsObj[devTypes[a]] = [`<td class="visIndexItem">${devTypeToName(devTypes[a])} </td><td><ul class="visRoomDeviceList">`];
     }
     for (var j=0; j<formPing.length; j++) {
         for (var a=0; a<formPing[j].length; a++) {
@@ -610,11 +622,10 @@ async function setJackNet() {
             if (stash != null) {
                 console.log("JackNet Stash Found, unloading items");
                 for(response in stash.stashList) {
-                    console.log(stash.stashList[response]);
                     let pr = stash.stashList[response]["formattedPingRequest"];
                     let bn = stash.stashList[response]["buildingName"];
-                    let dn = stash.stashList[response]["deviceNames"];
-                    await printPR(pr, bn, dn);
+                    let dt = stash.stashList[response]["devTypes"];
+                    await printPR(pr, bn, dt);
                 }
                 // reset stash
                 sessionStorage.removeItem("JackNet_stash");
