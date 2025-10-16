@@ -377,22 +377,25 @@ impl Database {
 			self.update_data(&DB_DataElement {
 				key: String::from("schedule"),
 				val: String::from(
-"{
-	\"Alex Bryan\":{\"Name\":\"Alex Bryan\",\"Assignment\":\"SysEn\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Cian Melker\":{\"Name\":\"Cian Melker\",\"Assignment\":\"Networking\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Collin Davis\":{\"Name\":\"Collin Davis\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Colton Hopster\":{\"Name\":\"Colton Hopster\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Jack Nyman\":{\"Name\":\"Jack Nyman\",\"Assignment\":\"Coding\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Jarred Heddins\":{\"Name\":\"Jarred Heddins\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Jason Vanlandingham\":{\"Name\":\"Jason Vanlandingham\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Korrin Sutherburg\":{\"Name\":\"Korrin Sutherburg\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Lexus Fermelia\":{\"Name\":\"Lexus Fermelia\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Mario Garcia-Ceballos\":{\"Name\":\"Mario Garcia-Ceballos\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Michael Stoll\":{\"Name\":\"Michael Stoll\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Sofia Newsome\":{\"Name\":\"Sofia Newsome\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Thomas Lockwood\":{\"Name\":\"Thomas Lockwood\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}}
-}"
+					"{
+						\"Alex Bryan\":{\"Name\":\"Alex Bryan\",\"Assignment\":\"SysEn\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+						\"Cian Melker\":{\"Name\":\"Cian Melker\",\"Assignment\":\"Networking\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+						\"Collin Davis\":{\"Name\":\"Collin Davis\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+						\"Colton Hopster\":{\"Name\":\"Colton Hopster\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+						\"Jack Nyman\":{\"Name\":\"Jack Nyman\",\"Assignment\":\"Coding\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+						\"Jarred Heddins\":{\"Name\":\"Jarred Heddins\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+						\"Korrin Sutherburg\":{\"Name\":\"Korrin Sutherburg\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+						\"Lexus Fermelia\":{\"Name\":\"Lexus Fermelia\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+						\"Michael Stoll\":{\"Name\":\"Michael Stoll\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+						\"Levi Westberg\":{\"Name\":\"Levi Westberg\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
+						\"Thomas Lockwood\":{\"Name\":\"Thomas Lockwood\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}}
+					}"
 				)
+			});
+
+			self.update_data(&DB_DataElement {
+				key: String::from("alias_table"),
+				val: String::from("\"buildings\": [],\"rooms\": []"),
 			});
 		}
 
@@ -675,12 +678,6 @@ impl Database {
 
 impl<'a> Clone for Database {
 	fn clone(&self) -> Database {
-		// dotenv().ok();
-
-		// let db_url = env::var("DATABASE_URL").expect("DATABASE_URL env variable not found.");
-		// let connection = PgConnection::establish(&db_url)
-		// 	.unwrap_or_else(|_| panic!("Error connecting to {}", db_url));
-
 		return Database {
 			pool: self.pool.clone(),
 			key: self.key.clone(),
