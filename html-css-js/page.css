@@ -1315,15 +1315,18 @@ ol li::marker {
 }
 
 .tx_popupContainer {
-    position: absolute;
+    position: fixed;
     width: 100%;
-    height: 150%;
+    height: auto;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
     display: flex;
     justify-content: center;
-    align-items: center;
-    overflow: auto;
-    padding-top: 150px;
     opacity: 0;
+    background-color: rgba(0,0,0,0.4);
     pointer-events: none;
     transition: .2s ease;
 }
@@ -1332,7 +1335,7 @@ ol li::marker {
   display: none;
 }
 
-.tx_popupContainer.active {
+.tx_popupContainer.popupActive {
     opacity: 1;
     pointer-events: auto;
     transition: .3s ease;
@@ -1340,9 +1343,11 @@ ol li::marker {
 
 .tx_popupContainer .tx_popupBox {
     width: 701px;
+    height: fit-content;
     border: 3px solid rgb(224, 193, 108);
-    background: rgb(75, 75, 75);
+    background: rgb(60, 60, 60);
     border-radius: 6px;
+    margin-top: 36px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
@@ -1356,6 +1361,7 @@ ol li::marker {
     text-align: left;
     padding: 0px 10px 0px 10px;
     margin: 0px 0px;
+    border-radius: 0px 0px 6px 0px;
     width: 90%;
     white-space: nowrap;
     overflow: hidden;
