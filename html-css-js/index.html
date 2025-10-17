@@ -120,27 +120,34 @@
           <legend>
             Schedule
           </legend>
+          <div style="height:20px">
+            <br>
+          </div>
           <div class="tab_row schedule">
-            <button id="MondayButton" onclick="setSchedule('MondayButton')" type="button" class="leaderTab">
-              <img class="leader_tab_img" src="button2.png"/>
+            <button id="MondayButton" onclick="setSchedule('MondayButton')" type="button" class="scheduleTab">
+              <img class="schedule_tab_img" src="button2.png"/>
               <span>Monday</span>
             </button>
-            <button id="TuesdayButton" onclick="setSchedule('TuesdayButton')" type="button" class="leaderTab">
-              <img class="leader_tab_img" src="button2.png"/>
+            <button id="TuesdayButton" onclick="setSchedule('TuesdayButton')" type="button" class="scheduleTab">
+              <img class="schedule_tab_img" src="button2.png"/>
               <span>Tuesday</span>
             </button>
-            <button id="WednesdayButton" onclick="setSchedule('WednesdayButton')" type="button" class="leaderTab">
-              <img class="leader_tab_img" src="button2.png"/>
+            <button id="WednesdayButton" onclick="setSchedule('WednesdayButton')" type="button" class="scheduleTab">
+              <img class="schedule_tab_img" src="button2.png"/>
               <span>Wednesday</span>
             </button>
-            <button id="ThursdayButton" onclick="setSchedule('ThursdayButton')" type="button" class="leaderTab">
-              <img class="leader_tab_img" src="button2.png"/>
+            <button id="ThursdayButton" onclick="setSchedule('ThursdayButton')" type="button" class="scheduleTab">
+              <img class="schedule_tab_img" src="button2.png"/>
               <span>Thursday</span>
             </button>
-            <button id="FridayButton" onclick="setSchedule('FridayButton')" type="button" class="leaderTab">
-              <img class="leader_tab_img" src="button2.png"/>
+            <button id="FridayButton" onclick="setSchedule('FridayButton')" type="button" class="scheduleTab">
+              <img class="schedule_tab_img" src="button2.png"/>
               <span>Friday</span>
             </button>
+            <button id="UserButton" onclick="setUserSchedule()" type="button" class="scheduleTab">
+              <img class="schedule_tab_img" src="button2.png"/>
+              <span>My Schedule</span>
+              </button>
           </div>
           <table class="schdTable" id="db_schedule_table">
             <thead>
@@ -213,7 +220,7 @@
       <!-- Website Header (Doesn't Change) -->
       <div class="program_header">
         <!-- Hamburger Menu Declaration -->
-        <div class="hb_menu">
+        <div id="hb_menu" class="hb_menu">
           <fieldset>
             <legend>
               Menu:</legend>
@@ -233,7 +240,7 @@
               TeamDynamix </button>
             <button id="25lURL" onclick="window.open('https://25live.collegenet.com/pro/uwyo#!/home/dash');" type="button" class="hb_button">
               25Live </button>
-            <button id="campusMapURL" onclick="window.open('https://www.arcgis.com/apps/Viewer/index.html?appid=cff4d95e5911456fac7a91a49e802018');" type="button" class="hb_button">
+            <button id="campusMapURL" onclick="window.open('https://uwoperations.uwyo.edu/uwopsmaps/UWCampusViewer/Index.html');" type="button" class="hb_button">
               Campus Map </button>
           </fieldset>
         </div>
@@ -281,10 +288,10 @@
         
           <div class="modal_container" id="entry_field">
             <label for="title"><b>Title</b></label>
-            <input type="text" placeholder="Briefly Describe Your Issue" name="title" required>
+            <input class="inputText" type="text" placeholder="Briefly Describe Your Issue" name="title" required>
       
             <label for="desc"><b>Description</b></label>
-            <input type="text" placeholder="Give More Detail" name="desc">
+            <input class="inputText" type="text" placeholder="Give More Detail" name="desc">
           </div>
       
           <div class="modal_container">

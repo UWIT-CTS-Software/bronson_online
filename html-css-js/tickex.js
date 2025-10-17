@@ -36,6 +36,7 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 \__|  \__|   \__|   \__|     \__|\________|
 */
 
+
 function showPopup(ticket) {
     if (!ticket) {
         console.error("Ticket data not found");
@@ -50,7 +51,7 @@ function showPopup(ticket) {
         return;
     }
 
-    popupContainer.classList.add('active');
+    popupContainer.classList.add('popupActive');
 
     popupContainer.innerHTML = `
         <div class="tx_popupBox">
@@ -77,10 +78,10 @@ function showPopup(ticket) {
 }
 
 function hidePopup() {
-    let popupContainer = document.querySelector('.tx_popupContainer.active');
+    let popupContainer = document.querySelector('.tx_popupContainer.popupActive');
 
     if (popupContainer) {
-        popupContainer.classList.remove('active');
+        popupContainer.classList.remove('popupActive');
     }
 }
 
@@ -92,18 +93,38 @@ function sendToHelpDesk() {
     alert("This feature is not yet implemented. -Lex");
 }
 
-function addTicketsToBoard(tickets) {
-    return tickets.map(ticket => {
-        const safeJson = JSON.stringify(ticket).replace(/"/g, '&quot;');
-        return `
-        <tr class="tx_ticket" id="${ticket.ticket_id}" onclick="showPopup(${safeJson})">
-            <td>${ticket.ticket_title}</td>
-            <td>${ticket.ticket_id}</td>
-            <td>${ticket.location || 'N/A'}</td>
-            <td>${ticket.status}</td>
-        </tr>
-    `;
-    }).join('');
+function addTicketsToBoard(tickets, ticketsHtml) {
+    tickets.sort((a, b) => new Date(b.date_created) - new Date(a.date_created));
+
+    for (let ticket of tickets) {
+        let ticketRow = `
+            <tr class="tx_ticket" id="${ticket.ticket_id}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
+                <td>${ticket.ticket_title}</td>
+                <td>${ticket.ticket_id}</td>
+                <td>${ticket.location || 'N/A'}</td>
+                <td>${ticket.status}</td>
+            </tr>
+        `;
+
+        // Days old < 14 or status is new
+        if ((Date.now() - new Date(ticket.date_created) < 14 * 24 * 60 * 60 * 1000 || ticket.status.toLowerCase() === 'new')
+                && ticket.status.toLowerCase() !== 'closed') {
+            ticketsHtml.newTickets += ticketRow;
+        }
+        if (ticket.status.toLowerCase() !== 'closed') {
+            ticketsHtml.catchAllTickets += ticketRow;
+        }
+        if (ticket.status.toLowerCase() === 'closed') {
+            ticketRow = `
+                <tr class="tx_ticket" id="${ticket.ticket_id}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
+                    <td>${ticket.ticket_title}</td>
+                    <td>${ticket.ticket_id}</td>
+                </tr>
+            `;
+
+            ticketsHtml.closedTickets += ticketRow;
+        }
+    }
 }
 
 async function fetchTickets() {
@@ -118,7 +139,6 @@ async function fetchTickets() {
 }
 
 async function setTickex() {
-
     preserveCurrentTool();
 
     // TEMPORARY:
@@ -159,10 +179,18 @@ async function setTickex() {
         }
     }
 
+
+
     let response = await fetchTickets();
     let tickets = response?.tickets || [];
-    let ticketsHtml = addTicketsToBoard(tickets);
+    let ticketsHtml = {
+        newTickets: "",
+        catchAllTickets: "",
+        closedTickets: ""
+    };
     
+    addTicketsToBoard(tickets, ticketsHtml);
+
     // -- No HTML Cache found, build from scratch
     let tx_container = document.createElement("div");
     tx_container.classList.add("tx_container");
@@ -176,7 +204,6 @@ async function setTickex() {
             <img src="/tdx_logo.png" alt="TeamDynamix" style="height:45px; vertical-align:middle; cursor:pointer;" />
         </a>
     `;
-
 
     let infoBox = document.createElement("div");
     infoBox.classList.add("tx_infoBox");
@@ -202,7 +229,7 @@ async function setTickex() {
                         </tr>
                 </thead>
                     <tbody>
-                        ${ticketsHtml}
+                        ${ticketsHtml.newTickets}
                     </tbody>
                 </table>
             </div>
@@ -213,8 +240,22 @@ async function setTickex() {
     catchAll.classList.add("tx_catchAllTickets");
     catchAll.innerHTML = `
         <fieldset>
-            <legend>CTS Catch All Tickets</legend>
-            <p>(Placeholder text) This is where all CTS tickets will be displayed.</p>
+            <legend>Ticket Catch All</legend>
+            <div class="tx_ticketContainer">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>ID</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                        </tr>
+                </thead>
+                    <tbody>
+                        ${ticketsHtml.catchAllTickets}
+                    </tbody>
+                </table>
+            </div>
         </fieldset>
     `;
 
@@ -222,8 +263,20 @@ async function setTickex() {
     closedTickets.classList.add("tx_closedTickets");
     closedTickets.innerHTML = `
         <fieldset>
-            <legend>CTS Closed Tickets</legend>
-            <p>(Placeholder text) This is where all closed tickets will be displayed.</p>
+            <legend>Closed Tickets</legend>
+            <div class="tx_ticketContainer">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>ID</th>
+                        </tr>
+                </thead>
+                    <tbody>
+                        ${ticketsHtml.closedTickets}
+                    </tbody>
+                </table>
+            </div>
         </fieldset>
     `;
 
@@ -243,7 +296,7 @@ async function setTickex() {
         const pressedKey = e.key;
 
         if (pressedKey == 'Escape') {
-            if (document.querySelector('.tx_popupContainer.active')) {
+            if (document.querySelector('.tx_popupContainer.popupActive')) {
                 hidePopup();
             }
         }
