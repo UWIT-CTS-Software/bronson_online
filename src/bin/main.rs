@@ -67,7 +67,7 @@ use std::{
     path::Path,
     time::{ Duration, SystemTime },
     string::{ String, },
-    sync::{Arc, /*Mutex,*/ RwLock},
+    // sync::{Arc, /*Mutex,*/ RwLock},
     clone::{ Clone, },
     option::{ Option, },
     collections::{ HashMap, },
@@ -152,8 +152,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("[!] ... {}:{} ...", host_ip, host_port.to_string());
     debug!("Server mounted!");
 
-    let pool = ThreadPool::new(5); // Thread pool for handling requests
-    let data_pool = ThreadPool::new(2); // Thread pool for database operations
+    let pool = ThreadPool::new(6); // Thread pool for handling requests
+    let data_pool = ThreadPool::new(1); // Thread pool for database operations
+    // Maybe, Unsure if a queue will be needed.
+    let mut queue_pool = ThreadPool::new(1);
     let mut buffer = [0; BUFF_SIZE];
 
     // ----------------------------------------------------------------------
@@ -171,10 +173,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     connection.run_pending_migrations(MIGRATIONS)
             .map_err(|e| format!("Failed to run migrations: {}", e))?;
 
-    let database = Arc::new(RwLock::new(Database::new()));
-    {
-        database.write().unwrap().init_if_empty();
-    }
+    let mut request_database = Database::new();
+    let data_database = Database::new();
+
+    request_database.init_if_empty();
 
     // ThreadSchedule Init
     let mut thread_schedule = ThreadSchedule::new();
@@ -196,10 +198,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     
     // Data Thread Pool Loop (data transfer)
-    let dt_database = Arc::clone(&database);
+    let mut clone_data_db = data_database.clone();
     data_pool.execute(move || {
         loop {
-            thread_schedule = data_sync(&dt_database, thread_schedule);
+            (clone_data_db, thread_schedule, queue_pool) = data_sync(clone_data_db, thread_schedule, queue_pool);
         }
     });
 
@@ -218,13 +220,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(e) => error!("Error reading to buffer: {}", e)
         };
         let req = Request::from(buffer.clone());
-        //let clone_db = database.clone();
+        let clone_db = request_database.clone();
 
-        let rq_database = Arc::clone(&database);
         pool.execute(move || {
-            //let mut rq_db = rq_database.write().unwrap();
-            //let mut res = handle_connection(req, clone_db).unwrap(); //original
-            let mut res = handle_connection(req, &rq_database).unwrap();
+            let mut res = handle_connection(req, clone_db).unwrap();
             stream.write(&res.build()).unwrap();
             stream.flush().unwrap();
             stdout().flush().unwrap();
@@ -265,173 +264,56 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
 #[tokio::main]
 #[allow(unused_assignments)]
 async fn data_sync(
-    database: &Arc<RwLock<Database>>,
-    schedule: ThreadSchedule,
-) -> ThreadSchedule {
+    database: Database,
+    mut schedule: ThreadSchedule,
+    _q_pool: ThreadPool,
+) -> (Database, ThreadSchedule, ThreadPool) {
     let now = Utc::now();
-    let mut updated_schedule = schedule.clone();
-    for (task_name, task) in schedule.tasks.iter() {
+    for (task_name, task) in schedule.clone().tasks.iter() {
         if (now - task.timestamp).num_seconds() as u64 >= task.duration {
             // Execute task based on task_name
             match task_name.as_str() {
-                "print1"      => {
+                "print1"      => { // Not-LSM
                     println!("One minute task executed");
                 },
-                "print2"      => {
+                "print2"      => { // Not-LSM
                     println!("Two minute task executed");
                 },
                 "leaderboard" => {
-                    println!("TODO: Leaderboard Update");
-                    let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
-                    let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
-                    let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
-
-                    let mut req = reqwest::Client::new();
-                    {
-                        let mut tdatabase = database.write().unwrap();
-                        req = reqwest::Client::builder()
-                            .cookie_store(true)
-                            .user_agent("server_lib/1.10.1")
-                            .default_headers(construct_headers("lsm", &mut tdatabase))
-                            .timeout(Duration::from_secs(15))
-                            .build()
-                            .ok()
-                            .expect("Unable to Build LSM leaderboard Request")
-                        ;
-                    }
-
-                    let body_7_days = req.get(url_7_days)
-                                    .timeout(Duration::from_secs(15))
-                                    .send()
-                                    .await
-                                    .expect("[-] RESPONSE ERROR")
-                                    .text()
-                                    .await
-                                    .expect("[-] PAYLOAD ERROR");
-
-                    let v_7_days: Value = serde_json::from_str(&body_7_days).expect("Empty");
-                    let data_7_days: Vec<Value> = match v_7_days["data"].as_array() {
-                        Some(data) => data.clone(),
-                        None => Vec::<Value>::new()
-                    };
-
-                    let body_30_days = req.get(url_30_days)
-                                    .timeout(Duration::from_secs(15))
-                                    .send()
-                                    .await
-                                    .expect("[-] RESPONSE ERROR")
-                                    .text()
-                                    .await
-                                    .expect("[-] PAYLOAD ERROR");
-
-                    let v_30_days: Value = serde_json::from_str(&body_30_days).expect("Empty");
-                    let data_30_days: Vec<Value> = match v_30_days["data"].as_array() {
-                        Some(data) => data.clone(),
-                        None => Vec::<Value>::new()
-                    };
-
-                    let body_90_days = req.get(url_90_days)
-                                    .timeout(Duration::from_secs(15))
-                                    .send()
-                                    .await
-                                    .expect("[-] RESPONSE ERROR")
-                                    .text()
-                                    .await
-                                    .expect("[-] PAYLOAD ERROR");
-
-                    let v_90_days: Value = serde_json::from_str(&body_90_days).expect("Empty");
-                    let data_90_days: Vec<Value> = match v_90_days["data"].as_array() {
-                        Some(data) => data.clone(),
-                        None => Vec::<Value>::new()
-                    };
-
-                    let contents = json!({
-                        "7days": data_7_days,
-                        "30days": data_30_days,
-                        "90days": data_90_days
-                    }).to_string().into();
-                    let mut tdatabase = database.write().unwrap();
-                    tdatabase.update_data(&DB_DataElement {
-                        key: String::from("lsm_leaderboard"),
-                        val: String::from_utf8(contents).expect("Unable to parse LSM Return"),
-                    });
+                    update_room_check_leaderboard(&database).await;
                 },
                 "spares"      => {
-                    println!("TODO: Spares");
-                    let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
-
-                    // Build and Send Request
-                    let mut req = reqwest::Client::new();
-                    {
-                        let mut tdatabase = database.write().unwrap();
-                        req = reqwest::Client::builder()
-                            .cookie_store(true)
-                            .user_agent("server_lib/1.10.1")
-                            .default_headers(construct_headers("lsm", &mut tdatabase))
-                            .timeout(Duration::from_secs(15))
-                            .build()
-                            .ok()
-                            .expect("Unable to Build LSM leaderboard Request");
-                    }
-
-                    let body_spares = req.get(url_spares)
-                                    .timeout(Duration::from_secs(15))
-                                    .send()
-                                    .await
-                                    .expect("[-] RESPONSE ERROR")
-                                    .text()
-                                    .await
-                                    .expect("[-] PAYLOAD ERROR");
-
-                    let v_spares: Value = serde_json::from_str(&body_spares).expect("Empty");
-                    let data_spares: Vec<Value> = match v_spares["data"].as_array() {
-                        Some(data) => data.clone(),
-                        None => Vec::<Value>::new()
-                    };
-                    // Pack into JSON response to front-end
-                    let contents = json!({
-                        "spares": data_spares
-                    }).to_string().into();
-
-                    let mut tdatabase = database.write().unwrap();
-                    tdatabase.update_data(&DB_DataElement {
-                        key: String::from("lsm_spares"),
-                        val: String::from_utf8(contents).expect("Unable to parse LSM Return"),
-                    })
+                    update_lsm_spares(&database).await;
                 },
-                "ping"        => {
+                "ping"        => { // Not-LSM
                     println!("TODO: Ping Campus");
-                    let mut _tdatabase = database.write().unwrap();
                 },
                 "run_cb"      => {
                     println!("TODO: Run Checkerboard on All Zones");
-                    let mut _tdatabase = database.write().unwrap();
                 },
                 "lsmData"     => {
                     println!("MAYBE TODO: Get Diagnostic Information from LSM");
-                    let mut _tdatabase = database.write().unwrap();
                 }
                 _        => {
                     warn!("Unknown task: {}", task_name)
                 },
             }
             // Update timestamp
-            updated_schedule = schedule.clone();
-            if let Some(task) = updated_schedule.tasks.get_mut(task_name) {
+            if let Some(task) = schedule.tasks.get_mut(task_name) {
                 task.timestamp = now;
             }
         }
     }
     // Sleep for a short duration to prevent busy-waiting
     std::thread::sleep(std::time::Duration::from_secs(1));
-    return updated_schedule;
+    return (database, schedule, _q_pool);
 }
 
 #[tokio::main]
 #[allow(unused_assignments)]
 async fn handle_connection(
     mut req: Request,
-    arc_database: &Arc<RwLock<Database>>,
+    mut database: Database,
 ) -> Option<Response> {
     let mut user_homepage: &str = "html-css-js/login.html";
     if req.headers.contains_key("Cookie") {
@@ -440,7 +322,7 @@ async fn handle_connection(
             Some(uname) => uname,
             None => panic!("Unable to capture username.")
         };
-        let mut database = arc_database.write().unwrap();
+        //let mut database = arc_database.write().unwrap();
         let user = match database.get_user(&username["username"]) {
             Some(u) => u,
             None => DB_User{ username: String::new(), permissions: 0 },
@@ -552,26 +434,24 @@ async fn handle_connection(
         },
         // Data Requests
         "GET /techSchedule HTTP/1.1"  => {
-            let mut database = arc_database.write().unwrap();
             let contents = database.get_data("schedule").unwrap().val.into();
             res.status(STATUS_200);
             //res.send_file("data/techSchedule.json");
             res.send_contents(contents);
         },
         "GET /campusData HTTP/1.1"         => {
-            let mut database = arc_database.write().unwrap();
             let contents = json!(&database.get_campus()).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "GET /zoneData HTTP/1.1"           => { // NEW: returns data in lib.rs as json
-            let mut database = arc_database.write().unwrap();
+            //let mut database = arc_database.write().unwrap();
             let contents = get_zone_data(database.get_buildings());
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "GET /dashContents HTTP/1.1"       => { // Dashboard Message
-            let mut database = arc_database.write().unwrap();
+            //let mut database = arc_database.write().unwrap();
             let contents = json!({
                 "contents": database.get_data("dashboard").unwrap().val
             }).to_string().into();
@@ -579,114 +459,20 @@ async fn handle_connection(
             res.send_contents(contents);
         },
         "GET /leaderboard HTTP/1.1"        => { // OUTGOING, Dashboard Leaderboard
-            // let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
-            // let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
-            // let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
-
-            // let req = reqwest::Client::builder()
-            //     .cookie_store(true)
-            //     .user_agent("server_lib/1.10.1")
-            //     .default_headers(construct_headers("lsm", &mut database))
-            //     .timeout(Duration::from_secs(15))
-            //     .build()
-            //     .ok()?
-            // ;
-
-            // let body_7_days = req.get(url_7_days)
-            //                   .timeout(Duration::from_secs(15))
-            //                   .send()
-            //                   .await
-            //                   .expect("[-] RESPONSE ERROR")
-            //                   .text()
-            //                   .await
-            //                   .expect("[-] PAYLOAD ERROR");
-
-            // let v_7_days: Value = serde_json::from_str(&body_7_days).expect("Empty");
-            // let data_7_days: Vec<Value> = match v_7_days["data"].as_array() {
-            //     Some(data) => data.clone(),
-            //     None => Vec::<Value>::new()
-            // };
-
-            // let body_30_days = req.get(url_30_days)
-            //                   .timeout(Duration::from_secs(15))
-            //                   .send()
-            //                   .await
-            //                   .expect("[-] RESPONSE ERROR")
-            //                   .text()
-            //                   .await
-            //                   .expect("[-] PAYLOAD ERROR");
-
-            // let v_30_days: Value = serde_json::from_str(&body_30_days).expect("Empty");
-            // let data_30_days: Vec<Value> = match v_30_days["data"].as_array() {
-            //     Some(data) => data.clone(),
-            //     None => Vec::<Value>::new()
-            // };
-
-            // let body_90_days = req.get(url_90_days)
-            //                   .timeout(Duration::from_secs(15))
-            //                   .send()
-            //                   .await
-            //                   .expect("[-] RESPONSE ERROR")
-            //                   .text()
-            //                   .await
-            //                   .expect("[-] PAYLOAD ERROR");
-
-            // let v_90_days: Value = serde_json::from_str(&body_90_days).expect("Empty");
-            // let data_90_days: Vec<Value> = match v_90_days["data"].as_array() {
-            //     Some(data) => data.clone(),
-            //     None => Vec::<Value>::new()
-            // };
-
-            // let contents = json!({
-            //      "7days": data_7_days,
-            //     "30days": data_30_days,
-            //     "90days": data_90_days
-            // }).to_string().into();
-            let mut database = arc_database.write().unwrap();
             let contents = database.get_data("lsm_leaderboard").unwrap().val.into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         // Testing Spares LSM API Call.
         "GET /spares HTTP/1.1"             => { // OUTGOING, Dashboard Spares
-            // let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
-            // // Build and Send Request
-            // let req = reqwest::Client::builder()
-            //     .cookie_store(true)
-            //     .user_agent("server_lib/1.10.1")
-            //     .default_headers(construct_headers("lsm", &mut database))
-            //     .timeout(Duration::from_secs(15))
-            //     .build()
-            //     .ok()?
-            // ;
-
-            // let body_spares = req.get(url_spares)
-            //                   .timeout(Duration::from_secs(15))
-            //                   .send()
-            //                   .await
-            //                   .expect("[-] RESPONSE ERROR")
-            //                   .text()
-            //                   .await
-            //                   .expect("[-] PAYLOAD ERROR");
-
-            // let v_spares: Value = serde_json::from_str(&body_spares).expect("Empty");
-            // let data_spares: Vec<Value> = match v_spares["data"].as_array() {
-            //     Some(data) => data.clone(),
-            //     None => Vec::<Value>::new()
-            // };
-            // // Pack into JSON response to front-end
-            // let contents = json!({
-            //      "spares": data_spares
-            // }).to_string().into();
-
             // Get Spares from Database
-            let mut database = arc_database.write().unwrap();
+            //let mut database = arc_database.write().unwrap();
             let contents: Vec<u8> = database.get_data("lsm_spares").unwrap().val.into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "POST /lsmData HTTP/1.1"              => { // OUTGOING
-            let mut database = arc_database.write().unwrap();
+            //let mut database = arc_database.write().unwrap();
             let body_str = String::from_utf8(req.body).expect("AT: LSM Data Err, invalid UTF-8");
             let body_parts: Vec<&str> = body_str.split(',').collect();
             if body_parts.len() != 2 {
@@ -747,7 +533,6 @@ async fn handle_connection(
             res.send_contents(contents);
         },
         "POST /updateSchedule HTTP/1.1"        => {
-            let mut database = arc_database.write().unwrap();
             let new_data = DB_DataElement {
                 key: String::from("schedule"),
                 val: String::from_utf8(req.body).expect("Unable to parse body contents")
@@ -757,7 +542,6 @@ async fn handle_connection(
             res.send_contents("".into());
         },
         "POST /update/dash HTTP/1.1"       => {
-            let mut database = arc_database.write().unwrap();
             database.update_data(&DB_DataElement {
                 key: String::from("dashboard"),
                 val: String::from_utf8(req.body).expect("Unable to parse body contents"),
@@ -766,7 +550,7 @@ async fn handle_connection(
             res.send_contents("".into());
         },
         "POST /update/database_room HTTP/1.1"     => { // destination, newValue
-            let mut database = arc_database.write().unwrap();
+            //let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -804,13 +588,12 @@ async fn handle_connection(
                 new_db_room.ping_data = ping_vec;
                 // Update Database
                 //println!("DEBUG Updating DB_Room -> \n {:?}", new_db_room);
-                database.update_room(&new_db_room); // UNCOMMENT ME WHEN READY
+                database.update_room(&new_db_room);
                 res.status(STATUS_200);
                 res.send_contents("".into());
             }
         },
         "POST /insert/database_room HTTP/1.1"     => { // destination
-            let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -855,7 +638,6 @@ async fn handle_connection(
             }
         },
         "POST /remove/database_room HTTP/1.1"     => { // destination
-            let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -870,13 +652,13 @@ async fn handle_connection(
                     .to_string();
                 debug!("REMOVING ROOM -> {:?}", target_room);
                 // Remove Specified Room from Database
-                database.delete_room(&target_room); // UNCOMMENT ME WHEN READY
+                database.delete_room(&target_room);
                 res.status(STATUS_200);
                 res.send_contents("".into());
             }
         },
         "POST /update/database_building HTTP/1.1" => { // destination, newValue
-            let mut database = arc_database.write().unwrap();
+            //let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -914,7 +696,7 @@ async fn handle_connection(
             }
         },
         "POST /insert/database_building HTTP/1.1" => { // destination, newValue
-            let mut database = arc_database.write().unwrap();
+            //let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -948,7 +730,7 @@ async fn handle_connection(
             }
         },
         "POST /remove/database_building HTTP/1.1" => { // destination
-            let mut database = arc_database.write().unwrap();
+            //let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -967,7 +749,6 @@ async fn handle_connection(
             }
         },
         "POST /update/database_roomSchedule HTTP/1.1" => { // [Changes to make]
-            let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -1007,7 +788,6 @@ async fn handle_connection(
             }
         },
         "POST /update/roomSchd/timestamps HTTP/1.1" => { // Updates the timestamps stored in DB_DataElement
-            let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -1036,7 +816,6 @@ async fn handle_connection(
             }
         },
         "GET /roomSchd/timestamps HTTP/1.1" => { // Returns 25Live Report Dates
-            let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -1053,7 +832,6 @@ async fn handle_connection(
             }
         },
         "GET /aliasTable HTTP/1.1"         => {
-            let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -1074,7 +852,6 @@ async fn handle_connection(
             }
         },
         "POST /setAliasTable HTTP/1.1"     => {
-            let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -1124,7 +901,6 @@ async fn handle_connection(
             }
         },
         "POST /resetAlias HTTP/1.1"        => {
-            let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -1159,7 +935,6 @@ async fn handle_connection(
         // Terminal
         // --------------------------------------------------------------------
         "POST /terminal HTTP/1.1"          => {
-            let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -1186,7 +961,6 @@ async fn handle_connection(
         // --------------------------------------------------------------------
         // login
         "POST /login HTTP/1.1"             => {
-            let mut database = arc_database.write().unwrap();
             let credential_search = Regex::new(r"uname=(?<user>.*)&remember=[on|off]").unwrap();
             let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Option::Some(res) };
             let user = String::from(credentials["user"].to_string().into_boxed_str());
@@ -1234,7 +1008,6 @@ async fn handle_connection(
             arg_map.insert("title", decoded_title);
             arg_map.insert("body", decoded_desc);
 
-            let mut database = arc_database.write().unwrap();
             let url = "https://api.github.com/repos/UWIT-CTS-Software/bronson_online/issues";
             let req = reqwest::Client::builder()
                 .cookie_store(true)
@@ -1261,7 +1034,7 @@ async fn handle_connection(
         },
         // Jacknet
         "POST /ping HTTP/1.1"              => { // OUTGOING
-            let contents = execute_ping(req.body, arc_database.clone()); // JN
+            let contents = execute_ping(req.body, database); // JN
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -1273,7 +1046,6 @@ async fn handle_connection(
             // call for roomchecks in LSM and store
             // ----------------------------------------------------------------
             let mut return_body: Vec<Building> = Vec::new();
-            let mut database = arc_database.write().unwrap();
             let lsm_building = database.get_building_by_abbrev(&building_sel);
             debug!("Checkerboard Debug - building LSM Name:\n{:?}", &lsm_building.lsm_name.as_str());
             let url = format!(
@@ -1504,6 +1276,121 @@ async fn handle_connection(
     return Some(res);
 }
 
+
+async fn update_room_check_leaderboard(database: &Database) {
+    info!("[Data] - Pulling New LSM Leaderboard");
+    let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
+    let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
+    let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
+
+    let req = reqwest::Client::builder()
+        .cookie_store(true)
+        .user_agent("server_lib/1.10.1")
+        .default_headers(construct_headers("lsm", &mut database.clone()))
+        .timeout(Duration::from_secs(15))
+        .build()
+        .ok()
+        .expect("Unable to Build LSM leaderboard Request")
+    ;
+
+    let body_7_days = req.get(url_7_days)
+                    .timeout(Duration::from_secs(15))
+                    .send()
+                    .await
+                    .expect("[-] RESPONSE ERROR")
+                    .text()
+                    .await
+                    .expect("[-] PAYLOAD ERROR");
+
+    let v_7_days: Value = serde_json::from_str(&body_7_days).expect("Empty");
+    let data_7_days: Vec<Value> = match v_7_days["data"].as_array() {
+        Some(data) => data.clone(),
+        None => Vec::<Value>::new()
+    };
+
+    let body_30_days = req.get(url_30_days)
+                    .timeout(Duration::from_secs(15))
+                    .send()
+                    .await
+                    .expect("[-] RESPONSE ERROR")
+                    .text()
+                    .await
+                    .expect("[-] PAYLOAD ERROR");
+
+    let v_30_days: Value = serde_json::from_str(&body_30_days).expect("Empty");
+    let data_30_days: Vec<Value> = match v_30_days["data"].as_array() {
+        Some(data) => data.clone(),
+        None => Vec::<Value>::new()
+    };
+
+    let body_90_days = req.get(url_90_days)
+                    .timeout(Duration::from_secs(15))
+                    .send()
+                    .await
+                    .expect("[-] RESPONSE ERROR")
+                    .text()
+                    .await
+                    .expect("[-] PAYLOAD ERROR");
+
+    let v_90_days: Value = serde_json::from_str(&body_90_days).expect("Empty");
+    let data_90_days: Vec<Value> = match v_90_days["data"].as_array() {
+        Some(data) => data.clone(),
+        None => Vec::<Value>::new()
+    };
+
+    let contents = json!({
+        "7days": data_7_days,
+        "30days": data_30_days,
+        "90days": data_90_days
+    }).to_string().into();
+    //let mut tdatabase = database.write().unwrap();
+    database.clone().update_data(&DB_DataElement {
+        key: String::from("lsm_leaderboard"),
+        val: String::from_utf8(contents).expect("Unable to parse LSM Return"),
+    });
+    return;
+}
+
+async fn update_lsm_spares(database: &Database) {
+    info!("[Data] - Pulling New LSM Spare Information");
+    let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
+
+    // Build and Send Request
+    let req = reqwest::Client::builder()
+        .cookie_store(true)
+        .user_agent("server_lib/1.10.1")
+        .default_headers(construct_headers("lsm", &mut database.clone()))
+        .timeout(Duration::from_secs(15))
+        .build()
+        .ok()
+        .expect("Unable to Build LSM leaderboard Request");
+
+    let body_spares = req.get(url_spares)
+                    .timeout(Duration::from_secs(15))
+                    .send()
+                    .await
+                    .expect("[-] RESPONSE ERROR")
+                    .text()
+                    .await
+                    .expect("[-] PAYLOAD ERROR");
+
+    let v_spares: Value = serde_json::from_str(&body_spares).expect("Empty");
+    let data_spares: Vec<Value> = match v_spares["data"].as_array() {
+        Some(data) => data.clone(),
+        None => Vec::<Value>::new()
+    };
+    // Pack into JSON response to front-end
+    let contents = json!({
+        "spares": data_spares
+    }).to_string().into();
+
+    database.clone().update_data(&DB_DataElement {
+        key: String::from("lsm_spares"),
+        val: String::from_utf8(contents).expect("Unable to parse LSM Return"),
+    });
+    return;
+}
+
 #[allow(dead_code)]
 fn pad(raw_in: String, length: usize) -> String {
     if raw_in.len() < length {
@@ -1590,7 +1477,7 @@ NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
       CAMPUS_STR -> "html-css-js/campus.json"
 */
 // call ping_this executible here
-fn execute_ping(body: Vec<u8>, database: Arc<RwLock<Database>>) -> Vec<u8> {
+fn execute_ping(body: Vec<u8>, mut database: Database) -> Vec<u8> {
     let tmp = String::from_utf8(body).expect("Err, invalid UTF-8");
     debug!("JacknetClientRequest: {:?}", tmp);
     // Prep Request into Struct
@@ -1601,38 +1488,28 @@ fn execute_ping(body: Vec<u8>, database: Arc<RwLock<Database>>) -> Vec<u8> {
     // BuildingData Struct
     //   NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
     //         CAMPUS_STR -> "html-css-js/campus.json" 
+    //let rooms_to_ping: Vec<DB_Room>;
+    
+    let rooms_to_ping: Vec<DB_Room> = database.get_rooms_by_abbrev(&pr.building);
 
-    {
-        let rooms_to_ping: Vec<DB_Room>;
-        {
-            let ping_database = Arc::clone(&database);
-            let mut ping_db = ping_database.write().unwrap();
-            rooms_to_ping = ping_db.get_rooms_by_abbrev(&pr.building);
-        }
-
-        for rm in rooms_to_ping {
-            std::thread::scope(|s| {
-                let ping_db_w = Arc::clone(&database);
-                s.spawn(move || {
-                    let mut room = rm.clone();
-                    room.ping_data = ping_room(room.ping_data);
-                    let mut db = ping_db_w.try_write().expect("Fail");
-                    db.update_room(&room);
-                });
+    for rm in rooms_to_ping {
+        std::thread::scope(|s| {
+            s.spawn(|| {
+                let mut room = rm.clone();
+                room.ping_data = ping_room(room.ping_data);
+                database.update_room(&room);
             });
-        }
+        });
+    }
 
-        let json_return: Value;
-        {
-            let ping_database = Arc::clone(&database);
-            let mut ping_db = ping_database.write().unwrap();
-            json_return = json!({
-                "jn_body": ping_db.get_rooms_by_abbrev(&pr.building),
-            });
-        }
-        // Return JSON with ping results
-        return json_return.to_string().into();
-    };
+    let json_return: Value;
+
+    json_return = json!({
+        "jn_body": database.get_rooms_by_abbrev(&pr.building),
+    });
+    
+    // Return JSON with ping results
+    return json_return.to_string().into();
 }
 
 fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {

@@ -46,7 +46,7 @@ use std::{
 };
 use cookie::{ CookieJar, Key, };
 use csv::Reader;
-use log::{ warn, error, };
+use log::{ warn, error, /* info */ };
 use regex::bytes::Regex as RegBytes;
 use regex::Regex;
 use serde::{ Deserialize, Serialize, };
@@ -102,6 +102,7 @@ impl Worker {
 
 				match message {
 					Message::NewJob(job) => {
+							//info!("[Worker {} got a job; executing]", id);
 						job.call_box();
 					},
 					Message::Terminate => {
@@ -188,7 +189,6 @@ impl ThreadSchedule {
             tasks: HashMap::new()
         }
     }
-
     pub fn from_json(json_str: &str) -> Result<Self, serde_json::Error> {
         serde_json::from_str(json_str)
     }
@@ -198,9 +198,14 @@ impl ThreadSchedule {
     }
 }
 
+// pub struct ThreadQueue {
+// 	pub 
+// }
+
 // Database
 pub type PgPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
+#[derive(Debug, Clone)]
 pub struct Database {
 	pub pool: Arc<PgPool>,
 	key: Key,
@@ -676,14 +681,14 @@ impl Database {
 	}
 }
 
-impl<'a> Clone for Database {
-	fn clone(&self) -> Database {
-		return Database {
-			pool: self.pool.clone(),
-			key: self.key.clone(),
-		};
-	}
-}
+// impl<'a> Clone for Database {
+// 	fn clone(&self) -> Database {
+// 		return Database {
+// 			pool: self.pool.clone(),
+// 			key: self.key.clone(),
+// 		};
+// 	}
+// }
 
 //TODO Sync + Send for Database {}
 
