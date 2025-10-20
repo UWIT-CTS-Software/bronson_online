@@ -67,12 +67,13 @@ use std::{
     path::Path,
     time::{ Duration, SystemTime },
     string::{ String, },
-    // sync::{Arc, /*Mutex,*/ RwLock},
+    sync::{Arc, /*Mutex,*/ RwLock},
     clone::{ Clone, },
     option::{ Option, },
     collections::{ HashMap, },
 };
-use reqwest::{ 
+use reqwest::{
+    Client,
     header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
 use log::{ debug, info, warn, error, }; // trace, };
@@ -154,8 +155,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let pool = ThreadPool::new(6); // Thread pool for handling requests
     let data_pool = ThreadPool::new(1); // Thread pool for database operations
-    // Maybe, Unsure if a queue will be needed.
-    let mut queue_pool = ThreadPool::new(1);
     let mut buffer = [0; BUFF_SIZE];
 
     // ----------------------------------------------------------------------
@@ -174,35 +173,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .map_err(|e| format!("Failed to run migrations: {}", e))?;
 
     let mut request_database = Database::new();
-    let data_database = Database::new();
+    //let data_database = Database::new();
 
     request_database.init_if_empty();
-
-    // ThreadSchedule Init
-    let mut thread_schedule = ThreadSchedule::new();
-    thread_schedule.tasks.insert("print1".to_string(), TaskSchedule {
-        duration: 60,
-        timestamp: Utc::now(),
-    });
-    thread_schedule.tasks.insert("print2".to_string(), TaskSchedule {
-        duration: 120,
-        timestamp: Utc::now(),
-    });
-    thread_schedule.tasks.insert("leaderboard".to_string(), TaskSchedule {
-        duration: 3600,
-        timestamp: Utc::now() - Duration::from_secs(3599),
-    });
-    thread_schedule.tasks.insert("spares".to_string(), TaskSchedule {
-        duration: 3600,
-        timestamp: Utc::now() - Duration::from_secs(3599),
-    });
     
     // Data Thread Pool Loop (data transfer)
-    let mut clone_data_db = data_database.clone();
+    //let mut clone_data_db = data_database.clone();
     data_pool.execute(move || {
-        loop {
-            (clone_data_db, thread_schedule, queue_pool) = data_sync(clone_data_db, thread_schedule, queue_pool);
-        }
+        data_sync();
     });
 
     // User Requests / User Thread Pool
@@ -263,50 +241,94 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
 
 #[tokio::main]
 #[allow(unused_assignments)]
-async fn data_sync(
-    database: Database,
-    mut schedule: ThreadSchedule,
-    _q_pool: ThreadPool,
-) -> (Database, ThreadSchedule, ThreadPool) {
-    let now = Utc::now();
-    for (task_name, task) in schedule.clone().tasks.iter() {
-        if (now - task.timestamp).num_seconds() as u64 >= task.duration {
-            // Execute task based on task_name
-            match task_name.as_str() {
-                "print1"      => { // Not-LSM
-                    println!("One minute task executed");
-                },
-                "print2"      => { // Not-LSM
-                    println!("Two minute task executed");
-                },
-                "leaderboard" => {
-                    update_room_check_leaderboard(&database).await;
-                },
-                "spares"      => {
-                    update_lsm_spares(&database).await;
-                },
-                "ping"        => { // Not-LSM
-                    println!("TODO: Ping Campus");
-                },
-                "run_cb"      => {
-                    println!("TODO: Run Checkerboard on All Zones");
-                },
-                "lsmData"     => {
-                    println!("MAYBE TODO: Get Diagnostic Information from LSM");
+#[allow(unreachable_code)]
+async fn data_sync() {
+    // Init Everyting
+    // ThreadSchedule Init
+    let mut thread_schedule = ThreadSchedule::new();
+    thread_schedule.tasks.insert("print1".to_string(), TaskSchedule {
+        duration: 60,
+        timestamp: Utc::now(),
+    });
+    thread_schedule.tasks.insert("print2".to_string(), TaskSchedule {
+        duration: 120,
+        timestamp: Utc::now(),
+    });
+    thread_schedule.tasks.insert("leaderboard".to_string(), TaskSchedule {
+        duration: 3600,
+        timestamp: Utc::now() - Duration::from_secs(3599),
+    });
+    thread_schedule.tasks.insert("spares".to_string(), TaskSchedule {
+        duration: 3600,
+        timestamp: Utc::now() - Duration::from_secs(3599),
+    });
+    thread_schedule.tasks.insert("checkerboard".to_string(), TaskSchedule {
+        duration: 1800,
+        timestamp: Utc::now() - Duration::from_secs(1799),
+    });
+    // Database Init
+    let mut database = Database::new();
+    // Init Datapool
+    let _data_threads = ThreadPool::new(3);
+    // Todo: Arc<RwLock<Reqwest>>
+    //       ^ The above line will prevent concurent access with LSM.
+    //       Normal Reqwest, Other API's that can handle concurent requests
+    //       will not need to be locked, inside their functions, a new reqwest
+    //       will be made, LSM will need one provided.
+    let lsm_request: Arc<RwLock<Client>> = Arc::new(RwLock::new(
+        reqwest::Client::builder()
+                .cookie_store(true)
+                .user_agent("server_lib/1.10.1")
+                .default_headers(construct_headers("lsm", &mut database))
+                .timeout(Duration::from_secs(15))
+                .build()
+                .ok()
+                .expect("Unable to build LSM Request Client")
+            ));
+    // Loop
+    loop {
+        let now = Utc::now();
+        for (task_name, task) in thread_schedule.clone().tasks.iter() {
+            if (now - task.timestamp).num_seconds() as u64 >= task.duration {
+                // Execute task based on task_name
+                match task_name.as_str() {
+                    "print1"       => { // Not-LSM
+                        println!("One minute task executed");
+                    },
+                    "print2"       => { // Not-LSM
+                        println!("Two minute task executed");
+                    },
+                    "leaderboard"  => {
+                        update_room_check_leaderboard(&database, Arc::clone(&lsm_request)).await;
+                    },
+                    "spares"       => {
+                        update_lsm_spares(&database, Arc::clone(&lsm_request)).await;
+                    },
+                    "ping"         => { // Not-LSM
+                        println!("TODO: Ping Campus");
+                    },
+                    "checkerboard" => {
+                        run_checkerboard(&mut database, Arc::clone(&lsm_request)).await;
+                    },
+                    "lsmData"      => {
+                        println!("MAYBE TODO: Get Diagnostic Information from LSM");
+                    }
+                    _              => {
+                        warn!("Unknown task: {}", task_name)
+                    },
                 }
-                _        => {
-                    warn!("Unknown task: {}", task_name)
-                },
-            }
-            // Update timestamp
-            if let Some(task) = schedule.tasks.get_mut(task_name) {
-                task.timestamp = now;
+                // Update timestamp
+                if let Some(task) = thread_schedule.tasks.get_mut(task_name) {
+                    task.timestamp = now;
+                }
             }
         }
+        // TODO_Maybe: Here would be a loop through the queue and where we call functions. This would require adjusting the above information.
+        //....
+        // Sleep for a short duration to prevent busy-waiting
+        std::thread::sleep(std::time::Duration::from_secs(1));
     }
-    // Sleep for a short duration to prevent busy-waiting
-    std::thread::sleep(std::time::Duration::from_secs(1));
-    return (database, schedule, _q_pool);
+    return;
 }
 
 #[tokio::main]
@@ -1043,154 +1065,12 @@ async fn handle_connection(
             // get zone selection from request and store
             // ----------------------------------------------------------------
             let building_sel = String::from_utf8(req.body).expect("CheckerBoard Err, invalid UTF-8");
-            // call for roomchecks in LSM and store
+            // ----------------------------------------------------------------
+            // parse rooms map to load statuses for return
             // ----------------------------------------------------------------
             let mut return_body: Vec<Building> = Vec::new();
-            let lsm_building = database.get_building_by_abbrev(&building_sel);
-            debug!("Checkerboard Debug - building LSM Name:\n{:?}", &lsm_building.lsm_name.as_str());
-            let url = format!(
-                r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", 
-                &lsm_building.lsm_name.as_str()
-            );
-            let req = reqwest::Client::builder()
-                .cookie_store(true)
-                .user_agent("server_lib/1.10.1")
-                .default_headers(construct_headers("lsm", &mut database))
-                .timeout(Duration::from_secs(15))
-                .build()
-                .ok()?
-            ;
-
-            // Get Alias Table, to swap incoming room_names from LSM with
-            //   Bronson friendly naming. We filter Alias Table to only contain
-            //   rooms that are relevant to current LSM request.
-            let alias_table : DB_DataElement = database.get_data("alias_table")
-                .expect("Alias_table has not been set yet.");
-            let alias_obj: Value = serde_json::from_str(&alias_table.val)
-                .expect("Unable to Parse Alias Table Contents.");
-            let alias_rooms = alias_obj.get("rooms");
-            //
-            let mut alias_vec: Vec<(String, String)> = Vec::new();
-            if let Some(arr) = alias_rooms?.as_array() {
-                for item in arr {
-                    let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
-                    if alias_name.contains(&lsm_building.abbrev.as_str()) {
-                        debug!("Relevant Alias Found");
-                        let alias_lsm = item.get("lsmName").unwrap().as_str().unwrap().to_string();
-                        alias_vec.push((alias_name, alias_lsm));
-                    }
-                }
-            }
-            // Alias Building
-            let alias_buildings = alias_obj.get("buildings");
-            let mut alias_abbrev : (String, String) = ("NOTSET".to_string(),"NOTSET".to_string());
-            if let Some(arr) = alias_buildings?.as_array() {
-                for item in arr {
-                    let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
-                    if alias_name == lsm_building.abbrev.as_str() {
-                        alias_abbrev.0 = item.get("lsmName").unwrap().as_str().unwrap().to_string();
-                        alias_abbrev.1 = item.get("name").unwrap().as_str().unwrap().to_string();
-                    }
-                }
-            }
-            // Process Request to LSM
-            let body = req.get(url)
-                              .timeout(Duration::from_secs(15))
-                              .send()
-                              .await
-                              .expect("[-] RESPONSE ERROR")
-                              .text()
-                              .await
-                              .expect("[-] PAYLOAD ERROR");
-
-            let v: Value = match serde_json::from_str(&body) {
-                Ok(val) => val,
-                Err(_)      => {
-                    warn!("LSM_ERR: API call returned error.");
-                    json!({
-                    "count": -1,
-                    "data": "LSM Busy: Please try again"
-                    })
-                }
-            };
-            let mut check_map: HashMap<String, String> = HashMap::new();
-            if v["count"].as_i64() > Some(0) {
-                let num_entries = match v["count"].as_i64() {
-                    Some(num) => num,
-                    None => 0
-                };
-                let checks: Vec<Value> = match &mut v["data"].as_array() {
-                    Some(data) => data.clone(),
-                    None => {
-                        error!("Unable to get API data as vec.");
-                        Vec::<Value>::new()
-                    }
-                };
-                //checks.reverse();
-                for i in 0..num_entries {
-                    let mut check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
-                    // Look to see if check["LocationName"] is in the alias_obj, replace it if so.
-                    //println!("Current Check: {:?}", &check);
-                    for tuple in &alias_vec {
-                        if tuple.1 == check["LocationName"].as_str().unwrap() {
-                            debug!("Alias Struck, {:?} to be replaced with {:?}", check["LocationName"].as_str().unwrap(), tuple.0);
-                            check["LocationName"] = serde_json::Value::String(tuple.0.clone());
-                        }
-                    }
-                    // Replace Abbrevition if exists
-                    if alias_abbrev.0 != "NOTSET" {
-                        // check["LocationName"]
-                        debug!("Building Alias Struck, {:?} to be replaced with {:?}",alias_abbrev.0, alias_abbrev.1);
-                        check["LocationName"] = serde_json::Value::String(
-                            check["LocationName"]
-                                .as_str()
-                                .unwrap()
-                                .replace(&alias_abbrev.0, &alias_abbrev.1)
-                        );
-                    }
-                    check_map.insert(
-                        String::from(check["LocationName"].as_str().unwrap()), 
-                        String::from(check["CompletedOn"].as_str().unwrap())
-                    );
-                }
-            }
-            //println!("check_map: {:?}", check_map);
-            // Get checked_rooms
-            let mut checked_rooms: i16 = 0;
-            for mut room in database.get_rooms_by_abbrev(&building_sel) {
-                if check_map.contains_key(&room.name) {
-                    room.checked = String::from(match check_map.get(&room.name) {
-                        Some(r) => r,
-                        None => {
-                            warn!("Unable to fetch room, defaulting.");
-                            "2000-01-01T00:00:00Z"
-                        }
-                    });
-                }
-                room.needs_checked = check_lsm(&room);
-                let schedule_params = check_schedule(&room);
-                room.available = schedule_params.0;
-                room.until = schedule_params.1;
-                // Check for room check
-                if !room.needs_checked {
-                    checked_rooms += 1;
-                }
-                database.update_room(&room);
-            }
-            let ret_building = database.get_building_by_abbrev(&building_sel);
-            let ret_rooms = database.get_rooms_by_abbrev(&ret_building.abbrev);
-            let number_rooms: i16 = ret_rooms.len().try_into().unwrap();
-            // Note, number_rooms and checked_rooms rely on the rooms inside LSM.
-            //
-            let new_building: DB_Building = DB_Building {
-                abbrev: ret_building.abbrev,
-                name: ret_building.name,
-                lsm_name: ret_building.lsm_name,
-                zone: ret_building.zone,
-                checked_rooms: checked_rooms,
-                total_rooms: number_rooms,
-            };
-            database.update_building(&new_building);
+            let new_building = database.get_building_by_abbrev(&building_sel);
+            let ret_rooms = database.get_rooms_by_abbrev(&building_sel);
 
             return_body.push(
                 Building {
@@ -1203,9 +1083,7 @@ async fn handle_connection(
                     total_rooms: new_building.total_rooms,
                 }
             );
-            // ----------------------------------------------------------------
-            // parse rooms map to load statuses for return
-            // ----------------------------------------------------------------
+
             let json_return = json!({
                 "cb_body": return_body,
             });
@@ -1277,45 +1155,41 @@ async fn handle_connection(
 }
 
 
-async fn update_room_check_leaderboard(database: &Database) {
+async fn update_room_check_leaderboard(database: &Database, req: Arc<RwLock<Client>>) {
     info!("[Data] - Pulling New LSM Leaderboard");
     let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
     let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
     let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
 
-    let req = reqwest::Client::builder()
-        .cookie_store(true)
-        .user_agent("server_lib/1.10.1")
-        .default_headers(construct_headers("lsm", &mut database.clone()))
-        .timeout(Duration::from_secs(15))
-        .build()
-        .ok()
-        .expect("Unable to Build LSM leaderboard Request")
-    ;
-
-    let body_7_days = req.get(url_7_days)
-                    .timeout(Duration::from_secs(15))
-                    .send()
-                    .await
-                    .expect("[-] RESPONSE ERROR")
-                    .text()
-                    .await
-                    .expect("[-] PAYLOAD ERROR");
-
+    let body_7_days: String;
+    let body_30_days: String;
+    let body_90_days: String;
+    {
+        body_7_days = req.write().unwrap().get(url_7_days)
+            .timeout(Duration::from_secs(15))
+            .send()
+            .await
+            .expect("[-] RESPONSE ERROR")
+            .text()
+            .await
+            .expect("[-] PAYLOAD ERROR");
+    }
     let v_7_days: Value = serde_json::from_str(&body_7_days).expect("Empty");
     let data_7_days: Vec<Value> = match v_7_days["data"].as_array() {
         Some(data) => data.clone(),
         None => Vec::<Value>::new()
     };
 
-    let body_30_days = req.get(url_30_days)
-                    .timeout(Duration::from_secs(15))
-                    .send()
-                    .await
-                    .expect("[-] RESPONSE ERROR")
-                    .text()
-                    .await
-                    .expect("[-] PAYLOAD ERROR");
+    {
+        body_30_days = req.write().unwrap().get(url_30_days)
+            .timeout(Duration::from_secs(15))
+            .send()
+            .await
+            .expect("[-] RESPONSE ERROR")
+            .text()
+            .await
+            .expect("[-] PAYLOAD ERROR");
+    }
 
     let v_30_days: Value = serde_json::from_str(&body_30_days).expect("Empty");
     let data_30_days: Vec<Value> = match v_30_days["data"].as_array() {
@@ -1323,14 +1197,16 @@ async fn update_room_check_leaderboard(database: &Database) {
         None => Vec::<Value>::new()
     };
 
-    let body_90_days = req.get(url_90_days)
-                    .timeout(Duration::from_secs(15))
-                    .send()
-                    .await
-                    .expect("[-] RESPONSE ERROR")
-                    .text()
-                    .await
-                    .expect("[-] PAYLOAD ERROR");
+    {
+        body_90_days = req.write().unwrap().get(url_90_days)
+            .timeout(Duration::from_secs(15))
+            .send()
+            .await
+            .expect("[-] RESPONSE ERROR")
+            .text()
+            .await
+            .expect("[-] PAYLOAD ERROR");
+    }
 
     let v_90_days: Value = serde_json::from_str(&body_90_days).expect("Empty");
     let data_90_days: Vec<Value> = match v_90_days["data"].as_array() {
@@ -1351,29 +1227,21 @@ async fn update_room_check_leaderboard(database: &Database) {
     return;
 }
 
-async fn update_lsm_spares(database: &Database) {
+async fn update_lsm_spares(database: &Database, req: Arc<RwLock<Client>>) {
     info!("[Data] - Pulling New LSM Spare Information");
     let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
 
-    // Build and Send Request
-    let req = reqwest::Client::builder()
-        .cookie_store(true)
-        .user_agent("server_lib/1.10.1")
-        .default_headers(construct_headers("lsm", &mut database.clone()))
-        .timeout(Duration::from_secs(15))
-        .build()
-        .ok()
-        .expect("Unable to Build LSM leaderboard Request");
-
-    let body_spares = req.get(url_spares)
-                    .timeout(Duration::from_secs(15))
-                    .send()
-                    .await
-                    .expect("[-] RESPONSE ERROR")
-                    .text()
-                    .await
-                    .expect("[-] PAYLOAD ERROR");
-
+    let body_spares: String;
+    {
+        body_spares = req.write().unwrap().get(url_spares)
+                        .timeout(Duration::from_secs(15))
+                        .send()
+                        .await
+                        .expect("[-] RESPONSE ERROR")
+                        .text()
+                        .await
+                        .expect("[-] PAYLOAD ERROR");
+    }
     let v_spares: Value = serde_json::from_str(&body_spares).expect("Empty");
     let data_spares: Vec<Value> = match v_spares["data"].as_array() {
         Some(data) => data.clone(),
@@ -1388,6 +1256,151 @@ async fn update_lsm_spares(database: &Database) {
         key: String::from("lsm_spares"),
         val: String::from_utf8(contents).expect("Unable to parse LSM Return"),
     });
+    return;
+}
+
+async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
+    // Get an array of all buildings.
+    info!("[Data] Running Checkerboard on All Buildings");
+    let buildings = database.get_buildings();
+    // Iterate over each.
+    for building in buildings {
+        debug!("Processing Building: {:?}", building.1.abbrev);
+        //println!("{:?}", building);
+        let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", building.1.lsm_name.as_str());
+        // Get Alias Table, to swap incoming room_names from LSM with
+        //   Bronson friendly naming. We filter Alias Table to only contain
+        //   rooms that are relevant to current LSM request.
+        let alias_table : DB_DataElement = database.get_data("alias_table")
+            .expect("Alias_table has not been set yet.");
+        let alias_obj: Value = serde_json::from_str(&alias_table.val)
+            .expect("Unable to Parse Alias Table Contents.");
+        let alias_rooms = alias_obj.get("rooms").unwrap();
+        //
+        let mut alias_vec: Vec<(String, String)> = Vec::new();
+        if let Some(arr) = alias_rooms.as_array() {
+            for item in arr {
+                let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
+                if alias_name.contains(&building.1.abbrev.as_str()) {
+                    debug!("Relevant Alias Found");
+                    let alias_lsm = item.get("lsmName").unwrap().as_str().unwrap().to_string();
+                    alias_vec.push((alias_name, alias_lsm));
+                }
+            }
+        }
+        // Alias Building
+        let alias_buildings = alias_obj.get("buildings").unwrap();
+        let mut alias_abbrev : (String, String) = ("NOTSET".to_string(),"NOTSET".to_string());
+        if let Some(arr) = alias_buildings.as_array() {
+            for item in arr {
+                let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
+                if alias_name == building.1.abbrev.as_str() {
+                    alias_abbrev.0 = item.get("lsmName").unwrap().as_str().unwrap().to_string();
+                    alias_abbrev.1 = item.get("name").unwrap().as_str().unwrap().to_string();
+                }
+            }
+        }
+        // Process Request to LSM
+        let body: String;
+        {
+            body = req.write().unwrap().get(url)
+                .timeout(Duration::from_secs(15))
+                .send()
+                .await
+                .expect("[-] RESPONSE ERROR")
+                .text()
+                .await
+                .expect("[-] PAYLOAD ERROR");
+        }
+        let v: Value = match serde_json::from_str(&body) {
+            Ok(val) => val,
+            Err(_)      => {
+                warn!("LSM_ERR: API call returned error.");
+                json!({
+                "count": -1,
+                "data": "LSM Busy: Please try again"
+                })
+            }
+        };
+        let mut check_map: HashMap<String, String> = HashMap::new();
+        if v["count"].as_i64() > Some(0) {
+            let num_entries = match v["count"].as_i64() {
+                Some(num) => num,
+                None => 0
+            };
+            let checks: Vec<Value> = match &mut v["data"].as_array() {
+                Some(data) => data.clone(),
+                None => {
+                    error!("Unable to get API data as vec.");
+                    Vec::<Value>::new()
+                }
+            };
+            //checks.reverse();
+            for i in 0..num_entries {
+                let mut check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
+                // Look to see if check["LocationName"] is in the alias_obj, replace it if so.
+                //println!("Current Check: {:?}", &check);
+                for tuple in &alias_vec {
+                    if tuple.1 == check["LocationName"].as_str().unwrap() {
+                        debug!("Alias Struck, {:?} to be replaced with {:?}", check["LocationName"].as_str().unwrap(), tuple.0);
+                        check["LocationName"] = serde_json::Value::String(tuple.0.clone());
+                    }
+                }
+                // Replace Abbrevition if exists
+                if alias_abbrev.0 != "NOTSET" {
+                    // check["LocationName"]
+                    debug!("Building Alias Struck, {:?} to be replaced with {:?}",alias_abbrev.0, alias_abbrev.1);
+                    check["LocationName"] = serde_json::Value::String(
+                        check["LocationName"]
+                            .as_str()
+                            .unwrap()
+                            .replace(&alias_abbrev.0, &alias_abbrev.1)
+                    );
+                }
+                check_map.insert(
+                    String::from(check["LocationName"].as_str().unwrap()), 
+                    String::from(check["CompletedOn"].as_str().unwrap())
+                );
+            }
+        }
+        //println!("check_map: {:?}", check_map);
+        // Get checked_rooms
+        let mut checked_rooms: i16 = 0;
+        for mut room in database.get_rooms_by_abbrev(&building.1.abbrev) {
+            if check_map.contains_key(&room.name) {
+                room.checked = String::from(match check_map.get(&room.name) {
+                    Some(r) => r,
+                    None => {
+                        warn!("Unable to fetch room, defaulting.");
+                        "2000-01-01T00:00:00Z"
+                    }
+                });
+            }
+            room.needs_checked = check_lsm(&room);
+            let schedule_params = check_schedule(&room);
+            room.available = schedule_params.0;
+            room.until = schedule_params.1;
+            // Check for room check
+            if !room.needs_checked {
+                checked_rooms += 1;
+            }
+            database.update_room(&room);
+        }
+        let ret_building = database.get_building_by_abbrev(&building.1.abbrev);
+        let ret_rooms = database.get_rooms_by_abbrev(&ret_building.abbrev);
+        let number_rooms: i16 = ret_rooms.len().try_into().unwrap();
+        // Note, number_rooms and checked_rooms rely on the rooms inside LSM.
+        //
+        let new_building: DB_Building = DB_Building {
+            abbrev: ret_building.abbrev,
+            name: ret_building.name,
+            lsm_name: ret_building.lsm_name,
+            zone: ret_building.zone,
+            checked_rooms: checked_rooms,
+            total_rooms: number_rooms,
+        };
+        database.update_building(&new_building);
+    }
     return;
 }
 
