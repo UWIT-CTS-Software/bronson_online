@@ -46,7 +46,7 @@ use server_lib::{
     ThreadPool, ThreadSchedule, TaskSchedule, PingRequest, 
     Building, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
-    jp::{ ping_this, },
+    jp::{ ping_this, ping_this_st,},
     CFM_DIR, WIKI_DIR, /* LOG, */
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
     Database, Terminal, 
@@ -246,6 +246,7 @@ async fn data_sync() {
     // Init Everyting
     // ThreadSchedule Init
     let mut thread_schedule = ThreadSchedule::new();
+    // TODO: Only add print1/2 if Debug is enabled.
     thread_schedule.tasks.insert("print1".to_string(), TaskSchedule {
         duration: 60,
         timestamp: Utc::now(),
@@ -266,15 +267,19 @@ async fn data_sync() {
         duration: 1800,
         timestamp: Utc::now() - Duration::from_secs(1799),
     });
+    thread_schedule.tasks.insert("jacknet".to_string(), TaskSchedule {
+        duration: 1800,
+        timestamp: Utc::now() - Duration::from_secs(1795),
+    });
     // Database Init
     let mut database = Database::new();
     // Init Datapool
-    let _data_threads = ThreadPool::new(3);
-    // Todo: Arc<RwLock<Reqwest>>
+    // TODO: Once there is sufficient need, multithreading this will be done with 'data_threads', in addition, the following loop block will need refactored.
+    //let _data_threads = ThreadPool::new(3);
+    // Arc<RwLock<Reqwest>>
     //       ^ The above line will prevent concurent access with LSM.
-    //       Normal Reqwest, Other API's that can handle concurent requests
-    //       will not need to be locked, inside their functions, a new reqwest
-    //       will be made, LSM will need one provided.
+    //       Normal Reqwests, Other API's that can handle concurent requests
+    //       will not need to be locked.
     let lsm_request: Arc<RwLock<Client>> = Arc::new(RwLock::new(
         reqwest::Client::builder()
                 .cookie_store(true)
@@ -285,6 +290,9 @@ async fn data_sync() {
                 .ok()
                 .expect("Unable to build LSM Request Client")
             ));
+    // TODO: jn_st
+    //    WSL has problems... I need to add a flag that sets an atomicboolean to jn_st. If true, execute_ping will be single threaded.
+    let jn_st = true;
     // Loop
     loop {
         let now = Utc::now();
@@ -293,10 +301,10 @@ async fn data_sync() {
                 // Execute task based on task_name
                 match task_name.as_str() {
                     "print1"       => { // Not-LSM
-                        println!("One minute task executed");
+                        debug!("[ThreadSchedule Debug] - One Minte Message");
                     },
                     "print2"       => { // Not-LSM
-                        println!("Two minute task executed");
+                        debug!("[ThreadSchedule Debug] - Two Minute Message");
                     },
                     "leaderboard"  => {
                         update_room_check_leaderboard(&database, Arc::clone(&lsm_request)).await;
@@ -304,15 +312,21 @@ async fn data_sync() {
                     "spares"       => {
                         update_lsm_spares(&database, Arc::clone(&lsm_request)).await;
                     },
-                    "ping"         => { // Not-LSM
-                        println!("TODO: Ping Campus");
+                    "lsmData"      => {
+                        println!("MAYBE TODO: Get Diagnostic Information from LSM");
+                        //update_lsm_data(&mut database, Arc::clone(&lsm_request)).await;
                     },
                     "checkerboard" => {
                         run_checkerboard(&mut database, Arc::clone(&lsm_request)).await;
                     },
-                    "lsmData"      => {
-                        println!("MAYBE TODO: Get Diagnostic Information from LSM");
-                    }
+                    "jacknet"         => { // Not-LSM
+                        //println!("TODO: Ping Campus");
+                        if jn_st {
+                            execute_ping_st(&mut database).await;
+                        } else {
+                            execute_ping(&mut database).await;
+                        }
+                    },
                     _              => {
                         warn!("Unknown task: {}", task_name)
                     },
@@ -358,7 +372,6 @@ async fn handle_connection(
             }
         }
     }
-
     // Handle requests
     // ------------------------------------------------------------------------
     let mut res: Response = Response::new();
@@ -485,7 +498,7 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        // Testing Spares LSM API Call.
+        // Spares LSM API Call.
         "GET /spares HTTP/1.1"             => { // OUTGOING, Dashboard Spares
             // Get Spares from Database
             //let mut database = arc_database.write().unwrap();
@@ -1056,7 +1069,8 @@ async fn handle_connection(
         },
         // Jacknet
         "POST /ping HTTP/1.1"              => { // OUTGOING
-            let contents = execute_ping(req.body, database); // JN
+            // let contents = execute_ping(req.body, database); // JN
+            let contents = ping_response(String::from_utf8(req.body).expect("Err, invalid UTF-8"), database);
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -1259,9 +1273,45 @@ async fn update_lsm_spares(database: &Database, req: Arc<RwLock<Client>>) {
     return;
 }
 
+// Unsure if this is worth implementing...
+#[allow(dead_code)]
+async fn update_lsm_data(_database: &mut Database, _req: Arc<RwLock<Client>>) {
+    info!("[Data] - Pulling LSM Inventory Information");
+    // let buildings = database.get_buildings();
+    // let api_endpoints = ["BuildingProcs","BuildingDisplays","BuildingProjectors","BuildingTouchPanels"];
+    // for api_endpoint in api_endpoints {
+    //     for building in &buildings {
+    //         debug!("LSM_DATA: Processing {:?}", building.1.abbrev);
+    //         let url = format!(
+    //                 r"https://uwyo.talem3.com/lsm/api/{}?offset=0&p=%7BParentName%3A%22{}%22%7D", 
+    //                 &api_endpoint,
+    //                 building.1.lsm_name.as_str()
+    //             );
+    //         let devs: String;
+    //         {
+    //         devs = req.write().unwrap().get(url)
+    //             .timeout(Duration::from_secs(15))
+    //             .send()
+    //             .await
+    //             .expect("[-] RESPONSE ERROR")
+    //             .text()
+    //             .await
+    //             .expect("[-] PAYLOAD ERROR");
+    //         }
+    //         let v_devs: Value = serde_json::from_str(&devs).expect("Empty");
+    //         let data_devs: Vec<Value> = match v_devs["data"].as_array() {
+    //             Some(data) => data.clone(),
+    //             None => Vec::<Value>::new()
+    //         };
+    //     }
+    // }
+    info!("[Data] - Completed LSM Inventory Data Retreieval");
+    return;
+}
+
 async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
     // Get an array of all buildings.
-    info!("[Data] Running Checkerboard on All Buildings");
+    info!("[Data] - Running Checkerboard");
     let buildings = database.get_buildings();
     // Iterate over each.
     for building in buildings {
@@ -1401,8 +1451,10 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
         };
         database.update_building(&new_building);
     }
+    info!("[Data] - Checkerboard Run Complete");
     return;
 }
+
 
 #[allow(dead_code)]
 fn pad(raw_in: String, length: usize) -> String {
@@ -1476,44 +1528,18 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 \$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ $$ | \$$ |\$$$$$$$\  \$$$$  |
  \______/  \_______| \_______|\__|  \__|\__|  \__| \_______|  \____/ 
 
+ - ping_response()
  - execute_ping()
- - gen_hn()
- - gen_ip()
- - gen_rooms()
+ - ping_room()
+ - execute_ping_st()
+ - ping_room_st()
 
 */
 
-/*
-execute_ping()
---
-NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
-      CAMPUS_STR -> "html-css-js/campus.json"
-*/
-// call ping_this executible here
-fn execute_ping(body: Vec<u8>, mut database: Database) -> Vec<u8> {
-    let tmp = String::from_utf8(body).expect("Err, invalid UTF-8");
-    debug!("JacknetClientRequest: {:?}", tmp);
-    // Prep Request into Struct
+fn ping_response(tmp: String, mut database: Database) -> Vec<u8> {
+    //println!("{}", tmp);
     let pr: PingRequest = serde_json::from_str(&tmp)
-        .expect("Fatal Error 2: Failed to parse ping request");
-
-    debug!("JacknetPingRequest: {:?}", pr);
-    // BuildingData Struct
-    //   NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
-    //         CAMPUS_STR -> "html-css-js/campus.json" 
-    //let rooms_to_ping: Vec<DB_Room>;
-    
-    let rooms_to_ping: Vec<DB_Room> = database.get_rooms_by_abbrev(&pr.building);
-
-    for rm in rooms_to_ping {
-        std::thread::scope(|s| {
-            s.spawn(|| {
-                let mut room = rm.clone();
-                room.ping_data = ping_room(room.ping_data);
-                database.update_room(&room);
-            });
-        });
-    }
+        .expect("Fatal Error: Unable to parse ping request");
 
     let json_return: Value;
 
@@ -1525,12 +1551,86 @@ fn execute_ping(body: Vec<u8>, mut database: Database) -> Vec<u8> {
     return json_return.to_string().into();
 }
 
+/*
+execute_ping()
+--
+NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
+      CAMPUS_STR -> "html-css-js/campus.json"
+*/
+
+// call ping_this executible here
+async fn execute_ping(database: &mut Database) {
+    info!("[Data] - Running JackNet");
+    let buildings = database.get_buildings();
+
+    for building in buildings {
+        let rooms_to_ping: Vec<DB_Room> = database.get_rooms_by_abbrev(&building.1.abbrev);
+
+        for rm in rooms_to_ping {
+            std::thread::scope(|s| {
+                s.spawn(|| {
+                    let mut room = rm.clone();
+                    room.ping_data = ping_room(room.ping_data);
+                    database.update_room(&room);
+                });
+            });
+        }
+    }
+    info!("[Data] - JackNet Complete");
+    return;
+}
+
 fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
     let mut pinged_hns: Vec<Option<DB_IpAddress>> = Vec::new();
     for net in net_elements {
         let hn_string: String = net.as_ref().unwrap().hostname.to_string();
         pinged_hns.push(Some(
             match ping_this(&hn_string) {
+                Ok(ip) => DB_IpAddress {
+                    hostname: net.clone().unwrap().hostname,
+                    ip: ip,
+                    last_ping: String::from(format!("{}", chrono::Utc::now())),
+                    alert: 0,
+                    error_message: String::new()
+                },
+                Err(m)      => DB_IpAddress {
+                    hostname: net.clone().unwrap().hostname,
+                    ip: String::from("x"),
+                    last_ping: String::from(format!("{}", chrono::Utc::now())),
+                    alert: net.clone().unwrap().alert + 1,
+                    error_message: String::from(m)
+                }
+            }
+        ))
+    }
+
+    return pinged_hns;
+}
+
+
+async fn execute_ping_st(database: &mut Database) {
+    info!("[Data] - Running JackNet (Single Threaded)");
+    let buildings = database.get_buildings();
+    for building in buildings {
+        let rooms_to_ping: Vec<DB_Room> = database.get_rooms_by_abbrev(&building.1.abbrev);
+
+        for rm in rooms_to_ping {
+            let mut room = rm.clone();
+            room.ping_data = ping_room_st(room.ping_data).await;
+            database.update_room(&room);
+            debug!("JackNet - Updated {:?}", &room.name);
+        }
+    }
+    info!("[Data] - JackNet (Single Threaded) Complete");
+    return;
+}
+
+async fn ping_room_st(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
+    let mut pinged_hns: Vec<Option<DB_IpAddress>> = Vec::new();
+    for net in net_elements {
+        let hn_string: String = net.as_ref().unwrap().hostname.to_string();
+        pinged_hns.push(Some(
+            match ping_this_st(&hn_string).await {
                 Ok(ip) => DB_IpAddress {
                     hostname: net.clone().unwrap().hostname,
                     ip: ip,
