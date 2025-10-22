@@ -1358,6 +1358,11 @@ ol li::marker {
     background-color:red;
 }
 
+#techSchdRemoveList {
+    column-count: 2;
+    font-family: 'Lucida Sans', sans-serif;
+}
+
 .diagOption:hover {
     background-color: #8c8a91;
 }

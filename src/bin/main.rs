@@ -268,15 +268,15 @@ async fn data_sync() {
         timestamp: Utc::now() - Duration::from_secs(1799),
     });
     thread_schedule.tasks.insert("jacknet".to_string(), TaskSchedule {
-        duration: 1800,
-        timestamp: Utc::now() - Duration::from_secs(1795),
+        duration: 3600,
+        timestamp: Utc::now() - Duration::from_secs(3590),
     });
     // Database Init
     let mut database = Database::new();
     // Init Datapool
     // TODO: Once there is sufficient need, multithreading this will be done with 'data_threads', in addition, the following loop block will need refactored.
     //let _data_threads = ThreadPool::new(3);
-    // Arc<RwLock<Reqwest>>
+    // Note: Arc<RwLock<Reqwest>>
     //       ^ The above line will prevent concurent access with LSM.
     //       Normal Reqwests, Other API's that can handle concurent requests
     //       will not need to be locked.
@@ -292,7 +292,8 @@ async fn data_sync() {
             ));
     // TODO: jn_st
     //    WSL has problems... I need to add a flag that sets an atomicboolean to jn_st. If true, execute_ping will be single threaded.
-    let jn_st = true;
+    // Not sure if this is even giving performance improvements.
+    let jn_st = false;
     // Loop
     loop {
         let now = Utc::now();
@@ -300,34 +301,33 @@ async fn data_sync() {
             if (now - task.timestamp).num_seconds() as u64 >= task.duration {
                 // Execute task based on task_name
                 match task_name.as_str() {
-                    "print1"       => { // Not-LSM
+                    "print1"          => { // Not-LSM
                         debug!("[ThreadSchedule Debug] - One Minte Message");
                     },
-                    "print2"       => { // Not-LSM
+                    "print2"          => { // Not-LSM
                         debug!("[ThreadSchedule Debug] - Two Minute Message");
                     },
-                    "leaderboard"  => {
+                    "leaderboard"     => {
                         update_room_check_leaderboard(&database, Arc::clone(&lsm_request)).await;
                     },
-                    "spares"       => {
+                    "spares"          => {
                         update_lsm_spares(&database, Arc::clone(&lsm_request)).await;
                     },
-                    "lsmData"      => {
+                    "lsmData"         => {
                         println!("MAYBE TODO: Get Diagnostic Information from LSM");
                         //update_lsm_data(&mut database, Arc::clone(&lsm_request)).await;
                     },
-                    "checkerboard" => {
+                    "checkerboard"    => {
                         run_checkerboard(&mut database, Arc::clone(&lsm_request)).await;
                     },
                     "jacknet"         => { // Not-LSM
-                        //println!("TODO: Ping Campus");
                         if jn_st {
                             execute_ping_st(&mut database).await;
                         } else {
                             execute_ping(&mut database).await;
                         }
                     },
-                    _              => {
+                    _                 => {
                         warn!("Unknown task: {}", task_name)
                     },
                 }
@@ -337,7 +337,7 @@ async fn data_sync() {
                 }
             }
         }
-        // TODO_Maybe: Here would be a loop through the queue and where we call functions. This would require adjusting the above information.
+        // TODO_Maybe: Here would be a loop through the queue and where we call functions. This would require adjusting the above information. This is where the data_threads pool would come in handy.
         //....
         // Sleep for a short duration to prevent busy-waiting
         std::thread::sleep(std::time::Duration::from_secs(1));
@@ -1572,6 +1572,7 @@ async fn execute_ping(database: &mut Database) {
                     let mut room = rm.clone();
                     room.ping_data = ping_room(room.ping_data);
                     database.update_room(&room);
+                    debug!("JackNet - Updated {:?}", &room.name);
                 });
             });
         }
