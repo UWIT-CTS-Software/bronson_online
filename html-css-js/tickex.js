@@ -52,24 +52,25 @@ function showPopup(ticket) {
     }
 
     popupContainer.classList.add('popupActive');
+    document.getElementById('terminal').style.display = 'none';
 
     popupContainer.innerHTML = `
         <div class="tx_popupBox">
-            <span>${ticket.ticket_title || "No Title"}</span>
-            <p>Ticket ID: ${ticket.ticket_id || ""}</p>
-            <p>Location: ${ticket.location || ""}</p>
-            <p>Status: ${ticket.status || ""}</p>
-            <p>Description: ${ticket.description || ""}</p>
-            <p>Requestor: ${ticket.requestor || ""}</p>
-            <p>Creator: ${ticket.creator || ""}</p>
-            <p>Responsibility: ${ticket.responsibility || ""}</p>
-            <p>Service: ${ticket.service || ""}</p>
-            <p>Account Department: ${ticket.account_department || ""}</p>
-            <p>Type: ${ticket.type || ""}</p>
-            <p>Urgency: ${ticket.urgency || ""}</p>
-            <p>Priority: ${ticket.priority || ""}</p>
-            <p>Date Created: ${ticket.date_created || ""}</p>
-            <p>Last Modified: ${ticket.date_last_modified || ""}</p>
+            <span>${ticket.Title || "No Title"}</span>
+            <p>Ticket ID: ${ticket.ID || ""}</p>
+            <p>Location: ${ticket.LocationName || ""}</p>
+            <p>Status: ${ticket.StatusName || ""}</p>
+            <p>Description: ${ticket.Description || ""}</p>
+            <p>Requestor: ${ticket.RequestorName || ""}</p>
+            <p>Creator: ${ticket.CreatedFullName || ""}</p>
+            <p>Responsibility: ${ticket.ResponsibleGroupName || ""}</p>
+            <p>Service: ${ticket.ServiceName || ""}</p>
+            <p>Account Department: ${ticket.AccountName || ""}</p>
+            <p>Type: ${ticket.TypeCategoryName || ""}</p>
+            <p>Urgency: ${ticket.UrgencyName || ""}</p>
+            <p>Priority: ${ticket.PriorityName || ""}</p>
+            <p>Date Created: ${ticket.CreatedDate || ""}</p>
+            <p>Last Modified: ${ticket.ModifiedDate || ""}</p>
             <button class="popup_closeButton" onClick="hidePopup()">Close</button>
             <button class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
             <button class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
@@ -79,6 +80,7 @@ function showPopup(ticket) {
 
 function hidePopup() {
     let popupContainer = document.querySelector('.tx_popupContainer.popupActive');
+    document.getElementById('terminal').style.display = 'block';
 
     if (popupContainer) {
         popupContainer.classList.remove('popupActive');
@@ -98,27 +100,27 @@ function addTicketsToBoard(tickets, ticketsHtml) {
 
     for (let ticket of tickets) {
         let ticketRow = `
-            <tr class="tx_ticket" id="${ticket.ticket_id}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
-                <td>${ticket.ticket_title}</td>
-                <td>${ticket.ticket_id}</td>
-                <td>${ticket.location || 'N/A'}</td>
-                <td>${ticket.status}</td>
+            <tr class="tx_ticket" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
+                <td>${ticket.Title}</td>
+                <td>${ticket.ID}</td>
+                <td>${ticket.LocationName || 'N/A'}</td>
+                <td>${ticket.StatusName}</td>
             </tr>
         `;
 
         // Days old < 14 or status is new
-        if ((Date.now() - new Date(ticket.date_created) < 14 * 24 * 60 * 60 * 1000 || ticket.status.toLowerCase() === 'new')
-                && ticket.status.toLowerCase() !== 'closed') {
+        if ((Date.now() - new Date(ticket.CreatedDate) < 14 * 24 * 60 * 60 * 1000 || ticket.StatusName.toLowerCase() === 'new')
+                && ticket.StatusName.toLowerCase() !== 'closed') {
             ticketsHtml.newTickets += ticketRow;
         }
-        if (ticket.status.toLowerCase() !== 'closed') {
+        if (ticket.StatusName.toLowerCase() !== 'closed') {
             ticketsHtml.catchAllTickets += ticketRow;
         }
-        if (ticket.status.toLowerCase() === 'closed') {
+        if (ticket.StatusName.toLowerCase() === 'closed') {
             ticketRow = `
-                <tr class="tx_ticket" id="${ticket.ticket_id}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
-                    <td>${ticket.ticket_title}</td>
-                    <td>${ticket.ticket_id}</td>
+                <tr class="tx_ticket" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
+                    <td>${ticket.Title}</td>
+                    <td>${ticket.ID}</td>
                 </tr>
             `;
 
@@ -196,6 +198,24 @@ async function setTickex() {
     tx_container.classList.add("tx_container");
 
 
+    let sortByBox = document.createElement("div");
+    sortByBox.classList.add("tx_sortByBox");
+    sortByBox.innerHTML = `
+        <legend>Sort By</legend>
+        <div>
+            <input type="radio" name="tx_dev" id="created" checked>
+            <label for="created">Date Created</label>
+        </div>
+        <div>
+            <input type="radio" name="tx_dev" id="status">
+            <label for="status">Status</label>
+        </div>
+        <div>
+            <input type="radio" name="tx_dev" id="location">
+            <label for="location">Location</label>
+        </div>
+    `;
+
     let tdxHotlink = document.createElement("div");
     tdxHotlink.classList.add("tx_tdxHotlink");
     tdxHotlink.innerHTML = `
@@ -209,7 +229,7 @@ async function setTickex() {
     infoBox.classList.add("tx_infoBox");
     infoBox.innerHTML = `
         <legend>Welcome to Tickex!</legend>
-        <p>Tickex is a Ticket Management System designed to help you track and manage CTS tickets from TeamDynamix.</p>
+        <p>Tickex is a Ticket Management System to help track and manage TeamDynamix tickets.</p>
         <ul>
     `;
 
@@ -218,7 +238,7 @@ async function setTickex() {
     newTickets.innerHTML = `
         <fieldset>
             <legend>New CTS Tickets</legend>
-            <div class="tx_ticketContainer">
+            <div class="tx_ticketContainer" id="new">
                 <table>
                     <thead>
                         <tr>
@@ -241,7 +261,7 @@ async function setTickex() {
     catchAll.innerHTML = `
         <fieldset>
             <legend>Ticket Catch All</legend>
-            <div class="tx_ticketContainer">
+            <div class="tx_ticketContainer" id="catchAll">
                 <table>
                     <thead>
                         <tr>
@@ -264,7 +284,7 @@ async function setTickex() {
     closedTickets.innerHTML = `
         <fieldset>
             <legend>Closed Tickets</legend>
-            <div class="tx_ticketContainer">
+            <div class="tx_ticketContainer" id="closed">
                 <table>
                     <thead>
                         <tr>
@@ -284,6 +304,7 @@ async function setTickex() {
     popupContainer.classList.add("tx_popupContainer");
 
 
+    tx_container.append(sortByBox);
     tx_container.append(tdxHotlink);
     tx_container.append(infoBox);
     tx_container.append(popupContainer);
