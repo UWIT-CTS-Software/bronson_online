@@ -340,13 +340,16 @@ async function setRemoveMode() {
     //console.log(techList);
     // HTML
     let html = `
+    <fieldset>
+    <legend> Remove a technician from the schedule </legend>
     <ul id="techSchdRemoveList">`;
     Object.values(scheduleData).forEach(function(tech) {
-        html += `<li id="rm_${tech.Name}" onclick="removeTechSelect('rm_${tech.Name}')">${tech.Name}</li>`;
+        html += `<li id="rm_${tech.Name}" onclick="removeTechSelect('rm_${tech.Name}')"><span style="text-align: left; color: rgb(236, 200, 101)">${tech.Name}</span></li>`;
     })
     html +=`</ul>`;
     html += `<button onclick="exitRemoveMode()">Exit Remove Mode</button>
-    <button onclick="removeSelectedTechs()">Confirm Selection</button>`;
+    <button onclick="removeSelectedTechs()">Confirm Selection</button>
+    </fieldset>`;
     // place new element on page
     fireSomeoneMenu.innerHTML = html;
     if (document.getElementById('techSchdRemoveTech') == undefined) {
@@ -386,8 +389,8 @@ async function removeSelectedTechs() {
         delete scheduleData[rm_id];
     }
     // NOTE: verify this is not broken and correct before updating the localstorage iteration.
-    updateSchedule(scheduleData);
-    setRemoveMode();
+    await updateSchedule(scheduleData);
+    await setRemoveMode();
     return;
 }
 
@@ -597,7 +600,16 @@ async function updateAllTechSchedules() {
         let tableId = tables[i].getAttribute("id");
         schedule = await updateTechSchedule(tableId, schedule);
     }
-    updateSchedule(schedule);
+    console.log(schedule);
+    const scheduleSorted = Object.keys(schedule)
+        .sort()
+        .reduce((tech, name) => {
+            tech[name] = schedule[name];
+            return tech;
+        }, {});
+    console.log("Sorted Schedule, ", scheduleSorted);
+    await updateSchedule(scheduleSorted);
+    await setScheduleEditor();
     return;
 }
 
