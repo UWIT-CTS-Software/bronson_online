@@ -296,9 +296,12 @@ async function runSearch() {
             // temp: eventually pingResult will return as this form
             let rms   = await printPR(formPR, bdl[i], devTypes);
             // COULD STASH THESE TO MAINTAIN THE TOTAL RESPONSE OUTPUT
-            f_rms = f_rms.concat(rms);
-            f_hns = f_hns.concat(formPR[0].flat(3));
-            f_ips = f_ips.concat(formPR[1].flat(3));
+            formPR.forEach((rs) => { rs.forEach((r) => {
+                f_hns.push(`${r.hostname.room.replace(/ /g, "-")}-${r.hostname.dev_type}${r.hostname.num}`);
+                f_ips.push(`${r.ip}`);
+            })
+            });
+            f_rms = rms;
         }
     }
     // If the user is on the page the whole time continue with this.
@@ -606,8 +609,6 @@ async function setJackNet() {
     let newCurrent = document.getElementById("JNButton");
     // newCurrent.classList.add("active");
     newCurrent.classList.add("selected");
-
-    history.pushState("test", "JackNet", "/jacknet");
 
     let progGuts = document.querySelector('.program_board .program_guts');
     // Check for preserved space
