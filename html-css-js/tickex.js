@@ -8,15 +8,22 @@
                                   _/ |
                                  |__/
 TOC:
+    - listenEscapeKey()
+    - sendToASU()
+    - sendToHelpDesk()
+    - sortBy()
     - fetchTickets()
 
 HTML
     - setTickex()
+    - showPopup()
+    - hidePopup()
+    - initBoard()
 
 Notes:
 
 
-TODO - Popup for ticket details/editing (https://www.youtube.com/watch?v=VO3HOri1TEw)
+TODO:
     - Add real ticket fetching from TDX API 
     - Add ticket editing/saving to TDX API (if we get write access)
     - Add "send to ASU"/"send to help desk" button (if we get write access)
@@ -37,6 +44,7 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 */
 
 
+// Shows the popup with relavent ticket info
 function showPopup(ticket) {
     if (!ticket) {
         console.error("Ticket data not found");
@@ -52,7 +60,7 @@ function showPopup(ticket) {
     }
 
     popupContainer.classList.add('popupActive');
-    document.getElementById('terminal').style.display = 'none';
+    // document.getElementById('terminal').style.display = 'none'; // Hide Terminal
 
     popupContainer.innerHTML = `
         <div class="tx_popupBox">
@@ -78,25 +86,73 @@ function showPopup(ticket) {
     `;
 }
 
+// Hides the popup
 function hidePopup() {
     let popupContainer = document.querySelector('.tx_popupContainer.popupActive');
-    document.getElementById('terminal').style.display = 'block';
+    // document.getElementById('terminal').style.display = 'block'; // Show Terminal
 
     if (popupContainer) {
         popupContainer.classList.remove('popupActive');
     }
 }
 
+// Closes popup if escape key is pressed
+function listenEscapeKey() {
+    document.addEventListener('keydown', (e) => {
+        const pressedKey = e.key;
+
+        if (pressedKey == 'Escape') {
+            if (document.querySelector('.tx_popupContainer.popupActive')) {
+                hidePopup();
+            }
+        }
+    });
+}
+
+// TODO
 function sendToASU() {
     alert("This feature is not yet implemented. -Lex");
 }
 
+// TODO
 function sendToHelpDesk() {
     alert("This feature is not yet implemented. -Lex");
 }
 
-function addTicketsToBoard(tickets, ticketsHtml) {
-    tickets.sort((a, b) => new Date(b.date_created) - new Date(a.date_created));
+// Handles sorting of board elements
+//      - sortBy recieves: 'created', 'status', or 'location'
+function sortTickets(tickets, sortBy) {
+    // Sort everything by date first
+    tickets = tickets.sort((a, b) => new Date(b.CreatedDate) - new Date(a.CreatedDate));
+
+    // Sort by Status
+    if (sortBy === 'status') {
+        const statusOrder = [
+            "New", "In Process", "On Hold", "Resolved", "Cancelled", "Closed"
+        ];
+
+        tickets = tickets.sort((a, b) => {
+            let aIndex = statusOrder.indexOf(a.StatusName);
+            let bIndex = statusOrder.indexOf(b.StatusName);
+            return aIndex - bIndex;
+        });
+
+        return tickets;
+    }
+    // Sort by Location
+    else if (sortBy === 'location') {
+        tickets = tickets.sort((a, b) => a.LocationName.localeCompare(b.LocationName));
+        return tickets;
+    }
+    // Default sort by Date
+    else { return tickets; }
+}
+
+// Add tickets to the board
+function initBoard(tickets, ticketsHtml) {
+    ticketsHtml.newTickets = ``;
+    ticketsHtml.catchAllTickets = ``;
+    ticketsHtml.closedTickets = ``;
 
     for (let ticket of tickets) {
         let ticketRow = `
@@ -129,6 +185,70 @@ function addTicketsToBoard(tickets, ticketsHtml) {
     }
 }
 
+// Create board HTML elements
+function createBoard(newTickets, catchAll, closedTickets, ticketsHtml) {
+    newTickets.innerHTML = `
+        <fieldset>
+            <legend>New CTS Tickets</legend>
+            <div class="tx_ticketContainer" id="new">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>ID</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                        </tr>
+                </thead>
+                    <tbody>
+                        ${ticketsHtml.newTickets}
+                    </tbody>
+                </table>
+            </div>
+        </fieldset>
+    `;
+
+    catchAll.innerHTML = `
+        <fieldset>
+            <legend>Ticket Catch All</legend>
+            <div class="tx_ticketContainer" id="catchAll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>ID</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                        </tr>
+                </thead>
+                    <tbody>
+                        ${ticketsHtml.catchAllTickets}
+                    </tbody>
+                </table>
+            </div>
+        </fieldset>
+    `;
+
+    closedTickets.innerHTML = `
+        <fieldset>
+            <legend>Closed Tickets</legend>
+            <div class="tx_ticketContainer" id="closed">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>ID</th>
+                        </tr>
+                </thead>
+                    <tbody>
+                        ${ticketsHtml.closedTickets}
+                    </tbody>
+                </table>
+            </div>
+        </fieldset>
+    `;
+}
+
 async function fetchTickets() {
     const response = await fetch('/api/tickets');
 
@@ -142,6 +262,7 @@ async function fetchTickets() {
 
 async function setTickex() {
     preserveCurrentTool();
+    listenEscapeKey();
 
     // TEMPORARY:
     // Clear Tickex cache so new HTML is always loaded
@@ -182,17 +303,6 @@ async function setTickex() {
     }
 
 
-
-    let response = await fetchTickets();
-    let tickets = response?.tickets || [];
-    let ticketsHtml = {
-        newTickets: "",
-        catchAllTickets: "",
-        closedTickets: ""
-    };
-    
-    addTicketsToBoard(tickets, ticketsHtml);
-
     // -- No HTML Cache found, build from scratch
     let tx_container = document.createElement("div");
     tx_container.classList.add("tx_container");
@@ -203,18 +313,20 @@ async function setTickex() {
     sortByBox.innerHTML = `
         <legend>Sort By</legend>
         <div>
-            <input type="radio" name="tx_dev" id="created" checked>
+            <input class="tx_radio" type="radio" name="tx_dev" id="created" checked>
             <label for="created">Date Created</label>
         </div>
         <div>
-            <input type="radio" name="tx_dev" id="status">
+            <input class="tx_radio" type="radio" name="tx_dev" id="status">
             <label for="status">Status</label>
         </div>
         <div>
-            <input type="radio" name="tx_dev" id="location">
+            <input class="tx_radio" type="radio" name="tx_dev" id="location">
             <label for="location">Location</label>
         </div>
     `;
+    tx_container.append(sortByBox);
+
 
     let tdxHotlink = document.createElement("div");
     tdxHotlink.classList.add("tx_tdxHotlink");
@@ -224,6 +336,8 @@ async function setTickex() {
             <img src="/tdx_logo.png" alt="TeamDynamix" style="height:45px; vertical-align:middle; cursor:pointer;" />
         </a>
     `;
+    tx_container.append(tdxHotlink);
+
 
     let infoBox = document.createElement("div");
     infoBox.classList.add("tx_infoBox");
@@ -232,103 +346,57 @@ async function setTickex() {
         <p>Tickex is a Ticket Management System to help track and manage TeamDynamix tickets.</p>
         <ul>
     `;
-
-    let newTickets = document.createElement("div");
-    newTickets.classList.add("tx_newTickets");
-    newTickets.innerHTML = `
-        <fieldset>
-            <legend>New CTS Tickets</legend>
-            <div class="tx_ticketContainer" id="new">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>ID</th>
-                            <th>Location</th>
-                            <th>Status</th>
-                        </tr>
-                </thead>
-                    <tbody>
-                        ${ticketsHtml.newTickets}
-                    </tbody>
-                </table>
-            </div>
-        </fieldset>
-    `;
-
-    let catchAll = document.createElement("div");
-    catchAll.classList.add("tx_catchAllTickets");
-    catchAll.innerHTML = `
-        <fieldset>
-            <legend>Ticket Catch All</legend>
-            <div class="tx_ticketContainer" id="catchAll">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>ID</th>
-                            <th>Location</th>
-                            <th>Status</th>
-                        </tr>
-                </thead>
-                    <tbody>
-                        ${ticketsHtml.catchAllTickets}
-                    </tbody>
-                </table>
-            </div>
-        </fieldset>
-    `;
-
-    let closedTickets = document.createElement("div");
-    closedTickets.classList.add("tx_closedTickets");
-    closedTickets.innerHTML = `
-        <fieldset>
-            <legend>Closed Tickets</legend>
-            <div class="tx_ticketContainer" id="closed">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>ID</th>
-                        </tr>
-                </thead>
-                    <tbody>
-                        ${ticketsHtml.closedTickets}
-                    </tbody>
-                </table>
-            </div>
-        </fieldset>
-    `;
-
-    let popupContainer = document.createElement("div");
-    popupContainer.classList.add("tx_popupContainer");
-
-
-    tx_container.append(sortByBox);
-    tx_container.append(tdxHotlink);
     tx_container.append(infoBox);
-    tx_container.append(popupContainer);
-    tx_container.append(newTickets);
-    tx_container.append(catchAll);
-    tx_container.append(closedTickets);
 
-    // Closes popup if escape key is pressed
-    document.addEventListener('keydown', (e) => {
-        const pressedKey = e.key;
-
-        if (pressedKey == 'Escape') {
-            if (document.querySelector('.tx_popupContainer.popupActive')) {
-                hidePopup();
-            }
-        }
-    });
 
     let main_container = document.createElement('div');
     main_container.appendChild(tx_container);
     main_container.classList.add('program_guts');
     progGuts.replaceWith(main_container);
 
+
+    let newTickets = document.createElement("div");
+    newTickets.classList.add("tx_newTickets");
+    let catchAll = document.createElement("div");
+    catchAll.classList.add("tx_catchAllTickets");
+    let closedTickets = document.createElement("div");
+    closedTickets.classList.add("tx_closedTickets");
+
+    let response = await fetchTickets();
+    let tickets = response?.tickets || [];
+    let ticketsHtml = {
+        newTickets: "",
+        catchAllTickets: "",
+        closedTickets: ""
+    };
+
+    // Initial board on loadup
+    tickets = sortTickets(tickets, 'created'); // Sort by date on loadup
+    initBoard(tickets, ticketsHtml);
+    createBoard(newTickets, catchAll, closedTickets, ticketsHtml);
+
+    // Listens to radio buttons, for sorting
+    sortByBox.addEventListener('click', (e) => {
+        if (e.target.matches('input[type="radio"]')) {
+            let sortBy = e.target.id;
+            let sortedTickets = sortTickets(tickets, sortBy);
+            initBoard(sortedTickets, ticketsHtml);
+            createBoard(newTickets, catchAll, closedTickets, ticketsHtml);
+        }
+    });
+
+    tx_container.append(newTickets);
+    tx_container.append(catchAll);
+    tx_container.append(closedTickets);
+
+
+    let popupContainer = document.createElement("div");
+    popupContainer.classList.add("tx_popupContainer");
+    tx_container.append(popupContainer);
+
+
     // Init Hide Bool Variable in session storage
     sessionStorage.setItem("txHideBool", true);
+
     return;
 }
