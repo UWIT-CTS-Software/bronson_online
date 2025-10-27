@@ -489,7 +489,7 @@ input:checked + .slider:before {
 }
 
 .db_checker progress {
-    -webket-appearance: none;
+    /* -webket-appearance: none; */
     width: 92%;
     height: 20px;
     padding: 0px 0px 0px 0px;
@@ -503,9 +503,9 @@ input:checked + .slider:before {
     border: 2px outset rgb(122,113,45);
 }
 
-.db_checker progress::-webkit-progress-bar {
-    /* background-color: black; */
-}
+/* .db_checker progress::-webkit-progress-bar {
+    background-color: black;
+} */
 
 .db_checker progress::-webkit-progress-value {
     background-color: rgb(172, 159, 64);

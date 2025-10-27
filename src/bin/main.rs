@@ -178,9 +178,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     request_database.init_if_empty();
     
     // Data Thread Pool Loop (data transfer)
-    //let mut clone_data_db = data_database.clone();
+    let thread_schedule = Arc::new(RwLock::new(ThreadSchedule::new()));
+    let data_ts = Arc::clone(&thread_schedule);
     data_pool.execute(move || {
-        data_sync();
+        data_sync(data_ts);
     });
 
     // User Requests / User Thread Pool
@@ -199,9 +200,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
         let req = Request::from(buffer.clone());
         let clone_db = request_database.clone();
-
+        let req_ts = Arc::clone(&thread_schedule);
         pool.execute(move || {
-            let mut res = handle_connection(req, clone_db).unwrap();
+            let mut res = handle_connection(req, clone_db, req_ts).unwrap();
             stream.write(&res.build()).unwrap();
             stream.flush().unwrap();
             stdout().flush().unwrap();
@@ -242,35 +243,38 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
 #[tokio::main]
 #[allow(unused_assignments)]
 #[allow(unreachable_code)]
-async fn data_sync() {
+async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
     // Init Everyting
     // ThreadSchedule Init
-    let mut thread_schedule = ThreadSchedule::new();
+    //let mut thread_schedule = ThreadSchedule::new();
     // TODO: Only add print1/2 if Debug is enabled.
-    thread_schedule.tasks.insert("print1".to_string(), TaskSchedule {
-        duration: 60,
-        timestamp: Utc::now(),
-    });
-    thread_schedule.tasks.insert("print2".to_string(), TaskSchedule {
-        duration: 120,
-        timestamp: Utc::now(),
-    });
-    thread_schedule.tasks.insert("leaderboard".to_string(), TaskSchedule {
-        duration: 3600,
-        timestamp: Utc::now() - Duration::from_secs(3599),
-    });
-    thread_schedule.tasks.insert("spares".to_string(), TaskSchedule {
-        duration: 3600,
-        timestamp: Utc::now() - Duration::from_secs(3599),
-    });
-    thread_schedule.tasks.insert("checkerboard".to_string(), TaskSchedule {
-        duration: 1800,
-        timestamp: Utc::now() - Duration::from_secs(1799),
-    });
-    thread_schedule.tasks.insert("jacknet".to_string(), TaskSchedule {
-        duration: 3600,
-        timestamp: Utc::now() - Duration::from_secs(3590),
-    });
+    {
+        let mut ts = thread_schedule.write().unwrap();
+        ts.tasks.insert("print1".to_string(), TaskSchedule {
+            duration: 60,
+            timestamp: Utc::now(),
+        });
+        ts.tasks.insert("print2".to_string(), TaskSchedule {
+            duration: 120,
+            timestamp: Utc::now(),
+        });
+        ts.tasks.insert("leaderboard".to_string(), TaskSchedule {
+            duration: 3600,
+            timestamp: Utc::now() - Duration::from_secs(3599),
+        });
+        ts.tasks.insert("spares".to_string(), TaskSchedule {
+            duration: 3600,
+            timestamp: Utc::now() - Duration::from_secs(3599),
+        });
+        ts.tasks.insert("checkerboard".to_string(), TaskSchedule {
+            duration: 1800,
+            timestamp: Utc::now() - Duration::from_secs(1799),
+        });
+        ts.tasks.insert("jacknet".to_string(), TaskSchedule {
+            duration: 3600,
+            timestamp: Utc::now() - Duration::from_secs(3580),
+        });
+    }
     // Database Init
     let mut database = Database::new();
     // Init Datapool
@@ -295,50 +299,61 @@ async fn data_sync() {
     // Not sure if this is even giving performance improvements.
     let jn_st = false;
     // Loop
+    //let l_ts = Arc::clone(&thread_schedule);
     loop {
+        debug!("[ThreadSchedule] Checking Tasks");
         let now = Utc::now();
-        for (task_name, task) in thread_schedule.clone().tasks.iter() {
-            if (now - task.timestamp).num_seconds() as u64 >= task.duration {
-                // Execute task based on task_name
-                match task_name.as_str() {
-                    "print1"          => { // Not-LSM
-                        debug!("[ThreadSchedule Debug] - One Minte Message");
-                    },
-                    "print2"          => { // Not-LSM
-                        debug!("[ThreadSchedule Debug] - Two Minute Message");
-                    },
-                    "leaderboard"     => {
-                        update_room_check_leaderboard(&database, Arc::clone(&lsm_request)).await;
-                    },
-                    "spares"          => {
-                        update_lsm_spares(&database, Arc::clone(&lsm_request)).await;
-                    },
-                    "lsmData"         => {
-                        println!("MAYBE TODO: Get Diagnostic Information from LSM");
-                        //update_lsm_data(&mut database, Arc::clone(&lsm_request)).await;
-                    },
-                    "checkerboard"    => {
-                        run_checkerboard(&mut database, Arc::clone(&lsm_request)).await;
-                    },
-                    "jacknet"         => { // Not-LSM
-                        if jn_st {
-                            execute_ping_st(&mut database).await;
-                        } else {
-                            execute_ping(&mut database).await;
-                        }
-                    },
-                    _                 => {
-                        warn!("Unknown task: {}", task_name)
-                    },
-                }
-                // Update timestamp
-                if let Some(task) = thread_schedule.tasks.get_mut(task_name) {
-                    task.timestamp = now;
-                }
+
+        // Collect due task names while holding a read lock, then drop it
+        // so we don't attempt to acquire a write lock while a read lock is held.
+        let due_tasks: Vec<String> = {
+            let guard = thread_schedule.read().unwrap();
+            guard.tasks.iter()
+                .filter(|(_, task)| (now - task.timestamp).num_seconds() as u64 >= task.duration)
+                .map(|(name, _)| name.clone())
+                .collect()
+        };
+
+        for task_name in due_tasks {
+            // Execute task based on task_name
+            match task_name.as_str() {
+                "print1"          => { // Not-LSM
+                    debug!("[ThreadSchedule Debug] - One Minte Message");
+                },
+                "print2"          => { // Not-LSM
+                    debug!("[ThreadSchedule Debug] - Two Minute Message");
+                },
+                "leaderboard"     => {
+                    update_room_check_leaderboard(&database, Arc::clone(&lsm_request)).await;
+                },
+                "spares"          => {
+                    update_lsm_spares(&database, Arc::clone(&lsm_request)).await;
+                },
+                "lsmData"         => {
+                    println!("MAYBE TODO: Get Diagnostic Information from LSM");
+                    //update_lsm_data(&mut database, Arc::clone(&lsm_request)).await;
+                },
+                "checkerboard"    => {
+                    run_checkerboard(&mut database, Arc::clone(&lsm_request)).await;
+                },
+                "jacknet"         => { // Not-LSM
+                    if jn_st {
+                        execute_ping_st(&mut database).await;
+                    } else {
+                        execute_ping(&mut database).await;
+                    }
+                },
+                _                 => {
+                    warn!("Unknown task: {}", task_name)
+                },
+            }
+
+            // Update timestamp (acquire write lock only here)
+            if let Some(task) = thread_schedule.write().unwrap().tasks.get_mut(&task_name) {
+                task.timestamp = now;
             }
         }
-        // TODO_Maybe: Here would be a loop through the queue and where we call functions. This would require adjusting the above information. This is where the data_threads pool would come in handy.
-        //....
+
         // Sleep for a short duration to prevent busy-waiting
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
@@ -350,6 +365,7 @@ async fn data_sync() {
 async fn handle_connection(
     mut req: Request,
     mut database: Database,
+    thread_schedule: Arc<RwLock<ThreadSchedule>>,
 ) -> Option<Response> {
     let mut user_homepage: &str = "html-css-js/login.html";
     if req.headers.contains_key("Cookie") {
@@ -884,6 +900,44 @@ async fn handle_connection(
                 }).to_string().into();
                 res.status(STATUS_200);
                 res.send_contents(contents);
+            }
+        },
+        "GET /threadSchedule HTTP/1.1"   => {
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let ts = thread_schedule.read().unwrap();
+                let contents = json!({
+                    "response": ts.tasks
+                }).to_string().into();
+                res.status(STATUS_200);
+                res.send_contents(contents);
+            }
+        },
+        "POST /resetThreadInterval HTTP/1.1" => {
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                let task_name: String = body_json["task_name"]
+                    .as_str()
+                    .unwrap()
+                    .to_string();
+                debug!("Updating ThreadSchedule Task: {} to run now", task_name);
+                if let Some(task) = thread_schedule.write().unwrap().tasks.get_mut(&task_name) {
+                    task.timestamp = task.timestamp - Duration::from_secs(task.duration);
+                    res.status(STATUS_200);
+                    res.send_contents("ThreadSchedule Updated".into());
+                } else {
+                    res.status(STATUS_500);
+                    res.send_contents("Task Not Found".into());
+                }
             }
         },
         "POST /setAliasTable HTTP/1.1"     => {

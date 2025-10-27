@@ -187,6 +187,10 @@ async function setAdminTools() {
     <button id="at_diag" onclick="setDiag()" type="button" class="atTab">
         <img class="at_tab_img" src="button2.png"/>
         <span> Diagnostics </span>
+    </button>
+    <button id="at_thread" onclick="setThreadEditor()" type="button" class="atTab">
+        <img class="at_tab_img" src="button2.png"/>
+        <span> Thread Editor </span>
     </button>`;
     // init admin tool guts
     let admin_internals = document.createElement("div");
@@ -3053,6 +3057,76 @@ async function postAliasReset() {
     console.log("Reseting Hostname Exception on following Rooms", aliasReset.rooms);
     let packet = JSON.stringify(aliasReset);
     return fetch('resetAlias', {
+        method: 'POST',
+        headers: {
+            "Content-Type": "application/json",
+            "Content-Length": packet.length
+        },
+        body: packet
+    }).then((response) => {
+        if(!response.ok) {
+            throw new Error("HTTP error " + response.status);
+        }
+        return response;
+    })
+}
+
+// Thread Schedule Tasks Editor
+async function setThreadEditor() {
+    // remove currently active status, mark tab has active.
+    let current = document.getElementsByClassName("at_selected");
+    if (current.length != 0) {
+        current[0].classList.remove("at_selected");
+    }
+    let newCurrent = document.getElementById("at_thread");
+    newCurrent.classList.add("at_selected");
+    // Create New Element
+    let thread_editor = document.createElement("div");
+    thread_editor.setAttribute("id", "admin_internals");
+    thread_editor.classList.add('at_thread_edit'); 
+    // Get Current Thread Object
+    let ts = await getThreadSchedule();
+    ts = ts.response;
+    let tsKeys = Object.keys(ts);
+    console.log(ts);
+    let tmp = `
+    <fieldset>
+        <legend> Thread Schedule Editor: </legend>`;
+    for(let i = 0; i < tsKeys.length; i++) {
+        tmp += `<fieldset>
+            <legend>${tsKeys[i]}</legend>
+            <input type="number" id="thread-${tsKeys[i]}-interval" value="${ts[tsKeys[i]].duration}" min="60"> Seconds between runs
+            <div style="float:right">
+                <span style="color: rgba(166, 172, 114, 1)"> Last Run: ${ts[tsKeys[i]].timestamp} </span>
+                <button onclick="resetThreadInterval('${tsKeys[i]}')"> Run Now </button>
+            </div>
+            </fieldset>`;
+    }
+    tmp += `</fieldset>`;
+    thread_editor.innerHTML = tmp;
+    // replace admin_internals
+    let admin_internals = document.getElementById('admin_internals');
+    admin_internals.replaceWith(thread_editor);
+    return;
+}
+
+async function getThreadSchedule() {
+    return fetch('threadSchedule')
+        .then((response) => {
+            if(!response.ok) {
+                throw new Error("HTTP error " + response.status);
+            }
+            return response.json();
+        }
+    );
+}
+
+async function resetThreadInterval(threadName) {
+    let packet = {
+        task_name: threadName,
+    };
+    packet = JSON.stringify(packet);
+    return fetch('resetThreadInterval', {
         method: 'POST',
         headers: {
             "Content-Type": "application/json",

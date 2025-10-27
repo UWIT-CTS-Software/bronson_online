@@ -96,28 +96,44 @@ struct Worker {
 
 impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
-		let thread = thread::spawn(move || {
-			loop {
-				let message = receiver.lock().unwrap().recv().unwrap();
+		let receiver_clone = Arc::clone(&receiver);
+		let thread = thread::Builder::new()
+			.name(id.to_string())
+			.spawn(move || {
+				loop {
+					let message = receiver_clone.lock().unwrap().recv().unwrap();
 
-				match message {
-					Message::NewJob(job) => {
-							//info!("[Worker {} got a job; executing]", id);
-						job.call_box();
-					},
-					Message::Terminate => {
-						warn!("\rWorker {} was told to terminate.", id);
+					match message {
+						Message::NewJob(job) => {
+								//info!("[Worker {} got a job; executing]", id);
+							job.call_box();
+						},
+						Message::Terminate => {
+							warn!("\rWorker {} was told to terminate.", id);
 
-						break;
-					},
+							break;
+						},
+					}
 				}
 			}
-		});
+		);
 
-		return Worker {
-			_id: id,
-			thread: Some(thread),
-		};
+		match thread {
+			Ok(thread) => {
+				return Worker {
+					_id: id,
+					thread: Some(thread),
+				};
+			},
+			Err(error) => {
+				println!("Error: {}", error);
+				return Self::new(id, Arc::clone(&receiver));
+			},
+		}
+		// return Worker {
+		// 	_id: id,
+		// 	thread: Some(thread),
+		// };
     }
 }
 
@@ -381,21 +397,7 @@ impl Database {
 
 			self.update_data(&DB_DataElement {
 				key: String::from("schedule"),
-				val: String::from(
-					"{
-						\"Alex Bryan\":{\"Name\":\"Alex Bryan\",\"Assignment\":\"SysEn\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-						\"Cian Melker\":{\"Name\":\"Cian Melker\",\"Assignment\":\"Networking\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-						\"Collin Davis\":{\"Name\":\"Collin Davis\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-						\"Colton Hopster\":{\"Name\":\"Colton Hopster\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-						\"Jack Nyman\":{\"Name\":\"Jack Nyman\",\"Assignment\":\"Coding\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-						\"Jarred Heddins\":{\"Name\":\"Jarred Heddins\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-						\"Korrin Sutherburg\":{\"Name\":\"Korrin Sutherburg\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-						\"Lexus Fermelia\":{\"Name\":\"Lexus Fermelia\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-						\"Michael Stoll\":{\"Name\":\"Michael Stoll\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-						\"Levi Westberg\":{\"Name\":\"Levi Westberg\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-						\"Thomas Lockwood\":{\"Name\":\"Thomas Lockwood\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}}
-					}"
-				)
+				val: String::from(read_to_string(TSCH_JSON).unwrap().to_string()),
 			});
 
 			self.update_data(&DB_DataElement {
