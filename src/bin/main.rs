@@ -239,11 +239,11 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
                 log::Level::Error => "\x1B[31m", // Red
             };
             out.finish(format_args!(
-                "{} {} {}[{}] {}{}\x1b[0m",
-                Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
+                "{} \x1B[3m{}\x1B[0m {}[{}]\x1B[0m {}\x1b[0m",
+                Local::now().format("[\x1B[0;30m%Y-%m-%d\x1B[0m][\x1B[0;30m%H:%M:%S\x1B[0m]"),
                 record.target(),
                 level_color, record.level(),
-                message, "\x1b[0m"
+                message
             ))
         })
         .chain(stdout());
