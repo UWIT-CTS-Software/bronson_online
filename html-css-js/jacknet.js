@@ -308,13 +308,8 @@ async function runSearch() {
     if(userOnPage) {
         // console.log("JackNet Debug - f_ips:\n",f_ips);
         updateConsole("====--------------------========--------------------====");
-
         // set the csv export data
         setCSVExport(f_hns, f_ips, f_rms);
-
-        // // Tell user how good the search went :)
-        // updateConsole("Search Complete");
-        // updateConsole("Found " + (totalNumDevices - not_found_count) + "/" + totalNumDevices + " devices.");
         updateConsole("CSV Export Available");
     }
     // re-enable runButton;
@@ -355,7 +350,8 @@ function formatPingPong(PingPongJSON, devTypes) {
     for(var i = 0; i < room_list.length; i++) {
         ret_arr.push(room_list[i]["ping_data"].filter(element => devTypes.includes(element.hostname.dev_type)));
     }
-
+    console.log("formatPingPong@JackNet\nret_length: ", ret_arr);
+    console.log("formatPingPong@JackNet\nLength of ret_arr: ", ret_arr.length);
     return ret_arr;
 }
 

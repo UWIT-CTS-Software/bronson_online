@@ -43,7 +43,7 @@ Wiki
 // ----------------------------------------------------------------------------
 use server_lib::{
     BUFF_SIZE, 
-    ThreadPool, PingRequest, 
+    ThreadPool, ThreadSchedule, TaskSchedule, PingRequest, 
     Building, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
@@ -55,6 +55,7 @@ use server_lib::{
         DB_IpAddress,  
     },
 };
+use futures_util::future::FutureExt;
 use getopts::Options;
 use std::{
     str, env,
@@ -65,13 +66,16 @@ use std::{
         File, 
     },
     path::Path,
-    time::{ Duration, SystemTime },
+    time::{ Duration, /* SystemTime */},
     string::{ String, },
+    sync::{Arc, /*Mutex,*/ RwLock,
+        atomic::{AtomicBool, Ordering}},
     clone::{ Clone, },
     option::{ Option, },
     collections::{ HashMap, },
 };
-use reqwest::{ 
+use reqwest::{
+    Client,
     header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
 use log::{ debug, info, warn, error, }; // trace, };
@@ -79,12 +83,13 @@ use cookie::{ /* Cookie, */ CookieJar, /* Key, */ };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
 use regex::Regex;
-use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta };
+use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta,Utc };
 use urlencoding::decode;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
 // ----------------------------------------------------------------------------
+static JN_THREAD: AtomicBool = AtomicBool::new(false);
 pub const MIGRATIONS : EmbeddedMigrations = embed_migrations!();
 /*
 $$$$$$$\                      $$\                                 $$\ 
@@ -106,6 +111,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     opts.optflag("l", "local", "Run the server using localhost.");
     opts.optflag("p", "public", "Run the server using the public IP.");
     opts.optflag("d", "debug", "Enable debug functions.");
+    opts.optflag("j", "jnthread", "Provides the data sync function with an extra thread explicitly for jacknet instead of all tasks sharing one thread.");
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => { m }
         Err(f) => { panic!("{}", f.to_string()) }
@@ -151,7 +157,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("[!] ... {}:{} ...", host_ip, host_port.to_string());
     debug!("Server mounted!");
 
-    let pool = ThreadPool::new(6);
+    let pool = ThreadPool::new(6); // Thread pool for handling requests
+    let data_pool = ThreadPool::new(1); // Thread pool for database operations
     let mut buffer = [0; BUFF_SIZE];
 
     // ----------------------------------------------------------------------
@@ -160,7 +167,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => error!("STDOUT flush failed: {}", e)
     };
 
-    // embed_migrations
+    // embed_migrations (iffy on this)
     dotenv().ok(); // Load .env file
     let database_url = env::var("DATABASE_URL")
         .expect("DATABASE_URL must be set");
@@ -169,9 +176,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     connection.run_pending_migrations(MIGRATIONS)
             .map_err(|e| format!("Failed to run migrations: {}", e))?;
 
-    let mut database = Database::new();
-    database.init_if_empty();
+    let mut request_database = Database::new();
+    //let data_database = Database::new();
 
+    request_database.init_if_empty();
+    
+    // Data Thread Pool Loop (data transfer)
+    if matches.opt_present("j") {
+        set_jn_thread_true();
+    }
+    let thread_schedule = Arc::new(RwLock::new(ThreadSchedule::new()));
+    let data_ts = Arc::clone(&thread_schedule);
+    data_pool.execute(move || {
+        data_sync(data_ts);
+    });
+
+    // User Requests / User Thread Pool
     for stream in listener.incoming() {
         let mut stream = match stream {
             Ok(s) => s,
@@ -186,10 +206,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(e) => error!("Error reading to buffer: {}", e)
         };
         let req = Request::from(buffer.clone());
-        let clone_db = database.clone();
-
+        let clone_db = request_database.clone();
+        let req_ts = Arc::clone(&thread_schedule);
         pool.execute(move || {
-            let mut res = handle_connection(req, clone_db).unwrap();
+            let mut res = handle_connection(req, clone_db, req_ts).unwrap();
             stream.write(&res.build()).unwrap();
             stream.flush().unwrap();
             stdout().flush().unwrap();
@@ -208,23 +228,172 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
         "info"  => log_filter = log::LevelFilter::Info,
         &_      => log_filter = log::LevelFilter::Error
     };
-
-    fern::Dispatch::new()
+    // Build a dispatch for colored terminal output
+    let stdout_dispatch = fern::Dispatch::new()
         .format(|out, message, record| {
+            let level_color = match record.level() {
+                log::Level::Trace => "\x1B[90m", // Bright Black
+                log::Level::Debug => "\x1B[34m", // Blue
+                log::Level::Info  => "\x1B[32m", // Green
+                log::Level::Warn  => "\x1B[33m", // Yellow
+                log::Level::Error => "\x1B[31m", // Red
+            };
             out.finish(format_args!(
-                "[{} {} {}] {}",
-                humantime::format_rfc3339_seconds(SystemTime::now()),
-                record.level(),
+                "{} \x1B[3m{}\x1B[0m {}[{}]\x1B[0m {}\x1b[0m",
+                Local::now().format("[\x1B[90m%Y-%m-%d\x1B[0m][\x1B[90m%H:%M:%S\x1B[0m]"),
                 record.target(),
+                level_color, record.level(),
                 message
             ))
         })
+        .chain(stdout());
+
+    // Build a separate dispatch for file output without ANSI color codes
+    let file_dispatch = fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "{} {} [{}] {}",
+                Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
+                record.target(),
+                record.level(),
+                message
+            ))
+        })
+        .chain(fern::log_file("output.log")?);
+
+    // Combine and apply
+    fern::Dispatch::new()
         .level(log_filter)
-        .chain(stdout())
-        .chain(fern::log_file("output.log")?)
+        .chain(stdout_dispatch)
+        .chain(file_dispatch)
         .apply()?;
-    
-    return Ok(());
+
+    Ok(())
+}
+
+#[tokio::main]
+#[allow(unused_assignments)]
+#[allow(unreachable_code)]
+async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
+    // Init Everyting
+    // ThreadSchedule Init
+    //let mut thread_schedule = ThreadSchedule::new();
+    // TODO: Only add print1/2 if Debug is enabled.
+    {
+        let mut ts = thread_schedule.write().unwrap();
+        ts.tasks.insert("print1".to_string(), TaskSchedule {
+            duration: 60,
+            timestamp: Utc::now(),
+        });
+        ts.tasks.insert("print2".to_string(), TaskSchedule {
+            duration: 120,
+            timestamp: Utc::now(),
+        });
+        ts.tasks.insert("leaderboard".to_string(), TaskSchedule {
+            duration: 3600,
+            timestamp: Utc::now() - Duration::from_secs(3599),
+        });
+        ts.tasks.insert("spares".to_string(), TaskSchedule {
+            duration: 3600,
+            timestamp: Utc::now() - Duration::from_secs(3599),
+        });
+        ts.tasks.insert("checkerboard".to_string(), TaskSchedule {
+            duration: 1800,
+            timestamp: Utc::now() - Duration::from_secs(1799),
+        });
+        ts.tasks.insert("jacknet".to_string(), TaskSchedule {
+            duration: 3600,
+            timestamp: Utc::now() - Duration::from_secs(3580),
+        });
+    }
+    // Database Init
+    let mut database = Database::new();
+    // Init Datapool
+    // TODO: Once there is sufficient need, multithreading this will be done with 'data_threads', in addition, the following loop block will need refactored.
+    //let _data_threads = ThreadPool::new(3);
+    // Note: Arc<RwLock<Reqwest>>
+    //       ^ The above line will prevent concurent access with LSM.
+    //       Normal Reqwests, Other API's that can handle concurent requests
+    //       will not need to be locked.
+    let lsm_request: Arc<RwLock<Client>> = Arc::new(RwLock::new(
+        reqwest::Client::builder()
+                .cookie_store(true)
+                .user_agent("server_lib/1.10.1")
+                .default_headers(construct_headers("lsm", &mut database))
+                .timeout(Duration::from_secs(15))
+                .build()
+                .ok()
+                .expect("Unable to build LSM Request Client")
+            ));
+    // TODO: jn_st
+    //    WSL has problems... I need to add a flag that sets an atomicboolean to jn_st. If true, execute_ping will be single threaded.
+    // Not sure if this is even giving performance improvements.
+    let jn_st = check_jn_thread();
+    let jn_thread = ThreadPool::new(1);
+
+    // Loop
+    //let l_ts = Arc::clone(&thread_schedule);
+    loop {
+        //debug!("[ThreadSchedule] Checking Tasks");
+        let now = Utc::now();
+
+        // Collect due task names while holding a read lock, then drop it
+        // so we don't attempt to acquire a write lock while a read lock is held.
+        let due_tasks: Vec<String> = {
+            let guard = thread_schedule.read().unwrap();
+            guard.tasks.iter()
+                .filter(|(_, task)| (now - task.timestamp).num_seconds() as u64 >= task.duration)
+                .map(|(name, _)| name.clone())
+                .collect()
+        };
+
+        for task_name in due_tasks {
+            // Execute task based on task_name
+            match task_name.as_str() {
+                "print1"          => { // Not-LSM
+                    debug!("[ThreadSchedule Debug] - One Minute Message");
+                },
+                "print2"          => { // Not-LSM
+                    debug!("[ThreadSchedule Debug] - Two Minute Message");
+                },
+                "leaderboard"     => {
+                    update_room_check_leaderboard(&database, Arc::clone(&lsm_request)).await;
+                },
+                "spares"          => {
+                    update_lsm_spares(&database, Arc::clone(&lsm_request)).await;
+                },
+                "lsmData"         => {
+                    println!("MAYBE TODO: Get Diagnostic Information from LSM");
+                    //update_lsm_data(&mut database, Arc::clone(&lsm_request)).await;
+                },
+                "checkerboard"    => {
+                    run_checkerboard(&mut database, Arc::clone(&lsm_request)).await;
+                },
+                "jacknet"         => { // Not-LSM
+                    if jn_st {
+                        let mut db_jn_clone = database.clone();
+                        jn_thread.execute( move || async {
+                            execute_ping(&mut db_jn_clone).await;
+                        }.now_or_never().unwrap());
+                    } else {
+                        execute_ping(&mut database).await;
+                    }
+                },
+                _                 => {
+                    warn!("Unknown task: {}", task_name)
+                },
+            }
+
+            // Update timestamp (acquire write lock only here)
+            if let Some(task) = thread_schedule.write().unwrap().tasks.get_mut(&task_name) {
+                task.timestamp = now;
+            }
+        }
+
+        // Sleep for a short duration to prevent busy-waiting
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    }
+    return;
 }
 
 #[tokio::main]
@@ -232,7 +401,8 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
 async fn handle_connection(
     mut req: Request,
     mut database: Database,
-) -> Option<Response> {    
+    thread_schedule: Arc<RwLock<ThreadSchedule>>,
+) -> Option<Response> {
     let mut user_homepage: &str = "html-css-js/login.html";
     if req.headers.contains_key("Cookie") {
         let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
@@ -240,11 +410,11 @@ async fn handle_connection(
             Some(uname) => uname,
             None => panic!("Unable to capture username.")
         };
+        //let mut database = arc_database.write().unwrap();
         let user = match database.get_user(&username["username"]) {
             Some(u) => u,
             None => DB_User{ username: String::new(), permissions: 0 },
         };
-
         if req.has_valid_cookie(&mut database) {
             match user.permissions {
                 7 => user_homepage = "html-css-js/index_admin.html",
@@ -253,9 +423,7 @@ async fn handle_connection(
                 _ => user_homepage = "html-css-js/index.html",
             }
         }
-        
     }
-
     // Handle requests
     // ------------------------------------------------------------------------
     let mut res: Response = Response::new();
@@ -364,120 +532,34 @@ async fn handle_connection(
             res.send_contents(contents);
         },
         "GET /zoneData HTTP/1.1"           => { // NEW: returns data in lib.rs as json
+            //let mut database = arc_database.write().unwrap();
             let contents = get_zone_data(database.get_buildings());
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "GET /dashContents HTTP/1.1"       => { // Dashboard Message
+            //let mut database = arc_database.write().unwrap();
             let contents = json!({
                 "contents": database.get_data("dashboard").unwrap().val
             }).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "GET /leaderboard HTTP/1.1"        => { // Dashboard Leaderboard
-            let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
-            let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
-            let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
-
-
-            let req = reqwest::Client::builder()
-                .cookie_store(true)
-                .user_agent("server_lib/1.10.1")
-                .default_headers(construct_headers("lsm", &mut database))
-                .timeout(Duration::from_secs(15))
-                .build()
-                .ok()?
-            ;
-
-            let body_7_days = req.get(url_7_days)
-                              .timeout(Duration::from_secs(15))
-                              .send()
-                              .await
-                              .expect("[-] RESPONSE ERROR")
-                              .text()
-                              .await
-                              .expect("[-] PAYLOAD ERROR");
-
-            let v_7_days: Value = serde_json::from_str(&body_7_days).expect("Empty");
-            let data_7_days: Vec<Value> = match v_7_days["data"].as_array() {
-                Some(data) => data.clone(),
-                None => Vec::<Value>::new()
-            };
-
-            let body_30_days = req.get(url_30_days)
-                              .timeout(Duration::from_secs(15))
-                              .send()
-                              .await
-                              .expect("[-] RESPONSE ERROR")
-                              .text()
-                              .await
-                              .expect("[-] PAYLOAD ERROR");
-
-            let v_30_days: Value = serde_json::from_str(&body_30_days).expect("Empty");
-            let data_30_days: Vec<Value> = match v_30_days["data"].as_array() {
-                Some(data) => data.clone(),
-                None => Vec::<Value>::new()
-            };
-
-            let body_90_days = req.get(url_90_days)
-                              .timeout(Duration::from_secs(15))
-                              .send()
-                              .await
-                              .expect("[-] RESPONSE ERROR")
-                              .text()
-                              .await
-                              .expect("[-] PAYLOAD ERROR");
-
-            let v_90_days: Value = serde_json::from_str(&body_90_days).expect("Empty");
-            let data_90_days: Vec<Value> = match v_90_days["data"].as_array() {
-                Some(data) => data.clone(),
-                None => Vec::<Value>::new()
-            };
-
-            let contents = json!({
-                 "7days": data_7_days,
-                "30days": data_30_days,
-                "90days": data_90_days
-            }).to_string().into();
+        "GET /leaderboard HTTP/1.1"        => { // OUTGOING, Dashboard Leaderboard
+            let contents = database.get_data("lsm_leaderboard").unwrap().val.into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        // Testing Spares LSM API Call.
-        "GET /spares HTTP/1.1"             => { // Dashboard Spares
-            let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
-            // Build and Send Request
-            let req = reqwest::Client::builder()
-                .cookie_store(true)
-                .user_agent("server_lib/1.10.1")
-                .default_headers(construct_headers("lsm", &mut database))
-                .timeout(Duration::from_secs(15))
-                .build()
-                .ok()?
-            ;
-
-            let body_spares = req.get(url_spares)
-                              .timeout(Duration::from_secs(15))
-                              .send()
-                              .await
-                              .expect("[-] RESPONSE ERROR")
-                              .text()
-                              .await
-                              .expect("[-] PAYLOAD ERROR");
-
-            let v_spares: Value = serde_json::from_str(&body_spares).expect("Empty");
-            let data_spares: Vec<Value> = match v_spares["data"].as_array() {
-                Some(data) => data.clone(),
-                None => Vec::<Value>::new()
-            };
-            // Pack into JSON response to front-end
-            let contents = json!({
-                 "spares": data_spares
-            }).to_string().into();
+        // Spares LSM API Call.
+        "GET /spares HTTP/1.1"             => { // OUTGOING, Dashboard Spares
+            // Get Spares from Database
+            //let mut database = arc_database.write().unwrap();
+            let contents: Vec<u8> = database.get_data("lsm_spares").unwrap().val.into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
-        "POST /lsmData HTTP/1.1"              => {
+        "POST /lsmData HTTP/1.1"              => { // OUTGOING
+            //let mut database = arc_database.write().unwrap();
             let body_str = String::from_utf8(req.body).expect("AT: LSM Data Err, invalid UTF-8");
             let body_parts: Vec<&str> = body_str.split(',').collect();
             if body_parts.len() != 2 {
@@ -488,7 +570,7 @@ async fn handle_connection(
             let building_sel:String = body_parts[0].to_string();
             let device_type = body_parts[1];
             let lsm_building = database.get_building_by_abbrev(&building_sel);
-            debug!("AT: LSM Data Debug - Grabbing LSM Data for Diagnostics:\n{:?}", &lsm_building.lsm_name.as_str());
+            debug!("[Admin Tools] - Grabbing LSM Data for Diagnostics:\n{:?}", &lsm_building.lsm_name.as_str());
             let api_endpoint = match device_type {
                 "PROC" => "BuildingProcs",
                 "DISP" => "BuildingDisplays",
@@ -500,7 +582,7 @@ async fn handle_connection(
                     return Some(res);
                 }
             };
-            debug!("Diagnostic API Endpoint: {}", api_endpoint);
+            debug!("[Admin Tools] - Diagnostic API Endpoint: {}", api_endpoint);
             let url_devs = format!(
                 r"https://uwyo.talem3.com/lsm/api/{}?offset=0&p=%7BParentName%3A%22{}%22%7D", 
                 &api_endpoint,
@@ -555,6 +637,7 @@ async fn handle_connection(
             res.send_contents("".into());
         },
         "POST /update/database_room HTTP/1.1"     => { // destination, newValue
+            //let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -575,7 +658,7 @@ async fn handle_connection(
                             .collect()
                     })
                     .unwrap();
-                debug!("Updating Target Room:{}\n New Values: {:?}", target_room, new_values);
+                debug!("[Admin Tools] - Updating Target Room:{}\n New Values: {:?}", target_room, new_values);
                 // Get Existing Room Record from database
                 let mut new_db_room : DB_Room = database.get_room_by_name(&target_room);
                 //println!("DEBUG Existing DB_Room (Pre-Update) -> \n {:?}", new_db_room);
@@ -592,7 +675,7 @@ async fn handle_connection(
                 new_db_room.ping_data = ping_vec;
                 // Update Database
                 //println!("DEBUG Updating DB_Room -> \n {:?}", new_db_room);
-                database.update_room(&new_db_room); // UNCOMMENT ME WHEN READY
+                database.update_room(&new_db_room);
                 res.status(STATUS_200);
                 res.send_contents("".into());
             }
@@ -632,7 +715,7 @@ async fn handle_connection(
                     ping_data: ping_vec,
                     schedule: Vec::new(),
                 };
-                debug!("INSERTING DB_ROOM => \n {:?}", new_db_room);
+                debug!("[Admin Tools] - INSERTING DB_ROOM => \n {:?}", new_db_room);
                 // Note, the schedule field here is initialized as empty.
                 //   we will require some more tooling to get this data in here.
                 //   whether that be some kind of csv import or a manual page.
@@ -654,14 +737,15 @@ async fn handle_connection(
                     .as_str()
                     .unwrap()
                     .to_string();
-                debug!("REMOVING ROOM -> {:?}", target_room);
+                debug!("[Admin Tools] - REMOVING ROOM -> {:?}", target_room);
                 // Remove Specified Room from Database
-                database.delete_room(&target_room); // UNCOMMENT ME WHEN READY
+                database.delete_room(&target_room);
                 res.status(STATUS_200);
                 res.send_contents("".into());
             }
         },
         "POST /update/database_building HTTP/1.1" => { // destination, newValue
+            //let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -692,13 +776,14 @@ async fn handle_connection(
                 new_db_building.lsm_name = new_values[2].to_string();
                 new_db_building.zone = new_values[3].parse().expect("invalid zone");
                 // Update Database
-                debug!("Updated Building Record:\n{:?}", &new_db_building);
+                debug!("[Admin Tools] - Updated Building Record:\n{:?}", &new_db_building);
                 database.update_building(&new_db_building); // UNCOMMENT ME WHEN READY
                 res.status(STATUS_200);
                 res.send_contents("".into());
             }
         },
         "POST /insert/database_building HTTP/1.1" => { // destination, newValue
+            //let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -732,6 +817,7 @@ async fn handle_connection(
             }
         },
         "POST /remove/database_building HTTP/1.1" => { // destination
+            //let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -743,7 +829,7 @@ async fn handle_connection(
                     .as_str()
                     .unwrap()
                     .to_string();
-                debug!("DB Target Building to remove:\n {:?}", target_building);
+                debug!("[Admin Tools] - DB Target Building to remove:\n {:?}", target_building);
                 database.delete_building(&target_building);
                 res.status(STATUS_200);
                 res.send_contents("".into());
@@ -782,7 +868,7 @@ async fn handle_connection(
                     new_db_room.schedule = new_schedule.clone();
                     // Update Database
                     database.update_room(&new_db_room);
-                    debug!("Updating Room: {} with Schedule:\n {:?}", target_room, new_schedule);
+                    debug!("[Admin Tools] - Updating Room: {} with Schedule:\n {:?}", target_room, new_schedule);
                 }
                 res.status(STATUS_200);
                 res.send_contents("Room Schedules in Database Updated".into());
@@ -804,7 +890,7 @@ async fn handle_connection(
                             .collect()
                     })
                     .unwrap();
-                debug!("Updating Timestamps:\n {:?}", timestamps);
+                debug!("[Admin Tools] - Updating Timestamps:\n {:?}", timestamps);
                 // Create DB_DataElement and update database.
                 let new_timestamps = DB_DataElement {
                     key: String::from("report_timestamps"),
@@ -832,7 +918,7 @@ async fn handle_connection(
                 res.send_contents(contents);
             }
         },
-        "GET /aliasTable HTTP/1.1"                 => {
+        "GET /aliasTable HTTP/1.1"         => {
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -852,7 +938,73 @@ async fn handle_connection(
                 res.send_contents(contents);
             }
         },
-        "POST /setAliasTable HTTP/1.1"              => {
+        "GET /threadSchedule HTTP/1.1"   => {
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let ts = thread_schedule.read().unwrap();
+                let contents = json!({
+                    "response": ts.tasks
+                }).to_string().into();
+                res.status(STATUS_200);
+                res.send_contents(contents);
+            }
+        },
+        "POST /resetThreadInterval HTTP/1.1" => {
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                let task_name: String = body_json["task_name"]
+                    .as_str()
+                    .unwrap()
+                    .to_string();
+                debug!("[Admin Tools] - Updating ThreadSchedule Task: \"{}\" to run now", task_name);
+                if let Some(task) = thread_schedule.write().unwrap().tasks.get_mut(&task_name) {
+                    task.timestamp = task.timestamp - Duration::from_secs(task.duration);
+                    res.status(STATUS_200);
+                    res.send_contents("ThreadSchedule Updated".into());
+                } else {
+                    res.status(STATUS_500);
+                    res.send_contents("Task Not Found".into());
+                }
+            }
+        },
+        "POST /setThreadDuration HTTP/1.1" => {
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                let task_name: String = body_json["task"]
+                    .as_str()
+                    .unwrap()
+                    .to_string();
+                let new_duration: String = body_json["new_duration"]
+                    .as_str()
+                    .unwrap()
+                    .to_string();
+                debug!("[Admin Tools] - Updating ThreadSchedule Task Duration: \"{}\" to {}", task_name, new_duration);
+                //
+                if let Some(task) = thread_schedule.write().unwrap().tasks.get_mut(&task_name) {
+                    task.duration = new_duration.parse().unwrap();
+                    res.status(STATUS_200);
+                    res.send_contents("ThreadSchedule Duration Updated".into());
+                } else {
+                    res.status(STATUS_500);
+                    res.send_contents("Task Not Found".into());
+                }
+            }
+        }
+        "POST /setAliasTable HTTP/1.1"     => {
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -866,7 +1018,7 @@ async fn handle_connection(
                     .unwrap();
                 //  Iterate through the rooms and find hostname exceptions,
                 for alias_record in alias_rooms.iter() {
-                    debug!("Alias Record \n {}", alias_record);
+                    debug!("[Alias] - Record \n {}", alias_record);
                     let hostname_exception = alias_record.get("hostnameException")
                         .unwrap()
                         .to_string()
@@ -877,7 +1029,7 @@ async fn handle_connection(
                         .replace("\"","");
                     //println!("{}", room_name.len());
                     if hostname_exception != "" {
-                        debug!("Alias Hostname Exception: \n {} at {}", hostname_exception, room_name);
+                        debug!("[Alias] - Hostname Exception: \n {} at {}", hostname_exception, room_name);
                         let mut room : DB_Room = database.get_room_by_name(&room_name);
                         let mut pd = room.ping_data.clone();
                         for ping_record in &mut pd {
@@ -928,7 +1080,7 @@ async fn handle_connection(
                     //println!("Reset room {}:\n{:?}", &room_name, &room);
                     database.update_room(&room);
                 }
-                debug!("Reverting Alias Change for target_rooms, {:?}", &target_rooms);
+                debug!("[Alias] - Reverting Alias Change for target_rooms, {:?}", &target_rooms);
                 res.status(STATUS_200);
                 res.send_contents("Reset Requested Rooms".into());
             }
@@ -1034,170 +1186,23 @@ async fn handle_connection(
             res.send_file(user_homepage);
         },
         // Jacknet
-        "POST /ping HTTP/1.1"              => {
-            let contents = execute_ping(req.body, database); // JN
+        "POST /ping HTTP/1.1"              => { // OUTGOING
+            // let contents = execute_ping(req.body, database); // JN
+            let contents = ping_response(String::from_utf8(req.body).expect("Err, invalid UTF-8"), database);
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         // Checkerboard
-        "POST /run_cb HTTP/1.1"            => {
+        "POST /run_cb HTTP/1.1"            => { // OUTGOING
             // get zone selection from request and store
             // ----------------------------------------------------------------
             let building_sel = String::from_utf8(req.body).expect("CheckerBoard Err, invalid UTF-8");
-            // call for roomchecks in LSM and store
+            // ----------------------------------------------------------------
+            // parse rooms map to load statuses for return
             // ----------------------------------------------------------------
             let mut return_body: Vec<Building> = Vec::new();
-            let lsm_building = database.get_building_by_abbrev(&building_sel);
-            debug!("Checkerboard Debug - building LSM Name:\n{:?}", &lsm_building.lsm_name.as_str());
-            let url = format!(
-                r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", 
-                &lsm_building.lsm_name.as_str()
-            );
-            let req = reqwest::Client::builder()
-                .cookie_store(true)
-                .user_agent("server_lib/1.10.1")
-                .default_headers(construct_headers("lsm", &mut database))
-                .timeout(Duration::from_secs(15))
-                .build()
-                .ok()?
-            ;
-
-            // Get Alias Table, to swap incoming room_names from LSM with
-            //   Bronson friendly naming. We filter Alias Table to only contain
-            //   rooms that are relevant to current LSM request.
-            let alias_table : DB_DataElement = database.get_data("alias_table")
-                .expect("Alias_table has not been set yet.");
-            let alias_obj: Value = serde_json::from_str(&alias_table.val)
-                .expect("Unable to Parse Alias Table Contents.");
-            let alias_rooms = alias_obj.get("rooms");
-            //println!("{:?}", alias_rooms);
-            //
-            let mut alias_vec: Vec<(String, String)> = Vec::new();
-            if let Some(arr) = alias_rooms?.as_array() {
-                for item in arr {
-                    //println!("Array Item: {:?}", item);
-                    //println!("Building Item: {:?}", item.get("name").unwrap().as_str());
-                    //println!("LSM Item: {:?}", item.get("lsmName").unwrap().as_str());
-                    let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
-                    if alias_name.contains(&lsm_building.abbrev.as_str()) {
-                        debug!("Relevant Alias Found");
-                        let alias_lsm = item.get("lsmName").unwrap().as_str().unwrap().to_string();
-                        alias_vec.push((alias_name, alias_lsm));
-                    }
-                }
-            }
-            // Alias Building
-            let alias_buildings = alias_obj.get("buildings");
-            let mut alias_abbrev : (String, String) = ("NOTSET".to_string(),"NOTSET".to_string());
-            if let Some(arr) = alias_buildings?.as_array() {
-                for item in arr {
-                    let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
-                    if alias_name == lsm_building.abbrev.as_str() {
-                        alias_abbrev.0 = item.get("lsmName").unwrap().as_str().unwrap().to_string();
-                        alias_abbrev.1 = item.get("name").unwrap().as_str().unwrap().to_string();
-                    }
-                }
-            }
-            //println!("Alias Vec: {:?}", alias_vec);
-            // Process Request to LSM
-            let body = req.get(url)
-                              .timeout(Duration::from_secs(15))
-                              .send()
-                              .await
-                              .expect("[-] RESPONSE ERROR")
-                              .text()
-                              .await
-                              .expect("[-] PAYLOAD ERROR");
-
-            let v: Value = match serde_json::from_str(&body) {
-                Ok(val) => val,
-                Err(_)      => {
-                    warn!("LSM_ERR: API call returned error.");
-                    json!({
-                    "count": -1,
-                    "data": "LSM Busy: Please try again"
-                    })
-                }
-            };
-            let mut check_map: HashMap<String, String> = HashMap::new();
-            if v["count"].as_i64() > Some(0) {
-                let num_entries = match v["count"].as_i64() {
-                    Some(num) => num,
-                    None => 0
-                };
-                let checks: Vec<Value> = match &mut v["data"].as_array() {
-                    Some(data) => data.clone(),
-                    None => {
-                        error!("Unable to get API data as vec.");
-                        Vec::<Value>::new()
-                    }
-                };
-                for i in 0..num_entries {
-                    let mut check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
-                    // Look to see if check["LocationName"] is in the alias_obj, replace it if so.
-                    //let tmp_locale = &mut check["LocationName"].as_str().unwrap();
-                    for tuple in &alias_vec {
-                        if tuple.1 == check["LocationName"].as_str().unwrap() {
-                            debug!("Alias Struck, {:?} to be replaced with {:?}", check["LocationName"].as_str().unwrap(), tuple.0);
-                            check["LocationName"] = serde_json::Value::String(tuple.0.clone());
-                        }
-                    }
-                    // Replace Abbrevition if exists
-                    if alias_abbrev.0 != "NOTSET" {
-                        // check["LocationName"]
-                        debug!("Building Alias Struck, {:?} to be replaced with {:?}",alias_abbrev.0, alias_abbrev.1);
-                        check["LocationName"] = serde_json::Value::String(
-                            check["LocationName"]
-                                .as_str()
-                                .unwrap()
-                                .replace(&alias_abbrev.0, &alias_abbrev.1)
-                        );
-                    }
-                    check_map.insert(
-                        String::from(check["LocationName"].as_str().unwrap()), 
-                        String::from(check["CompletedOn"].as_str().unwrap())
-                    );
-                }
-            }
-            // Get checked_rooms
-            // let checked_rooms: i16 = v["count"].as_i64().unwrap().try_into().unwrap();
-            let mut checked_rooms: i16 = 0;
-            for mut room in database.get_rooms_by_abbrev(&building_sel) {
-                if check_map.contains_key(&room.name) {
-                    // checked Date format may need changed here
-                    room.checked = String::from(match check_map.get(&room.name) {
-                        Some(r) => r,
-                        None => {
-                            warn!("Unable to fetch room, defaulting.");
-                            "2000-01-01T00:00:00Z"
-                        }
-                    });
-                }
-                room.needs_checked = check_lsm(&room);
-                let schedule_params = check_schedule(&room);
-                room.available = schedule_params.0;
-                room.until = schedule_params.1;
-                // Check for room check
-                if !room.needs_checked {
-                    checked_rooms += 1;
-                }
-                database.update_room(&room);
-            }
-            let ret_building = database.get_building_by_abbrev(&building_sel);
-            let ret_rooms = database.get_rooms_by_abbrev(&ret_building.abbrev);
-            // TODO: Get number of Checked and Total Number of rooms.
-            let number_rooms: i16 = ret_rooms.len().try_into().unwrap();
-            // Note, number_rooms and checked_rooms rely on the rooms inside LSM.
-            //
-            let new_building: DB_Building = DB_Building {
-                abbrev: ret_building.abbrev,
-                name: ret_building.name,
-                lsm_name: ret_building.lsm_name,
-                zone: ret_building.zone,
-                checked_rooms: checked_rooms,
-                total_rooms: number_rooms,
-            };
-            database.update_building(&new_building);
+            let new_building = database.get_building_by_abbrev(&building_sel);
+            let ret_rooms = database.get_rooms_by_abbrev(&building_sel);
 
             return_body.push(
                 Building {
@@ -1210,9 +1215,7 @@ async fn handle_connection(
                     total_rooms: new_building.total_rooms,
                 }
             );
-            // ----------------------------------------------------------------
-            // parse rooms map to load statuses for return
-            // ----------------------------------------------------------------
+
             let json_return = json!({
                 "cb_body": return_body,
             });
@@ -1281,6 +1284,300 @@ async fn handle_connection(
     };
     
     return Some(res);
+}
+
+
+async fn update_room_check_leaderboard(database: &Database, req: Arc<RwLock<Client>>) {
+    info!("[Data] - Pulling New LSM Leaderboard");
+    let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
+    let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
+    let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
+
+    let body_7_days: String;
+    let body_30_days: String;
+    let body_90_days: String;
+    {
+        body_7_days = req.write().unwrap().get(url_7_days)
+            .timeout(Duration::from_secs(15))
+            .send()
+            .await
+            .expect("[-] RESPONSE ERROR")
+            .text()
+            .await
+            .expect("[-] PAYLOAD ERROR");
+    }
+    let v_7_days: Value = serde_json::from_str(&body_7_days).expect("Empty");
+    let data_7_days: Vec<Value> = match v_7_days["data"].as_array() {
+        Some(data) => data.clone(),
+        None => Vec::<Value>::new()
+    };
+
+    {
+        body_30_days = req.write().unwrap().get(url_30_days)
+            .timeout(Duration::from_secs(15))
+            .send()
+            .await
+            .expect("[-] RESPONSE ERROR")
+            .text()
+            .await
+            .expect("[-] PAYLOAD ERROR");
+    }
+
+    let v_30_days: Value = serde_json::from_str(&body_30_days).expect("Empty");
+    let data_30_days: Vec<Value> = match v_30_days["data"].as_array() {
+        Some(data) => data.clone(),
+        None => Vec::<Value>::new()
+    };
+
+    {
+        body_90_days = req.write().unwrap().get(url_90_days)
+            .timeout(Duration::from_secs(15))
+            .send()
+            .await
+            .expect("[-] RESPONSE ERROR")
+            .text()
+            .await
+            .expect("[-] PAYLOAD ERROR");
+    }
+
+    let v_90_days: Value = serde_json::from_str(&body_90_days).expect("Empty");
+    let data_90_days: Vec<Value> = match v_90_days["data"].as_array() {
+        Some(data) => data.clone(),
+        None => Vec::<Value>::new()
+    };
+
+    let contents = json!({
+        "7days": data_7_days,
+        "30days": data_30_days,
+        "90days": data_90_days
+    }).to_string().into();
+    //let mut tdatabase = database.write().unwrap();
+    database.clone().update_data(&DB_DataElement {
+        key: String::from("lsm_leaderboard"),
+        val: String::from_utf8(contents).expect("Unable to parse LSM Return"),
+    });
+    return;
+}
+
+async fn update_lsm_spares(database: &Database, req: Arc<RwLock<Client>>) {
+    info!("[Data] - Pulling New LSM Spare Information");
+    let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
+
+    let body_spares: String;
+    {
+        body_spares = req.write().unwrap().get(url_spares)
+                        .timeout(Duration::from_secs(15))
+                        .send()
+                        .await
+                        .expect("[-] RESPONSE ERROR")
+                        .text()
+                        .await
+                        .expect("[-] PAYLOAD ERROR");
+    }
+    let v_spares: Value = serde_json::from_str(&body_spares).expect("Empty");
+    let data_spares: Vec<Value> = match v_spares["data"].as_array() {
+        Some(data) => data.clone(),
+        None => Vec::<Value>::new()
+    };
+    // Pack into JSON response to front-end
+    let contents = json!({
+        "spares": data_spares
+    }).to_string().into();
+
+    database.clone().update_data(&DB_DataElement {
+        key: String::from("lsm_spares"),
+        val: String::from_utf8(contents).expect("Unable to parse LSM Return"),
+    });
+    return;
+}
+
+// Unsure if this is worth implementing...
+#[allow(dead_code)]
+async fn update_lsm_data(_database: &mut Database, _req: Arc<RwLock<Client>>) {
+    info!("[Data] - Pulling LSM Inventory Information");
+    // let buildings = database.get_buildings();
+    // let api_endpoints = ["BuildingProcs","BuildingDisplays","BuildingProjectors","BuildingTouchPanels"];
+    // for api_endpoint in api_endpoints {
+    //     for building in &buildings {
+    //         debug!("LSM_DATA: Processing {:?}", building.1.abbrev);
+    //         let url = format!(
+    //                 r"https://uwyo.talem3.com/lsm/api/{}?offset=0&p=%7BParentName%3A%22{}%22%7D", 
+    //                 &api_endpoint,
+    //                 building.1.lsm_name.as_str()
+    //             );
+    //         let devs: String;
+    //         {
+    //         devs = req.write().unwrap().get(url)
+    //             .timeout(Duration::from_secs(15))
+    //             .send()
+    //             .await
+    //             .expect("[-] RESPONSE ERROR")
+    //             .text()
+    //             .await
+    //             .expect("[-] PAYLOAD ERROR");
+    //         }
+    //         let v_devs: Value = serde_json::from_str(&devs).expect("Empty");
+    //         let data_devs: Vec<Value> = match v_devs["data"].as_array() {
+    //             Some(data) => data.clone(),
+    //             None => Vec::<Value>::new()
+    //         };
+    //     }
+    // }
+    info!("[Data] - Completed LSM Inventory Data Retreieval");
+    return;
+}
+
+async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
+    // Get an array of all buildings.
+    info!("[Data] - Running Checkerboard");
+    let buildings = database.get_buildings();
+    // Iterate over each.
+    for building in buildings {
+        debug!("[Checkerboard] - Processing Building: {:?}", building.1.abbrev);
+        //println!("{:?}", building);
+        let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", building.1.lsm_name.as_str());
+        // Get Alias Table, to swap incoming room_names from LSM with
+        //   Bronson friendly naming. We filter Alias Table to only contain
+        //   rooms that are relevant to current LSM request.
+        let alias_table : DB_DataElement = database.get_data("alias_table")
+            .expect("Alias_table has not been set yet.");
+        let alias_obj: Value = serde_json::from_str(&alias_table.val)
+            .expect("Unable to Parse Alias Table Contents.");
+        let alias_rooms = alias_obj.get("rooms").unwrap();
+        //
+        let mut alias_vec: Vec<(String, String)> = Vec::new();
+        if let Some(arr) = alias_rooms.as_array() {
+            for item in arr {
+                let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
+                if alias_name.contains(&building.1.abbrev.as_str()) {
+                    debug!("[Checkerboard] Relevant Alias Found");
+                    let alias_lsm = item.get("lsmName").unwrap().as_str().unwrap().to_string();
+                    alias_vec.push((alias_name, alias_lsm));
+                }
+            }
+        }
+        // Alias Building
+        let alias_buildings = alias_obj.get("buildings").unwrap();
+        let mut alias_abbrev : (String, String) = ("NOTSET".to_string(),"NOTSET".to_string());
+        if let Some(arr) = alias_buildings.as_array() {
+            for item in arr {
+                let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
+                if alias_name == building.1.abbrev.as_str() {
+                    alias_abbrev.0 = item.get("lsmName").unwrap().as_str().unwrap().to_string();
+                    alias_abbrev.1 = item.get("name").unwrap().as_str().unwrap().to_string();
+                }
+            }
+        }
+        // Process Request to LSM
+        let body: String;
+        {
+            body = req.write().unwrap().get(url)
+                .timeout(Duration::from_secs(15))
+                .send()
+                .await
+                .expect("[-] RESPONSE ERROR")
+                .text()
+                .await
+                .expect("[-] PAYLOAD ERROR");
+        }
+        let v: Value = match serde_json::from_str(&body) {
+            Ok(val) => val,
+            Err(_)      => {
+                warn!("LSM_ERR: API call returned error.");
+                json!({
+                "count": -1,
+                "data": "LSM Busy: Please try again"
+                })
+            }
+        };
+        let mut check_map: HashMap<String, String> = HashMap::new();
+        if v["count"].as_i64() > Some(0) {
+            let num_entries = match v["count"].as_i64() {
+                Some(num) => num,
+                None => 0
+            };
+            let checks: Vec<Value> = match &mut v["data"].as_array() {
+                Some(data) => data.clone(),
+                None => {
+                    error!("Unable to get API data as vec.");
+                    Vec::<Value>::new()
+                }
+            };
+            //checks.reverse();
+            for i in 0..num_entries {
+                let mut check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
+                // Look to see if check["LocationName"] is in the alias_obj, replace it if so.
+                //println!("Current Check: {:?}", &check);
+                for tuple in &alias_vec {
+                    if tuple.1 == check["LocationName"].as_str().unwrap() {
+                        debug!("[Checkerboard Alias] Room - {:?} to be replaced with {:?}", check["LocationName"].as_str().unwrap(), tuple.0);
+                        check["LocationName"] = serde_json::Value::String(tuple.0.clone());
+                    }
+                }
+                // Replace Abbrevition if exists
+                if alias_abbrev.0 != "NOTSET" {
+                    // check["LocationName"]
+                    debug!("[Checkerboard Alias] Building - {:?} to be replaced with {:?}",alias_abbrev.0, alias_abbrev.1);
+                    check["LocationName"] = serde_json::Value::String(
+                        check["LocationName"]
+                            .as_str()
+                            .unwrap()
+                            .replace(&alias_abbrev.0, &alias_abbrev.1)
+                    );
+                }
+                check_map.insert(
+                    String::from(check["LocationName"].as_str().unwrap()), 
+                    String::from(check["CompletedOn"].as_str().unwrap())
+                );
+            }
+        }
+        //println!("check_map: {:?}", check_map);
+        // Get checked_rooms
+        let mut checked_rooms: i16 = 0;
+        for mut room in database.get_rooms_by_abbrev(&building.1.abbrev) {
+            if check_map.contains_key(&room.name) {
+                room.checked = String::from(match check_map.get(&room.name) {
+                    Some(r) => r,
+                    None => {
+                        warn!("Unable to fetch room, defaulting.");
+                        "2000-01-01T00:00:00Z"
+                    }
+                });
+            }
+            room.needs_checked = check_lsm(&room);
+            let schedule_params = check_schedule(&room);
+            room.available = schedule_params.0;
+            room.until = schedule_params.1;
+            // Check for room check
+            if !room.needs_checked {
+                checked_rooms += 1;
+            }
+            database.update_room(&room);
+        }
+        let ret_building = database.get_building_by_abbrev(&building.1.abbrev);
+        let ret_rooms = database.get_rooms_by_abbrev(&ret_building.abbrev);
+        let number_rooms: i16 = ret_rooms.len().try_into().unwrap();
+        // Note, number_rooms and checked_rooms rely on the rooms inside LSM.
+        //
+        let new_building: DB_Building = DB_Building {
+            abbrev: ret_building.abbrev,
+            name: ret_building.name,
+            lsm_name: ret_building.lsm_name,
+            zone: ret_building.zone,
+            checked_rooms: checked_rooms,
+            total_rooms: number_rooms,
+        };
+        database.update_building(&new_building);
+    }
+    info!("[Data] - Checkerboard Run Complete");
+    return;
+}
+
+fn set_jn_thread_true() {
+    JN_THREAD.store(true, Ordering::Release);
+}
+fn check_jn_thread() -> bool {
+    JN_THREAD.load(Ordering::Acquire)
 }
 
 #[allow(dead_code)]
@@ -1355,12 +1652,28 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 \$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ $$ | \$$ |\$$$$$$$\  \$$$$  |
  \______/  \_______| \_______|\__|  \__|\__|  \__| \_______|  \____/ 
 
+ - ping_response()
  - execute_ping()
- - gen_hn()
- - gen_ip()
- - gen_rooms()
+ - ping_room()
+ - execute_ping_st()
+ - ping_room_st()
 
 */
+
+fn ping_response(tmp: String, mut database: Database) -> Vec<u8> {
+    //println!("{}", tmp);
+    let pr: PingRequest = serde_json::from_str(&tmp)
+        .expect("Fatal Error: Unable to parse ping request");
+
+    let json_return: Value;
+
+    json_return = json!({
+        "jn_body": database.get_rooms_by_abbrev(&pr.building),
+    });
+    
+    // Return JSON with ping results
+    return json_return.to_string().into();
+}
 
 /*
 execute_ping()
@@ -1368,36 +1681,28 @@ execute_ping()
 NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
       CAMPUS_STR -> "html-css-js/campus.json"
 */
+
 // call ping_this executible here
-fn execute_ping(body: Vec<u8>, mut database: Database) -> Vec<u8> {
-    let tmp = String::from_utf8(body).expect("Err, invalid UTF-8");
-    debug!("JacknetClientRequest: {:?}", tmp);
-    // Prep Request into Struct
-    let pr: PingRequest = serde_json::from_str(&tmp)
-        .expect("Fatal Error 2: Failed to parse ping request");
+async fn execute_ping(database: &mut Database) {
+    info!("[Data] - Running JackNet");
+    let buildings = database.get_buildings();
 
-    debug!("JacknetPingRequest: {:?}", pr);
-    // BuildingData Struct
-    //   NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
-    //         CAMPUS_STR -> "html-css-js/campus.json" 
+    for building in buildings {
+        let rooms_to_ping: Vec<DB_Room> = database.get_rooms_by_abbrev(&building.1.abbrev);
 
-    let rooms_to_ping: Vec<DB_Room> = database.get_rooms_by_abbrev(&pr.building);
-
-    for rm in rooms_to_ping {
-        std::thread::scope(|s| {
-            s.spawn(|| {
-                let mut room = rm.clone();
-                room.ping_data = ping_room(room.ping_data);
-                database.update_room(&room);
+        for rm in rooms_to_ping {
+            std::thread::scope(|s| {
+                s.spawn(|| {
+                    let mut room = rm.clone();
+                    room.ping_data = ping_room(room.ping_data);
+                    database.update_room(&room);
+                    debug!("[JackNet] - Updated {:?}", &room.name);
+                });
             });
-        });
+        }
     }
-
-    let json_return = json!({
-        "jn_body": database.get_rooms_by_abbrev(&pr.building),
-    });
-    // Return JSON with ping results
-    return json_return.to_string().into();
+    info!("[Data] - JackNet Complete");
+    return;
 }
 
 fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
