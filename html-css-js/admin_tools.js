@@ -3097,7 +3097,7 @@ async function setThreadEditor() {
             <legend>${tsKeys[i]}</legend>
             <div style="float:left">
                 <input type="number" id="thread-${tsKeys[i]}-interval" value="${ts[tsKeys[i]].duration}" min="60"> <span style="color: rgba(166, 172, 114, 1)"> Seconds between runs </span>
-                <button onclick="setNewThreadDuration('thread-${tsKeys[i]}-interval')"> Set Duration </button>
+                <button onclick="setNewThreadDuration('${tsKeys[i]}')"> Set Duration </button>
             </div>
             <div style="float:right">
                 <span style="color: rgba(166, 172, 114, 1)"> Last Run: ${ts[tsKeys[i]].timestamp} </span>
@@ -3136,6 +3136,29 @@ async function resetThreadInterval(threadName) {
             "Content-Length": packet.length
         },
         body: packet
+    }).then((response) => {
+        if(!response.ok) {
+            throw new Error("HTTP error " + response.status);
+        }
+        return response;
+    })
+}
+
+function setNewThreadDuration(taskName) {
+    let inputId = `thread-${taskName}-interval`;
+    let value = document.getElementById(inputId).value;
+    console.log(value);
+    let packet = {
+        task: taskName,
+        new_duration: value,
+    };
+    return fetch('setThreadDuration', {
+        method: 'POST',
+        headers: {
+            "Content-Type": "application/json",
+            "Content-Length": packet.length
+        },
+        body: JSON.stringify(packet)
     }).then((response) => {
         if(!response.ok) {
             throw new Error("HTTP error " + response.status);
