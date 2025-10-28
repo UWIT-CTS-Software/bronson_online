@@ -171,6 +171,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut database = Database::new();
     database.init_if_empty();
+    let _ = database.backup();
 
     for stream in listener.incoming() {
         let mut stream = match stream {
