@@ -240,7 +240,7 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
             };
             out.finish(format_args!(
                 "{} \x1B[3m{}\x1B[0m {}[{}]\x1B[0m {}\x1b[0m",
-                Local::now().format("[\x1B[0;30m%Y-%m-%d\x1B[0m][\x1B[0;30m%H:%M:%S\x1B[0m]"),
+                Local::now().format("[\x1B[90m%Y-%m-%d\x1B[0m][\x1B[90m%H:%M:%S\x1B[0m]"),
                 record.target(),
                 level_color, record.level(),
                 message
@@ -976,6 +976,34 @@ async fn handle_connection(
                 }
             }
         },
+        "POST /setThreadDuration HTTP/1.1" => {
+            if !req.has_valid_cookie(&mut database) {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "response": "Unauthorized"
+                }).to_string().into());
+            } else {
+                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+                let task_name: String = body_json["task"]
+                    .as_str()
+                    .unwrap()
+                    .to_string();
+                let new_duration: String = body_json["new_duration"]
+                    .as_str()
+                    .unwrap()
+                    .to_string();
+                debug!("[Admin Tools] - Updating ThreadSchedule Task Duration: \"{}\" to {}", task_name, new_duration);
+                //
+                if let Some(task) = thread_schedule.write().unwrap().tasks.get_mut(&task_name) {
+                    task.duration = new_duration.parse().unwrap();
+                    res.status(STATUS_200);
+                    res.send_contents("ThreadSchedule Duration Updated".into());
+                } else {
+                    res.status(STATUS_500);
+                    res.send_contents("Task Not Found".into());
+                }
+            }
+        }
         "POST /setAliasTable HTTP/1.1"     => {
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
