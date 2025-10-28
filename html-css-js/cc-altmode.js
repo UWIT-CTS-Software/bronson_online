@@ -229,9 +229,6 @@ async function setCrestronFile() {
     let newCurrent = document.getElementById("CCButton");
     // newCurrent.classList.add("active");
     newCurrent.classList.add("selected");
-
-
-    history.pushState("test", "CamCode-CFM", "/cc-altmode");
   
     // Pull List of Directories
     let cfmDirList = await getCFM_BuildDirs();
