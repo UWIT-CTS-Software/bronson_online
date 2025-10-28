@@ -52,48 +52,6 @@ pub mod jp {
 
         return Ok(pong_string);
     }
-
-    pub async fn ping_this_st(hostname: &String) -> Result<String, String> {
-        use pinger::PingResult;
-        use regex::Regex;
-        // let mut response = String::from("x");
-        let ip_filter = Regex::new(r"[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}").unwrap();
-
-
-        let ping_response: PingResult;
-
-        match pinger::ping(hostname.to_string(), None) {
-            Ok(resp) => {
-                ping_response = resp.recv().unwrap(); 
-                },
-            Err(_) => {
-                //println!("Error Pinging {}", hostname);
-                return Ok(String::from("x"));
-                },
-        }
-
-        let pong_string: String;
-
-        match ping_response {
-            PingResult::Pong(_dur, string) => {
-                pong_string = String::from( match ip_filter.find(&string) {
-                    Some(ip) => ip.as_str(),
-                    None     => "x"
-                });
-            },
-            PingResult::Timeout(string) => {
-                return Err(string);
-            },
-            PingResult::Unknown(string) => {
-                return Err(string)
-            },
-            PingResult::PingExited(es, string) => {
-                return Err(format!("{}: {}", es, string))
-            }
-        }
-
-        return Ok(pong_string);
-    }
 }
 
 /* Jack Notes

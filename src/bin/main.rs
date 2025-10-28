@@ -46,7 +46,7 @@ use server_lib::{
     ThreadPool, ThreadSchedule, TaskSchedule, PingRequest, 
     Building, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
-    jp::{ ping_this, ping_this_st,},
+    jp::{ ping_this, },
     CFM_DIR, WIKI_DIR, /* LOG, */
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
     Database, Terminal, 
@@ -55,6 +55,7 @@ use server_lib::{
         DB_IpAddress,  
     },
 };
+use futures_util::future::FutureExt;
 use getopts::Options;
 use std::{
     str, env,
@@ -65,9 +66,10 @@ use std::{
         File, 
     },
     path::Path,
-    time::{ Duration, SystemTime },
+    time::{ Duration, /* SystemTime */},
     string::{ String, },
-    sync::{Arc, /*Mutex,*/ RwLock},
+    sync::{Arc, /*Mutex,*/ RwLock,
+        atomic::{AtomicBool, Ordering}},
     clone::{ Clone, },
     option::{ Option, },
     collections::{ HashMap, },
@@ -87,6 +89,7 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
 // ----------------------------------------------------------------------------
+static JN_THREAD: AtomicBool = AtomicBool::new(false);
 pub const MIGRATIONS : EmbeddedMigrations = embed_migrations!();
 /*
 $$$$$$$\                      $$\                                 $$\ 
@@ -108,6 +111,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     opts.optflag("l", "local", "Run the server using localhost.");
     opts.optflag("p", "public", "Run the server using the public IP.");
     opts.optflag("d", "debug", "Enable debug functions.");
+    opts.optflag("j", "jnthread", "Provides the data sync function with an extra thread explicitly for jacknet instead of all tasks sharing one thread.");
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => { m }
         Err(f) => { panic!("{}", f.to_string()) }
@@ -178,6 +182,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     request_database.init_if_empty();
     
     // Data Thread Pool Loop (data transfer)
+    if matches.opt_present("j") {
+        set_jn_thread_true();
+    }
     let thread_schedule = Arc::new(RwLock::new(ThreadSchedule::new()));
     let data_ts = Arc::clone(&thread_schedule);
     data_pool.execute(move || {
@@ -221,23 +228,47 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
         "info"  => log_filter = log::LevelFilter::Info,
         &_      => log_filter = log::LevelFilter::Error
     };
+    // Build a dispatch for colored terminal output
+    let stdout_dispatch = fern::Dispatch::new()
+        .format(|out, message, record| {
+            let level_color = match record.level() {
+                log::Level::Trace => "\x1B[90m", // Bright Black
+                log::Level::Debug => "\x1B[34m", // Blue
+                log::Level::Info  => "\x1B[32m", // Green
+                log::Level::Warn  => "\x1B[33m", // Yellow
+                log::Level::Error => "\x1B[31m", // Red
+            };
+            out.finish(format_args!(
+                "{} {} {}[{}] {}{}\x1b[0m",
+                Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
+                record.target(),
+                level_color, record.level(),
+                message, "\x1b[0m"
+            ))
+        })
+        .chain(stdout());
 
-    fern::Dispatch::new()
+    // Build a separate dispatch for file output without ANSI color codes
+    let file_dispatch = fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
-                "[{} {} {}] {}",
-                humantime::format_rfc3339_seconds(SystemTime::now()),
-                record.level(),
+                "{} {} [{}] {}",
+                Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
                 record.target(),
+                record.level(),
                 message
             ))
         })
+        .chain(fern::log_file("output.log")?);
+
+    // Combine and apply
+    fern::Dispatch::new()
         .level(log_filter)
-        .chain(stdout())
-        .chain(fern::log_file("output.log")?)
+        .chain(stdout_dispatch)
+        .chain(file_dispatch)
         .apply()?;
-    
-    return Ok(());
+
+    Ok(())
 }
 
 #[tokio::main]
@@ -297,11 +328,13 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
     // TODO: jn_st
     //    WSL has problems... I need to add a flag that sets an atomicboolean to jn_st. If true, execute_ping will be single threaded.
     // Not sure if this is even giving performance improvements.
-    let jn_st = false;
+    let jn_st = check_jn_thread();
+    let jn_thread = ThreadPool::new(1);
+
     // Loop
     //let l_ts = Arc::clone(&thread_schedule);
     loop {
-        debug!("[ThreadSchedule] Checking Tasks");
+        //debug!("[ThreadSchedule] Checking Tasks");
         let now = Utc::now();
 
         // Collect due task names while holding a read lock, then drop it
@@ -318,7 +351,7 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
             // Execute task based on task_name
             match task_name.as_str() {
                 "print1"          => { // Not-LSM
-                    debug!("[ThreadSchedule Debug] - One Minte Message");
+                    debug!("[ThreadSchedule Debug] - One Minute Message");
                 },
                 "print2"          => { // Not-LSM
                     debug!("[ThreadSchedule Debug] - Two Minute Message");
@@ -338,7 +371,10 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                 },
                 "jacknet"         => { // Not-LSM
                     if jn_st {
-                        execute_ping_st(&mut database).await;
+                        let mut db_jn_clone = database.clone();
+                        jn_thread.execute( move || async {
+                            execute_ping(&mut db_jn_clone).await;
+                        }.now_or_never().unwrap());
                     } else {
                         execute_ping(&mut database).await;
                     }
@@ -534,7 +570,7 @@ async fn handle_connection(
             let building_sel:String = body_parts[0].to_string();
             let device_type = body_parts[1];
             let lsm_building = database.get_building_by_abbrev(&building_sel);
-            debug!("AT: LSM Data Debug - Grabbing LSM Data for Diagnostics:\n{:?}", &lsm_building.lsm_name.as_str());
+            debug!("[Admin Tools] - Grabbing LSM Data for Diagnostics:\n{:?}", &lsm_building.lsm_name.as_str());
             let api_endpoint = match device_type {
                 "PROC" => "BuildingProcs",
                 "DISP" => "BuildingDisplays",
@@ -546,7 +582,7 @@ async fn handle_connection(
                     return Some(res);
                 }
             };
-            debug!("Diagnostic API Endpoint: {}", api_endpoint);
+            debug!("[Admin Tools] - Diagnostic API Endpoint: {}", api_endpoint);
             let url_devs = format!(
                 r"https://uwyo.talem3.com/lsm/api/{}?offset=0&p=%7BParentName%3A%22{}%22%7D", 
                 &api_endpoint,
@@ -622,7 +658,7 @@ async fn handle_connection(
                             .collect()
                     })
                     .unwrap();
-                debug!("Updating Target Room:{}\n New Values: {:?}", target_room, new_values);
+                debug!("[Admin Tools] - Updating Target Room:{}\n New Values: {:?}", target_room, new_values);
                 // Get Existing Room Record from database
                 let mut new_db_room : DB_Room = database.get_room_by_name(&target_room);
                 //println!("DEBUG Existing DB_Room (Pre-Update) -> \n {:?}", new_db_room);
@@ -679,7 +715,7 @@ async fn handle_connection(
                     ping_data: ping_vec,
                     schedule: Vec::new(),
                 };
-                debug!("INSERTING DB_ROOM => \n {:?}", new_db_room);
+                debug!("[Admin Tools] - INSERTING DB_ROOM => \n {:?}", new_db_room);
                 // Note, the schedule field here is initialized as empty.
                 //   we will require some more tooling to get this data in here.
                 //   whether that be some kind of csv import or a manual page.
@@ -701,7 +737,7 @@ async fn handle_connection(
                     .as_str()
                     .unwrap()
                     .to_string();
-                debug!("REMOVING ROOM -> {:?}", target_room);
+                debug!("[Admin Tools] - REMOVING ROOM -> {:?}", target_room);
                 // Remove Specified Room from Database
                 database.delete_room(&target_room);
                 res.status(STATUS_200);
@@ -740,7 +776,7 @@ async fn handle_connection(
                 new_db_building.lsm_name = new_values[2].to_string();
                 new_db_building.zone = new_values[3].parse().expect("invalid zone");
                 // Update Database
-                debug!("Updated Building Record:\n{:?}", &new_db_building);
+                debug!("[Admin Tools] - Updated Building Record:\n{:?}", &new_db_building);
                 database.update_building(&new_db_building); // UNCOMMENT ME WHEN READY
                 res.status(STATUS_200);
                 res.send_contents("".into());
@@ -793,7 +829,7 @@ async fn handle_connection(
                     .as_str()
                     .unwrap()
                     .to_string();
-                debug!("DB Target Building to remove:\n {:?}", target_building);
+                debug!("[Admin Tools] - DB Target Building to remove:\n {:?}", target_building);
                 database.delete_building(&target_building);
                 res.status(STATUS_200);
                 res.send_contents("".into());
@@ -832,7 +868,7 @@ async fn handle_connection(
                     new_db_room.schedule = new_schedule.clone();
                     // Update Database
                     database.update_room(&new_db_room);
-                    debug!("Updating Room: {} with Schedule:\n {:?}", target_room, new_schedule);
+                    debug!("[Admin Tools] - Updating Room: {} with Schedule:\n {:?}", target_room, new_schedule);
                 }
                 res.status(STATUS_200);
                 res.send_contents("Room Schedules in Database Updated".into());
@@ -854,7 +890,7 @@ async fn handle_connection(
                             .collect()
                     })
                     .unwrap();
-                debug!("Updating Timestamps:\n {:?}", timestamps);
+                debug!("[Admin Tools] - Updating Timestamps:\n {:?}", timestamps);
                 // Create DB_DataElement and update database.
                 let new_timestamps = DB_DataElement {
                     key: String::from("report_timestamps"),
@@ -929,7 +965,7 @@ async fn handle_connection(
                     .as_str()
                     .unwrap()
                     .to_string();
-                debug!("Updating ThreadSchedule Task: {} to run now", task_name);
+                debug!("[Admin Tools] - Updating ThreadSchedule Task: \"{}\" to run now", task_name);
                 if let Some(task) = thread_schedule.write().unwrap().tasks.get_mut(&task_name) {
                     task.timestamp = task.timestamp - Duration::from_secs(task.duration);
                     res.status(STATUS_200);
@@ -954,7 +990,7 @@ async fn handle_connection(
                     .unwrap();
                 //  Iterate through the rooms and find hostname exceptions,
                 for alias_record in alias_rooms.iter() {
-                    debug!("Alias Record \n {}", alias_record);
+                    debug!("[Alias] - Record \n {}", alias_record);
                     let hostname_exception = alias_record.get("hostnameException")
                         .unwrap()
                         .to_string()
@@ -965,7 +1001,7 @@ async fn handle_connection(
                         .replace("\"","");
                     //println!("{}", room_name.len());
                     if hostname_exception != "" {
-                        debug!("Alias Hostname Exception: \n {} at {}", hostname_exception, room_name);
+                        debug!("[Alias] - Hostname Exception: \n {} at {}", hostname_exception, room_name);
                         let mut room : DB_Room = database.get_room_by_name(&room_name);
                         let mut pd = room.ping_data.clone();
                         for ping_record in &mut pd {
@@ -1016,7 +1052,7 @@ async fn handle_connection(
                     //println!("Reset room {}:\n{:?}", &room_name, &room);
                     database.update_room(&room);
                 }
-                debug!("Reverting Alias Change for target_rooms, {:?}", &target_rooms);
+                debug!("[Alias] - Reverting Alias Change for target_rooms, {:?}", &target_rooms);
                 res.status(STATUS_200);
                 res.send_contents("Reset Requested Rooms".into());
             }
@@ -1369,7 +1405,7 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
     let buildings = database.get_buildings();
     // Iterate over each.
     for building in buildings {
-        debug!("Processing Building: {:?}", building.1.abbrev);
+        debug!("[Checkerboard] - Processing Building: {:?}", building.1.abbrev);
         //println!("{:?}", building);
         let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", building.1.lsm_name.as_str());
         // Get Alias Table, to swap incoming room_names from LSM with
@@ -1386,7 +1422,7 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
             for item in arr {
                 let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
                 if alias_name.contains(&building.1.abbrev.as_str()) {
-                    debug!("Relevant Alias Found");
+                    debug!("[Checkerboard] Relevant Alias Found");
                     let alias_lsm = item.get("lsmName").unwrap().as_str().unwrap().to_string();
                     alias_vec.push((alias_name, alias_lsm));
                 }
@@ -1446,14 +1482,14 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
                 //println!("Current Check: {:?}", &check);
                 for tuple in &alias_vec {
                     if tuple.1 == check["LocationName"].as_str().unwrap() {
-                        debug!("Alias Struck, {:?} to be replaced with {:?}", check["LocationName"].as_str().unwrap(), tuple.0);
+                        debug!("[Checkerboard Alias] Room - {:?} to be replaced with {:?}", check["LocationName"].as_str().unwrap(), tuple.0);
                         check["LocationName"] = serde_json::Value::String(tuple.0.clone());
                     }
                 }
                 // Replace Abbrevition if exists
                 if alias_abbrev.0 != "NOTSET" {
                     // check["LocationName"]
-                    debug!("Building Alias Struck, {:?} to be replaced with {:?}",alias_abbrev.0, alias_abbrev.1);
+                    debug!("[Checkerboard Alias] Building - {:?} to be replaced with {:?}",alias_abbrev.0, alias_abbrev.1);
                     check["LocationName"] = serde_json::Value::String(
                         check["LocationName"]
                             .as_str()
@@ -1509,6 +1545,12 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
     return;
 }
 
+fn set_jn_thread_true() {
+    JN_THREAD.store(true, Ordering::Release);
+}
+fn check_jn_thread() -> bool {
+    JN_THREAD.load(Ordering::Acquire)
+}
 
 #[allow(dead_code)]
 fn pad(raw_in: String, length: usize) -> String {
@@ -1626,7 +1668,7 @@ async fn execute_ping(database: &mut Database) {
                     let mut room = rm.clone();
                     room.ping_data = ping_room(room.ping_data);
                     database.update_room(&room);
-                    debug!("JackNet - Updated {:?}", &room.name);
+                    debug!("[JackNet] - Updated {:?}", &room.name);
                 });
             });
         }
@@ -1641,51 +1683,6 @@ fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress
         let hn_string: String = net.as_ref().unwrap().hostname.to_string();
         pinged_hns.push(Some(
             match ping_this(&hn_string) {
-                Ok(ip) => DB_IpAddress {
-                    hostname: net.clone().unwrap().hostname,
-                    ip: ip,
-                    last_ping: String::from(format!("{}", chrono::Utc::now())),
-                    alert: 0,
-                    error_message: String::new()
-                },
-                Err(m)      => DB_IpAddress {
-                    hostname: net.clone().unwrap().hostname,
-                    ip: String::from("x"),
-                    last_ping: String::from(format!("{}", chrono::Utc::now())),
-                    alert: net.clone().unwrap().alert + 1,
-                    error_message: String::from(m)
-                }
-            }
-        ))
-    }
-
-    return pinged_hns;
-}
-
-
-async fn execute_ping_st(database: &mut Database) {
-    info!("[Data] - Running JackNet (Single Threaded)");
-    let buildings = database.get_buildings();
-    for building in buildings {
-        let rooms_to_ping: Vec<DB_Room> = database.get_rooms_by_abbrev(&building.1.abbrev);
-
-        for rm in rooms_to_ping {
-            let mut room = rm.clone();
-            room.ping_data = ping_room_st(room.ping_data).await;
-            database.update_room(&room);
-            debug!("JackNet - Updated {:?}", &room.name);
-        }
-    }
-    info!("[Data] - JackNet (Single Threaded) Complete");
-    return;
-}
-
-async fn ping_room_st(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
-    let mut pinged_hns: Vec<Option<DB_IpAddress>> = Vec::new();
-    for net in net_elements {
-        let hn_string: String = net.as_ref().unwrap().hostname.to_string();
-        pinged_hns.push(Some(
-            match ping_this_st(&hn_string).await {
                 Ok(ip) => DB_IpAddress {
                     hostname: net.clone().unwrap().hostname,
                     ip: ip,
