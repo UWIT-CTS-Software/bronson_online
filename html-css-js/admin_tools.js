@@ -3095,7 +3095,10 @@ async function setThreadEditor() {
     for(let i = 0; i < tsKeys.length; i++) {
         tmp += `<fieldset>
             <legend>${tsKeys[i]}</legend>
-            <input type="number" id="thread-${tsKeys[i]}-interval" value="${ts[tsKeys[i]].duration}" min="60"> Seconds between runs
+            <div style="float:left">
+                <input type="number" id="thread-${tsKeys[i]}-interval" value="${ts[tsKeys[i]].duration}" min="60"> <span style="color: rgba(166, 172, 114, 1)"> Seconds between runs </span>
+                <button onclick="setNewThreadDuration('thread-${tsKeys[i]}-interval')"> Set Duration </button>
+            </div>
             <div style="float:right">
                 <span style="color: rgba(166, 172, 114, 1)"> Last Run: ${ts[tsKeys[i]].timestamp} </span>
                 <button onclick="resetThreadInterval('${tsKeys[i]}')"> Run Now </button>

@@ -25,6 +25,7 @@ humantime = "2.2.0"
 diesel = {version = "2.2.11", features = ["postgres", "r2d2"]}
 dotenvy = "0.15"
 diesel_migrations = "2.2.0"
+futures-util = "0.3.31"
 
 # Default dev level options
 [profile.dev]
