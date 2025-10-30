@@ -327,12 +327,12 @@ function stashCheckerboard(checkerboardResponse) {
     return;
 }
 
-function stashJNResponse(formattedPingRequest, buildingName, deviceNames) {
+function stashJNResponse(formattedPingRequest, buildingName, devTypes) {
     let stash = JSON.parse(sessionStorage.getItem("JackNet_stash"));
     const newItem = {
         "formattedPingRequest": formattedPingRequest,
         "buildingName": buildingName,
-        "deviceNames": deviceNames
+        "devTypes": devTypes
     };
     if (stash == null) {
         sessionStorage.setItem("JackNet_stash", JSON.stringify({"stashList": [newItem]}));
