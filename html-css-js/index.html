@@ -21,21 +21,6 @@
   <script src="jacknet.js" type="text/javascript" charset="utf-8"></script>
   <!-- <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> -->
   <script>
-    window.addEventListener("popstate", () => {
-      if (location.pathname == "/checker") {
-        setChecker();
-      } else if (location.pathname == "/jacknet") {
-        setJackNet();
-      } else if (location.pathname == "/cc-altmode") {
-        setCrestronFile();
-      } else if (location.pathname == "/wiki") {
-        setWiki();
-      } else {
-        setDashboard();
-      }
-    },
-      false,
-    );
 
     // Hamburger Menu Toggle
     function toggleHBMenu() {
@@ -54,7 +39,6 @@
       // History and init
       preserveCurrentTool();
       document.title = "Dashboard - Bronson";
-      history.pushState({}, "Dashboard", "/");
       // Init sessionStorage
       // Makes sure data is here and upto date
       initLocalStorage();
