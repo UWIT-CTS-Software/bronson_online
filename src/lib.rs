@@ -1123,6 +1123,7 @@ pub static BUFF_SIZE : usize = 4096;
 pub static TSCH_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/techSchedule.json");
 pub static BLDG_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/buildings.json");
 pub static CAMPUS_STR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.json");
+pub static ALIAS_JSON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/alias_table.json");
 pub static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
 pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
 pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/roomConfig_agg.csv");
