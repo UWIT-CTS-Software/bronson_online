@@ -2673,7 +2673,7 @@ async function setAliasEditor() {
             </table>
         </div>
         <div>
-            <menu>
+            <menu class="at_menu">
                 <button class="exeButton" onclick="postAliasTable()"> Save Alias Table </button>
                 <button id="addRoomAliasButton" onclick="addRoomAliasRow()"> Add Room Alias </button>
                 <button id="addBuildingAliasButton" onclick="addBuildingAliasRow()"> Add Building Alias </button>
