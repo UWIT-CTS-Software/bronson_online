@@ -477,7 +477,7 @@ impl Database {
 
 			self.update_data(&DB_DataElement {
 				key: String::from("alias_table"),
-				val: String::from(read_to_string(ALIAS_JSON).unwrap().to_string()),
+				val: String::from("{\"buildings\": [], \"rooms\": []}"),
 			});
 
 			self.update_data(&DB_DataElement {
