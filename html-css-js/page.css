@@ -145,6 +145,10 @@ button:before {
 button:-webkit-details-marker {
     display: none;
 }
+/* Disable Scroll-Bars In Chrome */
+::-webkit-scrollbar {
+    display: none;
+}
 
 /* Switch Toggle */
 .switch {
@@ -719,7 +723,7 @@ input:checked + .slider:before {
 .visButton {
     float: right;
     padding: 0px 3px;
-    margin: 1px 0px 0px 3px;
+    margin: -2px 0px 0px 3px;
     border-radius:3px;
 }
 
@@ -1537,11 +1541,42 @@ ol li::marker {
     border-bottom: 1px solid rgb(129, 116, 76);
 }
 
+.at_menu {
+    padding: 0px 0px 0px 15px;
+}
+
 .aliasInput {
     width: 80%;
     color: rgb(144, 118, 26);
     background-color: rgb(50, 50, 50);
     margin: 0px 10%;
+}
+
+#aliasFileSpace {
+    padding: 0px 15px 0px 0px;
+}
+
+#aliasFileInput {
+	appearance: none;
+	background-color: #e9d27e;
+	border: 1px inset rgba(27, 31, 35, 0.15);
+	border-radius: 5px;
+	box-shadow: rgba(27, 31, 35, 0.04) 0 1px 0, rgba(255, 255, 255, 0.25) 0 1px 0 inset;
+	box-sizing: border-box;
+	color: #24292E;
+	cursor: pointer;
+	display: inline-block;
+	font-family: 'Lucida Sans', sans-serif;
+	font-size: 12px;
+	font-weight: 400;
+	line-height: 20px;
+	padding: 2px auto;
+	margin: 2px;
+	text-align: center;
+	position: relative;
+	touch-action: manipulation;
+	white-space: nowrap;
+	word-wrap: break-word;
 }
 
 /* -------------- Tabs -------------- */
