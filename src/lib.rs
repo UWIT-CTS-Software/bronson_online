@@ -402,7 +402,7 @@ impl Database {
 
 			self.update_data(&DB_DataElement {
 				key: String::from("alias_table"),
-				val: String::from("\"buildings\": [],\"rooms\": []"),
+				val: String::from(read_to_string(ALIAS_JSON).unwrap().to_string()),
 			});
 		}
 

@@ -1262,7 +1262,7 @@ async function setDBEditor() {
                 <button id="${building}-rmvBtn" class="rmvButton" onclick="markBuildingToRemove('${building}-fieldset')"> Remove Building</button>
             </menu>
         </fieldset>`);
-        db_editor.innerHTML += tmp.join();
+        db_editor.innerHTML += tmp.join('');
     });
     // Get timestamps for last room schedule update, sort them by weekday
     let rsTimestamp = await getLastRoomScheduleUpdate();
@@ -2704,7 +2704,7 @@ function setAliasUploader() {
     let aliasFileSpace = document.getElementById("aliasFileSpace");
     if(aliasFileSpace != null) {
         aliasFileSpace.innerHTML = `<input type="file" id="aliasFileInput" accept=".json">
-        <button class="exeButton" id="submitAliasUploadButton" onclick="submitUploadedAliasTable()"> Confirm Import </button>
+        <button class="exeButton" id="submitAliasUploadButton" onclick="submitUploadedAliasTable()"> Import to Editor </button>
         <button onclick="resetAliasUploader()"> Cancel </button>`;
     }
     return;
