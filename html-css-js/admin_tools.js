@@ -47,7 +47,7 @@ Functions
     - filterDatabase()
     - setDBRoomSchedule()
     - cancelRSUpload()
-    - dropHandler(ev)
+    - dropHandler_roomSchedule(ev)
     - processRSUpload()
     - readFileAsync(file)
     - parseRSUpload(arr)
@@ -97,6 +97,7 @@ function sleep(ms) {
 // the user clicks the Upload button. We use DataTransfer so files behave
 // like an input.files collection and keep the File objects in memory.
 const rsDataTransfer = new DataTransfer();
+const aliasDataTransfer = new DataTransfer();
 
 // Adds the 'Admin Tools' tab to the program header
 async function setAdminBronson() {
@@ -187,6 +188,10 @@ async function setAdminTools() {
     <button id="at_diag" onclick="setDiag()" type="button" class="atTab">
         <img class="at_tab_img" src="button2.png"/>
         <span> Diagnostics </span>
+    </button>
+    <button id="at_thread" onclick="setThreadEditor()" type="button" class="atTab">
+        <img class="at_tab_img" src="button2.png"/>
+        <span> Thread Editor </span>
     </button>`;
     // init admin tool guts
     let admin_internals = document.createElement("div");
@@ -340,13 +345,16 @@ async function setRemoveMode() {
     //console.log(techList);
     // HTML
     let html = `
+    <fieldset>
+    <legend> Remove a technician from the schedule </legend>
     <ul id="techSchdRemoveList">`;
     Object.values(scheduleData).forEach(function(tech) {
-        html += `<li id="rm_${tech.Name}" onclick="removeTechSelect('rm_${tech.Name}')">${tech.Name}</li>`;
+        html += `<li id="rm_${tech.Name}" onclick="removeTechSelect('rm_${tech.Name}')"><span style="text-align: left; color: rgb(236, 200, 101)">${tech.Name}</span></li>`;
     })
     html +=`</ul>`;
     html += `<button onclick="exitRemoveMode()">Exit Remove Mode</button>
-    <button onclick="removeSelectedTechs()">Confirm Selection</button>`;
+    <button onclick="removeSelectedTechs()">Confirm Selection</button>
+    </fieldset>`;
     // place new element on page
     fireSomeoneMenu.innerHTML = html;
     if (document.getElementById('techSchdRemoveTech') == undefined) {
@@ -386,8 +394,8 @@ async function removeSelectedTechs() {
         delete scheduleData[rm_id];
     }
     // NOTE: verify this is not broken and correct before updating the localstorage iteration.
-    updateSchedule(scheduleData);
-    setRemoveMode();
+    await updateSchedule(scheduleData);
+    await setRemoveMode();
     return;
 }
 
@@ -597,7 +605,16 @@ async function updateAllTechSchedules() {
         let tableId = tables[i].getAttribute("id");
         schedule = await updateTechSchedule(tableId, schedule);
     }
-    updateSchedule(schedule);
+    console.log(schedule);
+    const scheduleSorted = Object.keys(schedule)
+        .sort()
+        .reduce((tech, name) => {
+            tech[name] = schedule[name];
+            return tech;
+        }, {});
+    console.log("Sorted Schedule, ", scheduleSorted);
+    await updateSchedule(scheduleSorted);
+    await setScheduleEditor();
     return;
 }
 
@@ -1245,7 +1262,7 @@ async function setDBEditor() {
                 <button id="${building}-rmvBtn" class="rmvButton" onclick="markBuildingToRemove('${building}-fieldset')"> Remove Building</button>
             </menu>
         </fieldset>`);
-        db_editor.innerHTML += tmp.join();
+        db_editor.innerHTML += tmp.join('');
     });
     // Get timestamps for last room schedule update, sort them by weekday
     let rsTimestamp = await getLastRoomScheduleUpdate();
@@ -1319,7 +1336,7 @@ async function setDBEditor() {
     // TODO: Configure the Modal Pop-Up / Drag and Drop
     const dropZone = document.getElementById("updateFile");
     const output = document.getElementById("output");
-    dropZone.addEventListener("drop", dropHandler);
+    dropZone.addEventListener("drop", dropHandler_roomSchedule);
     window.addEventListener("dragover", (e) => {
         e.preventDefault();
     });
@@ -1408,7 +1425,7 @@ function cancelRSUpload() {
 //   This tool will not touch rooms that are not included in the upload.
 //   Also inform the user a list of rooms that bronson does not have and 
 //   is ignoring.
-function dropHandler(ev) {
+function dropHandler_roomSchedule(ev) {
     // Prevent default behavior (Browsers opening the file)
     ev.preventDefault();
     let result = "";
@@ -2656,10 +2673,14 @@ async function setAliasEditor() {
             </table>
         </div>
         <div>
-            <menu>
+            <menu class="at_menu">
                 <button class="exeButton" onclick="postAliasTable()"> Save Alias Table </button>
                 <button id="addRoomAliasButton" onclick="addRoomAliasRow()"> Add Room Alias </button>
                 <button id="addBuildingAliasButton" onclick="addBuildingAliasRow()"> Add Building Alias </button>
+                <div id="aliasFileSpace" style="float:right;">
+                    <button onclick="setAliasUploader()"> Upload Alias Table JSON </button>
+                    <button onclick="downloadAliasTable()"> Download Alias Table JSON </button>
+                </div>
             </menu>
         </div>
     </fieldset>`;
@@ -2676,6 +2697,59 @@ async function setAliasEditor() {
     }
     sessionStorage.setItem("aliasReset", JSON.stringify({rooms: []}));
     drawAliasTables();
+    return;
+}
+
+function setAliasUploader() {
+    let aliasFileSpace = document.getElementById("aliasFileSpace");
+    if(aliasFileSpace != null) {
+        aliasFileSpace.innerHTML = `<input type="file" id="aliasFileInput" accept=".json">
+        <button class="exeButton" id="submitAliasUploadButton" onclick="submitUploadedAliasTable()"> Import to Editor </button>
+        <button onclick="resetAliasUploader()"> Cancel </button>`;
+    }
+    return;
+}
+
+function submitUploadedAliasTable() {
+    console.log("TODO: Upload");
+    console.log(document.getElementById("aliasFileInput").files[0]);
+    let jsonFile = document.getElementById("aliasFileInput").files[0];
+    let fileReader = new FileReader();
+    fileReader.onload = function(event) {
+        let fileContent = event.target.result;
+        try {
+            let parsedContent = JSON.parse(fileContent);
+            // Validate Structure
+            if(parsedContent.rooms != undefined && parsedContent.buildings != undefined) {
+                console.log("Bronson: Valid Alias Table JSON Detected, Updating Table");
+                sessionStorage.setItem("aliasData", JSON.stringify(parsedContent));
+                drawAliasTables();
+                resetAliasUploader();
+            } else {
+                alert("Invalid Alias Table JSON Structure Detected. Please ensure the file contains both 'rooms' and 'buildings' fields.");
+            }
+        } catch (e) {
+            alert("Error parsing JSON file: " + e.message);
+        }
+    };
+    fileReader.readAsText(jsonFile);
+    return;
+}
+
+function resetAliasUploader() {
+    let aliasFileSpace = document.getElementById("aliasFileSpace");
+    if(aliasFileSpace != null) {
+        aliasFileSpace.innerHTML = `<div class="aliasFileSpace" style="float:right;">
+            <button onclick="setAliasUploader()"> Upload Alias Table JSON </button>
+            <button onclick="downloadAliasTable()"> Download Alias Table JSON </button>
+        </div>`;
+    }
+    return;
+}
+
+async function downloadAliasTable() {
+    let aliasData = sessionStorage.getItem("aliasData");
+    downloadJSON(aliasData, "alias_table.json");
     return;
 }
 
@@ -3053,4 +3127,114 @@ async function postAliasReset() {
         }
         return response;
     })
+}
+
+// Thread Schedule Tasks Editor
+async function setThreadEditor() {
+    // remove currently active status, mark tab has active.
+    let current = document.getElementsByClassName("at_selected");
+    if (current.length != 0) {
+        current[0].classList.remove("at_selected");
+    }
+    let newCurrent = document.getElementById("at_thread");
+    newCurrent.classList.add("at_selected");
+    // Create New Element
+    let thread_editor = document.createElement("div");
+    thread_editor.setAttribute("id", "admin_internals");
+    thread_editor.classList.add('at_thread_edit'); 
+    // Get Current Thread Object
+    let ts = await getThreadSchedule();
+    ts = ts.response;
+    let tsKeys = Object.keys(ts);
+    console.log(ts);
+    let tmp = `
+    <fieldset>
+        <legend> Thread Schedule Editor: </legend>`;
+    for(let i = 0; i < tsKeys.length; i++) {
+        tmp += `<fieldset>
+            <legend>${tsKeys[i]}</legend>
+            <div style="float:left">
+                <input type="number" id="thread-${tsKeys[i]}-interval" value="${ts[tsKeys[i]].duration}" min="60"> <span style="color: rgba(166, 172, 114, 1)"> Seconds between runs </span>
+                <button onclick="setNewThreadDuration('${tsKeys[i]}')"> Set Duration </button>
+            </div>
+            <div style="float:right">
+                <span style="color: rgba(166, 172, 114, 1)"> Last Run: ${ts[tsKeys[i]].timestamp} </span>
+                <button onclick="resetThreadInterval('${tsKeys[i]}')"> Run Now </button>
+            </div>
+            </fieldset>`;
+    }
+    tmp += `</fieldset>`;
+    thread_editor.innerHTML = tmp;
+    // replace admin_internals
+    let admin_internals = document.getElementById('admin_internals');
+    admin_internals.replaceWith(thread_editor);
+    return;
+}
+
+async function getThreadSchedule() {
+    return fetch('threadSchedule')
+        .then((response) => {
+            if(!response.ok) {
+                throw new Error("HTTP error " + response.status);
+            }
+            return response.json();
+        }
+    );
+}
+
+async function resetThreadInterval(threadName) {
+    let packet = {
+        task_name: threadName,
+    };
+    packet = JSON.stringify(packet);
+    return fetch('resetThreadInterval', {
+        method: 'POST',
+        headers: {
+            "Content-Type": "application/json",
+            "Content-Length": packet.length
+        },
+        body: packet
+    }).then((response) => {
+        if(!response.ok) {
+            throw new Error("HTTP error " + response.status);
+        }
+        return response;
+    })
+}
+
+function setNewThreadDuration(taskName) {
+    let inputId = `thread-${taskName}-interval`;
+    let value = document.getElementById(inputId).value;
+    console.log(value);
+    let packet = {
+        task: taskName,
+        new_duration: value,
+    };
+    return fetch('setThreadDuration', {
+        method: 'POST',
+        headers: {
+            "Content-Type": "application/json",
+            "Content-Length": packet.length
+        },
+        body: JSON.stringify(packet)
+    }).then((response) => {
+        if(!response.ok) {
+            throw new Error("HTTP error " + response.status);
+        }
+        return response;
+    })
+}
+
+// Helper Functions
+function downloadJSON(data, filename) {
+    const blob = new Blob([data], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return;
 }
