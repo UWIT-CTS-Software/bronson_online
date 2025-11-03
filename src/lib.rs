@@ -47,13 +47,16 @@ use std::{
 };
 use cookie::{ CookieJar, Key, };
 use csv::Reader;
-use log::{ warn, error, };
+use log::{ warn, error, /* info */ };
 use regex::bytes::Regex as RegBytes;
 use regex::Regex;
 use serde::{ Deserialize, Serialize, };
 use serde_json::{ json, Value };
+use chrono::{ DateTime, Utc, };
 use diesel::{
 	prelude::*,
+	r2d2::{ self, ConnectionManager },
+	PgConnection,
 	/* associations::HasTable, */
 };
 use dotenvy::dotenv;
@@ -94,27 +97,44 @@ struct Worker {
 
 impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
-		let thread = thread::spawn(move || {
-			loop {
-				let message = receiver.lock().unwrap().recv().unwrap();
+		let receiver_clone = Arc::clone(&receiver);
+		let thread = thread::Builder::new()
+			.name(id.to_string())
+			.spawn(move || {
+				loop {
+					let message = receiver_clone.lock().unwrap().recv().unwrap();
 
-				match message {
-					Message::NewJob(job) => {
-						job.call_box();
-					},
-					Message::Terminate => {
-						warn!("\rWorker {} was told to terminate.", id);
+					match message {
+						Message::NewJob(job) => {
+								//info!("[Worker {} got a job; executing]", id);
+							job.call_box();
+						},
+						Message::Terminate => {
+							warn!("\rWorker {} was told to terminate.", id);
 
-						break;
-					},
+							break;
+						},
+					}
 				}
 			}
-		});
+		);
 
-		return Worker {
-			_id: id,
-			thread: Some(thread),
-		};
+		match thread {
+			Ok(thread) => {
+				return Worker {
+					_id: id,
+					thread: Some(thread),
+				};
+			},
+			Err(error) => {
+				println!("Error: {}", error);
+				return Self::new(id, Arc::clone(&receiver));
+			},
+		}
+		// return Worker {
+		// 	_id: id,
+		// 	thread: Some(thread),
+		// };
     }
 }
 
@@ -168,8 +188,43 @@ impl Drop for ThreadPool {
     }
 }
 
+// Thread Schedule
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskSchedule {
+    pub duration: u64,
+    pub timestamp: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThreadSchedule {
+    pub tasks: HashMap<String, TaskSchedule>
+}
+
+impl ThreadSchedule {
+    pub fn new() -> Self {
+        ThreadSchedule {
+            tasks: HashMap::new()
+        }
+    }
+    pub fn from_json(json_str: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str(json_str)
+    }
+
+    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string(self)
+    }
+}
+
+// pub struct ThreadQueue {
+// 	pub 
+// }
+
+// Database
+pub type PgPool = r2d2::Pool<ConnectionManager<PgConnection>>;
+
+#[derive(Debug, Clone)]
 pub struct Database {
-	connection: PgConnection,
+	pub pool: Arc<PgPool>,
 	key: Key,
 }
 
@@ -178,11 +233,15 @@ impl Database {
 		dotenv().ok();
 
 		let db_url = env::var("DATABASE_URL").expect("DATABASE_URL env variable not found.");
-		let connection = PgConnection::establish(&db_url)
-			.unwrap_or_else(|_| panic!("Error connecting to {}", db_url));
+		//let connection = PgConnection::establish(&db_url)
+		//	.unwrap_or_else(|_| panic!("Error connecting to {}", db_url));
+		let manager = ConnectionManager::<PgConnection>::new(db_url);
+		let pool = r2d2::Pool::builder()
+			.build(manager)
+			.expect("Failed to create Database Connection Pool");
 		
 		return Database {
-			connection: connection,
+			pool: Arc::new(pool),
 			key: Key::generate(),
 		}
 	}
@@ -228,24 +287,25 @@ impl Database {
 	}
 
 	pub fn backup(&mut self) -> Result<u16, std::io::Error> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 		let all_buildings: Vec<DB_Building> = buildings
 			.select(DB_Building::as_select())
-			.load(&mut self.connection)
+			.load(&mut conn)
 			.expect("Error loading buildings");
 
 		let all_rooms: Vec<DB_Room> = rooms
 			.select(DB_Room::as_select())
-			.load(&mut self.connection)
+			.load(&mut conn)
 			.expect("Error loading rooms");
 
 		let all_users: Vec<DB_User> = users
 			.select(DB_User::as_select())
-			.load(&mut self.connection)
+			.load(&mut conn)
 			.expect("Error loading users");
 
 		let all_data: Vec<DB_DataElement> = data
 			.select(DB_DataElement::as_select())
-			.load(&mut self.connection)
+			.load(&mut conn)
 			.expect("Error loading data");
 
 		let json_data: Vec<u8> = json!({
@@ -262,9 +322,10 @@ impl Database {
 	}
 
 	pub fn static_recovery(&mut self) -> Option<()> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 		let bldg_results = buildings
 			.select(DB_Building::as_select())
-			.load(&mut self.connection)
+			.load(&mut conn)
 			.expect("Error loading buildings.");
 
 		if bldg_results.len() == 0 {
@@ -287,7 +348,7 @@ impl Database {
 
 		let room_results = rooms
 			.select(DB_Room::as_select())
-			.load(&mut self.connection)
+			.load(&mut conn)
 			.expect("Error loading rooms.");
 		
 		if room_results.len() == 0 {
@@ -361,7 +422,7 @@ impl Database {
 
 		let user_results = users
 			.select(DB_User::as_select())
-			.load(&mut self.connection)
+			.load(&mut conn)
 			.expect("Error loading users.");
 
 		if user_results.len() == 0 {
@@ -381,7 +442,7 @@ impl Database {
 
 		let key_results = keys
 			.select(DB_Key::as_select())
-			.load(&mut self.connection)
+			.load(&mut conn)
 			.expect("Error loading keys");
 
 		if key_results.len() == 0 {
@@ -400,7 +461,7 @@ impl Database {
 
 		let data_results = data
 			.select(DB_DataElement::as_select())
-			.load(&mut self.connection)
+			.load(&mut conn)
 			.expect("Error loading data.");
 
 		if data_results.len() == 0 {
@@ -411,23 +472,22 @@ impl Database {
 
 			self.update_data(&DB_DataElement {
 				key: String::from("schedule"),
-				val: String::from(
-"{
-	\"Alex Bryan\":{\"Name\":\"Alex Bryan\",\"Assignment\":\"SysEn\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Cian Melker\":{\"Name\":\"Cian Melker\",\"Assignment\":\"Networking\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Collin Davis\":{\"Name\":\"Collin Davis\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Colton Hopster\":{\"Name\":\"Colton Hopster\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Jack Nyman\":{\"Name\":\"Jack Nyman\",\"Assignment\":\"Coding\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Jarred Heddins\":{\"Name\":\"Jarred Heddins\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Jason Vanlandingham\":{\"Name\":\"Jason Vanlandingham\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Korrin Sutherburg\":{\"Name\":\"Korrin Sutherburg\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Lexus Fermelia\":{\"Name\":\"Lexus Fermelia\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Mario Garcia-Ceballos\":{\"Name\":\"Mario Garcia-Ceballos\",\"Assignment\":\"Zone 3\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Michael Stoll\":{\"Name\":\"Michael Stoll\",\"Assignment\":\"Zone 2\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Sofia Newsome\":{\"Name\":\"Sofia Newsome\",\"Assignment\":\"Zone 4\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}},
-	\"Thomas Lockwood\":{\"Name\":\"Thomas Lockwood\",\"Assignment\":\"Zone 1\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}}
-}"
-				)
+				val: String::from(read_to_string(TSCH_JSON).unwrap().to_string()),
+			});
+
+			self.update_data(&DB_DataElement {
+				key: String::from("alias_table"),
+				val: String::from("{\"buildings\": [],\"rooms\": []}"),
+			});
+
+			self.update_data(&DB_DataElement {
+				key: String::from("lsm_leaderboard"),
+				val: String::from(LDRB_ERR),
+			});
+
+			self.update_data(&DB_DataElement {
+				key: String::from("lsm_spares"),
+				val: String::from(SPRS_ERR),
 			});
 		}
 
@@ -435,31 +495,32 @@ impl Database {
 	}
 
 	pub fn tally_table_lengths(&mut self) -> Option<HashMap<String, u16>> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 		let mut ret_map: HashMap<String, u16> = HashMap::new();
 
 		let bldg_results = buildings
 			.select(DB_Building::as_select())
-			.load(&mut self.connection)
+			.load(&mut conn)
 			.expect("Error loading buildings.");
 
 		let room_results = rooms
 			.select(DB_Room::as_select())
-			.load(&mut self.connection)
+			.load(&mut conn)
 			.expect("Error loading rooms.");
 		
 		let user_results = users
 			.select(DB_User::as_select())
-			.load(&mut self.connection)
+			.load(&mut conn)
 			.expect("Error loading users.");
 
 		let key_results = keys
 			.select(DB_Key::as_select())
-			.load(&mut self.connection)
+			.load(&mut conn)
 			.expect("Error loading keys");
 
 		let data_results = data
 			.select(DB_DataElement::as_select())
-			.load(&mut self.connection)
+			.load(&mut conn)
 			.expect("Error loading data.");
 
 		ret_map.insert(String::from("buildings"), bldg_results.len().try_into().unwrap());
@@ -592,10 +653,10 @@ impl Database {
 
 	pub fn get_buildings(&mut self) -> HashMap<String, DB_Building> {
 		let mut ret_map: HashMap<String, DB_Building> = HashMap::new();
-
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 		let bldg_array = buildings
 			.select(DB_Building::as_select())
-			.load(&mut self.connection)
+			.load(&mut conn)
 			.expect("SQL_ERR: Error loading buildings");
 
 		for bldg in bldg_array {
@@ -606,10 +667,11 @@ impl Database {
 	}
 
 	pub fn get_building_by_abbrev(&mut self, bldg_abbrev: &String) -> DB_Building {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 		buildings
 			.find(bldg_abbrev)
 			.select(DB_Building::as_select())
-			.first(&mut self.connection)
+			.first(&mut conn)
 			.optional()
 			.expect("SQL_ERR: Error loading buildings by abbreviation")
 			.unwrap()
@@ -617,31 +679,37 @@ impl Database {
 
 	pub fn update_building(&mut self, building: &DB_Building) {
 		use crate::schema::bronson::buildings::dsl::abbrev;
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
 		let _ = diesel::insert_into(buildings)
 			.values(building)
 			.on_conflict(abbrev)
 			.do_update()
 			.set(building)
 			.returning(DB_Building::as_returning())
-			.get_result(&mut self.connection)
+			.get_result(&mut conn)
 			.expect("SQL_ERR: Error inserting building");
 	}
 
 	pub fn delete_building(&mut self, id: &String) {
 		use crate::schema::bronson::buildings::dsl::abbrev;
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
 		let _ = diesel::delete(buildings)
 			.filter(abbrev.eq(id))
 			.returning(DB_Building::as_returning())
-			.get_result(&mut self.connection)
+			.get_result(&mut conn)
 			.expect("SQL_ERR: Error deleting building");
 	}
 
 	pub fn get_rooms_by_abbrev(&mut self, bldg_abbrev: &String) -> Vec<DB_Room> {
 		use crate::schema::bronson::rooms::dsl::abbrev;
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
 		let mut ret_vec = rooms
 			.select(DB_Room::as_select())
 			.filter(abbrev.eq(bldg_abbrev))
-			.load(&mut self.connection)
+			.load(&mut conn)
 			.expect("SQL_ERR: Error loading rooms by abbreviation");
 
 		ret_vec.sort_by_key(|r| r.name.clone());
@@ -649,10 +717,12 @@ impl Database {
 	}
 
 	pub fn get_room_by_name(&mut self, room_name: &String) -> DB_Room {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
 		rooms
 			.find(room_name)
 			.select(DB_Room::as_select())
-			.first(&mut self.connection)
+			.first(&mut conn)
 			.optional()
 			.expect("SQL_ERR: Error loading room by name")
 			.unwrap()
@@ -660,126 +730,144 @@ impl Database {
 
 	pub fn update_room(&mut self, room: &DB_Room) {
 		use crate::schema::bronson::rooms::dsl::name;
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
 		let _ = diesel::insert_into(rooms)
 			.values(room)
 			.on_conflict(name)
 			.do_update()
 			.set(room)
 			.returning(DB_Room::as_returning())
-			.get_result(&mut self.connection)
+			.get_result(&mut conn)
 			.expect("SQL_ERR: Error inserting room");
 	}
 
 	pub fn delete_room(&mut self, id: &String) {
 		use crate::schema::bronson::rooms::dsl::name;
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
 		let _ = diesel::delete(rooms)
 			.filter(name.eq(id))
 			.returning(DB_Room::as_returning())
-			.get_result(&mut self.connection)
+			.get_result(&mut conn)
 			.expect("SQL_ERR: Error deleting key");
 	}
 
 	pub fn get_user(&mut self, user: &str) -> Option<DB_User> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
 		users
 			.select(DB_User::as_select())
 			.filter(username.eq(user))
-			.first(&mut self.connection)
+			.first(&mut conn)
 			.optional()
 			.expect("SQL_ERR: Error loading user")
 	}
 
 	pub fn update_user(&mut self, user: &DB_User) {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
 		let _ = diesel::insert_into(users)
 			.values(user)
 			.on_conflict(username)
 			.do_update()
 			.set(user)
 			.returning(DB_User::as_returning())
-			.get_result(&mut self.connection)
+			.get_result(&mut conn)
 			.expect("SQL_ERR: Error inserting user");
 	}
 
 	pub fn delete_user(&mut self, user: &String) {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
 		let _ = diesel::delete(users)
 			.filter(username.eq(user))
 			.returning(DB_User::as_returning())
-			.get_result(&mut self.connection)
+			.get_result(&mut conn)
 			.expect("SQL_ERR: Error deleting user");
 	}
 
 	pub fn get_key(&mut self, id: &str) -> DB_Key {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
 		keys
 			.select(DB_Key::as_select())
 			.filter(key_id.eq(id))
-			.first(&mut self.connection)
+			.first(&mut conn)
 			.optional()
 			.expect("SQL_ERR: Error loading key")
 			.unwrap()
 	}
 
 	pub fn update_key(&mut self, update_key: &DB_Key) {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
 		let _ = diesel::insert_into(keys)
 			.values(update_key)
 			.on_conflict(key_id)
 			.do_update()
 			.set(update_key)
 			.returning(DB_Key::as_returning())
-			.get_result(&mut self.connection)
+			.get_result(&mut conn)
 			.expect("SQL_ERR: Error inserting key");
 	}
 
 	pub fn delete_key(&mut self, id: &String) {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
 		let _ = diesel::delete(keys)
 			.filter(key_id.eq(id))
 			.returning(DB_Key::as_returning())
-			.get_result(&mut self.connection)
+			.get_result(&mut conn)
 			.expect("SQL_ERR: Error deleting key");
 	}
 
 	pub fn get_data(&mut self, data_key: &str) -> Option<DB_DataElement> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
 		data
 			.select(DB_DataElement::as_select())
 			.filter(key.eq(data_key))
-			.first(&mut self.connection)
+			.first(&mut conn)
 			.optional()
 			.expect("SQL_ERR: Error loading data element")
 	}
 
 	pub fn update_data(&mut self, element: &DB_DataElement) {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
 		let _ = diesel::insert_into(data)
 			.values(element)
 			.on_conflict(key)
 			.do_update()
 			.set(element)
 			.returning(DB_DataElement::as_returning())
-			.get_result(&mut self.connection)
+			.get_result(&mut conn)
 			.expect("SQL_ERR: Error inserting user");
 	}
 
 	pub fn delete_data(&mut self, data_key: &String) {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
 		let _ = diesel::delete(data)
 			.filter(key.eq(data_key))
 			.returning(DB_DataElement::as_returning())
-			.get_result(&mut self.connection)
+			.get_result(&mut conn)
 			.expect("SQL_ERR: Error deleting data element");
 
 	}
 }
 
-impl<'a> Clone for Database {
-	fn clone(&self) -> Database {
-		dotenv().ok();
+// impl<'a> Clone for Database {
+// 	fn clone(&self) -> Database {
+// 		return Database {
+// 			pool: self.pool.clone(),
+// 			key: self.key.clone(),
+// 		};
+// 	}
+// }
 
-		let db_url = env::var("DATABASE_URL").expect("DATABASE_URL env variable not found.");
-		let connection = PgConnection::establish(&db_url)
-			.unwrap_or_else(|_| panic!("Error connecting to {}", db_url));
-
-		return Database {
-			connection: connection,
-			key: self.key.clone(),
-		};
-	}
-}
+//TODO Sync + Send for Database {}
 
 // ----------- Custom struct for checkerboard - jn <3
 #[derive(Serialize, Deserialize, Debug)]
@@ -1223,3 +1311,7 @@ pub static STATUS_303: &str = "HTTP/1.1 303 See Other";
 pub static STATUS_401: &str = "HTTP/1.1 401 Unauthorized";
 pub static STATUS_404: &str = "HTTP/1.1 404 Not Found";
 pub static STATUS_500: &str = "HTTP/1.1 500 Internal Server Error";
+pub static SCHD_ERR  : &str = "{\n\t\"No Tech Found\":{\"Name\":\"None\",\"Assignment\":\"N/A\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}}}";
+pub static DASH_ERR  : &str = "No dashboard found. Please contact an administrator.";
+pub static LDRB_ERR  : &str = "{\"7days\":[{\"Count\":0, \"Name\":\"N/A\"}],\"30days\":[{\"Count\":0, \"Name\":\"N/A\"}],\"90days\":[{\"Count\":0, \"Name\":\"N/A\"}]}";
+pub static SPRS_ERR  : &str = "{\"spares\":[{\"Asset Tag\":\"NOTFOUND\",\"Catalog Item\":{\"fullTitle\":\"N/A\",\"id\":0},\"Last Updated\":\"0000-00-00T00:00:00Z\",\"Location\":{\"id\":0,\"name\":\"NOT FOUND\"},\"Serial Number\":\"N/A\",\"User\":{\"displayName\":\"N/A\",\"id\":0}}}";

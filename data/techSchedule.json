@@ -65,17 +65,6 @@
             "Friday": "11:00AM - 5:00PM"
         }
     },
-    "Jason Vanlandingham": {
-        "Name": "Jason Vanlandingham",
-        "Assignment": "Zone 4",
-        "Schedule": {
-            "Monday": "9:30AM - 5:00PM",
-            "Tuesday": "9:30AM - 5:00PM",
-            "Wednesday": "9:30AM - 5:00PM",
-            "Thursday": "9:30AM - 5:00PM",
-            "Friday": "9:30AM - 5:00PM"
-        }
-    },
     "Korrin Sutherburg": {
         "Name": "Korrin Sutherburg",
         "Assignment": "Zone 3",
@@ -98,17 +87,6 @@
             "Friday": "NA"
         }
     },
-    "Mario Garcia-Ceballos": {
-        "Name": "Mario Garcia-Ceballos",
-        "Assignment": "Zone 3",
-        "Schedule": {
-            "Monday": "9:00AM - 12:00PM,2:00PM - 5:00PM",
-            "Tuesday": "9:00AM - 12:00PM,2:00PM - 5:00PM",
-            "Wednesday": "9:00AM - 12:00PM,2:00PM - 5:00PM",
-            "Thursday": "9:00AM - 12:00PM,2:00PM - 5:00PM",
-            "Friday": "9:00AM - 12:00PM,2:00PM - 5:00PM"
-        }
-    },
     "Michael Stoll": {
         "Name": "Michael Stoll",
         "Assignment": "Zone 2",
@@ -120,8 +98,8 @@
             "Friday": "12:00PM - 5:00PM"
         }
     },
-    "Sofia Newsome": {
-        "Name": "Sofia Newsome",
+    "Levi Westberg": {
+        "Name": "Levi Westberg",
         "Assignment": "Zone 4",
         "Schedule": {
             "Monday": "12:00PM - 4:00PM",
