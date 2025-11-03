@@ -41,7 +41,8 @@ use std::{
 	},
 	fmt::{ Debug, Display, Formatter, Result as FmtResult, },
 	collections::HashMap,
-	fs::{ read, read_to_string, File },
+	fs::{ read, read_to_string, File, },
+	io::{ Write, },
 	error::Error,
 };
 use cookie::{ CookieJar, Key, };
@@ -50,7 +51,7 @@ use log::{ warn, error, /* info */ };
 use regex::bytes::Regex as RegBytes;
 use regex::Regex;
 use serde::{ Deserialize, Serialize, };
-use serde_json::json;
+use serde_json::{ json, Value };
 use chrono::{ DateTime, Utc, };
 use diesel::{
 	prelude::*,
@@ -246,8 +247,82 @@ impl Database {
 	}
 
 	pub fn init_if_empty(&mut self) -> Option<()> {
-		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+		let recovery_data: HashMap<String, Value> = match self.try_get_backup() {
+			Ok(d) => d,
+			Err(m) => {
+				warn!("REC_ERR: {}", m);
+				return self.static_recovery();
+			}
+		};
 
+		let table_tallys: HashMap<String, u16> = match self.tally_table_lengths() {
+			Some(hm) => hm,
+			None => {
+				warn!("Unable to query tables. Attempting static recovery.");
+				return self.static_recovery();
+			}
+		};
+
+		if *table_tallys.get("buildings").unwrap() == 0 {
+			let _ = self.try_recover_key("buildings", &recovery_data);
+		}
+
+		if *table_tallys.get("rooms").unwrap() == 0 {
+			let _ = self.try_recover_key("rooms", &recovery_data);
+		}
+
+		if *table_tallys.get("users").unwrap() == 0 {
+			let _ = self.try_recover_key("users", &recovery_data);
+		}
+
+		if *table_tallys.get("keys").unwrap() == 0 {
+			let _ = self.try_recover_key("keys", &recovery_data);
+		}
+
+		if *table_tallys.get("data").unwrap() == 0 {
+			let _ = self.try_recover_key("data", &recovery_data);
+		}
+
+		Some(())
+	}
+
+	pub fn backup(&mut self) -> Result<u16, std::io::Error> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+		let all_buildings: Vec<DB_Building> = buildings
+			.select(DB_Building::as_select())
+			.load(&mut conn)
+			.expect("Error loading buildings");
+
+		let all_rooms: Vec<DB_Room> = rooms
+			.select(DB_Room::as_select())
+			.load(&mut conn)
+			.expect("Error loading rooms");
+
+		let all_users: Vec<DB_User> = users
+			.select(DB_User::as_select())
+			.load(&mut conn)
+			.expect("Error loading users");
+
+		let all_data: Vec<DB_DataElement> = data
+			.select(DB_DataElement::as_select())
+			.load(&mut conn)
+			.expect("Error loading data");
+
+		let json_data: Vec<u8> = json!({
+			"buildings": all_buildings,
+			"rooms": all_rooms,
+			"users": all_users,
+			"data": all_data
+		}).to_string().into();
+
+		let mut backup_file = File::create(BACKUP)?;
+		let _ = backup_file.write_all(&json_data);
+
+		Ok(0)
+	}
+
+	pub fn static_recovery(&mut self) -> Option<()> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 		let bldg_results = buildings
 			.select(DB_Building::as_select())
 			.load(&mut conn)
@@ -402,11 +477,111 @@ impl Database {
 
 			self.update_data(&DB_DataElement {
 				key: String::from("alias_table"),
-				val: String::from(read_to_string(ALIAS_JSON).unwrap().to_string()),
+				val: String::from("{\"buildings\": [], \"rooms\": []}"),
+			});
+
+			self.update_data(&DB_DataElement {
+				key: String::from("lsm_leaderboard"),
+				val: String::from(LDRB_ERR),
+			});
+
+			self.update_data(&DB_DataElement {
+				key: String::from("lsm_spares"),
+				val: String::from(SPRS_ERR),
 			});
 		}
 
 		Some(())
+	}
+
+	pub fn tally_table_lengths(&mut self) -> Option<HashMap<String, u16>> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+		let mut ret_map: HashMap<String, u16> = HashMap::new();
+
+		let bldg_results = buildings
+			.select(DB_Building::as_select())
+			.load(&mut conn)
+			.expect("Error loading buildings.");
+
+		let room_results = rooms
+			.select(DB_Room::as_select())
+			.load(&mut conn)
+			.expect("Error loading rooms.");
+		
+		let user_results = users
+			.select(DB_User::as_select())
+			.load(&mut conn)
+			.expect("Error loading users.");
+
+		let key_results = keys
+			.select(DB_Key::as_select())
+			.load(&mut conn)
+			.expect("Error loading keys");
+
+		let data_results = data
+			.select(DB_DataElement::as_select())
+			.load(&mut conn)
+			.expect("Error loading data.");
+
+		ret_map.insert(String::from("buildings"), bldg_results.len().try_into().unwrap());
+		ret_map.insert(String::from("rooms"),     room_results.len().try_into().unwrap());
+		ret_map.insert(String::from("users"),     user_results.len().try_into().unwrap());
+		ret_map.insert(String::from("keys"),       key_results.len().try_into().unwrap());
+		ret_map.insert(String::from("data"),      data_results.len().try_into().unwrap());
+
+		Some(ret_map)
+	}
+
+	pub fn try_get_backup(&mut self) -> Result<HashMap<String, Value>, String> {
+		match read_to_string(BACKUP) {
+			Ok(fs) => match serde_json::from_str(fs.as_str()) {
+				Ok(je) => Ok(je),
+				Err(m) => {
+					return Err(format!("Unable to parse recovery file: {}", m));
+				}
+			},
+			Err(m) => { 
+				return Err(format!("Unable to find recovery file: {}", m)); 
+			}
+		}
+	}
+
+	pub fn try_recover_key(&mut self, recover_key: &str, recover_data: &HashMap<String, Value>) -> Result<(), String> {
+		let recover_val: Value = match recover_data.get(recover_key) {
+			Some(v) => v.clone(),
+			None    => {
+				return Err(String::from("No key-value pair found"));
+			}
+		};
+		match recover_key {
+			"buildings" => {
+				let backup_buildings: Vec<DB_Building> = serde_json::from_value(recover_val).unwrap();
+				for b in backup_buildings {
+					self.update_building(&b);
+				}
+			},
+			"rooms"     => {
+				let backup_rooms: Vec<DB_Room> = serde_json::from_value(recover_val).unwrap();
+				for r in backup_rooms {
+					self.update_room(&r);
+				}
+			},
+			"users"     => {
+				let backup_users: Vec<DB_User> = serde_json::from_value(recover_val).unwrap();
+				for u in backup_users {
+					self.update_user(&u);
+				}
+			},
+			"data"      => {
+				let backup_data: Vec<DB_DataElement> = serde_json::from_value(recover_val).unwrap();
+				for d in backup_data {
+					self.update_data(&d);
+				}
+			},
+			&_          => { return Err(String::from("Unknown recovery file key")); }
+		}
+
+		Ok(())
 	}
 
 	pub fn gen_hn(room_name: String, items: &Vec<u8>) -> Vec<Option<DB_Hostname>> {
@@ -1120,6 +1295,7 @@ pub struct GeneralRequest {
 }
 
 pub static BUFF_SIZE : usize = 4096;
+pub static BACKUP    : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/backup.json");
 pub static TSCH_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/techSchedule.json");
 pub static BLDG_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/buildings.json");
 pub static CAMPUS_STR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.json");
@@ -1136,3 +1312,7 @@ pub static STATUS_303: &str = "HTTP/1.1 303 See Other";
 pub static STATUS_401: &str = "HTTP/1.1 401 Unauthorized";
 pub static STATUS_404: &str = "HTTP/1.1 404 Not Found";
 pub static STATUS_500: &str = "HTTP/1.1 500 Internal Server Error";
+pub static SCHD_ERR  : &str = "{\n\t\"No Tech Found\":{\"Name\":\"None\",\"Assignment\":\"N/A\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}}}";
+pub static DASH_ERR  : &str = "No dashboard found. Please contact an administrator.";
+pub static LDRB_ERR  : &str = "{\"7days\":[{\"Count\":0, \"Name\":\"N/A\"}],\"30days\":[{\"Count\":0, \"Name\":\"N/A\"}],\"90days\":[{\"Count\":0, \"Name\":\"N/A\"}]}";
+pub static SPRS_ERR  : &str = "{\"spares\":[{\"Asset Tag\":\"NOTFOUND\",\"Catalog Item\":{\"fullTitle\":\"N/A\",\"id\":0},\"Last Updated\":\"0000-00-00T00:00:00Z\",\"Location\":{\"id\":0,\"name\":\"NOT FOUND\"},\"Serial Number\":\"N/A\",\"User\":{\"displayName\":\"N/A\",\"id\":0}}}";
