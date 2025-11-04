@@ -1467,8 +1467,14 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
         // Get Alias Table, to swap incoming room_names from LSM with
         //   Bronson friendly naming. We filter Alias Table to only contain
         //   rooms that are relevant to current LSM request.
-        let alias_table : DB_DataElement = database.get_data("alias_table")
-            .expect("Alias_table has not been set yet.");
+        let alias_table : DB_DataElement = match database.get_data("alias_table") {
+            Some(at) => at,
+            None     => DB_DataElement { 
+                key: String::from("alias_table"),
+                val: String::from("{\"buildings\": [], \"rooms\": []}") 
+            }
+        };
+        
         let alias_obj: Value = serde_json::from_str(&alias_table.val)
             .expect("Unable to Parse Alias Table Contents.");
         let alias_rooms = alias_obj.get("rooms").unwrap();
