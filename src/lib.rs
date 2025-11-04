@@ -619,7 +619,7 @@ impl Database {
 					hostname: hn.clone().unwrap().clone(),
 					ip: String::from("x"),
 					last_ping: String::from("2000-01-01T00:00:00Z"),
-					alert: -1,
+					alert: 1,
 					error_message: String::from("Not run yet.")
 				})
 			);
