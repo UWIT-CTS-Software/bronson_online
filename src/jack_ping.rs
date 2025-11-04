@@ -36,7 +36,7 @@ pub mod jp {
             PingResult::Pong(_dur, string) => {
                 pong_string = String::from( match ip_filter.find(&string) {
                     Some(ip) => ip.as_str(),
-                    None     => "x"
+                    None     => return Err(String::from("Not found."))
                 });
             },
             PingResult::Timeout(string) => {
