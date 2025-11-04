@@ -25,7 +25,7 @@ pub mod jp {
                 ping_response = resp.recv().unwrap(); 
                 },
             Err(m) => {
-                //println!("Error Pinging {}", hostname);
+                println!("Error Pinging {}", hostname);
                 return Err(String::from(m));
                 },
         }
