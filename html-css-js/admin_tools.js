@@ -1118,7 +1118,7 @@ function formatLSMDevices(lsm_data) {
     return output.data;
 }
 
-// Database Editor Page
+// Database Editor Page 
 // This is intended to be an interface that allows users to update the
 // inventory database without needing direct access to the database itself.
 async function setDBEditor() {

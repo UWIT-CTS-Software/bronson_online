@@ -1467,8 +1467,14 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
         // Get Alias Table, to swap incoming room_names from LSM with
         //   Bronson friendly naming. We filter Alias Table to only contain
         //   rooms that are relevant to current LSM request.
-        let alias_table : DB_DataElement = database.get_data("alias_table")
-            .expect("Alias_table has not been set yet.");
+        let alias_table : DB_DataElement = match database.get_data("alias_table") {
+            Some(at) => at,
+            None     => DB_DataElement { 
+                key: String::from("alias_table"),
+                val: String::from("{\"buildings\": [], \"rooms\": []}") 
+            }
+        };
+        
         let alias_obj: Value = serde_json::from_str(&alias_table.val)
             .expect("Unable to Parse Alias Table Contents.");
         let alias_rooms = alias_obj.get("rooms").unwrap();
@@ -1746,12 +1752,16 @@ fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress
                     alert: 0,
                     error_message: String::new()
                 },
-                Err(m)      => DB_IpAddress {
-                    hostname: net.clone().unwrap().hostname,
-                    ip: String::from("x"),
-                    last_ping: String::from(format!("{}", chrono::Utc::now())),
-                    alert: net.clone().unwrap().alert + 1,
-                    error_message: String::from(m)
+                Err(m)      => {
+                    debug!("{}", m);
+                    
+                    DB_IpAddress {
+                        hostname: net.clone().unwrap().hostname,
+                        ip: String::from("x"),
+                        last_ping: String::from(format!("{}", chrono::Utc::now())),
+                        alert: net.clone().unwrap().alert + 1,
+                        error_message: String::from(m)
+                    }
                 }
             }
         ))
@@ -1973,6 +1983,8 @@ fn cfm_build_dir() -> Vec<u8> {
     for (_, &ref item) in cfm_dirs.iter().enumerate() {
         if (&item[(cut_index + 1)..]).to_string().starts_with('_') {
             continue; // ignore directories starting with '_'
+        } else if (&item[(cut_index + 1)..]).to_string().starts_with('.') {
+            continue; // ignore directories starting with '.'
         } else if is_this_file(&item) {
             continue; // ignore files
         }
