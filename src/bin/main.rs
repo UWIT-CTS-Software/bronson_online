@@ -1752,12 +1752,16 @@ fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress
                     alert: 0,
                     error_message: String::new()
                 },
-                Err(m)      => DB_IpAddress {
-                    hostname: net.clone().unwrap().hostname,
-                    ip: String::from("x"),
-                    last_ping: String::from(format!("{}", chrono::Utc::now())),
-                    alert: net.clone().unwrap().alert + 1,
-                    error_message: String::from(m)
+                Err(m)      => {
+                    debug!("{}", m);
+                    
+                    DB_IpAddress {
+                        hostname: net.clone().unwrap().hostname,
+                        ip: String::from("x"),
+                        last_ping: String::from(format!("{}", chrono::Utc::now())),
+                        alert: net.clone().unwrap().alert + 1,
+                        error_message: String::from(m)
+                    }
                 }
             }
         ))
