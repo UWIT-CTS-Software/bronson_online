@@ -343,6 +343,7 @@ impl Database {
 				};
 
 				self.update_building(&new_bldg);
+				self.update_building(&new_bldg);
 			}
 		}
 
@@ -416,6 +417,7 @@ impl Database {
 					};
 
 					self.update_room(&new_room);
+					self.update_room(&new_room);
 				}
 			}
 		}
@@ -426,8 +428,7 @@ impl Database {
 			.expect("Error loading users.");
 
 		if user_results.len() == 0 {
-			let user_file: String = read_to_string(USERS).ok()?;
-			let json_users: HashMap<String, i16> = serde_json::from_str(user_file.as_str()).ok()?;
+			let json_users: HashMap<String, i16> = serde_json::from_str(&env::var("USERS_JSON").unwrap()).ok()?;
 
 			for (user, perms) in json_users.iter() {
 				let new_user = DB_User { 
@@ -435,6 +436,7 @@ impl Database {
 					permissions: *perms as i16
 				};
 
+				self.update_user(&new_user);
 				self.update_user(&new_user);
 			}
 
@@ -446,8 +448,7 @@ impl Database {
 			.expect("Error loading keys");
 
 		if key_results.len() == 0 {
-			let key_file: String = read_to_string(KEYS).ok()?;
-			let json_keys: HashMap<String, String> = serde_json::from_str(key_file.as_str()).ok()?;
+			let json_keys: HashMap<String, String> = serde_json::from_str(&env::var("KEYS_JSON").unwrap()).ok()?;
 
 			for (id, value) in json_keys.iter() {
 				let new_key = DB_Key {
@@ -455,6 +456,7 @@ impl Database {
 					val: value.clone()
 				};
 
+				self.update_key(&new_key);
 				self.update_key(&new_key);
 			}
 		}
@@ -617,8 +619,8 @@ impl Database {
 					hostname: hn.clone().unwrap().clone(),
 					ip: String::from("x"),
 					last_ping: String::from("2000-01-01T00:00:00Z"),
-					alert: 0,
-					error_message: String::new()
+					alert: 1,
+					error_message: String::from("Not run yet.")
 				})
 			);
 		}
@@ -1155,7 +1157,8 @@ impl Terminal {
 					},
 					"campus"       => {
 						// WARNING: This function call generates an entirely new Database object that will have a cookie key that is different than the database object in main.
-						// This was done because the only thing being done is data retrieval, not cookie management. I am too lazy to pass a database object to this function.
+						// This was done because the only thing being done is data retrieval, not cookie management. 
+						// I am too lazy to pass a database object to this function.
 						contents = json!(Database::get_campus(&mut Database::new())).to_string().into();
 					},
 					"version"   => {
