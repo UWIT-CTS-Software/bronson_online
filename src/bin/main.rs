@@ -1753,7 +1753,7 @@ fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress
                     error_message: String::new()
                 },
                 Err(m)      => {
-                    debug!("{}", m);
+                    debug!("PIN_ERR: {} failed: {}", net.clone().unwrap().hostname.to_string(), m);
                     
                     DB_IpAddress {
                         hostname: net.clone().unwrap().hostname,
