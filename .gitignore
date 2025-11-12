@@ -10,3 +10,4 @@ output.log
 *.swp
 DAILYLOG.md
 .env
+*.tar

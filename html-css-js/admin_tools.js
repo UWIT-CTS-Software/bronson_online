@@ -47,7 +47,7 @@ Functions
     - filterDatabase()
     - setDBRoomSchedule()
     - cancelRSUpload()
-    - dropHandler(ev)
+    - dropHandler_roomSchedule(ev)
     - processRSUpload()
     - readFileAsync(file)
     - parseRSUpload(arr)
@@ -97,6 +97,7 @@ function sleep(ms) {
 // the user clicks the Upload button. We use DataTransfer so files behave
 // like an input.files collection and keep the File objects in memory.
 const rsDataTransfer = new DataTransfer();
+const aliasDataTransfer = new DataTransfer();
 
 // Adds the 'Admin Tools' tab to the program header
 async function setAdminBronson() {
@@ -1117,7 +1118,7 @@ function formatLSMDevices(lsm_data) {
     return output.data;
 }
 
-// Database Editor Page
+// Database Editor Page 
 // This is intended to be an interface that allows users to update the
 // inventory database without needing direct access to the database itself.
 async function setDBEditor() {
@@ -1261,7 +1262,7 @@ async function setDBEditor() {
                 <button id="${building}-rmvBtn" class="rmvButton" onclick="markBuildingToRemove('${building}-fieldset')"> Remove Building</button>
             </menu>
         </fieldset>`);
-        db_editor.innerHTML += tmp.join();
+        db_editor.innerHTML += tmp.join('');
     });
     // Get timestamps for last room schedule update, sort them by weekday
     let rsTimestamp = await getLastRoomScheduleUpdate();
@@ -1335,7 +1336,7 @@ async function setDBEditor() {
     // TODO: Configure the Modal Pop-Up / Drag and Drop
     const dropZone = document.getElementById("updateFile");
     const output = document.getElementById("output");
-    dropZone.addEventListener("drop", dropHandler);
+    dropZone.addEventListener("drop", dropHandler_roomSchedule);
     window.addEventListener("dragover", (e) => {
         e.preventDefault();
     });
@@ -1424,7 +1425,7 @@ function cancelRSUpload() {
 //   This tool will not touch rooms that are not included in the upload.
 //   Also inform the user a list of rooms that bronson does not have and 
 //   is ignoring.
-function dropHandler(ev) {
+function dropHandler_roomSchedule(ev) {
     // Prevent default behavior (Browsers opening the file)
     ev.preventDefault();
     let result = "";
@@ -2672,10 +2673,14 @@ async function setAliasEditor() {
             </table>
         </div>
         <div>
-            <menu>
+            <menu class="at_menu">
                 <button class="exeButton" onclick="postAliasTable()"> Save Alias Table </button>
                 <button id="addRoomAliasButton" onclick="addRoomAliasRow()"> Add Room Alias </button>
                 <button id="addBuildingAliasButton" onclick="addBuildingAliasRow()"> Add Building Alias </button>
+                <div id="aliasFileSpace" style="float:right;">
+                    <button onclick="setAliasUploader()"> Upload Alias Table JSON </button>
+                    <button onclick="downloadAliasTable()"> Download Alias Table JSON </button>
+                </div>
             </menu>
         </div>
     </fieldset>`;
@@ -2692,6 +2697,59 @@ async function setAliasEditor() {
     }
     sessionStorage.setItem("aliasReset", JSON.stringify({rooms: []}));
     drawAliasTables();
+    return;
+}
+
+function setAliasUploader() {
+    let aliasFileSpace = document.getElementById("aliasFileSpace");
+    if(aliasFileSpace != null) {
+        aliasFileSpace.innerHTML = `<input type="file" id="aliasFileInput" accept=".json">
+        <button class="exeButton" id="submitAliasUploadButton" onclick="submitUploadedAliasTable()"> Import to Editor </button>
+        <button onclick="resetAliasUploader()"> Cancel </button>`;
+    }
+    return;
+}
+
+function submitUploadedAliasTable() {
+    console.log("TODO: Upload");
+    console.log(document.getElementById("aliasFileInput").files[0]);
+    let jsonFile = document.getElementById("aliasFileInput").files[0];
+    let fileReader = new FileReader();
+    fileReader.onload = function(event) {
+        let fileContent = event.target.result;
+        try {
+            let parsedContent = JSON.parse(fileContent);
+            // Validate Structure
+            if(parsedContent.rooms != undefined && parsedContent.buildings != undefined) {
+                console.log("Bronson: Valid Alias Table JSON Detected, Updating Table");
+                sessionStorage.setItem("aliasData", JSON.stringify(parsedContent));
+                drawAliasTables();
+                resetAliasUploader();
+            } else {
+                alert("Invalid Alias Table JSON Structure Detected. Please ensure the file contains both 'rooms' and 'buildings' fields.");
+            }
+        } catch (e) {
+            alert("Error parsing JSON file: " + e.message);
+        }
+    };
+    fileReader.readAsText(jsonFile);
+    return;
+}
+
+function resetAliasUploader() {
+    let aliasFileSpace = document.getElementById("aliasFileSpace");
+    if(aliasFileSpace != null) {
+        aliasFileSpace.innerHTML = `<div class="aliasFileSpace" style="float:right;">
+            <button onclick="setAliasUploader()"> Upload Alias Table JSON </button>
+            <button onclick="downloadAliasTable()"> Download Alias Table JSON </button>
+        </div>`;
+    }
+    return;
+}
+
+async function downloadAliasTable() {
+    let aliasData = sessionStorage.getItem("aliasData");
+    downloadJSON(aliasData, "alias_table.json");
     return;
 }
 
@@ -3165,4 +3223,18 @@ function setNewThreadDuration(taskName) {
         }
         return response;
     })
+}
+
+// Helper Functions
+function downloadJSON(data, filename) {
+    const blob = new Blob([data], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return;
 }
