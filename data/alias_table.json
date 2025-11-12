@@ -1,0 +1,79 @@
+{
+    "buildings": [
+        {
+            "name": "AHC",
+            "lsmName": "AHC",
+            "liveName": "AC"
+        },
+        {
+            "name": "BH",
+            "lsmName": "BH",
+            "liveName": "BE"
+        },
+        {
+            "name": "CL",
+            "lsmName": "COE",
+            "liveName": "CL"
+        },
+        {
+            "name": "ES",
+            "lsmName": "ES",
+            "liveName": "ESB"
+        },
+        {
+            "name": "ST",
+            "lsmName": "ST",
+            "liveName": "STEM"
+        }
+    ],
+    "rooms": [
+        {
+            "name": "AG 0133",
+            "lsmName": "AG 0133 AUD",
+            "liveName": "AG AUD",
+            "hostnameException": ""
+        },
+        {
+            "name": "AHC 0404",
+            "lsmName": "AHC 0404",
+            "liveName": "AC 404A",
+            "hostnameException": ""
+        },
+        {
+            "name": "BU 0057",
+            "lsmName": "BU 0057 AUD",
+            "liveName": "BU AUD",
+            "hostnameException": ""
+        },
+        {
+            "name": "CB 0155",
+            "lsmName": "CB 0155 GYM",
+            "liveName": "CB GYM",
+            "hostnameException": "CB GYM"
+        },
+        {
+            "name": "CL 0502",
+            "lsmName": "COE 0502",
+            "liveName": "CL 502H",
+            "hostnameException": ""
+        },
+        {
+            "name": "ED 0055",
+            "lsmName": "ED 0055 AUD",
+            "liveName": "ED AUD",
+            "hostnameException": "ED AUD"
+        },
+        {
+            "name": "GE 0311",
+            "lsmName": "GE 0311G",
+            "liveName": "GE 311G",
+            "hostnameException": ""
+        },
+        {
+            "name": "HA 0223",
+            "lsmName": "HA 0223",
+            "liveName": "HA 223C",
+            "hostnameException": ""
+        }
+    ]
+}

@@ -49,6 +49,7 @@ use server_lib::{
     jp::{ ping_this, },
     CFM_DIR, WIKI_DIR, /* LOG, */
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
+    SCHD_ERR, DASH_ERR, LDRB_ERR, SPRS_ERR, 
     Database, Terminal, 
     models::{
         DB_Room, DB_Building, DB_User, DB_DataElement,
@@ -180,7 +181,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //let data_database = Database::new();
 
     request_database.init_if_empty();
-    
     // Data Thread Pool Loop (data transfer)
     if matches.opt_present("j") {
         set_jn_thread_true();
@@ -191,7 +191,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         data_sync(data_ts);
     });
 
-    // User Requests / User Thread Pool
+    // User Requests / User Thread Pool    let _ = database.backup();
+
     for stream in listener.incoming() {
         let mut stream = match stream {
             Ok(s) => s,
@@ -297,6 +298,10 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
             duration: 3600,
             timestamp: Utc::now() - Duration::from_secs(3599),
         });
+        ts.tasks.insert("backup".to_string(), TaskSchedule {
+            duration: 86400,
+            timestamp: Utc::now() - Duration::from_secs(86400)
+        });
         ts.tasks.insert("checkerboard".to_string(), TaskSchedule {
             duration: 1800,
             timestamp: Utc::now() - Duration::from_secs(1799),
@@ -362,6 +367,17 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                 "spares"          => {
                     update_lsm_spares(&database, Arc::clone(&lsm_request)).await;
                 },
+                "backup"          => {
+                    info!("[Backup] - Backing up the database.");
+                    let _ = match database.try_get_backup() {
+                        Ok(_)     => (),
+                        Err(s)    => {
+                            error!("DBB_ERR: {}", s);
+                            ()
+                        }
+                    };
+                    info!("[Backup] - Backup request fulfilled.");
+                },
                 "lsmData"         => {
                     println!("MAYBE TODO: Get Diagnostic Information from LSM");
                     //update_lsm_data(&mut database, Arc::clone(&lsm_request)).await;
@@ -386,7 +402,7 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
 
             // Update timestamp (acquire write lock only here)
             if let Some(task) = thread_schedule.write().unwrap().tasks.get_mut(&task_name) {
-                task.timestamp = now;
+                task.timestamp = task.timestamp + Duration::from_secs(task.duration);
             }
         }
 
@@ -545,7 +561,10 @@ async fn handle_connection(
         },
         // Data Requests
         "GET /techSchedule HTTP/1.1"  => {
-            let contents = database.get_data("schedule").unwrap().val.into();
+            let contents = match database.get_data("schedule") {
+                Some(s) => s.val,
+                None    => String::from(SCHD_ERR)
+            }.into();
             res.status(STATUS_200);
             //res.send_file("data/techSchedule.json");
             res.send_contents(contents);
@@ -564,13 +583,19 @@ async fn handle_connection(
         "GET /dashContents HTTP/1.1"       => { // Dashboard Message
             //let mut database = arc_database.write().unwrap();
             let contents = json!({
-                "contents": database.get_data("dashboard").unwrap().val
+                "contents": match database.get_data("dashboard") {
+                    Some(e) => e.val,
+                    None    => String::from(DASH_ERR)
+                }
             }).to_string().into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "GET /leaderboard HTTP/1.1"        => { // OUTGOING, Dashboard Leaderboard
-            let contents = database.get_data("lsm_leaderboard").unwrap().val.into();
+            let contents = match database.get_data("lsm_leaderboard") {
+                Some(l) => l.val,
+                None    => String::from(LDRB_ERR)
+            }.into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -578,7 +603,10 @@ async fn handle_connection(
         "GET /spares HTTP/1.1"             => { // OUTGOING, Dashboard Spares
             // Get Spares from Database
             //let mut database = arc_database.write().unwrap();
-            let contents: Vec<u8> = database.get_data("lsm_spares").unwrap().val.into();
+            let contents: Vec<u8> = match database.get_data("lsm_spares") {
+                Some(s) => s.val,
+                None    => String::from(SPRS_ERR)
+            }.into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
@@ -1463,8 +1491,14 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
         // Get Alias Table, to swap incoming room_names from LSM with
         //   Bronson friendly naming. We filter Alias Table to only contain
         //   rooms that are relevant to current LSM request.
-        let alias_table : DB_DataElement = database.get_data("alias_table")
-            .expect("Alias_table has not been set yet.");
+        let alias_table : DB_DataElement = match database.get_data("alias_table") {
+            Some(at) => at,
+            None     => DB_DataElement { 
+                key: String::from("alias_table"),
+                val: String::from("{\"buildings\": [], \"rooms\": []}") 
+            }
+        };
+        
         let alias_obj: Value = serde_json::from_str(&alias_table.val)
             .expect("Unable to Parse Alias Table Contents.");
         let alias_rooms = alias_obj.get("rooms").unwrap();
@@ -1742,12 +1776,16 @@ fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress
                     alert: 0,
                     error_message: String::new()
                 },
-                Err(m)      => DB_IpAddress {
-                    hostname: net.clone().unwrap().hostname,
-                    ip: String::from("x"),
-                    last_ping: String::from(format!("{}", chrono::Utc::now())),
-                    alert: net.clone().unwrap().alert + 1,
-                    error_message: String::from(m)
+                Err(m)      => {
+                    debug!("PIN_ERR: {} failed: {}", net.clone().unwrap().hostname.to_string(), m);
+                    
+                    DB_IpAddress {
+                        hostname: net.clone().unwrap().hostname,
+                        ip: String::from("x"),
+                        last_ping: String::from(format!("{}", chrono::Utc::now())),
+                        alert: net.clone().unwrap().alert + 1,
+                        error_message: String::from(m)
+                    }
                 }
             }
         ))
@@ -1969,6 +2007,8 @@ fn cfm_build_dir() -> Vec<u8> {
     for (_, &ref item) in cfm_dirs.iter().enumerate() {
         if (&item[(cut_index + 1)..]).to_string().starts_with('_') {
             continue; // ignore directories starting with '_'
+        } else if (&item[(cut_index + 1)..]).to_string().starts_with('.') {
+            continue; // ignore directories starting with '.'
         } else if is_this_file(&item) {
             continue; // ignore files
         }

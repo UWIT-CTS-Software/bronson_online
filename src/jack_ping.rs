@@ -14,7 +14,6 @@ pub mod jp {
     pub fn ping_this(hostname: &String) -> Result<String, String> {
         use pinger::PingResult;
         use regex::Regex;
-        // let mut response = String::from("x");
         let ip_filter = Regex::new(r"[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}").unwrap();
 
 
@@ -24,9 +23,9 @@ pub mod jp {
             Ok(resp) => {
                 ping_response = resp.recv().unwrap(); 
                 },
-            Err(_) => {
-                //println!("Error Pinging {}", hostname);
-                return Ok(String::from("x"));
+            Err(m) => {
+                // println!("Error Pinging {}", hostname);
+                return Err(m.to_string());
                 },
         }
 
@@ -36,7 +35,7 @@ pub mod jp {
             PingResult::Pong(_dur, string) => {
                 pong_string = String::from( match ip_filter.find(&string) {
                     Some(ip) => ip.as_str(),
-                    None     => "x"
+                    None     => return Err(String::from("Not found."))
                 });
             },
             PingResult::Timeout(string) => {

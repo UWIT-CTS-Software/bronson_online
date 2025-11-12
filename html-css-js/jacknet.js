@@ -219,6 +219,7 @@ function downloadCsv(data) {
 
     a.click();
 
+    // TODO: Alter this to a pop-up notification
     updateConsole("Downloaded " + filename + '.csv');
 
     return;
