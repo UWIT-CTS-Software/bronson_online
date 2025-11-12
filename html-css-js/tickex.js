@@ -88,11 +88,79 @@ function showPopup(ticket) {
 
 // Hides the popup
 function hidePopup() {
-    let popupContainer = document.querySelector('.tx_popupContainer.popupActive');
+    const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
     // document.getElementById('terminal').style.display = 'block'; // Show Terminal
 
     if (popupContainer) {
         popupContainer.classList.remove('popupActive');
+    }
+}
+
+// Search function for searchBar
+function searchListener(sortBy) {
+    const searchBar = document.getElementById('searchBar');
+
+
+    // Check for empty search bar
+    searchBar.addEventListener('keyup', function() {
+        if ((this.value || '').trim() === '') {
+            performSearch("", sortBy); // Empty Search
+        }
+    });
+
+    // Check for enter key
+    searchBar.addEventListener('keydown', function(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            searchBar.blur();
+
+            let search = (this.value || '').trim().toLowerCase();
+            performSearch(search, sortBy);
+        }
+    });
+
+}
+
+// Performs the search with current text within search bar
+function performSearch(search, sortBy) {
+    const unalteredTicketData = JSON.parse(sessionStorage.getItem("ticketData"));
+    let matchedTickets = [];
+
+    const newTickets = document.getElementById("newTicketsBoard");
+    const catchAllTickets = document.getElementById("catchAllTicketsBoard");
+    const closedTickets = document.getElementById("closedTicketsBoard");
+
+    search = search.replaceAll("monday", "mon");
+    search = search.replaceAll("tuesday", "tue");
+    search = search.replaceAll("wednesday", "wed");
+    search = search.replaceAll("thursday", "thu");
+    search = search.replaceAll("friday", "fri");
+    search = search.replaceAll("saturday", "sat");
+    search = search.replaceAll("sunday", "sun");
+
+    matchedTickets = []; // Clear
+
+    if (search !== "") {
+        for (let i = 0; i < unalteredTicketData.length; i++) {
+
+            // Query Specific Fields
+            if (unalteredTicketData[i].ID.toLowerCase().includes(search) ||
+                unalteredTicketData[i].Title.toLowerCase().includes(search) ||
+                unalteredTicketData[i].LocationName.toLowerCase().includes(search) ||
+                unalteredTicketData[i].RequestorName.toLowerCase().includes(search) ||
+                unalteredTicketData[i].CreatedFullName.toLowerCase().includes(search) ||
+                unalteredTicketData[i].CreatedDate.toLowerCase().includes(search) ||
+                unalteredTicketData[i].ModifiedDate.toLowerCase().includes(search) ||
+                unalteredTicketData[i].Description.toLowerCase().includes(search))
+            {
+                matchedTickets.push(unalteredTicketData[i]);
+            }
+        }
+
+        initBoard(matchedTickets, sortBy, newTickets, catchAllTickets, closedTickets);
+    }
+    else {
+        initBoard(unalteredTicketData, sortBy, newTickets, catchAllTickets, closedTickets);
     }
 }
 
@@ -132,8 +200,8 @@ function sortTickets(tickets, sortBy) {
         ];
 
         tickets = tickets.sort((a, b) => {
-            let aIndex = statusOrder.indexOf(a.StatusName);
-            let bIndex = statusOrder.indexOf(b.StatusName);
+            const aIndex = statusOrder.indexOf(a.StatusName);
+            const bIndex = statusOrder.indexOf(b.StatusName);
             return aIndex - bIndex;
         });
 
@@ -149,11 +217,16 @@ function sortTickets(tickets, sortBy) {
 }
 
 // Add tickets to the board
-function initBoard(tickets, ticketsHtml) {
-    ticketsHtml.newTickets = ``;
-    ticketsHtml.catchAllTickets = ``;
-    ticketsHtml.closedTickets = ``;
+function initBoard(tickets, sortBy, newTickets, catchAll, closedTickets) {
+    let ticketsHtml = {
+        newTickets: "",
+        catchAllTickets: "",
+        closedTickets: ""
+    };
+    
+    tickets = sortTickets(tickets, sortBy);
 
+    // Put tickets in proper board sections
     for (let ticket of tickets) {
         let ticketRow = `
             <tr class="tx_ticket" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
@@ -165,7 +238,8 @@ function initBoard(tickets, ticketsHtml) {
         `;
 
         // Days old < 14 or status is new
-        if ((Date.now() - new Date(ticket.CreatedDate) < 14 * 24 * 60 * 60 * 1000 || ticket.StatusName.toLowerCase() === 'new')
+        if ((Date.now() - new Date(ticket.CreatedDate) < 14 * 24 * 60 * 60 * 1000 
+                || ticket.StatusName.toLowerCase() === 'new')
                 && ticket.StatusName.toLowerCase() !== 'closed') {
             ticketsHtml.newTickets += ticketRow;
         }
@@ -183,69 +257,55 @@ function initBoard(tickets, ticketsHtml) {
             ticketsHtml.closedTickets += ticketRow;
         }
     }
-}
 
-// Create board HTML elements
-function createBoard(newTickets, catchAll, closedTickets, ticketsHtml) {
+    // Set Board HTML
     newTickets.innerHTML = `
-        <fieldset>
-            <legend>New CTS Tickets</legend>
+        <fieldset><legend>New CTS Tickets</legend>
             <div class="tx_ticketContainer" id="new">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>ID</th>
-                            <th>Location</th>
-                            <th>Status</th>
-                        </tr>
-                </thead>
+                    <thead><tr>
+                        <th>Title</th>
+                        <th>ID</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                    </tr></thead>
                     <tbody>
                         ${ticketsHtml.newTickets}
                     </tbody>
                 </table>
-            </div>
-        </fieldset>
+            </div></fieldset>
     `;
 
     catchAll.innerHTML = `
-        <fieldset>
-            <legend>Ticket Catch All</legend>
+        <fieldset><legend>Ticket Catch All</legend>
             <div class="tx_ticketContainer" id="catchAll">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>ID</th>
-                            <th>Location</th>
-                            <th>Status</th>
-                        </tr>
-                </thead>
+                    <thead><tr>
+                        <th>Title</th>
+                        <th>ID</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                    </tr></thead>
                     <tbody>
                         ${ticketsHtml.catchAllTickets}
                     </tbody>
                 </table>
-            </div>
-        </fieldset>
+            </div></fieldset>
     `;
 
     closedTickets.innerHTML = `
-        <fieldset>
-            <legend>Closed Tickets</legend>
+        <fieldset><legend>Closed Tickets</legend>
             <div class="tx_ticketContainer" id="closed">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>ID</th>
-                        </tr>
-                </thead>
+                    <thead><tr>
+                        <th>Title</th>
+                        <th>ID</th>
+                    </tr></thead>
                     <tbody>
                         ${ticketsHtml.closedTickets}
                     </tbody>
                 </table>
-            </div>
-        </fieldset>
+            </div></fieldset>
     `;
 }
 
@@ -262,7 +322,6 @@ async function fetchTickets() {
 
 async function setTickex() {
     preserveCurrentTool();
-    listenEscapeKey();
 
     // TEMPORARY:
     // Clear Tickex cache so new HTML is always loaded
@@ -279,8 +338,8 @@ async function setTickex() {
     let newCurrent = document.getElementById("TXButton");
     newCurrent.classList.add("selected");
 
-
     history.pushState("test", "Tickex", "/tickex");
+
 
     let progGuts = document.querySelector('.program_board .program_guts');
     // Check for preserved space
@@ -308,6 +367,18 @@ async function setTickex() {
     tx_container.classList.add("tx_container");
 
 
+    // Main Container
+    let main_container = document.createElement('div');
+    main_container.appendChild(tx_container);
+    main_container.classList.add('program_guts');
+    progGuts.replaceWith(main_container);
+
+
+
+    /* -------------------- Tickex Page -------------------- */
+    listenEscapeKey();
+
+    // Sort By Box - by date, status, and room location
     let sortByBox = document.createElement("div");
     sortByBox.classList.add("tx_sortByBox");
     sortByBox.innerHTML = `
@@ -328,6 +399,7 @@ async function setTickex() {
     tx_container.append(sortByBox);
 
 
+    // TeamDynamix Hotlink
     let tdxHotlink = document.createElement("div");
     tdxHotlink.classList.add("tx_tdxHotlink");
     tdxHotlink.innerHTML = `
@@ -339,57 +411,56 @@ async function setTickex() {
     tx_container.append(tdxHotlink);
 
 
-    let infoBox = document.createElement("div");
-    infoBox.classList.add("tx_infoBox");
-    infoBox.innerHTML = `
-        <legend>Welcome to Tickex!</legend>
-        <p>Tickex is a Ticket Management System to help track and manage TeamDynamix tickets.</p>
+    // Search Bar
+    let searchBar = document.createElement("div");
+    searchBar.classList.add("tx_search");
+    searchBar.innerHTML = `
+        <legend>Search</legend>
+        <textarea id="searchBar" placeholder="Search: Title, ID, Room, Date, Description, etc...  (Enter)"></textarea>
         <ul>
     `;
-    tx_container.append(infoBox);
+    tx_container.append(searchBar);
 
-
-    let main_container = document.createElement('div');
-    main_container.appendChild(tx_container);
-    main_container.classList.add('program_guts');
-    progGuts.replaceWith(main_container);
-
-
+    // The 3 Tickex boards - New, Catch All, Closed
     let newTickets = document.createElement("div");
     newTickets.classList.add("tx_newTickets");
+    newTickets.id = 'newTicketsBoard';
     let catchAll = document.createElement("div");
     catchAll.classList.add("tx_catchAllTickets");
+    catchAll.id = 'catchAllTicketsBoard';
     let closedTickets = document.createElement("div");
     closedTickets.classList.add("tx_closedTickets");
+    closedTickets.id = "closedTicketsBoard";
 
     let response = await fetchTickets();
     let tickets = response?.tickets || [];
-    let ticketsHtml = {
-        newTickets: "",
-        catchAllTickets: "",
-        closedTickets: ""
-    };
+
+    sessionStorage.setItem("ticketData", JSON.stringify(tickets));
 
     // Initial board on loadup
-    tickets = sortTickets(tickets, 'created'); // Sort by date on loadup
-    initBoard(tickets, ticketsHtml);
-    createBoard(newTickets, catchAll, closedTickets, ticketsHtml);
+    let sortBy = "created"; // sort by date created on load up
+    tickets = sortTickets(tickets, sortBy);
+    initBoard(tickets, sortBy, newTickets, catchAll, closedTickets);
 
     // Listens to radio buttons, for sorting
     sortByBox.addEventListener('click', (e) => {
         if (e.target.matches('input[type="radio"]')) {
-            let sortBy = e.target.id;
-            let sortedTickets = sortTickets(tickets, sortBy);
-            initBoard(sortedTickets, ticketsHtml);
-            createBoard(newTickets, catchAll, closedTickets, ticketsHtml);
+            sortBy = e.target.id;
+
+            const searchBar = document.getElementById('searchBar');
+            let search = searchBar.value;
+
+            performSearch(search, sortBy);
         }
     });
 
     tx_container.append(newTickets);
     tx_container.append(catchAll);
     tx_container.append(closedTickets);
+    searchListener(sortBy);
 
 
+    // Popup Container - click on ticket for popup to appear
     let popupContainer = document.createElement("div");
     popupContainer.classList.add("tx_popupContainer");
     tx_container.append(popupContainer);
