@@ -588,6 +588,8 @@ async function setUserSchedule() {
         case "abryan9":
             name = "Alex Bryan";
             break;
+        case "lfermeli":
+            name = "Lexus Fermelia";
         default:
             break;
     }

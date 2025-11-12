@@ -1258,11 +1258,22 @@ ol li::marker {
     height: 100px;
 }
 
-.tx_infoBox {
+.tx_search {
     background-color: rgb(50, 50, 50);
     grid-column: 4 / 8;
     grid-row: 1 / 3;
     height: 100px;
+}
+
+.tx_search textarea {
+    width: 90%;
+    height: 40px;
+    margin: 12px 0px 5% 5%;
+    padding-left: 10px;
+    padding-right: 10px;
+    align-items: center;
+    display: block; 
+    text-wrap-style: auto;
 }
 
 .tx_ticketInfo {
