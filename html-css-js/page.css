@@ -1330,6 +1330,42 @@ ol li::marker {
     width: 18%;
 }
 
+.tx_ticketContainer input {
+    background-color: rgb(221 187 96);
+    border: 2px outset rgb(144,118,26);
+    max-width: 10%;
+    padding-left: 4px;
+}
+
+.tx_ticketContainer input::-webkit-outer-spin-button,
+.tx_ticketContainer input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.tx_ticketContainer input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield; 
+}
+
+.tx_ticketContainer button {
+    background-color: #ecc865;
+    padding-inline: 4px;
+    margin: 0px;
+    font-weight: bold;
+}
+
+.tx_ticketContainer span {
+    color: rgb(236 200 101);
+    margin-left: 2px;
+}
+
+.tx_ticketContainer select {
+    max-width: 12%;
+    min-width: 55px;
+    font-weight: bold;
+}
+
 .tx_ticket {
     cursor: pointer;
     color: rgb(236, 200, 101);
@@ -1393,7 +1429,8 @@ ol li::marker {
     padding: 0px 10px 0px 10px;
     margin: 0px 0px;
     border-radius: 0px 0px 6px 0px;
-    width: 90%;
+    max-width: 90%;
+    display: inline-block;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

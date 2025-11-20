@@ -51,8 +51,6 @@ function showPopup(ticket) {
         return;
     }
 
-    console.log(ticket);
-
     const popupContainer = document.querySelector('.tx_popupContainer');
     if (!popupContainer) {
         console.error("Popup container not found");
@@ -80,10 +78,12 @@ function showPopup(ticket) {
             <p>Date Created: ${ticket.CreatedDate || ""}</p>
             <p>Last Modified: ${ticket.ModifiedDate || ""}</p>
             <button class="popup_closeButton" onClick="hidePopup()">Close</button>
-            <button class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
-            <button class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
         </div>
     `;
+
+    // For later:
+    //      <button class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
+    //      <button class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
 }
 
 // Hides the popup
@@ -94,6 +94,30 @@ function hidePopup() {
     if (popupContainer) {
         popupContainer.classList.remove('popupActive');
     }
+}
+
+// Adjusts input ticket field by value
+function kPagerButton(val, inputId, maxPageId) {
+    let inputField = document.getElementById(inputId);
+    if (!inputField) {
+        console.warn(`Input field '${inputId}' not found yet.`);
+        return;
+    }
+
+    const maxPage = document.getElementById(maxPageId);
+    const maxVal = parseInt(maxPage?.textContent);
+    if (isNaN(maxVal)) {
+        console.warn(`Max value from '${maxPage}' is not a number.`);
+        return;
+    }
+
+    const newVal = parseInt(inputField.value) + val;
+
+    if (newVal <= 0) { inputField.value = 1; } 
+    else if (newVal > maxVal) { inputField.value = maxVal; }
+    else { inputField.value = newVal; }
+
+
 }
 
 // Search function for searchBar
@@ -126,10 +150,6 @@ function performSearch(search, sortBy) {
     const unalteredTicketData = JSON.parse(sessionStorage.getItem("ticketData"));
     let matchedTickets = [];
 
-    const newTickets = document.getElementById("newTicketsBoard");
-    const catchAllTickets = document.getElementById("catchAllTicketsBoard");
-    const closedTickets = document.getElementById("closedTicketsBoard");
-
     search = search.replaceAll("monday", "mon");
     search = search.replaceAll("tuesday", "tue");
     search = search.replaceAll("wednesday", "wed");
@@ -157,10 +177,10 @@ function performSearch(search, sortBy) {
             }
         }
 
-        initBoard(matchedTickets, sortBy, newTickets, catchAllTickets, closedTickets);
+        initBoard(matchedTickets, sortBy);
     }
     else {
-        initBoard(unalteredTicketData, sortBy, newTickets, catchAllTickets, closedTickets);
+        initBoard(unalteredTicketData, sortBy);
     }
 }
 
@@ -177,12 +197,12 @@ function listenEscapeKey() {
     });
 }
 
-// TODO
+// For Later - When we have write access to TDX API
 function sendToASU() {
     alert("This feature is not yet implemented. -Lex");
 }
 
-// TODO
+// For Later - When we have write access to TDX API
 function sendToHelpDesk() {
     alert("This feature is not yet implemented. -Lex");
 }
@@ -217,7 +237,7 @@ function sortTickets(tickets, sortBy) {
 }
 
 // Add tickets to the board
-function initBoard(tickets, sortBy, newTickets, catchAll, closedTickets) {
+function initBoard(tickets, sortBy, savedState) {
     let ticketsHtml = {
         newTickets: "",
         catchAllTickets: "",
@@ -225,6 +245,25 @@ function initBoard(tickets, sortBy, newTickets, catchAll, closedTickets) {
     };
     
     tickets = sortTickets(tickets, sortBy);
+
+    let newMaxRows;
+    let catchAllMaxRows;
+    let closedMaxRows;
+
+    try {
+        newMaxRows = parseInt(document.getElementById("newTicket_dropdown").value);
+        catchAllMaxRows = parseInt(document.getElementById("catchAllTicket_dropdown").value);
+        closedMaxRows = parseInt(document.getElementById("closedTicket_dropdown").value);
+    } catch (e) {
+        // First time load, use default values
+        newMaxRows = 15;
+        catchAllMaxRows = 15;
+        closedMaxRows = 15;
+    }
+
+    let newCount = 0;
+    let catchAllCount = 0;
+    let closedCount = 0;
 
     // Put tickets in proper board sections
     for (let ticket of tickets) {
@@ -237,16 +276,22 @@ function initBoard(tickets, sortBy, newTickets, catchAll, closedTickets) {
             </tr>
         `;
 
-        // Days old < 14 or status is new
-        if ((Date.now() - new Date(ticket.CreatedDate) < 14 * 24 * 60 * 60 * 1000 
-                || ticket.StatusName.toLowerCase() === 'new')
-                && ticket.StatusName.toLowerCase() !== 'closed') {
+        // If days old < 14 or status == new
+        const isNew = (Date.now() - new Date(ticket.CreatedDate) < 14 * 24 * 60 * 60 * 1000 
+            || ticket.StatusName.toLowerCase() === 'new') 
+            && ticket.StatusName.toLowerCase() !== 'closed';
+
+        const isClosed = ticket.StatusName.toLowerCase() === 'closed';
+
+        if (isNew && newCount < newMaxRows) {
             ticketsHtml.newTickets += ticketRow;
+            newCount++;
         }
-        if (ticket.StatusName.toLowerCase() !== 'closed') {
+        if (!isClosed && catchAllCount < catchAllMaxRows) {
             ticketsHtml.catchAllTickets += ticketRow;
+            catchAllCount++;
         }
-        if (ticket.StatusName.toLowerCase() === 'closed') {
+        if (isClosed && closedCount < closedMaxRows) {
             ticketRow = `
                 <tr class="tx_ticket" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
                     <td>${ticket.Title}</td>
@@ -255,58 +300,29 @@ function initBoard(tickets, sortBy, newTickets, catchAll, closedTickets) {
             `;
 
             ticketsHtml.closedTickets += ticketRow;
+            closedCount++
         }
     }
 
     // Set Board HTML
-    newTickets.innerHTML = `
-        <fieldset><legend>New CTS Tickets</legend>
-            <div class="tx_ticketContainer" id="new">
-                <table>
-                    <thead><tr>
-                        <th>Title</th>
-                        <th>ID</th>
-                        <th>Location</th>
-                        <th>Status</th>
-                    </tr></thead>
-                    <tbody>
-                        ${ticketsHtml.newTickets}
-                    </tbody>
-                </table>
-            </div></fieldset>
-    `;
+    document.querySelector("#newTicketsBoard tbody").innerHTML = ticketsHtml.newTickets;
+    document.querySelector("#catchAllTicketsBoard tbody").innerHTML = ticketsHtml.catchAllTickets;
+    document.querySelector("#closedTicketsBoard tbody").innerHTML = ticketsHtml.closedTickets;
 
-    catchAll.innerHTML = `
-        <fieldset><legend>Ticket Catch All</legend>
-            <div class="tx_ticketContainer" id="catchAll">
-                <table>
-                    <thead><tr>
-                        <th>Title</th>
-                        <th>ID</th>
-                        <th>Location</th>
-                        <th>Status</th>
-                    </tr></thead>
-                    <tbody>
-                        ${ticketsHtml.catchAllTickets}
-                    </tbody>
-                </table>
-            </div></fieldset>
-    `;
+    if (savedState) {
+        document.getElementById("newTicket_dropdown").value = savedState.new;
+        document.getElementById("catchAllTicket_dropdown").value = savedState.catchAll;
+        document.getElementById("closedTicket_dropdown").value = savedState.closed;
+    }
 
-    closedTickets.innerHTML = `
-        <fieldset><legend>Closed Tickets</legend>
-            <div class="tx_ticketContainer" id="closed">
-                <table>
-                    <thead><tr>
-                        <th>Title</th>
-                        <th>ID</th>
-                    </tr></thead>
-                    <tbody>
-                        ${ticketsHtml.closedTickets}
-                    </tbody>
-                </table>
-            </div></fieldset>
-    `;
+    ["new", "catchAll", "closed"].forEach(section => {
+        document
+            .getElementById(`${section}Ticket_dropdown`)
+            .addEventListener("change", () => {
+                performSearch(document.getElementById("searchBar").value, sortBy);
+            });
+    });
+
 }
 
 async function fetchTickets() {
@@ -326,7 +342,6 @@ async function setTickex() {
     // TEMPORARY:
     // Clear Tickex cache so new HTML is always loaded
     sessionStorage.removeItem("Tickex_html");
-    sessionStorage.removeItem("Tickex_stash");
     /////////////
 
     document.title = "Tickex - Bronson";
@@ -425,12 +440,117 @@ async function setTickex() {
     let newTickets = document.createElement("div");
     newTickets.classList.add("tx_newTickets");
     newTickets.id = 'newTicketsBoard';
+    newTickets.innerHTML = `
+        <fieldset><legend>New CTS Tickets</legend>
+            <div class="tx_ticketContainer" id="new">
+                <table>
+                    <thead><tr>
+                        <th>Title</th>
+                        <th>ID</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div class="k_pager" id="newPager">
+                    <button class="k_pager_button" id="new_minus10" onclick="kPagerButton(-10, 'newTicket_input', 'newMaxPage')">-10</button>
+                    <button class="k_pager_button" id="new_minus1" onclick="kPagerButton(-1, 'newTicket_input', 'newMaxPage')"><</button>
+                    <input type="number" class="k_input_inner" id="newTicket_input" autocomplete="off" value="1"></input>
+                    <span>of </span>
+                    <span id="newMaxPage">1</span>
+                    <button class="k_pager_button" id="new_plus1" onclick="kPagerButton(1, 'newTicket_input', 'newMaxPage')">></button>
+                    <button class="k_pager_button" id="new_plus10" onclick="kPagerButton(10, 'newTicket_input', 'newMaxPage')">+10</button>
+                    <span>Items per page: </span>
+                    <select class="k_pager_button" id="newTicket_dropdown">
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                        <option value="15" selected>15</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="40">40</option>
+                        <option value="50">50</option>
+                        <option value="75">75</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div></fieldset>
+    `;
+
     let catchAll = document.createElement("div");
     catchAll.classList.add("tx_catchAllTickets");
     catchAll.id = 'catchAllTicketsBoard';
+        catchAll.innerHTML = `
+        <fieldset><legend>Ticket Catch All</legend>
+            <div class="tx_ticketContainer" id="catchAll">
+                <table>
+                    <thead><tr>
+                        <th>Title</th>
+                        <th>ID</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div class="k_pager" id="catchAllPager">
+                    <button class="k_pager_button" id="catchAll_minus10" onclick="kPagerButton(-10, 'catchAllTicket_input', 'catchAllMaxPage')">-10</button>
+                    <button class="k_pager_button" id="catchAll_minus1" onclick="kPagerButton(-1, 'catchAllTicket_input', 'catchAllMaxPage')"><</button>
+                    <input type="number" class="k_input_inner" id="catchAllTicket_input" autocomplete="off" value="1"></input>
+                    <span>of </span>
+                    <span id="catchAllMaxPage">1</span>
+                    <button class="k_pager_button" id="catchAll_plus1" onclick="kPagerButton(1, 'catchAllTicket_input', 'catchAllMaxPage')">></button>
+                    <button class="k_pager_button" id="catchAll_plus10" onclick="kPagerButton(10, 'catchAllTicket_input', 'catchAllMaxPage')">+10</button>
+                    <span>Items per page: </span>
+                    <select class="k_pager_button" id="catchAllTicket_dropdown">
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                        <option value="15" selected>15</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="40">40</option>
+                        <option value="50">50</option>
+                        <option value="75">75</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div></fieldset>
+    `;
+
     let closedTickets = document.createElement("div");
     closedTickets.classList.add("tx_closedTickets");
     closedTickets.id = "closedTicketsBoard";
+        closedTickets.innerHTML = `
+        <fieldset><legend>Closed Tickets</legend>
+            <div class="tx_ticketContainer" id="closed">
+                <table>
+                    <thead><tr>
+                        <th>Title</th>
+                        <th>ID</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div class="k_pager" id="closedPager">
+                    <button class="k_pager_button" id="closed_minus10" onclick="kPagerButton(-10, 'closedTicket_input', 'closedMaxPage')">-10</button>
+                    <button class="k_pager_button" id="closed_minus1" onclick="kPagerButton(-1, 'closedTicket_input', 'closedMaxPage')"><</button>
+                    <input type="number" class="k_input_inner" id="closedTicket_input" autocomplete="off" value="1"></input>
+                    <span>of </span>
+                    <span id="closedMaxPage">1</span>
+                    <button class="k_pager_button" id="closed_plus1" onclick="kPagerButton(1, 'closedTicket_input', 'closedMaxPage')">></button>
+                    <button class="k_pager_button" id="closed_plus10" onclick="kPagerButton(10, 'closedTicket_input', 'closedMaxPage')">+10</button>
+                    <span>Items per page: </span>
+                    <select class="k_pager_button" id="closedTicket_dropdown">
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                        <option value="15" selected>15</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="40">40</option>
+                        <option value="50">50</option>
+                        <option value="75">75</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div></fieldset>
+    `;
 
     let response = await fetchTickets();
     let tickets = response?.tickets || [];
@@ -440,7 +560,6 @@ async function setTickex() {
     // Initial board on loadup
     let sortBy = "created"; // sort by date created on load up
     tickets = sortTickets(tickets, sortBy);
-    initBoard(tickets, sortBy, newTickets, catchAll, closedTickets);
 
     // Listens to radio buttons, for sorting
     sortByBox.addEventListener('click', (e) => {
@@ -457,6 +576,9 @@ async function setTickex() {
     tx_container.append(newTickets);
     tx_container.append(catchAll);
     tx_container.append(closedTickets);
+
+    initBoard(tickets, sortBy);
+
     searchListener(sortBy);
 
 
