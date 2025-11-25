@@ -549,12 +549,15 @@ impl Database {
 	}
 
 	pub fn try_recover_key(&mut self, recover_key: &str, recover_data: &HashMap<String, Value>) -> Result<(), String> {
-		let recover_val: Value = match recover_data.get(recover_key) {
-			Some(v) => v.clone(),
-			None    => {
-				return Err(String::from("No key-value pair found"));
-			}
-		};
+		let mut recover_val: Value = serde_json::from_str("{}").unwrap(); // Keys are fetched from a file, not from data dump, so a little finessing needs done.
+		if recover_key != "keys" {
+			recover_val = match recover_data.get(recover_key) {
+				Some(v) => v.clone(),
+				None    => {
+					return Err(String::from("No key-value pair found"));
+				}
+			};
+		}
 		match recover_key {
 			"buildings" => {
 				let backup_buildings: Vec<DB_Building> = serde_json::from_value(recover_val).unwrap();
@@ -580,6 +583,22 @@ impl Database {
 					self.update_data(&d);
 				}
 			},
+			"keys"      => {
+				let json_keys: HashMap<String, String> = match serde_json::from_str(&env::var("KEYS_JSON").unwrap()) {
+					Ok(e) => e,
+					Err(m) => return Err(format!("Key not found: {}", m))
+				};
+
+				for (id, value) in json_keys.iter() {
+					let new_key = DB_Key {
+						key_id: id.clone(),
+						val: value.clone()
+					};
+
+					self.update_key(&new_key);
+					self.update_key(&new_key);
+				}
+			}
 			&_          => { return Err(String::from("Unknown recovery file key")); }
 		}
 
