@@ -23,6 +23,26 @@
   <!-- <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> -->
   <script>
 
+
+    // When the user clicks anywhere outside of the modal, close it
+    const hb_modal = document.getElementById('hb_menu');
+    const br_modal = document.getElementById('bug_report_modal');
+    const hb_button = document.getElementById('hb_button');
+    window.onclick = function(event) {
+      if (document.querySelector('.hb_menu').classList.contains("showMenu") && event.target != hb_modal && event.target != hb_button) {
+        toggleHBMenu();
+      }
+      /* if (document.querySelector(".hb_menu").classList.contains("showMenu") && event.target != hb_modal) {
+        toggleHBMenu();
+      }
+      if (event.target == hb_button) {
+        toggleHBMenu();
+      } */
+      if (event.target == br_modal) {
+        terminateForm();
+      }
+    }
+
     // Hamburger Menu Toggle
     function toggleHBMenu() {
       const menu = document.querySelector(".hb_menu");
@@ -191,12 +211,6 @@
 
     }
 
-    var modal = document.getElementById('bug_report_modal');
-    window.onclick = function(event) {
-      if (event.target == modal) {
-        terminateForm();
-      }
-    }
   </script>
   <!-- body -->
   <body onload="setDashboard()">
@@ -229,7 +243,7 @@
           </fieldset>
         </div>
         <!-- Site Button -->
-        <h1 class='site_header' onclick='toggleHBMenu()' title="Hamburger Menu Toggle">
+        <h1 class='site_header' id="hb_button" onclick='toggleHBMenu()' title="Hamburger Menu Toggle">
           Bronson</h1>
         <!-- Tool Tabs / Middle Section -->
         <div id="middle" class="middle_section">
