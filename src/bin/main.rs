@@ -362,10 +362,14 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                     debug!("[ThreadSchedule Debug] - Two Minute Message");
                 },
                 "leaderboard"     => {
+                    info!("[Data] - Pulling New LSM Leaderboard");
                     update_room_check_leaderboard(&mut database, Arc::clone(&lsm_request)).await;
+                    info!("[Data] - New LSM Leaderboard Pulled")
                 },
                 "spares"          => {
+                    info!("[Data] - Pulling New LSM Spare Information");
                     update_lsm_spares(&mut database, Arc::clone(&lsm_request)).await;
+                    info!("[Data] - New LSM Spare Information Pulled")
                 },
                 "backup"          => {
                     info!("[Backup] - Backing up the database.");
@@ -379,13 +383,20 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                     info!("[Backup] - Backup request fulfilled.");
                 },
                 "lsmData"         => {
+                    info!("[Data] - Pulling LSM Inventory Information");
                     println!("MAYBE TODO: Get Diagnostic Information from LSM");
                     //update_lsm_data(&mut database, Arc::clone(&lsm_request)).await;
+                    info!("[Data] - Completed LSM Inventory Data Retreieval");
                 },
                 "checkerboard"    => {
-                    let _ = run_checkerboard(&mut database, Arc::clone(&lsm_request)).await;
+                    info!("[Data] - Running Checkerboard");
+                    let _ = match run_checkerboard(&mut database, Arc::clone(&lsm_request)).await {
+                        Ok(_)  =>  info!("[Data] - Checkerboard Run Complete"),
+                        Err(m) => error!("[Data] - Checkerboard Run FAILED: {}", m)
+                    };
                 },
                 "jacknet"         => { // Not-LSM
+                    info!("[Data] - Running JackNet");
                     if jn_st {
                         let mut db_jn_clone = database.clone();
                         jn_thread.execute( move || async {
@@ -394,6 +405,7 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                     } else {
                         execute_ping(&mut database).await;
                     }
+                    info!("[Data] - JackNet Complete");
                 },
                 _                 => {
                     warn!("Unknown task: {}", task_name)
@@ -1402,7 +1414,6 @@ async fn handle_connection(
 
 
 async fn update_room_check_leaderboard(database: &mut Database, req: Arc<RwLock<Client>>) {
-    info!("[Data] - Pulling New LSM Leaderboard");
     let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
     let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
     let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
@@ -1474,7 +1485,6 @@ async fn update_room_check_leaderboard(database: &mut Database, req: Arc<RwLock<
 }
 
 async fn update_lsm_spares(database: &mut Database, req: Arc<RwLock<Client>>) {
-    info!("[Data] - Pulling New LSM Spare Information");
     let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
 
     let body_spares: String;
@@ -1508,7 +1518,6 @@ async fn update_lsm_spares(database: &mut Database, req: Arc<RwLock<Client>>) {
 // Unsure if this is worth implementing...
 #[allow(dead_code)]
 async fn update_lsm_data(_database: &mut Database, _req: Arc<RwLock<Client>>) {
-    info!("[Data] - Pulling LSM Inventory Information");
     // let buildings = database.get_buildings();
     // let api_endpoints = ["BuildingProcs","BuildingDisplays","BuildingProjectors","BuildingTouchPanels"];
     // for api_endpoint in api_endpoints {
@@ -1537,13 +1546,11 @@ async fn update_lsm_data(_database: &mut Database, _req: Arc<RwLock<Client>>) {
     //         };
     //     }
     // }
-    info!("[Data] - Completed LSM Inventory Data Retreieval");
     return;
 }
 
 async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> Result<(), String> {
     // Get an array of all buildings.
-    info!("[Data] - Running Checkerboard");
     let buildings = match database.get_buildings() {
         Ok(bs) => bs,
         Err(m) => {
@@ -1713,7 +1720,6 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> 
         };
         let _ = database.update_building(&new_building);
     }
-    info!("[Data] - Checkerboard Run Complete");
     return Ok(())
 }
 
@@ -1834,7 +1840,6 @@ NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
 
 // call ping_this executible here
 async fn execute_ping(database: &mut Database) {
-    info!("[Data] - Running JackNet");
     let buildings: HashMap<String, DB_Building> = match database.get_buildings() {
         Ok(bs) => bs,
         Err(m) => {
@@ -1863,7 +1868,6 @@ async fn execute_ping(database: &mut Database) {
             });
         }
     }
-    info!("[Data] - JackNet Complete");
     return;
 }
 
