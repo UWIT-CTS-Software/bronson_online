@@ -74,3 +74,39 @@ CREATE TABLE IF NOT EXISTS bronson.data (
     val TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS bronson.tickets (
+    id                      INTEGER     PRIMARY KEY,
+    type_name               TEXT        NOT NULL,
+    type_category_name      TEXT        NOT NULL,
+    title                   TEXT        NOT NULL,
+    description             TEXT        NOT NULL,
+    account_name            TEXT        NOT NULL,
+    status_name             TEXT        NOT NULL,
+    created_date            TEXT        NOT NULL,
+    created_full_name       TEXT        NOT NULL,
+    modified_date           TEXT        NOT NULL,
+    modified_full_name      TEXT        NOT NULL,
+    requestor_name          TEXT        NOT NULL,
+    requestor_email         TEXT        NOT NULL,
+    requestor_phone         TEXT        NOT NULL,
+    days_old                SMALLINT    NOT NULL,
+    responsible_full_name   TEXT        NOT NULL,
+    responsible_group_name  TEXT        NOT NULL,
+
+    CHECK (length(type_name) <= 51),
+    CHECK (length(type_category_name) <= 51),
+    CHECK (length(title) <= 201),
+    CHECK (length(description) <= 501),
+    CHECK (length(account_name) <= 128),
+    CHECK (length(status_name) <= 16),
+    CHECK (length(created_date) <= 32),
+    CHECK (length(created_full_name) <= 32),
+    CHECK (length(modified_date) <= 32),
+    CHECK (length(modified_full_name) <= 32),
+    CHECK (length(requestor_name) <= 32),
+    CHECK (length(requestor_email) <= 32),
+    CHECK (length(requestor_phone) <= 32),
+    CHECK (length(responsible_full_name) <= 32),
+    CHECK (length(responsible_group_name) <= 128)
+);
+

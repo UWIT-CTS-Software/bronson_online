@@ -584,7 +584,7 @@ impl Database {
 				}
 			},
 			"keys"      => {
-				let json_keys: HashMap<String, String> = match serde_json::from_str(&env::var("KEYS_JSON").unwrap()) {
+				let json_keys: HashMap<String, String> = match serde_json::from_str(read_to_string(KEYS).unwrap().as_str()) {
 					Ok(e) => e,
 					Err(m) => return Err(format!("Key not found: {}", m))
 				};
@@ -595,7 +595,6 @@ impl Database {
 						val: value.clone()
 					};
 
-					self.update_key(&new_key);
 					self.update_key(&new_key);
 				}
 			}
@@ -1324,7 +1323,7 @@ pub static BLDG_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/buildin
 pub static CAMPUS_STR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.json");
 pub static ALIAS_JSON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/alias_table.json");
 pub static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
-pub static TICKET	 : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/exampleTickets.json");
+pub static TICKET	 : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/tickets.json");
 pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
 pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/roomConfig_agg.csv");
 pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.csv");

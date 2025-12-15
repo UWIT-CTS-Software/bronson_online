@@ -8,6 +8,8 @@ DROP TABLE IF EXISTS bronson.keys;
 
 DROP TABLE IF EXISTS bronson.data;
 
+DROP TABLE IF EXISTS bronson.tickets;
+
 DROP TYPE IF EXISTS bronson.hostname CASCADE;
 
 DROP TYPE IF EXISTS bronson.ip_address CASCADE;

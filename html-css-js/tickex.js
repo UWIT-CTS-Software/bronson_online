@@ -8,7 +8,7 @@
                                   _/ |
                                  |__/
 TOC:
-    - listenEscapeKey()
+    - initializeListeners()
     - sendToASU()
     - sendToHelpDesk()
     - sortBy()
@@ -43,6 +43,76 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 \__|  \__|   \__|   \__|     \__|\________|
 */
 
+
+
+// Initializes all listeners for Tickex
+function initializeListeners() {
+    // Escape Key
+    document.addEventListener('keydown', (e) => {
+        const pressedKey = e.key;
+
+        if (pressedKey == 'Escape') {
+            if (document.querySelector('.tx_popupContainer.popupActive')) {
+                hidePopup();
+            }
+        }
+    });
+
+    // Listens to radio buttons, for sorting
+    document.getElementById("sortByBox").addEventListener('click', (e) => {
+        if (e.target.matches('input[type="radio"]')) {
+            let sortBy = e.target.id;
+            window.currentSortBy = sortBy;
+
+            const searchBar = document.getElementById('searchBar');
+            let search = searchBar.value;
+
+            performSearch(search, sortBy);
+        }
+    });
+
+    // k-pager listeners
+    ["new", "catchAll", "closed"].forEach(section => {
+        document.getElementById(`${section}Ticket_dropdown`)
+            .addEventListener("change", () => {
+                performSearch(document.getElementById("searchBar").value, window.currentSortBy);
+            });
+
+        document.getElementById(`${section}Ticket_input`)
+            .addEventListener("input", () => {
+                performSearch(document.getElementById("searchBar").value, window.currentSortBy);
+            });
+    });
+
+    const searchBar = document.getElementById('searchBar');
+    // Check for empty search bar
+    searchBar.addEventListener('keyup', function() {
+        if ((this.value || '').trim() === '') {
+            performSearch("", window.currentSortBy); // Empty Search
+        }
+    });
+
+    // Listens for Enter key in search bar
+    searchBar.addEventListener('keydown', function(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            searchBar.blur();
+
+            let search = (this.value || '').trim().toLowerCase();
+            performSearch(search, window.currentSortBy);
+        }
+    });
+}
+
+// For Later - When we have write access to TDX API
+function sendToASU() {
+    alert("This feature is not yet implemented. -Lex");
+}
+
+// For Later - When we have write access to TDX API
+function sendToHelpDesk() {
+    alert("This feature is not yet implemented. -Lex");
+}
 
 // Shows the popup with relavent ticket info
 function showPopup(ticket) {
@@ -112,37 +182,11 @@ function kPagerButton(val, inputId, maxPageId) {
     }
 
     const newVal = parseInt(inputField.value) + val;
-
     if (newVal <= 0) { inputField.value = 1; } 
     else if (newVal > maxVal) { inputField.value = maxVal; }
     else { inputField.value = newVal; }
 
-
-}
-
-// Search function for searchBar
-function searchListener(sortBy) {
-    const searchBar = document.getElementById('searchBar');
-
-
-    // Check for empty search bar
-    searchBar.addEventListener('keyup', function() {
-        if ((this.value || '').trim() === '') {
-            performSearch("", sortBy); // Empty Search
-        }
-    });
-
-    // Check for enter key
-    searchBar.addEventListener('keydown', function(e) {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            searchBar.blur();
-
-            let search = (this.value || '').trim().toLowerCase();
-            performSearch(search, sortBy);
-        }
-    });
-
+    inputField.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 // Performs the search with current text within search bar
@@ -184,29 +228,6 @@ function performSearch(search, sortBy) {
     }
 }
 
-// Closes popup if escape key is pressed
-function listenEscapeKey() {
-    document.addEventListener('keydown', (e) => {
-        const pressedKey = e.key;
-
-        if (pressedKey == 'Escape') {
-            if (document.querySelector('.tx_popupContainer.popupActive')) {
-                hidePopup();
-            }
-        }
-    });
-}
-
-// For Later - When we have write access to TDX API
-function sendToASU() {
-    alert("This feature is not yet implemented. -Lex");
-}
-
-// For Later - When we have write access to TDX API
-function sendToHelpDesk() {
-    alert("This feature is not yet implemented. -Lex");
-}
-
 // Handles sorting of board elements
 //      - sortBy recieves: 'created', 'status', or 'location'
 function sortTickets(tickets, sortBy) {
@@ -237,7 +258,7 @@ function sortTickets(tickets, sortBy) {
 }
 
 // Add tickets to the board
-function initBoard(tickets, sortBy, savedState) {
+function initBoard(tickets, sortBy) {
     let ticketsHtml = {
         newTickets: "",
         catchAllTickets: "",
@@ -246,26 +267,34 @@ function initBoard(tickets, sortBy, savedState) {
     
     tickets = sortTickets(tickets, sortBy);
 
-    let newMaxRows;
-    let catchAllMaxRows;
-    let closedMaxRows;
-
+    let newNumRows, catchAllNumRows, closedNumRows;
+    let newInputField, catchAllInputField, closedInputField;
     try {
-        newMaxRows = parseInt(document.getElementById("newTicket_dropdown").value);
-        catchAllMaxRows = parseInt(document.getElementById("catchAllTicket_dropdown").value);
-        closedMaxRows = parseInt(document.getElementById("closedTicket_dropdown").value);
+        newNumRows = parseInt(document.getElementById("newTicket_dropdown").value);
+        catchAllNumRows = parseInt(document.getElementById("catchAllTicket_dropdown").value);
+        closedNumRows = parseInt(document.getElementById("closedTicket_dropdown").value);
+
+        newInputField = parseInt(document.getElementById("newTicket_input").value);
+        catchAllInputField = parseInt(document.getElementById("catchAllTicket_input").value);
+        closedInputField = parseInt(document.getElementById("closedTicket_input").value);
     } catch (e) {
-        // First time load, use default values
-        newMaxRows = 15;
-        catchAllMaxRows = 15;
-        closedMaxRows = 15;
+        // On first time load or on error, use default values
+        newNumRows = 15;
+        catchAllNumRows = 15;
+        closedNumRows = 15;
+
+        newInputField = 1;
+        catchAllInputField = 1;
+        closedInputField = 1;
     }
 
-    let newCount = 0;
-    let catchAllCount = 0;
-    let closedCount = 0;
+    // Update Max Page Numbers
+    let newMaxPage = document.getElementById("newMaxPage");
+    let catchAllMaxPage = document.getElementById("catchAllMaxPage");
+    let closedMaxPage = document.getElementById("closedMaxPage");
 
     // Put tickets in proper board sections
+    let newCount = 0, catchAllCount = 0, closedCount = 0;
     for (let ticket of tickets) {
         let ticketRow = `
             <tr class="tx_ticket" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
@@ -283,46 +312,49 @@ function initBoard(tickets, sortBy, savedState) {
 
         const isClosed = ticket.StatusName.toLowerCase() === 'closed';
 
-        if (isNew && newCount < newMaxRows) {
-            ticketsHtml.newTickets += ticketRow;
+        // Ensure k-pager rows are displaying corresponding to current page number
+        if (isNew) {
+            if ((newInputField - 1) * newNumRows <= newCount &&
+                newCount < newInputField * newNumRows
+            ) {
+                ticketsHtml.newTickets += ticketRow;
+            }
             newCount++;
         }
-        if (!isClosed && catchAllCount < catchAllMaxRows) {
-            ticketsHtml.catchAllTickets += ticketRow;
+        if (!isClosed) {
+            if ((catchAllInputField-1) * catchAllNumRows <= catchAllCount &&
+                catchAllCount < catchAllInputField * catchAllNumRows
+            ) {
+                ticketsHtml.catchAllTickets += ticketRow;
+            }
             catchAllCount++;
         }
-        if (isClosed && closedCount < closedMaxRows) {
-            ticketRow = `
+        if (isClosed) {
+            let closedRow = `
                 <tr class="tx_ticket" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
                     <td>${ticket.Title}</td>
                     <td>${ticket.ID}</td>
                 </tr>
             `;
 
-            ticketsHtml.closedTickets += ticketRow;
-            closedCount++
+            if ((closedInputField-1) * closedNumRows <= closedCount &&
+                closedCount < closedInputField * closedNumRows
+            ) {
+                ticketsHtml.closedTickets += closedRow;
+            }
+            closedCount++;
         }
     }
+
+    // Correct max pages based on filtered ticket totals
+    newMaxPage.innerText = Math.ceil(newCount / newNumRows) || 1;
+    catchAllMaxPage.innerText = Math.ceil(catchAllCount / catchAllNumRows) || 1;
+    closedMaxPage.innerText = Math.ceil(closedCount / closedNumRows) || 1;
 
     // Set Board HTML
     document.querySelector("#newTicketsBoard tbody").innerHTML = ticketsHtml.newTickets;
     document.querySelector("#catchAllTicketsBoard tbody").innerHTML = ticketsHtml.catchAllTickets;
     document.querySelector("#closedTicketsBoard tbody").innerHTML = ticketsHtml.closedTickets;
-
-    if (savedState) {
-        document.getElementById("newTicket_dropdown").value = savedState.new;
-        document.getElementById("catchAllTicket_dropdown").value = savedState.catchAll;
-        document.getElementById("closedTicket_dropdown").value = savedState.closed;
-    }
-
-    ["new", "catchAll", "closed"].forEach(section => {
-        document
-            .getElementById(`${section}Ticket_dropdown`)
-            .addEventListener("change", () => {
-                performSearch(document.getElementById("searchBar").value, sortBy);
-            });
-    });
-
 }
 
 async function fetchTickets() {
@@ -391,11 +423,14 @@ async function setTickex() {
 
 
     /* -------------------- Tickex Page -------------------- */
-    listenEscapeKey();
+    let response = await fetchTickets();
+    let tickets = Array.isArray(response) ? response : [];
+    sessionStorage.setItem("ticketData", JSON.stringify(tickets));
 
     // Sort By Box - by date, status, and room location
     let sortByBox = document.createElement("div");
     sortByBox.classList.add("tx_sortByBox");
+    sortByBox.id = "sortByBox";
     sortByBox.innerHTML = `
         <legend>Sort By</legend>
         <div>
@@ -552,34 +587,16 @@ async function setTickex() {
             </div></fieldset>
     `;
 
-    let response = await fetchTickets();
-    let tickets = response?.tickets || [];
-
-    sessionStorage.setItem("ticketData", JSON.stringify(tickets));
-
     // Initial board on loadup
     let sortBy = "created"; // sort by date created on load up
     tickets = sortTickets(tickets, sortBy);
-
-    // Listens to radio buttons, for sorting
-    sortByBox.addEventListener('click', (e) => {
-        if (e.target.matches('input[type="radio"]')) {
-            sortBy = e.target.id;
-
-            const searchBar = document.getElementById('searchBar');
-            let search = searchBar.value;
-
-            performSearch(search, sortBy);
-        }
-    });
 
     tx_container.append(newTickets);
     tx_container.append(catchAll);
     tx_container.append(closedTickets);
 
     initBoard(tickets, sortBy);
-
-    searchListener(sortBy);
+    initializeListeners();
 
 
     // Popup Container - click on ticket for popup to appear

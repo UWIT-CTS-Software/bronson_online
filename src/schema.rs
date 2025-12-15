@@ -50,6 +50,28 @@ pub mod bronson {
     }
 
     diesel::table! {
+        bronson.tickets (id) {
+            id -> Int4,
+            type_name -> Text,
+            type_category_name -> Text,
+            title -> Text,
+            description -> Text,
+            account_name -> Text,
+            status_name -> Text,
+            created_date -> Text,
+            created_full_name -> Text,
+            modified_date -> Text,
+            modified_full_name -> Text,
+            requestor_name -> Text,
+            requestor_email -> Text,
+            requestor_phone -> Text,
+            days_old -> Int2,
+            responsible_full_name -> Text,
+            responsible_group_name -> Text,
+        }
+    }
+
+    diesel::table! {
         bronson.users (username) {
             username -> Text,
             permissions -> Int2,
@@ -63,6 +85,7 @@ pub mod bronson {
         data,
         keys,
         rooms,
+        tickets,
         users,
     );
 }

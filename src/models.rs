@@ -4,6 +4,7 @@ use crate::schema::bronson::{
     buildings,
     rooms,
     keys,
+    tickets,
     sql_types::{
         IpAddress,
     }
@@ -230,4 +231,28 @@ pub struct DB_Key {
 pub struct DB_DataElement {
     pub key: String,
     pub val: String,
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable, AsChangeset)]
+#[diesel(table_name = tickets)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct DB_Ticket {
+    pub id: i32,
+    pub type_name: String,              
+    pub type_category_name: String,
+    pub title: String,
+    pub description: String,
+    pub account_name: String,
+    pub status_name: String,
+    pub created_date: String,
+    pub created_full_name: String,
+    pub modified_date: String,
+    pub modified_full_name: String,
+    pub requestor_name: String,
+    pub requestor_email: String,
+    pub requestor_phone: String,
+    pub days_old: i16,
+    pub responsible_full_name: String,
+    pub responsible_group_name: String,
 }
