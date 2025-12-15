@@ -47,7 +47,7 @@ use std::{
 };
 use cookie::{ CookieJar, Key, };
 use csv::Reader;
-use log::{ warn, error, /* info */ };
+use log::{ warn, error, info };
 use regex::bytes::Regex as RegBytes;
 use regex::Regex;
 use serde::{ Deserialize, Serialize, };
@@ -265,22 +265,27 @@ impl Database {
 		};
 
 		if *table_tallys.get("buildings").unwrap() == 0 {
+			info!("[Data] - No buildings found! Attempting recovery.");
 			let _ = self.try_recover_key("buildings", &recovery_data);
 		}
 
 		if *table_tallys.get("rooms").unwrap() == 0 {
+			info!("[Data] - No rooms found! Attempting recovery.");
 			let _ = self.try_recover_key("rooms", &recovery_data);
 		}
 
 		if *table_tallys.get("users").unwrap() == 0 {
+			info!("[Data] - No users found! Attempting recovery.");
 			let _ = self.try_recover_key("users", &recovery_data);
 		}
 
 		if *table_tallys.get("keys").unwrap() == 0 {
+			info!("[Data] - No keys found! Attempting recovery.");
 			let _ = self.try_recover_key("keys", &recovery_data);
 		}
 
 		if *table_tallys.get("data").unwrap() == 0 {
+			info!("[Data] - No data found! Attempting recovery.");
 			let _ = self.try_recover_key("data", &recovery_data);
 		}
 
@@ -581,9 +586,13 @@ impl Database {
 				}
 			},
 			"keys"      => {
-				let json_keys: HashMap<String, String> = match serde_json::from_str(&env::var("KEYS_JSON").unwrap()) {
+				let json_str = match read_to_string(KEYS) {
+					Ok(k) => k,
+					Err(m)   => { return Err(m.to_string()); }
+				};
+				let json_keys: HashMap<String, String> = match serde_json::from_str(&json_str) {
 					Ok(e) => e,
-					Err(m) => return Err(format!("Key not found: {}", m))
+					Err(m) => { return Err(format!("Key not found: {}", m)); }
 				};
 
 				for (id, value) in json_keys.iter() {
