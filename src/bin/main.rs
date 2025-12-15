@@ -2343,7 +2343,9 @@ mod tests {
         assert_eq!(pad(String::from("test"), 3), String::from("test"));
     }
 
-    #[test]
+    // This test works great, but cannot be used in GitHub's auto test due to the need for a database connection.
+    // Uncomment this test for local testing on DB CRUD operations :)
+    /* #[test]
     fn test_db() {
         let dummy_building = DB_Building {
             abbrev: String::from("TEST"),
@@ -2493,5 +2495,5 @@ mod tests {
             Err(_) => ()
         };
 
-    }
+    } */
 }
