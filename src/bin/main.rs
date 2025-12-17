@@ -180,7 +180,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut request_database = Database::new();
     //let data_database = Database::new();
 
-    request_database.init_if_empty();
+    let _ = match request_database.init_if_empty() {
+        Some(()) => (),
+        None     => {
+            return Err("Unable to initialize database!".into());
+        }
+    };
     // Data Thread Pool Loop (data transfer)
     if matches.opt_present("j") {
         set_jn_thread_true();
@@ -373,7 +378,7 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                 },
                 "backup"          => {
                     info!("[Backup] - Backing up the database.");
-                    let _ = match database.try_get_backup() {
+                    let _ = match database.backup() {
                         Ok(_)     => (),
                         Err(s)    => {
                             error!("DBB_ERR: {}", s);
