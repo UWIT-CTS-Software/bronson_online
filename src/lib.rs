@@ -29,7 +29,11 @@ GeneralRequest
 */
 
 pub mod models;
-pub mod schema;
+mod schema;
+// Ping Module
+mod jack_ping;
+
+pub use crate::jack_ping::jp;
 
 use std::{
 	string,
@@ -47,7 +51,7 @@ use std::{
 };
 use cookie::{ CookieJar, Key, };
 use csv::Reader;
-use log::{ warn, error, /* info */ };
+use log::{ warn, error, info };
 use regex::bytes::Regex as RegBytes;
 use regex::Regex;
 use serde::{ Deserialize, Serialize, };
@@ -57,6 +61,7 @@ use diesel::{
 	prelude::*,
 	r2d2::{ self, ConnectionManager },
 	PgConnection,
+	result::Error as DieselError,
 	/* associations::HasTable, */
 };
 use dotenvy::dotenv;
@@ -264,22 +269,27 @@ impl Database {
 		};
 
 		if *table_tallys.get("buildings").unwrap() == 0 {
+			info!("[Data] - No buildings found! Attempting recovery.");
 			let _ = self.try_recover_key("buildings", &recovery_data);
 		}
 
 		if *table_tallys.get("rooms").unwrap() == 0 {
+			info!("[Data] - No rooms found! Attempting recovery.");
 			let _ = self.try_recover_key("rooms", &recovery_data);
 		}
 
 		if *table_tallys.get("users").unwrap() == 0 {
+			info!("[Data] - No users found! Attempting recovery.");
 			let _ = self.try_recover_key("users", &recovery_data);
 		}
 
 		if *table_tallys.get("keys").unwrap() == 0 {
+			info!("[Data] - No keys found! Attempting recovery.");
 			let _ = self.try_recover_key("keys", &recovery_data);
 		}
 
 		if *table_tallys.get("data").unwrap() == 0 {
+			info!("[Data] - No data found! Attempting recovery.");
 			let _ = self.try_recover_key("data", &recovery_data);
 		}
 
@@ -342,8 +352,7 @@ impl Database {
 					checked_rooms: 0
 				};
 
-				self.update_building(&new_bldg);
-				self.update_building(&new_bldg);
+				let _ = self.update_building(&new_bldg);
 			}
 		}
 
@@ -416,8 +425,7 @@ impl Database {
 						schedule: room_schedule.to_vec()
 					};
 
-					self.update_room(&new_room);
-					self.update_room(&new_room);
+					let _ = self.update_room(&new_room);
 				}
 			}
 		}
@@ -428,7 +436,20 @@ impl Database {
 			.expect("Error loading users.");
 
 		if user_results.len() == 0 {
-			let json_users: HashMap<String, i16> = serde_json::from_str(&env::var("USERS_JSON").unwrap()).ok()?;
+			let u_json = match env::var("USERS_JSON") {
+				Ok(u)  => String::from(u),
+				Err(m) => { 
+					error!("USERS_JSON environment variable not found: {}", m);
+					return None;
+				}
+			};
+			let json_users: HashMap<String, i16> = match serde_json::from_str(&u_json) {
+				Ok(ju) => ju,
+				Err(m) => {
+					error!("Unable to parse users json: {}", m);
+					return None;
+				}
+			};
 
 			for (user, perms) in json_users.iter() {
 				let new_user = DB_User { 
@@ -436,8 +457,7 @@ impl Database {
 					permissions: *perms as i16
 				};
 
-				self.update_user(&new_user);
-				self.update_user(&new_user);
+				let _ = self.update_user(&new_user);
 			}
 
 		}
@@ -448,7 +468,20 @@ impl Database {
 			.expect("Error loading keys");
 
 		if key_results.len() == 0 {
-			let json_keys: HashMap<String, String> = serde_json::from_str(&env::var("KEYS_JSON").unwrap()).ok()?;
+			let k_json = match env::var("KEYS_JSON") {
+				Ok(k)  => String::from(k),
+				Err(m) => {
+					error!("KEYS_JSON environment variable not found: {}", m);
+					return None;
+				}
+			};
+			let json_keys: HashMap<String, String> = match serde_json::from_str(&k_json) {
+				Ok(jk) => jk,
+				Err(m) => {
+					error!("Unable to parse keys json: {}", m);
+					return None;
+				}
+			};
 
 			for (id, value) in json_keys.iter() {
 				let new_key = DB_Key {
@@ -456,8 +489,7 @@ impl Database {
 					val: value.clone()
 				};
 
-				self.update_key(&new_key);
-				self.update_key(&new_key);
+				let _ = self.update_key(&new_key);
 			}
 		}
 
@@ -467,27 +499,27 @@ impl Database {
 			.expect("Error loading data.");
 
 		if data_results.len() == 0 {
-			self.update_data(&DB_DataElement {
+			let _ = self.update_data(&DB_DataElement {
 				key: String::from("dashboard"),
 				val: String::from("Welcome to bronson!"),
 			});
 
-			self.update_data(&DB_DataElement {
+			let _ = self.update_data(&DB_DataElement {
 				key: String::from("schedule"),
 				val: String::from(read_to_string(TSCH_JSON).unwrap().to_string()),
 			});
 
-			self.update_data(&DB_DataElement {
+			let _ = self.update_data(&DB_DataElement {
 				key: String::from("alias_table"),
 				val: String::from("{\"buildings\": [], \"rooms\": []}"),
 			});
 
-			self.update_data(&DB_DataElement {
+			let _ = self.update_data(&DB_DataElement {
 				key: String::from("lsm_leaderboard"),
 				val: String::from(LDRB_ERR),
 			});
 
-			self.update_data(&DB_DataElement {
+			let _ = self.update_data(&DB_DataElement {
 				key: String::from("lsm_spares"),
 				val: String::from(SPRS_ERR),
 			});
@@ -549,44 +581,100 @@ impl Database {
 	}
 
 	pub fn try_recover_key(&mut self, recover_key: &str, recover_data: &HashMap<String, Value>) -> Result<(), String> {
-		let mut recover_val: Value = serde_json::from_str("{}").unwrap(); // Keys are fetched from a file, not from data dump, so a little finessing needs done.
-		if recover_key != "keys" {
-			recover_val = match recover_data.get(recover_key) {
-				Some(v) => v.clone(),
-				None    => {
-					return Err(String::from("No key-value pair found"));
-				}
-			};
-		}
 		match recover_key {
 			"buildings" => {
-				let backup_buildings: Vec<DB_Building> = serde_json::from_value(recover_val).unwrap();
+				let recover_val = match recover_data.get(recover_key) {
+					Some(bs) => bs,
+					None     => { return Err(String::from("No buildings found!")); }
+				};
+				let backup_buildings: Vec<DB_Building> = match serde_json::from_value(recover_val.clone()) {
+					Ok(bs) => bs,
+					Err(m) => { return Err(format!("Unable to parse buildings from recovery data: {}", m)); }
+				};
 				for b in backup_buildings {
-					self.update_building(&b);
+					let _ = self.update_building(&b);
 				}
 			},
 			"rooms"     => {
-				let backup_rooms: Vec<DB_Room> = serde_json::from_value(recover_val).unwrap();
+				let recover_val = match recover_data.get(recover_key) {
+					Some(rs) => rs,
+					None     => { return Err(String::from("No rooms found!")); }
+				};
+				let backup_rooms: Vec<DB_Room> = match serde_json::from_value(recover_val.clone()) {
+					Ok(rs) => rs,
+					Err(m) => { return Err(format!("Unable to parse rooms from recovery data: {}", m)); }
+				};
 				for r in backup_rooms {
-					self.update_room(&r);
+					let _ = self.update_room(&r);
 				}
 			},
 			"users"     => {
-				let backup_users: Vec<DB_User> = serde_json::from_value(recover_val).unwrap();
-				for u in backup_users {
-					self.update_user(&u);
-				}
+				let _ = match recover_data.get(recover_key) {
+					Some(us) => {
+						let _ = match serde_json::from_value::<Vec<DB_User>>(us.clone()) {
+							Ok(bs) => {
+								for u in bs {
+									let _ = self.update_user(&u);
+								}
+							},
+							Err(_) => {
+								warn!("[Data] - No users found in recovery data. Attempting default recovery.");
+								let user_json = match &env::var("USERS_JSON") {
+									Ok(uj) => String::from(uj),
+									Err(m) => { return Err(format!("USERS_JSON environment varuable not found: {}", m)); }
+								};
+								let json_users: HashMap<String, i16> = match serde_json::from_str(&user_json) {
+									Ok(u)  => u,
+									Err(m) => { return Err(format!("Unable to parse users json: {}", m)); }
+								};
+
+								for (u, p) in json_users.iter() {
+									let _ = self.update_user(&DB_User {
+										username: u.clone(),
+										permissions: *p as i16
+									});
+								}
+							}
+						};
+					},
+					None     => {
+						warn!("[Data] - No users found in recovery data. Attempting default recovery.");
+						let user_json = match &env::var("USERS_JSON") {
+							Ok(uj) => String::from(uj),
+							Err(m) => { return Err(format!("USERS_JSON environment varuable not found: {}", m)); }
+						};
+						let json_users: HashMap<String, i16> = match serde_json::from_str(&user_json) {
+							Ok(u)  => u,
+							Err(m) => { return Err(format!("Unable to parse users json: {}", m)); }
+						};
+
+						for (u, p) in json_users.iter() {
+							let _ = self.update_user(&DB_User {
+								username: u.clone(),
+								permissions: *p as i16
+							});
+						}
+					}
+				};
 			},
 			"data"      => {
-				let backup_data: Vec<DB_DataElement> = serde_json::from_value(recover_val).unwrap();
+				let recover_val = match recover_data.get(recover_key) {
+					Some(d) => d,
+					None    => { return Err(String::from("No data found!")); }
+				};
+				let backup_data: Vec<DB_DataElement> = serde_json::from_value(recover_val.clone()).unwrap();
 				for d in backup_data {
-					self.update_data(&d);
+					let _ = self.update_data(&d);
 				}
 			},
 			"keys"      => {
-				let json_keys: HashMap<String, String> = match serde_json::from_str(&env::var("KEYS_JSON").unwrap()) {
-					Ok(e) => e,
-					Err(m) => return Err(format!("Key not found: {}", m))
+				let key_json = match &env::var("KEYS_JSON") {
+					Ok(kj) => String::from(kj),
+					Err(m) => { return Err(format!("KEYS_JSON environment variable not found: {}", m)); }
+				};
+				let json_keys: HashMap<String, String> = match serde_json::from_str(&key_json) {
+					Ok(k)  => k,
+					Err(m) => { return Err(format!("Unable to parse keys json: {}", m)); }
 				};
 
 				for (id, value) in json_keys.iter() {
@@ -595,8 +683,7 @@ impl Database {
 						val: value.clone()
 					};
 
-					self.update_key(&new_key);
-					self.update_key(&new_key);
+					let _ = self.update_key(&new_key);
 				}
 			}
 			&_          => { return Err(String::from("Unknown recovery file key")); }
@@ -651,231 +738,225 @@ impl Database {
 		return self.key.clone();
 	}
 
-	pub fn get_campus(&mut self) -> HashMap<String, Building>{
+	pub fn get_campus(&mut self) -> Result<HashMap<String, Building>, DieselError> {
 		let mut ret_map: HashMap<String, Building> = HashMap::new();
 		let bldg_map = self.get_buildings();
-		for (bldg_abbrev, bldg) in bldg_map {
-			ret_map.insert(
-				bldg_abbrev.clone(),
-				Building {
-					abbrev: bldg.abbrev,
-					name: bldg.name,
-					lsm_name: bldg.lsm_name,
-					rooms: self.get_rooms_by_abbrev(&bldg_abbrev),
-					zone: bldg.zone,
-					total_rooms: bldg.total_rooms,
-					checked_rooms: bldg.checked_rooms
+		match bldg_map {
+			Ok(bm) => {
+				for (bldg_abbrev, bldg) in bm {
+					let rooms_by_abbrev: Vec<DB_Room> = match self.get_rooms_by_abbrev(&bldg_abbrev) {
+						Ok(rs) => rs,
+						Err(_)     => Vec::new()
+					};
+					ret_map.insert(
+						bldg_abbrev.clone(),
+						Building {
+							abbrev: bldg.abbrev,
+							name: bldg.name,
+							lsm_name: bldg.lsm_name,
+							rooms: rooms_by_abbrev,
+							zone: bldg.zone,
+							total_rooms: bldg.total_rooms,
+							checked_rooms: bldg.checked_rooms
+						}
+					);
 				}
-			);
-		}
 
-		ret_map
+				Ok(ret_map)
+			},
+			Err(m) => Err(m)
+		}
 	}
 
-	pub fn get_buildings(&mut self) -> HashMap<String, DB_Building> {
+	pub fn get_buildings(&mut self) -> Result<HashMap<String, DB_Building>, DieselError> {
 		let mut ret_map: HashMap<String, DB_Building> = HashMap::new();
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 		let bldg_array = buildings
 			.select(DB_Building::as_select())
-			.load(&mut conn)
-			.expect("SQL_ERR: Error loading buildings");
+			.load(&mut conn);
 
-		for bldg in bldg_array {
-			ret_map.insert(bldg.abbrev.to_string(), bldg);
+		match bldg_array {
+			Ok(ba) => {
+				for bldg in ba {
+					ret_map.insert(bldg.abbrev.to_string(), bldg);
+				}
+
+				Ok(ret_map)
+			},
+			Err(m)   => Err(m)
 		}
-
-		ret_map
 	}
 
-	pub fn get_building_by_abbrev(&mut self, bldg_abbrev: &String) -> DB_Building {
+	pub fn get_building_by_abbrev(&mut self, bldg_abbrev: &String) -> Result<DB_Building, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
 		buildings
 			.find(bldg_abbrev)
 			.select(DB_Building::as_select())
 			.first(&mut conn)
-			.optional()
-			.expect("SQL_ERR: Error loading buildings by abbreviation")
-			.unwrap()
 	}
 
-	pub fn update_building(&mut self, building: &DB_Building) {
+	pub fn update_building(&mut self, building: &DB_Building) -> Result<DB_Building, DieselError> {
 		use crate::schema::bronson::buildings::dsl::abbrev;
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
-		let _ = diesel::insert_into(buildings)
+		diesel::insert_into(buildings)
 			.values(building)
 			.on_conflict(abbrev)
 			.do_update()
 			.set(building)
 			.returning(DB_Building::as_returning())
 			.get_result(&mut conn)
-			.expect("SQL_ERR: Error inserting building");
 	}
 
-	pub fn delete_building(&mut self, id: &String) {
+	pub fn delete_building(&mut self, id: &String) -> Result<DB_Building, DieselError>{
 		use crate::schema::bronson::buildings::dsl::abbrev;
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
-		let _ = diesel::delete(buildings)
+		diesel::delete(buildings)
 			.filter(abbrev.eq(id))
 			.returning(DB_Building::as_returning())
 			.get_result(&mut conn)
-			.expect("SQL_ERR: Error deleting building");
 	}
 
-	pub fn get_rooms_by_abbrev(&mut self, bldg_abbrev: &String) -> Vec<DB_Room> {
+	pub fn get_rooms_by_abbrev(&mut self, bldg_abbrev: &String) -> Result<Vec<DB_Room>, DieselError> {
 		use crate::schema::bronson::rooms::dsl::abbrev;
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
-		let mut ret_vec = rooms
+		let ret_vec = rooms
 			.select(DB_Room::as_select())
 			.filter(abbrev.eq(bldg_abbrev))
-			.load(&mut conn)
-			.expect("SQL_ERR: Error loading rooms by abbreviation");
+			.load(&mut conn);
 
-		ret_vec.sort_by_key(|r| r.name.clone());
-		ret_vec
+		match ret_vec {
+			Ok(mut rv) => {
+				rv.sort_by_key(|r| r.name.clone());
+				Ok(rv)
+			},
+			Err(m) => Err(m)
+		}
 	}
 
-	pub fn get_room_by_name(&mut self, room_name: &String) -> DB_Room {
+	pub fn get_room_by_name(&mut self, room_name: &String) -> Result<DB_Room, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
 		rooms
 			.find(room_name)
 			.select(DB_Room::as_select())
 			.first(&mut conn)
-			.optional()
-			.expect("SQL_ERR: Error loading room by name")
-			.unwrap()
 	}
 
-	pub fn update_room(&mut self, room: &DB_Room) {
+	pub fn update_room(&mut self, room: &DB_Room) -> Result<DB_Room, DieselError>{
 		use crate::schema::bronson::rooms::dsl::name;
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
-		let _ = diesel::insert_into(rooms)
+		diesel::insert_into(rooms)
 			.values(room)
 			.on_conflict(name)
 			.do_update()
 			.set(room)
 			.returning(DB_Room::as_returning())
 			.get_result(&mut conn)
-			.expect("SQL_ERR: Error inserting room");
 	}
 
-	pub fn delete_room(&mut self, id: &String) {
+	pub fn delete_room(&mut self, id: &String) -> Result<DB_Room, DieselError> {
 		use crate::schema::bronson::rooms::dsl::name;
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
-		let _ = diesel::delete(rooms)
+		diesel::delete(rooms)
 			.filter(name.eq(id))
 			.returning(DB_Room::as_returning())
 			.get_result(&mut conn)
-			.expect("SQL_ERR: Error deleting key");
 	}
 
-	pub fn get_user(&mut self, user: &str) -> Option<DB_User> {
+	pub fn get_user(&mut self, user: &str) -> Result<DB_User, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
 		users
 			.select(DB_User::as_select())
 			.filter(username.eq(user))
 			.first(&mut conn)
-			.optional()
-			.expect("SQL_ERR: Error loading user")
 	}
 
-	pub fn update_user(&mut self, user: &DB_User) {
+	pub fn update_user(&mut self, user: &DB_User) -> Result<DB_User, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
-		let _ = diesel::insert_into(users)
+		diesel::insert_into(users)
 			.values(user)
 			.on_conflict(username)
 			.do_update()
 			.set(user)
 			.returning(DB_User::as_returning())
 			.get_result(&mut conn)
-			.expect("SQL_ERR: Error inserting user");
 	}
 
-	pub fn delete_user(&mut self, user: &String) {
+	pub fn delete_user(&mut self, user: &String) -> Result<DB_User, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
-		let _ = diesel::delete(users)
+		diesel::delete(users)
 			.filter(username.eq(user))
 			.returning(DB_User::as_returning())
 			.get_result(&mut conn)
-			.expect("SQL_ERR: Error deleting user");
 	}
 
-	pub fn get_key(&mut self, id: &str) -> DB_Key {
+	pub fn get_key(&mut self, id: &str) -> Result<DB_Key, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
 		keys
 			.select(DB_Key::as_select())
 			.filter(key_id.eq(id))
 			.first(&mut conn)
-			.optional()
-			.expect("SQL_ERR: Error loading key")
-			.unwrap()
 	}
 
-	pub fn update_key(&mut self, update_key: &DB_Key) {
+	pub fn update_key(&mut self, update_key: &DB_Key) -> Result<DB_Key, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
-		let _ = diesel::insert_into(keys)
+		diesel::insert_into(keys)
 			.values(update_key)
 			.on_conflict(key_id)
 			.do_update()
 			.set(update_key)
 			.returning(DB_Key::as_returning())
 			.get_result(&mut conn)
-			.expect("SQL_ERR: Error inserting key");
 	}
 
-	pub fn delete_key(&mut self, id: &String) {
+	pub fn delete_key(&mut self, id: &String) -> Result<DB_Key, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
-		let _ = diesel::delete(keys)
+		diesel::delete(keys)
 			.filter(key_id.eq(id))
 			.returning(DB_Key::as_returning())
 			.get_result(&mut conn)
-			.expect("SQL_ERR: Error deleting key");
 	}
 
-	pub fn get_data(&mut self, data_key: &str) -> Option<DB_DataElement> {
+	pub fn get_data(&mut self, data_key: &str) -> Result<DB_DataElement, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
 		data
 			.select(DB_DataElement::as_select())
 			.filter(key.eq(data_key))
 			.first(&mut conn)
-			.optional()
-			.expect("SQL_ERR: Error loading data element")
 	}
 
-	pub fn update_data(&mut self, element: &DB_DataElement) {
+	pub fn update_data(&mut self, element: &DB_DataElement) -> Result<DB_DataElement, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
-		let _ = diesel::insert_into(data)
+		diesel::insert_into(data)
 			.values(element)
 			.on_conflict(key)
 			.do_update()
 			.set(element)
 			.returning(DB_DataElement::as_returning())
 			.get_result(&mut conn)
-			.expect("SQL_ERR: Error inserting user");
 	}
 
-	pub fn delete_data(&mut self, data_key: &String) {
+	pub fn delete_data(&mut self, data_key: &String) -> Result<DB_DataElement, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
-		let _ = diesel::delete(data)
+		diesel::delete(data)
 			.filter(key.eq(data_key))
 			.returning(DB_DataElement::as_returning())
 			.get_result(&mut conn)
-			.expect("SQL_ERR: Error deleting data element");
-
 	}
 }
 
@@ -989,8 +1070,8 @@ impl Request {
             None => panic!("Unable to capture username.")
         };
         let user = match database.get_user(&uname["username"]) {
-            Some(u) => u,
-            None => DB_User{ username: String::new(), permissions: 0 },
+            Ok(u)  => u,
+            Err(_) => DB_User{ username: String::new(), permissions: 0 },
         };
 
         let mut jar = CookieJar::new();
@@ -1178,7 +1259,10 @@ impl Terminal {
 						// WARNING: This function call generates an entirely new Database object that will have a cookie key that is different than the database object in main.
 						// This was done because the only thing being done is data retrieval, not cookie management. 
 						// I am too lazy to pass a database object to this function.
-						contents = json!(Database::get_campus(&mut Database::new())).to_string().into();
+						contents = match Database::get_campus(&mut Database::new()) {
+							Ok(c)  => json!(c).to_string().into(),
+							Err(_) => "".into()
+						};
 					},
 					"version"   => {
 						contents = env!("CARGO_PKG_VERSION").into();
@@ -1272,11 +1356,6 @@ pub struct PingRequest {
     pub building: String
 }
 
-// Ping Module
-mod jack_ping;
-
-pub use crate::jack_ping::jp;
-
 // ----------- Custom structs for CFM Requests
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CFMRequest {
@@ -1327,8 +1406,6 @@ pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
 pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/roomConfig_agg.csv");
 pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.csv");
 pub static LOG       : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/output.log");
-pub static KEYS      : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/keys.json");
-pub static USERS     : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/users.json");
 pub static STATUS_200: &str = "HTTP/1.1 200 OK";
 pub static STATUS_303: &str = "HTTP/1.1 303 See Other";
 pub static STATUS_401: &str = "HTTP/1.1 401 Unauthorized";

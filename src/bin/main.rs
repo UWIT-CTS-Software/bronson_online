@@ -180,7 +180,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut request_database = Database::new();
     //let data_database = Database::new();
 
-    request_database.init_if_empty();
+    let _ = match request_database.init_if_empty() {
+        Some(()) => (),
+        None     => {
+            return Err("Unable to initialize database!".into());
+        }
+    };
     // Data Thread Pool Loop (data transfer)
     if matches.opt_present("j") {
         set_jn_thread_true();
@@ -362,14 +367,18 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                     debug!("[ThreadSchedule Debug] - Two Minute Message");
                 },
                 "leaderboard"     => {
-                    update_room_check_leaderboard(&database, Arc::clone(&lsm_request)).await;
+                    info!("[Data] - Pulling New LSM Leaderboard");
+                    update_room_check_leaderboard(&mut database, Arc::clone(&lsm_request)).await;
+                    info!("[Data] - New LSM Leaderboard Pulled")
                 },
                 "spares"          => {
-                    update_lsm_spares(&database, Arc::clone(&lsm_request)).await;
+                    info!("[Data] - Pulling New LSM Spare Information");
+                    update_lsm_spares(&mut database, Arc::clone(&lsm_request)).await;
+                    info!("[Data] - New LSM Spare Information Pulled")
                 },
                 "backup"          => {
                     info!("[Backup] - Backing up the database.");
-                    let _ = match database.try_get_backup() {
+                    let _ = match database.backup() {
                         Ok(_)     => (),
                         Err(s)    => {
                             error!("DBB_ERR: {}", s);
@@ -379,13 +388,20 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                     info!("[Backup] - Backup request fulfilled.");
                 },
                 "lsmData"         => {
+                    info!("[Data] - Pulling LSM Inventory Information");
                     println!("MAYBE TODO: Get Diagnostic Information from LSM");
                     //update_lsm_data(&mut database, Arc::clone(&lsm_request)).await;
+                    info!("[Data] - Completed LSM Inventory Data Retreieval");
                 },
                 "checkerboard"    => {
-                    run_checkerboard(&mut database, Arc::clone(&lsm_request)).await;
+                    info!("[Data] - Running Checkerboard");
+                    let _ = match run_checkerboard(&mut database, Arc::clone(&lsm_request)).await {
+                        Ok(_)  =>  info!("[Data] - Checkerboard Run Complete"),
+                        Err(m) => error!("[Data] - Checkerboard Run FAILED: {}", m)
+                    };
                 },
                 "jacknet"         => { // Not-LSM
+                    info!("[Data] - Running JackNet");
                     if jn_st {
                         let mut db_jn_clone = database.clone();
                         jn_thread.execute( move || async {
@@ -394,6 +410,7 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                     } else {
                         execute_ping(&mut database).await;
                     }
+                    info!("[Data] - JackNet Complete");
                 },
                 _                 => {
                     warn!("Unknown task: {}", task_name)
@@ -428,8 +445,11 @@ async fn handle_connection(
         };
         //let mut database = arc_database.write().unwrap();
         let user = match database.get_user(&username["username"]) {
-            Some(u) => u,
-            None => DB_User{ username: String::new(), permissions: 0 },
+            Ok(u)  => u,
+            Err(m) => {
+                error!("DB_ERR: {}", m);
+                DB_User{ username: String::new(), permissions: 0 }
+            }
         };
         if req.has_valid_cookie(&mut database) {
             match user.permissions {
@@ -538,30 +558,47 @@ async fn handle_connection(
         // Data Requests
         "GET /techSchedule HTTP/1.1"  => {
             let contents = match database.get_data("schedule") {
-                Some(s) => s.val,
-                None    => String::from(SCHD_ERR)
+                Ok(s)  => s.val,
+                Err(m) => {
+                    error!("DB_ERR: {}", m);
+                    String::from(SCHD_ERR)
+                }
             }.into();
             res.status(STATUS_200);
-            //res.send_file("data/techSchedule.json");
             res.send_contents(contents);
         },
         "GET /campusData HTTP/1.1"         => {
-            let contents = json!(&database.get_campus()).to_string().into();
+            let campus = database.get_campus();
+            let contents = match campus {
+                Ok(c)  => json!(&c).to_string().into(),
+                Err(m) => {
+                    error!("DB_ERR: {}", m);
+                    String::from("{}").into()
+                }
+            };
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "GET /zoneData HTTP/1.1"           => { // NEW: returns data in lib.rs as json
-            //let mut database = arc_database.write().unwrap();
-            let contents = get_zone_data(database.get_buildings());
+            let bldgs = database.get_buildings();
+            let contents = match bldgs {
+                Ok(b)  => get_zone_data(b),
+                Err(m) => {
+                    error!("DB_ERR: {}", m);
+                    String::from("{}").into()
+                }
+            };
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "GET /dashContents HTTP/1.1"       => { // Dashboard Message
-            //let mut database = arc_database.write().unwrap();
             let contents = json!({
                 "contents": match database.get_data("dashboard") {
-                    Some(e) => e.val,
-                    None    => String::from(DASH_ERR)
+                    Ok(e)  => e.val,
+                    Err(m) => {
+                        error!("DB_ERR: {}", m);
+                        String::from(DASH_ERR)
+                    }
                 }
             }).to_string().into();
             res.status(STATUS_200);
@@ -569,8 +606,11 @@ async fn handle_connection(
         },
         "GET /leaderboard HTTP/1.1"        => { // OUTGOING, Dashboard Leaderboard
             let contents = match database.get_data("lsm_leaderboard") {
-                Some(l) => l.val,
-                None    => String::from(LDRB_ERR)
+                Ok(l)  => l.val,
+                Err(m) => {
+                    error!("DB_ERR: {}", m);
+                    String::from(LDRB_ERR)
+                }
             }.into();
             res.status(STATUS_200);
             res.send_contents(contents);
@@ -578,16 +618,17 @@ async fn handle_connection(
         // Spares LSM API Call.
         "GET /spares HTTP/1.1"             => { // OUTGOING, Dashboard Spares
             // Get Spares from Database
-            //let mut database = arc_database.write().unwrap();
             let contents: Vec<u8> = match database.get_data("lsm_spares") {
-                Some(s) => s.val,
-                None    => String::from(SPRS_ERR)
+                Ok(s)  => s.val,
+                Err(m) => {
+                    error!("DB_ERR: {}", m);
+                    String::from(SPRS_ERR)
+                }
             }.into();
             res.status(STATUS_200);
             res.send_contents(contents);
         },
         "POST /lsmData HTTP/1.1"              => { // OUTGOING
-            //let mut database = arc_database.write().unwrap();
             let body_str = String::from_utf8(req.body).expect("AT: LSM Data Err, invalid UTF-8");
             let body_parts: Vec<&str> = body_str.split(',').collect();
             if body_parts.len() != 2 {
@@ -597,7 +638,14 @@ async fn handle_connection(
             }
             let building_sel:String = body_parts[0].to_string();
             let device_type = body_parts[1];
-            let lsm_building = database.get_building_by_abbrev(&building_sel);
+            let lsm_building = match database.get_building_by_abbrev(&building_sel) {
+                Ok(b)  => b,
+                Err(m) => {
+                    res.status(STATUS_500);
+                    res.send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into());
+                    return Some(res);
+                }
+            };
             debug!("[Admin Tools] - Grabbing LSM Data for Diagnostics:\n{:?}", &lsm_building.lsm_name.as_str());
             let api_endpoint = match device_type {
                 "PROC" => "BuildingProcs",
@@ -652,12 +700,12 @@ async fn handle_connection(
                 key: String::from("schedule"),
                 val: String::from_utf8(req.body).expect("Unable to parse body contents")
             };
-            database.update_data(&new_data);
+            let _ = database.update_data(&new_data);
             res.status(STATUS_200);
             res.send_contents("".into());
         },
         "POST /update/dash HTTP/1.1"       => {
-            database.update_data(&DB_DataElement {
+            let _ = database.update_data(&DB_DataElement {
                 key: String::from("dashboard"),
                 val: String::from_utf8(req.body).expect("Unable to parse body contents"),
             });
@@ -665,7 +713,6 @@ async fn handle_connection(
             res.send_contents("".into());
         },
         "POST /update/database_room HTTP/1.1"     => { // destination, newValue
-            //let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
                 res.status(STATUS_401);
                 res.send_contents(json!({
@@ -688,7 +735,15 @@ async fn handle_connection(
                     .unwrap();
                 debug!("[Admin Tools] - Updating Target Room:{}\n New Values: {:?}", target_room, new_values);
                 // Get Existing Room Record from database
-                let mut new_db_room : DB_Room = database.get_room_by_name(&target_room);
+                let mut new_db_room : DB_Room = match database.get_room_by_name(&target_room) {
+                    Ok(tr) => tr,
+                    Err(m) => {
+                        error!("DB_ERR: {}", m);
+                        res.status(STATUS_500);
+                        res.send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into());
+                        return Some(res);
+                    }
+                };
                 //println!("DEBUG Existing DB_Room (Pre-Update) -> \n {:?}", new_db_room);
                 // Update General Pool Status
                 new_db_room.gp = match new_values[6] { 
@@ -703,7 +758,7 @@ async fn handle_connection(
                 new_db_room.ping_data = ping_vec;
                 // Update Database
                 //println!("DEBUG Updating DB_Room -> \n {:?}", new_db_room);
-                database.update_room(&new_db_room);
+                let _ = database.update_room(&new_db_room);
                 res.status(STATUS_200);
                 res.send_contents("".into());
             }
@@ -747,7 +802,7 @@ async fn handle_connection(
                 // Note, the schedule field here is initialized as empty.
                 //   we will require some more tooling to get this data in here.
                 //   whether that be some kind of csv import or a manual page.
-                database.update_room(&new_db_room); // UNCOMMENT ME WHEN READY
+                let _ = database.update_room(&new_db_room); // UNCOMMENT ME WHEN READY
                 res.status(STATUS_200);
                 res.send_contents("".into());
             }
@@ -767,7 +822,7 @@ async fn handle_connection(
                     .to_string();
                 debug!("[Admin Tools] - REMOVING ROOM -> {:?}", target_room);
                 // Remove Specified Room from Database
-                database.delete_room(&target_room);
+                let _ = database.delete_room(&target_room);
                 res.status(STATUS_200);
                 res.send_contents("".into());
             }
@@ -797,7 +852,15 @@ async fn handle_connection(
                 
                 //println!("DEBUG Updating Building -> {} {:?}", target_building, new_values);
                 // Get Existing Building Record from database
-                let mut new_db_building : DB_Building = database.get_building_by_abbrev(&target_building);
+                let mut new_db_building : DB_Building = match database.get_building_by_abbrev(&target_building) {
+                    Ok(b)  => b,
+                    Err(m) => {
+                        error!("DB_ERR: {}", m);
+                        res.status(STATUS_500);
+                        res.send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into());
+                        return Some(res);
+                    }
+                };
                 // Update Building Values
                 new_db_building.name = new_values[0].to_string();
                 new_db_building.abbrev = new_values[1].to_string();
@@ -805,7 +868,7 @@ async fn handle_connection(
                 new_db_building.zone = new_values[3].parse().expect("invalid zone");
                 // Update Database
                 debug!("[Admin Tools] - Updated Building Record:\n{:?}", &new_db_building);
-                database.update_building(&new_db_building); // UNCOMMENT ME WHEN READY
+                let _ = database.update_building(&new_db_building); // UNCOMMENT ME WHEN READY
                 res.status(STATUS_200);
                 res.send_contents("".into());
             }
@@ -839,7 +902,7 @@ async fn handle_connection(
                     total_rooms: 0
                 };
                 debug!("Inserting Building Record:\n {:?}", &new_db_building);
-                database.update_building(&new_db_building); //UNCOMMENT ME WHEN READY
+                let _ = database.update_building(&new_db_building); //UNCOMMENT ME WHEN READY
                 res.status(STATUS_200);
                 res.send_contents("".into());
             }
@@ -858,7 +921,7 @@ async fn handle_connection(
                     .unwrap()
                     .to_string();
                 debug!("[Admin Tools] - DB Target Building to remove:\n {:?}", target_building);
-                database.delete_building(&target_building);
+                let _ = database.delete_building(&target_building);
                 res.status(STATUS_200);
                 res.send_contents("".into());
             }
@@ -890,12 +953,19 @@ async fn handle_connection(
                         })
                         .unwrap();
                     // Get Existing Room Record from database
-                    let mut new_db_room : DB_Room = database.get_room_by_name(&target_room);
-                    //println!("DEBUG Existing DB_Room (Pre-Update) -> \n {:?}", new_db_room.schedule);
+                    let mut new_db_room: DB_Room =  match database.get_room_by_name(&target_room) {
+                        Ok(r)  => r,
+                        Err(m) => {
+                            error!("DB_ERR: {}", m);
+                            res.status(STATUS_500);
+                            res.send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into());
+                            return Some(res);
+                        }
+                    };
                     // Update Schedule
                     new_db_room.schedule = new_schedule.clone();
                     // Update Database
-                    database.update_room(&new_db_room);
+                    let _ = database.update_room(&new_db_room);
                     debug!("[Admin Tools] - Updating Room: {} with Schedule:\n {:?}", target_room, new_schedule);
                 }
                 res.status(STATUS_200);
@@ -925,7 +995,7 @@ async fn handle_connection(
                     val: serde_json::to_string(&timestamps).unwrap()
                 };
                 // Uncomment when ready...
-                database.update_data(&new_timestamps);
+                let _ = database.update_data(&new_timestamps);
                 res.status(STATUS_200);
                 res.send_contents("Successful Room Schedule Timestamps Update".into());
             }
@@ -938,7 +1008,7 @@ async fn handle_connection(
                 }).to_string().into());
             } else {
                 let timestamps = database.get_data("report_timestamps").unwrap_or( DB_DataElement {key:"report_timestamps".to_string(),val:"[\"Timestamp Not Found\"]".to_string()}).val;
-                //println!("DEBUG Fetched Timestamps:\n {:?}", &timestamps);
+                debug!("Fetched Timestamps:\n {:?}", &timestamps);
                 let contents = json!({
                     "timestamps": timestamps
                 }).to_string().into();
@@ -1058,7 +1128,15 @@ async fn handle_connection(
                     //println!("{}", room_name.len());
                     if hostname_exception != "" {
                         debug!("[Alias] - Hostname Exception: \n {} at {}", hostname_exception, room_name);
-                        let mut room : DB_Room = database.get_room_by_name(&room_name);
+                        let mut room : DB_Room = match database.get_room_by_name(&room_name) {
+                            Ok(r)  => r,
+                            Err(m) => {
+                                error!("DB_ERR: {}", m);
+                                res.status(STATUS_500);
+                                res.send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into());
+                                return Some(res);
+                            }
+                        };
                         let mut pd = room.ping_data.clone();
                         for ping_record in &mut pd {
                             ping_record
@@ -1067,8 +1145,7 @@ async fn handle_connection(
                                 .hostname.room = hostname_exception.clone();
                         }
                         room.ping_data = pd;
-                        //println!("{:?}", room);
-                        database.update_room(&room);
+                        let _ = database.update_room(&room);
                     }
                 }
                 // Save Alias Table to database as dataElement
@@ -1076,7 +1153,7 @@ async fn handle_connection(
                     key: "alias_table".to_string(),
                     val: String::from_utf8(req.body).expect("Unable to parse body contents")
                 };
-                database.update_data(&alias_table);
+                let _ = database.update_data(&alias_table);
                 res.status(STATUS_200);
                 res.send_contents("Database Alias Table Updated".into());
             }
@@ -1095,7 +1172,15 @@ async fn handle_connection(
                     .unwrap();
                 // Change ping_data.hostname.room to original name
                 for room in target_rooms.iter() {
-                    let mut room = database.get_room_by_name(&room.to_string().replace("\"",""));
+                    let mut room = match database.get_room_by_name(&room.to_string().replace("\"","")) {
+                        Ok(r)  => r,
+                        Err(m) => {
+                            error!("DB_ERR: {}", m);
+                            res.status(STATUS_500);
+                            res.send_contents(format!("An internal server error occured. Please contact a system administrator.\n{}", m).into());
+                            return Some(res);
+                        }
+                    };
                     let room_name = room.name.clone();
                     let mut pd = room.ping_data.clone();
                     for ping_record in &mut pd {
@@ -1106,7 +1191,7 @@ async fn handle_connection(
                     }
                     room.ping_data = pd;
                     //println!("Reset room {}:\n{:?}", &room_name, &room);
-                    database.update_room(&room);
+                    let _ = database.update_room(&room);
                 }
                 debug!("[Alias] - Reverting Alias Change for target_rooms, {:?}", &target_rooms);
                 res.status(STATUS_200);
@@ -1145,18 +1230,21 @@ async fn handle_connection(
             let credential_search = Regex::new(r"uname=(?<user>.*)&remember=[on|off]").unwrap();
             let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Option::Some(res) };
             let user = String::from(credentials["user"].to_string().into_boxed_str());
-            let db_user: Option<DB_User> = database.get_user(&user.as_str());
-            if db_user.is_some() {
-                match &db_user.unwrap().permissions {
-                    7 => user_homepage = "html-css-js/index_admin.html",  // admin
-                    6 => user_homepage = "html-css-js/index_admin.html", // manager / lead tech
-                    0 => user_homepage = "html-css-js/login.html",      // revoked
-                    _ => user_homepage = "html-css-js/index.html",     // tech default
-                }
 
-            } else {
-                user_homepage = "html-css-js/index.html";
-            }
+            user_homepage = match database.get_user(&user.as_str()) {
+                Ok(u)  => {
+                    match u.permissions {
+                        7 => "html-css-js/index_admin.html",  // admin
+                        6 => "html-css-js/index_admin.html", // manager / lead tech
+                        0 => "html-css-js/login.html",      // revoked
+                        _ => "html-css-js/index.html",     // tech default
+                    }
+                },
+                Err(m) => {
+                    error!("DB_ERR: {}", m);
+                    "html-css-js/index.html"
+                }
+            };
 
             let mut jar = CookieJar::new();
             jar.signed_mut(&database.get_cookie_key()).add((user.clone(), user.clone()));
@@ -1170,7 +1258,7 @@ async fn handle_connection(
         },
         "POST /bugreport HTTP/1.1"         => {
             let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
-            let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Option::Some(res) };
+            let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Some(res) };
             let encoded_title = String::from(credentials["title"].to_string().into_boxed_str());
             let encoded_desc = String::from(credentials["desc"].to_string().into_boxed_str());
 
@@ -1215,7 +1303,6 @@ async fn handle_connection(
         },
         // Jacknet
         "POST /ping HTTP/1.1"              => { // OUTGOING
-            // let contents = execute_ping(req.body, database); // JN
             let contents = ping_response(String::from_utf8(req.body).expect("Err, invalid UTF-8"), database);
             res.status(STATUS_200);
             res.send_contents(contents);
@@ -1229,8 +1316,24 @@ async fn handle_connection(
             // parse rooms map to load statuses for return
             // ----------------------------------------------------------------
             let mut return_body: Vec<Building> = Vec::new();
-            let new_building = database.get_building_by_abbrev(&building_sel);
-            let ret_rooms = database.get_rooms_by_abbrev(&building_sel);
+            let new_building = match database.get_building_by_abbrev(&building_sel) {
+                Ok(b)  => b,
+                Err(m) => {
+                    error!("DB_ERR: {}", m);
+                    res.status(STATUS_500);
+                    res.send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into());
+                    return Some(res);
+                }
+            };
+            let ret_rooms = match database.get_rooms_by_abbrev(&building_sel) {
+                Ok(rs) => rs,
+                Err(m) => {
+                    error!("DB_ERR: {}", m);
+                    res.status(STATUS_500);
+                    res.send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into());
+                    return Some(res);
+                }
+            };
 
             return_body.push(
                 Building {
@@ -1315,8 +1418,7 @@ async fn handle_connection(
 }
 
 
-async fn update_room_check_leaderboard(database: &Database, req: Arc<RwLock<Client>>) {
-    info!("[Data] - Pulling New LSM Leaderboard");
+async fn update_room_check_leaderboard(database: &mut Database, req: Arc<RwLock<Client>>) {
     let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
     let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
     let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
@@ -1379,16 +1481,15 @@ async fn update_room_check_leaderboard(database: &Database, req: Arc<RwLock<Clie
         "30days": data_30_days,
         "90days": data_90_days
     }).to_string().into();
-    //let mut tdatabase = database.write().unwrap();
-    database.clone().update_data(&DB_DataElement {
+
+    let _ = database.update_data(&DB_DataElement {
         key: String::from("lsm_leaderboard"),
         val: String::from_utf8(contents).expect("Unable to parse LSM Return"),
     });
     return;
 }
 
-async fn update_lsm_spares(database: &Database, req: Arc<RwLock<Client>>) {
-    info!("[Data] - Pulling New LSM Spare Information");
+async fn update_lsm_spares(database: &mut Database, req: Arc<RwLock<Client>>) {
     let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
 
     let body_spares: String;
@@ -1412,7 +1513,7 @@ async fn update_lsm_spares(database: &Database, req: Arc<RwLock<Client>>) {
         "spares": data_spares
     }).to_string().into();
 
-    database.clone().update_data(&DB_DataElement {
+    let _ = database.update_data(&DB_DataElement {
         key: String::from("lsm_spares"),
         val: String::from_utf8(contents).expect("Unable to parse LSM Return"),
     });
@@ -1422,7 +1523,6 @@ async fn update_lsm_spares(database: &Database, req: Arc<RwLock<Client>>) {
 // Unsure if this is worth implementing...
 #[allow(dead_code)]
 async fn update_lsm_data(_database: &mut Database, _req: Arc<RwLock<Client>>) {
-    info!("[Data] - Pulling LSM Inventory Information");
     // let buildings = database.get_buildings();
     // let api_endpoints = ["BuildingProcs","BuildingDisplays","BuildingProjectors","BuildingTouchPanels"];
     // for api_endpoint in api_endpoints {
@@ -1451,14 +1551,18 @@ async fn update_lsm_data(_database: &mut Database, _req: Arc<RwLock<Client>>) {
     //         };
     //     }
     // }
-    info!("[Data] - Completed LSM Inventory Data Retreieval");
     return;
 }
 
-async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
+async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> Result<(), String> {
     // Get an array of all buildings.
-    info!("[Data] - Running Checkerboard");
-    let buildings = database.get_buildings();
+    let buildings = match database.get_buildings() {
+        Ok(bs) => bs,
+        Err(m) => {
+            error!("DB_ERR: {}", m);
+            HashMap::new()
+        }
+    };
     // Iterate over each.
     for building in buildings {
         debug!("[Checkerboard] - Processing Building: {:?}", building.1.abbrev);
@@ -1468,10 +1572,13 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
         //   Bronson friendly naming. We filter Alias Table to only contain
         //   rooms that are relevant to current LSM request.
         let alias_table : DB_DataElement = match database.get_data("alias_table") {
-            Some(at) => at,
-            None     => DB_DataElement { 
-                key: String::from("alias_table"),
-                val: String::from("{\"buildings\": [], \"rooms\": []}") 
+            Ok(at) => at,
+            Err(m)     => {
+                error!("DB_ERR: {}", m);
+                DB_DataElement { 
+                    key: String::from("alias_table"),
+                    val: String::from("{\"buildings\": [], \"rooms\": []}") 
+                }
             }
         };
         
@@ -1519,8 +1626,8 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
             Err(_)      => {
                 warn!("LSM_ERR: API call returned error.");
                 json!({
-                "count": -1,
-                "data": "LSM Busy: Please try again"
+                    "count": -1,
+                    "data": "LSM Busy: Please try again"
                 })
             }
         };
@@ -1565,10 +1672,16 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
                 );
             }
         }
-        //println!("check_map: {:?}", check_map);
         // Get checked_rooms
         let mut checked_rooms: i16 = 0;
-        for mut room in database.get_rooms_by_abbrev(&building.1.abbrev) {
+        let rooms = match database.get_rooms_by_abbrev(&building.1.abbrev) {
+            Ok(rs) => rs,
+            Err(m) => {
+                error!("DB_ERR: {}", m);
+                Vec::new()
+            }
+        };
+        for mut room in rooms {
             if check_map.contains_key(&room.name) {
                 room.checked = String::from(match check_map.get(&room.name) {
                     Some(r) => r,
@@ -1586,10 +1699,19 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
             if !room.needs_checked {
                 checked_rooms += 1;
             }
-            database.update_room(&room);
+            let _ = database.update_room(&room);
         }
-        let ret_building = database.get_building_by_abbrev(&building.1.abbrev);
-        let ret_rooms = database.get_rooms_by_abbrev(&ret_building.abbrev);
+        let ret_building = match database.get_building_by_abbrev(&building.1.abbrev) {
+            Ok(b)  => b,
+            Err(m) => { return Err(m.to_string()); }
+        };
+        let ret_rooms = match database.get_rooms_by_abbrev(&ret_building.abbrev) {
+            Ok(rs) => rs,
+            Err(m) => {
+                error!("DB_ERR: {}", m);
+                Vec::new()
+            }
+        };
         let number_rooms: i16 = ret_rooms.len().try_into().unwrap();
         // Note, number_rooms and checked_rooms rely on the rooms inside LSM.
         //
@@ -1601,10 +1723,9 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) {
             checked_rooms: checked_rooms,
             total_rooms: number_rooms,
         };
-        database.update_building(&new_building);
+        let _ = database.update_building(&new_building);
     }
-    info!("[Data] - Checkerboard Run Complete");
-    return;
+    return Ok(())
 }
 
 fn set_jn_thread_true() {
@@ -1700,9 +1821,15 @@ fn ping_response(tmp: String, mut database: Database) -> Vec<u8> {
         .expect("Fatal Error: Unable to parse ping request");
 
     let json_return: Value;
-
+    let rooms: Vec<DB_Room> = match database.get_rooms_by_abbrev(&pr.building) {
+        Ok(rs) => rs,
+        Err(m) => {
+            error!("DB_ERR: {}", m);
+            Vec::new()
+        }
+    };
     json_return = json!({
-        "jn_body": database.get_rooms_by_abbrev(&pr.building),
+        "jn_body": rooms,
     });
     
     // Return JSON with ping results
@@ -1718,24 +1845,34 @@ NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
 
 // call ping_this executible here
 async fn execute_ping(database: &mut Database) {
-    info!("[Data] - Running JackNet");
-    let buildings = database.get_buildings();
+    let buildings: HashMap<String, DB_Building> = match database.get_buildings() {
+        Ok(bs) => bs,
+        Err(m) => {
+            error!("DB_ERR: {}", m);
+            HashMap::new()
+        }
+    };
 
     for building in buildings {
-        let rooms_to_ping: Vec<DB_Room> = database.get_rooms_by_abbrev(&building.1.abbrev);
+        let rooms_to_ping: Vec<DB_Room> = match database.get_rooms_by_abbrev(&building.1.abbrev) {
+            Ok(rs) => rs,
+            Err(m) => {
+                error!("DB_ERR: {}", m);
+                Vec::new()
+            }
+        };
 
         for rm in rooms_to_ping {
             std::thread::scope(|s| {
                 s.spawn(|| {
                     let mut room = rm.clone();
                     room.ping_data = ping_room(room.ping_data);
-                    database.update_room(&room);
+                    let _ = database.update_room(&room);
                     debug!("[JackNet] - Updated {:?}", &room.name);
                 });
             });
         }
     }
-    info!("[Data] - JackNet Complete");
     return;
 }
 
@@ -1785,10 +1922,10 @@ fn construct_headers(call_type: &str,database: &mut Database) -> HeaderMap {
     let mut header_map = HeaderMap::new();
     if call_type == "lsm" {
         header_map.insert(ACCEPT, HeaderValue::from_static("application/json"));
-        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&database.get_key("lsm_api").val).expect("[-] KEY_ERR: Not found."));
+        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&database.get_key("lsm_api").expect("No key found!").val).expect("[-] KEY_ERR: Not found."));
     } else if call_type == "gh" {
         header_map.insert(ACCEPT, HeaderValue::from_static("application/vnd.github+json"));
-        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&database.get_key("gh_api").val).expect("[-] KEY_ERR: Not found."));
+        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&database.get_key("gh_api").expect("No key found!").val).expect("[-] KEY_ERR: Not found."));
         header_map.insert(HeaderName::from_static("x-github-api-version"), HeaderValue::from_static("2022-11-28"));
     }
 
@@ -2195,6 +2332,7 @@ $$$$$$$$\                    $$\
 #[cfg(test)]
 mod tests {
     use super::*;
+    use server_lib::models::DB_Key;
 
     #[test]
     fn test_pad_zero() {
@@ -2209,4 +2347,158 @@ mod tests {
         assert_eq!(pad(String::from("test"), 4), String::from("test"));
         assert_eq!(pad(String::from("test"), 3), String::from("test"));
     }
+
+    // This test works great, but cannot be used in GitHub's auto test due to the need for a database connection.
+    // Uncomment this test for local testing on DB CRUD operations :)
+    /* #[test]
+    fn test_db() {
+        let dummy_building = DB_Building {
+            abbrev: String::from("TEST"),
+            name: String::from("TEST"),
+            lsm_name: String::from("TEST"),
+            zone: -1,
+            checked_rooms: 0,
+            total_rooms: 0,
+        };
+
+        let dummy_room = DB_Room {
+            abbrev: String::from("TEST"),
+            name: String::from("TEST"),
+            checked: "2000-01-01T00:00:00Z".to_string(),
+            needs_checked: true,
+            gp: false,
+            available: false,
+            until: String::from("TOMORROW"),
+            ping_data: Vec::new(),
+            schedule: Vec::new(),
+        };
+
+        let dummy_key = DB_Key {
+            key_id: String::from("TEST"),
+            val: String::from("TEST")
+        };
+
+        let dummy_user = DB_User {
+            username: String::from("TEST"),
+            permissions: 0
+        };
+
+        let dummy_data = DB_DataElement {
+            key: String::from("TEST"),
+            val: String::from("TEST")
+        };
+
+        let mut db = Database::new();
+
+        let _ = match db.get_building_by_abbrev(&String::from("TEST")) {
+            Ok(_) => panic!("BUILDING FETCHED WHEN NONE EXPECTED"),
+            Err(_) => ()
+        };
+
+        let _ = match db.get_room_by_name(&String::from("TEST")) {
+            Ok(_) => panic!("ROOM FETCHED WHEN NONE EXPECTED"),
+            Err(_) => ()
+        };
+
+        let _ = match db.get_key(&String::from("TEST")) {
+            Ok(_) => panic!("KEY FETCHED WHEN NONE EXPECTED"),
+            Err(_) => ()
+        };
+
+        let _ = match db.get_user(&String::from("TEST")) {
+            Ok(_) => panic!("USER FETCHED WHEN NONE EXPECTED"),
+            Err(_) => ()
+        };
+
+        let _ = match db.get_data(&String::from("TEST")) {
+            Ok(_) => panic!("DATA FETCHED WHEN NONE EXPECTED"),
+            Err(_) => ()
+        };
+
+        let _ = db.update_building(&dummy_building).expect("BUILDING UPDATE FAILED");
+        let _ = db.update_room(&dummy_room).expect("ROOM UPDATE FAILED");
+        let _ = db.update_key(&dummy_key).expect("KEY UPDATE FAILED");
+        let _ = db.update_user(&dummy_user).expect("USER UPDATE FAILED");
+        let _ = db.update_data(&dummy_data).expect("DATA UPDATE FAILED");
+
+        let _ = db.get_building_by_abbrev(&String::from("TEST")).expect("NO BUILDING FETCHED");
+        let _ = db.get_room_by_name(&String::from("TEST")).expect("NO ROOM FETCHED");
+        let _ = db.get_key(&String::from("TEST")).expect("NO KEY FETCHED");
+        let _ = db.get_user(&String::from("TEST")).expect("NO USER FETCHED");
+        let _ = db.get_data(&String::from("TEST")).expect("NO DATA FETCHED");
+
+        let dummy_building2 = DB_Building {
+            abbrev: String::from("TEST"),
+            name: String::from("TEST2"),
+            lsm_name: String::from("TEST"),
+            zone: -1,
+            checked_rooms: 0,
+            total_rooms: 0,
+        };
+
+        let dummy_room2 = DB_Room {
+            abbrev: String::from("TEST"),
+            name: String::from("TEST"),
+            checked: "2000-01-01T00:00:00Z".to_string(),
+            needs_checked: true,
+            gp: false,
+            available: false,
+            until: String::from("TOMORROW2"),
+            ping_data: Vec::new(),
+            schedule: Vec::new(),
+        };
+
+        let dummy_key2 = DB_Key {
+            key_id: String::from("TEST"),
+            val: String::from("TEST2")
+        };
+
+        let dummy_user2 = DB_User {
+            username: String::from("TEST"),
+            permissions: -1
+        };
+
+        let dummy_data2 = DB_DataElement {
+            key: String::from("TEST"),
+            val: String::from("TEST2")
+        };
+
+        let _ = db.update_building(&dummy_building2).expect("BUILDING UPDATE FAILED.");
+        let _ = db.update_room(&dummy_room2).expect("ROOM UPDATE FAILED.");
+        let _ = db.update_key(&dummy_key2).expect("KEY UPDATE FAILED.");
+        let _ = db.update_user(&dummy_user2).expect("USER UPDATE FAILED.");
+        let _ = db.update_data(&dummy_data2).expect("DATA UPDATE FAILED.");
+
+        let _ = db.delete_room(&String::from("TEST")).expect("ROOM DELETION FAILED.");
+        let _ = db.delete_building(&String::from("TEST")).expect("BUILDING DELETION FAILED.");
+        let _ = db.delete_key(&String::from("TEST")).expect("KEY DELETION FAILED.");
+        let _ = db.delete_user(&String::from("TEST")).expect("USER DELETION FAILED.");
+        let _ = db.delete_data(&String::from("TEST")).expect("DATA DELETION FAILED.");
+
+        let _ = match db.get_building_by_abbrev(&String::from("TEST")) {
+            Ok(_) => panic!("BUILDING FETCHED WHEN NONE EXPECTED"),
+            Err(_) => ()
+        };
+
+        let _ = match db.get_room_by_name(&String::from("TEST")) {
+            Ok(_) => panic!("ROOM FETCHED WHEN NONE EXPECTED"),
+            Err(_) => ()
+        };
+
+        let _ = match db.get_key(&String::from("TEST")) {
+            Ok(_) => panic!("KEY FETCHED WHEN NONE EXPECTED"),
+            Err(_) => ()
+        };
+
+        let _ = match db.get_user(&String::from("TEST")) {
+            Ok(_) => panic!("USER FETCHED WHEN NONE EXPECTED"),
+            Err(_) => ()
+        };
+
+        let _ = match db.get_data(&String::from("TEST")) {
+            Ok(_) => panic!("DATA FETCHED WHEN NONE EXPECTED"),
+            Err(_) => ()
+        };
+
+    } */
 }
