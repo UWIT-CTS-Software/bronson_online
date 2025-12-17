@@ -29,7 +29,11 @@ GeneralRequest
 */
 
 pub mod models;
-pub mod schema;
+mod schema;
+// Ping Module
+mod jack_ping;
+
+pub use crate::jack_ping::jp;
 
 use std::{
 	string,
@@ -432,7 +436,20 @@ impl Database {
 			.expect("Error loading users.");
 
 		if user_results.len() == 0 {
-			let json_users: HashMap<String, i16> = serde_json::from_str(&env::var("USERS_JSON").unwrap()).ok()?;
+			let u_json = match env::var("USERS_JSON") {
+				Ok(u)  => String::from(u),
+				Err(m) => { 
+					error!("USERS_JSON environment variable not found: {}", m);
+					return None;
+				}
+			};
+			let json_users: HashMap<String, i16> = match serde_json::from_str(&u_json) {
+				Ok(ju) => ju,
+				Err(m) => {
+					error!("Unable to parse users json: {}", m);
+					return None;
+				}
+			};
 
 			for (user, perms) in json_users.iter() {
 				let new_user = DB_User { 
@@ -451,7 +468,20 @@ impl Database {
 			.expect("Error loading keys");
 
 		if key_results.len() == 0 {
-			let json_keys: HashMap<String, String> = serde_json::from_str(&env::var("KEYS_JSON").unwrap()).ok()?;
+			let k_json = match env::var("KEYS_JSON") {
+				Ok(k)  => String::from(k),
+				Err(m) => {
+					error!("KEYS_JSON environment variable not found: {}", m);
+					return None;
+				}
+			};
+			let json_keys: HashMap<String, String> = match serde_json::from_str(&k_json) {
+				Ok(jk) => jk,
+				Err(m) => {
+					error!("Unable to parse keys json: {}", m);
+					return None;
+				}
+			};
 
 			for (id, value) in json_keys.iter() {
 				let new_key = DB_Key {
@@ -551,48 +581,100 @@ impl Database {
 	}
 
 	pub fn try_recover_key(&mut self, recover_key: &str, recover_data: &HashMap<String, Value>) -> Result<(), String> {
-		let mut recover_val: Value = serde_json::from_str("{}").unwrap(); // Keys are fetched from a file, not from data dump, so a little finessing needs done.
-		if recover_key != "keys" {
-			recover_val = match recover_data.get(recover_key) {
-				Some(v) => v.clone(),
-				None    => {
-					return Err(String::from("No key-value pair found"));
-				}
-			};
-		}
 		match recover_key {
 			"buildings" => {
-				let backup_buildings: Vec<DB_Building> = serde_json::from_value(recover_val).unwrap();
+				let recover_val = match recover_data.get(recover_key) {
+					Some(bs) => bs,
+					None     => { return Err(String::from("No buildings found!")); }
+				};
+				let backup_buildings: Vec<DB_Building> = match serde_json::from_value(recover_val.clone()) {
+					Ok(bs) => bs,
+					Err(m) => { return Err(format!("Unable to parse buildings from recovery data: {}", m)); }
+				};
 				for b in backup_buildings {
 					let _ = self.update_building(&b);
 				}
 			},
 			"rooms"     => {
-				let backup_rooms: Vec<DB_Room> = serde_json::from_value(recover_val).unwrap();
+				let recover_val = match recover_data.get(recover_key) {
+					Some(rs) => rs,
+					None     => { return Err(String::from("No rooms found!")); }
+				};
+				let backup_rooms: Vec<DB_Room> = match serde_json::from_value(recover_val.clone()) {
+					Ok(rs) => rs,
+					Err(m) => { return Err(format!("Unable to parse rooms from recovery data: {}", m)); }
+				};
 				for r in backup_rooms {
 					let _ = self.update_room(&r);
 				}
 			},
 			"users"     => {
-				let backup_users: Vec<DB_User> = serde_json::from_value(recover_val).unwrap();
-				for u in backup_users {
-					let _ = self.update_user(&u);
-				}
+				let _ = match recover_data.get(recover_key) {
+					Some(us) => {
+						let _ = match serde_json::from_value::<Vec<DB_User>>(us.clone()) {
+							Ok(bs) => {
+								for u in bs {
+									let _ = self.update_user(&u);
+								}
+							},
+							Err(_) => {
+								warn!("[Data] - No users found in recovery data. Attempting default recovery.");
+								let user_json = match &env::var("USERS_JSON") {
+									Ok(uj) => String::from(uj),
+									Err(m) => { return Err(format!("USERS_JSON environment varuable not found: {}", m)); }
+								};
+								let json_users: HashMap<String, i16> = match serde_json::from_str(&user_json) {
+									Ok(u)  => u,
+									Err(m) => { return Err(format!("Unable to parse users json: {}", m)); }
+								};
+
+								for (u, p) in json_users.iter() {
+									let _ = self.update_user(&DB_User {
+										username: u.clone(),
+										permissions: *p as i16
+									});
+								}
+							}
+						};
+					},
+					None     => {
+						warn!("[Data] - No users found in recovery data. Attempting default recovery.");
+						let user_json = match &env::var("USERS_JSON") {
+							Ok(uj) => String::from(uj),
+							Err(m) => { return Err(format!("USERS_JSON environment varuable not found: {}", m)); }
+						};
+						let json_users: HashMap<String, i16> = match serde_json::from_str(&user_json) {
+							Ok(u)  => u,
+							Err(m) => { return Err(format!("Unable to parse users json: {}", m)); }
+						};
+
+						for (u, p) in json_users.iter() {
+							let _ = self.update_user(&DB_User {
+								username: u.clone(),
+								permissions: *p as i16
+							});
+						}
+					}
+				};
 			},
 			"data"      => {
-				let backup_data: Vec<DB_DataElement> = serde_json::from_value(recover_val).unwrap();
+				let recover_val = match recover_data.get(recover_key) {
+					Some(d) => d,
+					None    => { return Err(String::from("No data found!")); }
+				};
+				let backup_data: Vec<DB_DataElement> = serde_json::from_value(recover_val.clone()).unwrap();
 				for d in backup_data {
 					let _ = self.update_data(&d);
 				}
 			},
 			"keys"      => {
-				let json_str = match read_to_string(KEYS) {
-					Ok(k) => k,
-					Err(m)   => { return Err(m.to_string()); }
+				let key_json = match &env::var("KEYS_JSON") {
+					Ok(kj) => String::from(kj),
+					Err(m) => { return Err(format!("KEYS_JSON environment variable not found: {}", m)); }
 				};
-				let json_keys: HashMap<String, String> = match serde_json::from_str(&json_str) {
-					Ok(e) => e,
-					Err(m) => { return Err(format!("Key not found: {}", m)); }
+				let json_keys: HashMap<String, String> = match serde_json::from_str(&key_json) {
+					Ok(k)  => k,
+					Err(m) => { return Err(format!("Unable to parse keys json: {}", m)); }
 				};
 
 				for (id, value) in json_keys.iter() {
@@ -1274,11 +1356,6 @@ pub struct PingRequest {
     pub building: String
 }
 
-// Ping Module
-mod jack_ping;
-
-pub use crate::jack_ping::jp;
-
 // ----------- Custom structs for CFM Requests
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CFMRequest {
@@ -1329,8 +1406,6 @@ pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
 pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/roomConfig_agg.csv");
 pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.csv");
 pub static LOG       : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/output.log");
-pub static KEYS      : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/keys.json");
-pub static USERS     : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/users.json");
 pub static STATUS_200: &str = "HTTP/1.1 200 OK";
 pub static STATUS_303: &str = "HTTP/1.1 303 See Other";
 pub static STATUS_401: &str = "HTTP/1.1 401 Unauthorized";
