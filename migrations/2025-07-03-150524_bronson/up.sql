@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS bronson.data (
 );
 
 CREATE TABLE IF NOT EXISTS bronson.tickets (
-    id                      INTEGER     PRIMARY KEY,
+    ticket_id               INTEGER     PRIMARY KEY,
     type_name               TEXT        NOT NULL,
     type_category_name      TEXT        NOT NULL,
     title                   TEXT        NOT NULL,
@@ -98,13 +98,13 @@ CREATE TABLE IF NOT EXISTS bronson.tickets (
     CHECK (length(title) <= 201),
     CHECK (length(description) <= 501),
     CHECK (length(account_name) <= 128),
-    CHECK (length(status_name) <= 16),
+    CHECK (length(status_name) <= 32),
     CHECK (length(created_date) <= 32),
     CHECK (length(created_full_name) <= 32),
     CHECK (length(modified_date) <= 32),
     CHECK (length(modified_full_name) <= 32),
-    CHECK (length(requestor_name) <= 32),
-    CHECK (length(requestor_email) <= 32),
+    CHECK (length(requestor_name) <= 64),
+    CHECK (length(requestor_email) <= 64),
     CHECK (length(requestor_phone) <= 32),
     CHECK (length(responsible_full_name) <= 32),
     CHECK (length(responsible_group_name) <= 128)

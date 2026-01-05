@@ -50,8 +50,8 @@ pub mod bronson {
     }
 
     diesel::table! {
-        bronson.tickets (id) {
-            id -> Int4,
+        bronson.tickets (ticket_id) {
+            ticket_id -> Int4,
             type_name -> Text,
             type_category_name -> Text,
             title -> Text,

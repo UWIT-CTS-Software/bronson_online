@@ -238,7 +238,7 @@ pub struct DB_DataElement {
 #[diesel(table_name = tickets)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct DB_Ticket {
-    pub id: i32,
+    pub ticket_id: i32,
     pub type_name: String,              
     pub type_category_name: String,
     pub title: String,

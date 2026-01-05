@@ -71,11 +71,12 @@ use crate::schema::bronson::{
 	users::dsl::*,
 	keys::dsl::*,
 	data::dsl::*,
+	tickets::dsl::*,
 };
 use crate::models::{
 	DB_Hostname, DB_IpAddress,
 	DB_Room, DB_Building, DB_User, DB_Key, DB_DataElement,
-	DeviceType,
+	DeviceType, DB_Ticket,
 };
 
 trait FnBox {
@@ -958,6 +959,55 @@ impl Database {
 			.returning(DB_DataElement::as_returning())
 			.get_result(&mut conn)
 	}
+
+	pub fn get_ticket(&mut self, id_value: i32) -> Result<DB_Ticket, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		tickets
+			.select(DB_Ticket::as_select())
+			.filter(ticket_id.eq(id_value))
+			.first(&mut conn)
+	}
+
+	pub fn get_latest_ticket(&mut self) -> Result<DB_Ticket, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		tickets
+			.select(DB_Ticket::as_select())
+			.order(created_date.desc())
+			.first(&mut conn)
+	}
+
+	pub fn check_if_tickets_empty(&mut self) -> bool {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		tickets
+			.count()
+			.get_result::<i64>(&mut conn)
+			.unwrap() == 0
+	}
+
+	pub fn update_ticket(&mut self, element: &DB_Ticket) -> Result<DB_Ticket, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		diesel::insert_into(tickets)
+			.values(element)
+			.on_conflict(ticket_id)
+			.do_update()
+			.set(element)
+			.returning(DB_Ticket::as_returning())
+			.get_result(&mut conn)
+	}
+
+	pub fn delete_ticket(&mut self, id_value: i32) -> Result<DB_Ticket, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		diesel::delete(tickets)
+			.filter(ticket_id.eq(id_value))
+			.returning(DB_Ticket::as_returning())
+			.get_result(&mut conn)
+	}
+	
 }
 
 // impl<'a> Clone for Database {

@@ -53,7 +53,7 @@ use server_lib::{
     Database, Terminal, 
     models::{
         DB_Room, DB_Building, DB_User, DB_DataElement,
-        DB_IpAddress,  
+        DB_IpAddress, DB_Key, DB_Ticket
     },
 };
 use futures_util::future::FutureExt;
@@ -173,7 +173,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let database_url = env::var("DATABASE_URL")
         .expect("DATABASE_URL must be set");
     let mut connection = PgConnection::establish(&database_url)
-        .expect("Error Connecting to Database");
+        .expect("Error Connecting to Database"); 
     connection.run_pending_migrations(MIGRATIONS)
             .map_err(|e| format!("Failed to run migrations: {}", e))?;
 
@@ -315,6 +315,14 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
             duration: 3600,
             timestamp: Utc::now() - Duration::from_secs(3580),
         });
+        ts.tasks.insert("tdxToken".to_string(), TaskSchedule {
+            duration: 82800,
+            timestamp: Utc::now() - Duration::from_secs(82799),
+        });
+        ts.tasks.insert("tickex".to_string(), TaskSchedule {
+            duration: 120,
+            timestamp: Utc::now() - Duration::from_secs(110),
+        });
     }
     // Database Init
     let mut database = Database::new();
@@ -340,6 +348,15 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
     // Not sure if this is even giving performance improvements.
     let jn_st = check_jn_thread();
     let jn_thread = ThreadPool::new(1);
+
+    let tdx_request: Client = reqwest::Client::builder()
+        .cookie_store(true)
+        .user_agent("server_lib/1.10.1")
+        .default_headers(construct_headers("tdx", &mut database))
+        .timeout(Duration::from_secs(60))
+        .build()
+        .ok()
+        .expect("Unable to build TDX Request Client");
 
     // Loop
     //let l_ts = Arc::clone(&thread_schedule);
@@ -412,6 +429,20 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                     }
                     info!("[Data] - JackNet Complete");
                 },
+                "tdxToken"        => {
+                    info!("[Data] - Pulling New TDX Token");
+                    let _ = match fetch_tdx_token(&mut database, &tdx_request).await {
+                        Ok(_)     =>  info!("[Data] - New TDX Token Pulled"),
+                        Err(s)    => error!("[Data] - FAILED to fetch new TDX Token: {}", s)
+                    };
+                },
+                "tickex"          => {
+                    info!("[Data] - Running Tickex");
+                    let _ = match run_tickex(&mut database, &tdx_request).await {
+                        Ok(_)     =>  info!("[Data] - Tickex Run Complete"),
+                        Err(m)    => error!("[Data] - Tickex Run FAILED: {}", m)
+                    };
+                }  
                 _                 => {
                     warn!("Unknown task: {}", task_name)
                 },
@@ -2307,6 +2338,198 @@ $$$$$$$$\ $$\           $$\
    \__|   \__| \_______|\__|  \__| \_______|\__/  \__|
 */
 
+async fn fetch_tdx_token(database: &mut Database, req: &Client) -> Result<(), String> {
+    // TODO: Fix the error checking to match what Alex added (check return types & error messages)
+
+    let url = "https://uwyo.teamdynamix.com/TDWebApi/api/auth/login";
+
+    // Get TDX login credentials from .env
+    let keys_json_raw: String = std::env::var("KEYS_JSON").expect("KEYS_JSON missing from environment");
+    let keys_json: Value = serde_json::from_str(&keys_json_raw).expect("KEYS_JSON is not valid JSON");
+    let tdx_api_raw: &str = keys_json["tdx_api_raw"].as_str().expect("tdx_api_raw missing or not a string");
+    let login_json: Value = serde_json::from_str(tdx_api_raw).expect("tdx_api_raw is not valid JSON");
+
+    // Extract username and password
+    let username: &str = login_json["username"].as_str().expect("TDX username missing");
+    let password: &str = login_json["password"].as_str().expect("TDX password missing");
+
+    // Send the request
+    let resp = req
+        .post(url)
+        .header("Accept", "application/json")
+        .form(&[("username", username), ("password", password)])
+        .send()
+        .await;
+    let resp = match resp { // Handle network errors
+        Ok(r) => r,
+        Err(e) => return Err(e.to_string()),
+    };
+
+    let status = resp.status();
+    if !status.is_success() {
+        return Err(status.to_string());
+    }
+
+    // Store token in database
+    let token = resp.text().await.unwrap_or("Failed to read token response".to_string());
+    let token = "Bearer ".to_owned() + &token;
+    let _ = database.update_key(&DB_Key {
+        key_id: String::from("tdx_api"),
+        val: token,
+    });
+
+    debug!("[Tickex] Stored new TDX token successfully into Database");
+
+    return Ok(());
+}
+
+async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String> {
+    let url = "https://uwyo.teamdynamix.com/TDWebApi/api/tickets/search";
+
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e)),
+    };
+
+    // If no tickets exist, perform a tickets fetch from Jan 1st, 2020 to now
+    if database.check_if_tickets_empty() {
+        info!("[Data] - No tickets exist in Database. Pulling all tickets from Jan 1st, 2020...");
+
+        // Define search
+        let search_body = serde_json::json!({
+            "CreatedDateFrom": "2020-01-01T00:00:00Z",
+            "ResponsibilityGroupIDs": [2742], // CTS Group ID
+            "MaxResults": 100000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
+        });
+        // Make the request
+        let resp = req
+            .post(url)
+            .header("Authorization", &tdx_token.val)
+            .header("Content-Type", "application/json")
+            .body(search_body.to_string())
+            .send()
+            .await;
+
+        let resp = match resp {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch tickets: {}", e)),
+        };
+
+        if !resp.status().is_success() {
+            return Err(format!("TDX API error: {}", resp.status()));
+        }
+
+        // Get the response body as text
+        let body = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
+
+        // Parse the response as JSON
+        let tickets_json: Vec<serde_json::Value> = 
+            serde_json::from_str(&body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, body))?;
+
+        // Map to DB_Ticket and insert
+        for ticket_val in &tickets_json {
+            let ticket = DB_Ticket {
+                ticket_id: ticket_val["ID"].as_i64().unwrap_or(0) as i32,
+                type_name: ticket_val["TypeName"].as_str().unwrap_or("").to_string(),
+                type_category_name: ticket_val["TypeCategoryName"].as_str().unwrap_or("").to_string(),
+                title: ticket_val["Title"].as_str().unwrap_or("").to_string(),
+                description: ticket_val["Description"].as_str().unwrap_or("").to_string(),
+                account_name: ticket_val["AccountName"].as_str().unwrap_or("").to_string(),
+                status_name: ticket_val["StatusName"].as_str().unwrap_or("").to_string(),
+                created_date: ticket_val["CreatedDate"].as_str().unwrap_or("").to_string(),
+                created_full_name: ticket_val["CreatedFullName"].as_str().unwrap_or("").to_string(),
+                modified_date: ticket_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
+                modified_full_name: ticket_val["ModifiedFullName"].as_str().unwrap_or("").to_string(),
+                requestor_name: ticket_val["RequestorName"].as_str().unwrap_or("").to_string(),
+                requestor_email: ticket_val["RequestorEmail"].as_str().unwrap_or("").to_string(),
+                requestor_phone: ticket_val["RequestorPhone"].as_str().unwrap_or("").to_string(),
+                days_old: ticket_val["DaysOld"].as_i64().unwrap_or(0) as i16,
+                responsible_full_name: ticket_val["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
+                responsible_group_name: ticket_val["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
+            };
+
+            // Insert or update
+            if let Err(e) = database.update_ticket(&ticket) {
+                error!("Failed to insert ticket {}: {}", ticket.ticket_id, e);
+            }
+        }
+
+        // Double check tickets exist in database, but this should not be necessary
+        if database.check_if_tickets_empty() {
+            return Err("Failed to insert tickets into database".to_string());
+        }
+    } else { // Tickets table not empty, only update more recent tickets
+        // Look in database for most recent Ticket and look at its date
+        let latest_ticket = match database.get_latest_ticket() {
+            Ok(t) => t,
+            Err(e) => return Err(format!("Failed to get latest ticket: {}", e)),
+        };
+        
+        let latest_ticket_date = latest_ticket.created_date[..10].to_string(); // Truncate to YYYY-MM-DD
+
+        // Calculate date 6 months back
+        let latest_date = chrono::NaiveDate::parse_from_str(&latest_ticket_date, "%Y-%m-%d").unwrap();
+        let from_date = latest_date.checked_sub_months(chrono::Months::new(6)).unwrap().format("%Y-%m-%dT00:00:00Z").to_string();
+
+        // Fetch tickets from TDX
+        let search_body = serde_json::json!({
+            "CreatedDateFrom": from_date,
+            "MaxResults": 10000,
+            "ResponsibilityGroupIDs": [2742]
+        });
+
+        // Make the request
+        let resp = req
+            .post(url)
+            .header("Authorization", tdx_token.val)
+            .header("Content-Type", "application/json")
+            .body(search_body.to_string())
+            .send()
+            .await;
+        let resp = match resp {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch tickets: {}", e)),
+        };
+        if !resp.status().is_success() {
+            return Err(format!("TDX API error: {}", resp.status()));
+        }
+
+        // Get the response body as text and convert to JSON
+        let body = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
+        let tickets_json: Vec<serde_json::Value> = serde_json::from_str(&body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, body))?;
+
+        // Map to DB_Ticket and update
+        for ticket_val in &tickets_json {
+            let ticket = DB_Ticket {
+                ticket_id: ticket_val["ID"].as_i64().unwrap_or(0) as i32,
+                type_name: ticket_val["TypeName"].as_str().unwrap_or("").to_string(),
+                type_category_name: ticket_val["TypeCategoryName"].as_str().unwrap_or("").to_string(),
+                title: ticket_val["Title"].as_str().unwrap_or("").to_string(),
+                description: ticket_val["Description"].as_str().unwrap_or("").to_string(),
+                account_name: ticket_val["AccountName"].as_str().unwrap_or("").to_string(),
+                status_name: ticket_val["StatusName"].as_str().unwrap_or("").to_string(),
+                created_date: ticket_val["CreatedDate"].as_str().unwrap_or("").to_string(),
+                created_full_name: ticket_val["CreatedFullName"].as_str().unwrap_or("").to_string(),
+                modified_date: ticket_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
+                modified_full_name: ticket_val["ModifiedFullName"].as_str().unwrap_or("").to_string(),
+                requestor_name: ticket_val["RequestorName"].as_str().unwrap_or("").to_string(),
+                requestor_email: ticket_val["RequestorEmail"].as_str().unwrap_or("").to_string(),
+                requestor_phone: ticket_val["RequestorPhone"].as_str().unwrap_or("").to_string(),
+                days_old: ticket_val["DaysOld"].as_i64().unwrap_or(0) as i16,
+                responsible_full_name: ticket_val["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
+                responsible_group_name: ticket_val["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
+            };
+
+            // Insert or update
+            if let Err(e) = database.update_ticket(&ticket) {
+                error!("Failed to insert ticket {}: {}", ticket.ticket_id, e);
+            }
+        }
+    }
+
+    return Ok(());
+}
 
 fn get_tickets() -> Option<String> {
     use std::fs::read_to_string;
@@ -2319,7 +2542,7 @@ fn get_tickets() -> Option<String> {
             None
         }
     }
-} 
+}
 
 
 /*
