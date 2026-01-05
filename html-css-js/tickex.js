@@ -1,5 +1,5 @@
 /*
-  ________        _                 _
+  ________        _
  |___  ___|      | |       _    _  (_)   
     |  |  (_)  __| | _____ \ \/ /   _ ___ 
     |  |   _ / __| |/ / _ \ \  /   | / __|
@@ -358,14 +358,17 @@ function initBoard(tickets, sortBy) {
 }
 
 async function fetchTickets() {
-    const response = await fetch('/api/tickets');
-
-    if (!response.ok) {
-        console.error('Failed to fetch tickets');
-        return null;
+    try {
+        const response = await fetch('/tickets');
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const tickets = await response.json();
+        return tickets;
+    } catch (error) {
+        console.error('Failed to fetch tickets:', error);
+        return [];
     }
-    
-    return await response.json();
 }
 
 async function setTickex() {
@@ -425,7 +428,13 @@ async function setTickex() {
     /* -------------------- Tickex Page -------------------- */
     let response = await fetchTickets();
     let tickets = Array.isArray(response) ? response : [];
-    sessionStorage.setItem("ticketData", JSON.stringify(tickets));
+    // sessionStorage.setItem("ticketData", JSON.stringify(tickets));
+
+    // TODO: Grab tickets from database
+    // TODO: Reload board when new Tickex Run is COMPLETED (will this affect whether search is active?)
+    // TODO: Put k-pager on two lines, not just 1, will look better and can condense more
+    // TODO: Fix sorting
+    // TODO: Fix search bar? (Might be related to broken sorting)
 
     // Sort By Box - by date, status, and room location
     let sortByBox = document.createElement("div");

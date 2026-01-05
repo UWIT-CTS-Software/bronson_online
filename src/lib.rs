@@ -999,6 +999,14 @@ impl Database {
 			.get_result(&mut conn)
 	}
 
+	pub fn get_all_tickets(&mut self) -> Result<Vec<DB_Ticket>, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		tickets
+			.select(DB_Ticket::as_select())
+			.load::<DB_Ticket>(&mut conn)
+	}
+
 	pub fn delete_ticket(&mut self, id_value: i32) -> Result<DB_Ticket, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
@@ -1452,7 +1460,6 @@ pub static BLDG_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/buildin
 pub static CAMPUS_STR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.json");
 pub static ALIAS_JSON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/alias_table.json");
 pub static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
-pub static TICKET	 : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/tickets.json");
 pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
 pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/roomConfig_agg.csv");
 pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.csv");

@@ -35,6 +35,11 @@ CamCode
     - get_cfm_file(body: Vec<u8>) -> String
     - get_cfm_dir(body: Vec<u8>) -> String
 
+Tickex
+    - fetch_tdx_token(database: &mut Database, req: &Client) -> Result<(), String>
+    - run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
+    - 
+
 Wiki
     - w_build_articles() -> String
 */
@@ -563,16 +568,6 @@ async fn handle_connection(
             res.send_file(user_homepage);
             res.insert_onload("setTickex()");
         },
-        "GET /api/tickets HTTP/1.1" => {
-            if let Some(contents) = get_tickets() {
-                res.status(STATUS_200);
-                res.insert_header("Content-Type", "application/json");
-                res.send_contents(contents.into());
-            } else {
-               res.status(STATUS_404);
-                res.send_contents("{\"error\": \"Tickets were not found\"}".into());
-            }
-        },   
         "GET /jacknet HTTP/1.1"            => {
             res.status(STATUS_200);
             res.send_file(user_homepage);
@@ -682,6 +677,37 @@ async fn handle_connection(
             }.into();
             res.status(STATUS_200);
             res.send_contents(contents);
+        },
+        "GET /tickets HTTP/1.1"            => { // OUTGOING, Tickets for Tickex
+            let db_tickets = match database.get_all_tickets() {
+                Ok(t) => t,
+                Err(e) => {
+                    error!("Failed to get tickets: {}", e);
+                    Vec::new()
+                }
+            };
+            let tickets: Vec<serde_json::Value> = db_tickets.into_iter().map(|t| {
+                json!({
+                    "ID": t.ticket_id,
+                    "Title": t.title,
+                    "LocationName": "", // Not in DB, perhaps add later
+                    "StatusName": t.status_name,
+                    "Description": t.description,
+                    "RequestorName": t.requestor_name,
+                    "CreatedFullName": t.created_full_name,
+                    "ResponsibleGroupName": t.responsible_group_name,
+                    "ServiceName": "", // Not in DB
+                    "AccountName": t.account_name,
+                    "TypeCategoryName": t.type_category_name,
+                    "UrgencyName": "", // Not in DB
+                    "PriorityName": "", // Not in DB
+                    "CreatedDate": t.created_date,
+                    "ModifiedDate": t.modified_date
+                })
+            }).collect();
+            let tickets_json = serde_json::to_string(&tickets).unwrap();
+            res.status(STATUS_200);
+            res.send_contents(tickets_json.into());
         },
         "POST /lsmData HTTP/1.1"              => { // OUTGOING
             let body_str = String::from_utf8(req.body).expect("AT: LSM Data Err, invalid UTF-8");
@@ -2529,19 +2555,6 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
     }
 
     return Ok(());
-}
-
-fn get_tickets() -> Option<String> {
-    use std::fs::read_to_string;
-    use server_lib::TICKET;
-
-    match read_to_string(TICKET) {
-        Ok(contents) => Some(contents),
-        Err(e) => {
-            error!("Error reading tickets: {}", e);
-            None
-        }
-    }
 }
 
 
