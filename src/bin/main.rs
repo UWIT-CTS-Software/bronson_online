@@ -2420,7 +2420,7 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
 
     // If no tickets exist, perform a tickets fetch from Jan 1st, 2020 to now
     if database.check_if_tickets_empty() {
-        info!("[Data] - No tickets exist in Database. Pulling all tickets from Jan 1st, 2020...");
+        warn!("[Data] - No tickets exist in Database. Pulling all tickets from Jan 1st, 2020...");
 
         // Define search
         let search_body = serde_json::json!({
@@ -2477,7 +2477,7 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
 
             // Insert or update
             if let Err(e) = database.update_ticket(&ticket) {
-                error!("Failed to insert ticket {}: {}", ticket.ticket_id, e);
+                warn!("Failed to insert ticket {}: {}", ticket.ticket_id, e);
             }
         }
 

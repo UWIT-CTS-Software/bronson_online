@@ -1314,7 +1314,10 @@ ol li::marker {
 
 #closed.tx_ticketContainer table td:not(:nth-child(1)),
 #closed.tx_ticketContainer table th:not(:nth-child(1)) {
-    width: 30%
+    width: 30%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .tx_ticketContainer table td:nth-child(1),
@@ -1328,6 +1331,9 @@ ol li::marker {
 .tx_ticketContainer table td:not(:nth-child(1)),
 .tx_ticketContainer table th:not(:nth-child(1)) {
     width: 18%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .tx_ticketContainer input {
@@ -1362,8 +1368,32 @@ ol li::marker {
 
 .tx_ticketContainer select {
     max-width: 12%;
-    min-width: 55px;
+    min-width: 64px;
     font-weight: bold;
+}
+
+.k_pager {
+    margin-top: 5px;
+    text-align: center;
+}
+
+.k_pager button {
+    margin: 1px 2px;
+    width: 100%;
+    max-width: 12%;
+    min-width: 5%;
+}
+
+.k_pagerClosed {
+    margin-top: 5px;
+    text-align: center;
+}
+
+.k_pagerClosed button {
+    margin: 1px 2px;
+    width: 100%;
+    max-width: 12%;
+    min-width: 8%;
 }
 
 .tx_ticket {

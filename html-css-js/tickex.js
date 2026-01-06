@@ -46,7 +46,7 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 
 
 // Initializes all listeners for Tickex
-function initializeListeners() {
+function initializeListeners(tickets) {
     // Escape Key
     document.addEventListener('keydown', (e) => {
         const pressedKey = e.key;
@@ -67,7 +67,7 @@ function initializeListeners() {
             const searchBar = document.getElementById('searchBar');
             let search = searchBar.value;
 
-            performSearch(search, sortBy);
+            performSearch(search, sortBy, tickets);
         }
     });
 
@@ -75,12 +75,13 @@ function initializeListeners() {
     ["new", "catchAll", "closed"].forEach(section => {
         document.getElementById(`${section}Ticket_dropdown`)
             .addEventListener("change", () => {
-                performSearch(document.getElementById("searchBar").value, window.currentSortBy);
+                document.getElementById(`${section}Ticket_input`).value = 1; // Reset to page 1
+                performSearch(document.getElementById("searchBar").value, window.currentSortBy, tickets);
             });
 
         document.getElementById(`${section}Ticket_input`)
             .addEventListener("input", () => {
-                performSearch(document.getElementById("searchBar").value, window.currentSortBy);
+                performSearch(document.getElementById("searchBar").value, window.currentSortBy, tickets);
             });
     });
 
@@ -88,7 +89,11 @@ function initializeListeners() {
     // Check for empty search bar
     searchBar.addEventListener('keyup', function() {
         if ((this.value || '').trim() === '') {
-            performSearch("", window.currentSortBy); // Empty Search
+            // Reset to page 1
+            document.getElementById(`newTicket_input`).value = 1;
+            document.getElementById(`catchAllTicket_input`).value = 1;
+            document.getElementById(`closedTicket_input`).value = 1;
+            performSearch("", window.currentSortBy, tickets); // Empty Search
         }
     });
 
@@ -98,8 +103,13 @@ function initializeListeners() {
             e.preventDefault();
             searchBar.blur();
 
+            // Reset to page 1
+            document.getElementById(`newTicket_input`).value = 1;
+            document.getElementById(`catchAllTicket_input`).value = 1;
+            document.getElementById(`closedTicket_input`).value = 1;
+
             let search = (this.value || '').trim().toLowerCase();
-            performSearch(search, window.currentSortBy);
+            performSearch(search, window.currentSortBy, tickets);
         }
     });
 }
@@ -134,7 +144,6 @@ function showPopup(ticket) {
         <div class="tx_popupBox">
             <span>${ticket.Title || "No Title"}</span>
             <p>Ticket ID: ${ticket.ID || ""}</p>
-            <p>Location: ${ticket.LocationName || ""}</p>
             <p>Status: ${ticket.StatusName || ""}</p>
             <p>Description: ${ticket.Description || ""}</p>
             <p>Requestor: ${ticket.RequestorName || ""}</p>
@@ -190,8 +199,8 @@ function kPagerButton(val, inputId, maxPageId) {
 }
 
 // Performs the search with current text within search bar
-function performSearch(search, sortBy) {
-    const unalteredTicketData = JSON.parse(sessionStorage.getItem("ticketData"));
+function performSearch(search, sortBy, tickets) {
+    const unalteredTicketData = tickets
     let matchedTickets = [];
 
     search = search.replaceAll("monday", "mon");
@@ -208,9 +217,8 @@ function performSearch(search, sortBy) {
         for (let i = 0; i < unalteredTicketData.length; i++) {
 
             // Query Specific Fields
-            if (unalteredTicketData[i].ID.toLowerCase().includes(search) ||
+            if (unalteredTicketData[i].ID.toString().includes(search) ||
                 unalteredTicketData[i].Title.toLowerCase().includes(search) ||
-                unalteredTicketData[i].LocationName.toLowerCase().includes(search) ||
                 unalteredTicketData[i].RequestorName.toLowerCase().includes(search) ||
                 unalteredTicketData[i].CreatedFullName.toLowerCase().includes(search) ||
                 unalteredTicketData[i].CreatedDate.toLowerCase().includes(search) ||
@@ -229,11 +237,10 @@ function performSearch(search, sortBy) {
 }
 
 // Handles sorting of board elements
-//      - sortBy recieves: 'created', 'status', or 'location'
+//      - sortBy recieves: 'created' or 'status'
 function sortTickets(tickets, sortBy) {
-    // Sort everything by date first
-    tickets = tickets.sort((a, b) => new Date(b.CreatedDate) - new Date(a.CreatedDate));
-
+    tickets = tickets.sort((a, b) => b.ID - a.ID); // ID num corresponds to date created
+    
     // Sort by Status
     if (sortBy === 'status') {
         const statusOrder = [
@@ -246,11 +253,6 @@ function sortTickets(tickets, sortBy) {
             return aIndex - bIndex;
         });
 
-        return tickets;
-    }
-    // Sort by Location
-    else if (sortBy === 'location') {
-        tickets = tickets.sort((a, b) => a.LocationName.localeCompare(b.LocationName));
         return tickets;
     }
     // Default sort by Date
@@ -281,7 +283,7 @@ function initBoard(tickets, sortBy) {
         // On first time load or on error, use default values
         newNumRows = 15;
         catchAllNumRows = 15;
-        closedNumRows = 15;
+        closedNumRows = 10;
 
         newInputField = 1;
         catchAllInputField = 1;
@@ -293,6 +295,9 @@ function initBoard(tickets, sortBy) {
     let catchAllMaxPage = document.getElementById("catchAllMaxPage");
     let closedMaxPage = document.getElementById("closedMaxPage");
 
+    // If UI isn’t ready yet — bail
+    if (!newMaxPage || !catchAllMaxPage || !closedMaxPage) return;
+
     // Put tickets in proper board sections
     let newCount = 0, catchAllCount = 0, closedCount = 0;
     for (let ticket of tickets) {
@@ -300,7 +305,6 @@ function initBoard(tickets, sortBy) {
             <tr class="tx_ticket" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
                 <td>${ticket.Title}</td>
                 <td>${ticket.ID}</td>
-                <td>${ticket.LocationName || 'N/A'}</td>
                 <td>${ticket.StatusName}</td>
             </tr>
         `;
@@ -360,11 +364,12 @@ function initBoard(tickets, sortBy) {
 async function fetchTickets() {
     try {
         const response = await fetch('/tickets');
+
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
-        const tickets = await response.json();
-        return tickets;
+
+        return await response.json();
     } catch (error) {
         console.error('Failed to fetch tickets:', error);
         return [];
@@ -426,17 +431,13 @@ async function setTickex() {
 
 
     /* -------------------- Tickex Page -------------------- */
-    let response = await fetchTickets();
-    let tickets = Array.isArray(response) ? response : [];
-    // sessionStorage.setItem("ticketData", JSON.stringify(tickets));
+    // TODO: Reload board when new Tickex Run is COMPLETED 
+    //       - Auto-refresh board if no search is active (persistent "sort by" & page numbers)
+    //       - Color newest tickets differently for a few seconds
+    //       - Make a "New Tickets Available" popup
+    //       - Make the tab strobe
 
-    // TODO: Grab tickets from database
-    // TODO: Reload board when new Tickex Run is COMPLETED (will this affect whether search is active?)
-    // TODO: Put k-pager on two lines, not just 1, will look better and can condense more
-    // TODO: Fix sorting
-    // TODO: Fix search bar? (Might be related to broken sorting)
-
-    // Sort By Box - by date, status, and room location
+    // Sort By Box - by date and status
     let sortByBox = document.createElement("div");
     sortByBox.classList.add("tx_sortByBox");
     sortByBox.id = "sortByBox";
@@ -450,10 +451,7 @@ async function setTickex() {
             <input class="tx_radio" type="radio" name="tx_dev" id="status">
             <label for="status">Status</label>
         </div>
-        <div>
-            <input class="tx_radio" type="radio" name="tx_dev" id="location">
-            <label for="location">Location</label>
-        </div>
+
     `;
     tx_container.append(sortByBox);
 
@@ -480,6 +478,13 @@ async function setTickex() {
     `;
     tx_container.append(searchBar);
 
+    let tickets = [];
+
+    while (!tickets.length) { // Keep trying until tickets are fetched
+        const response = await fetchTickets();
+        tickets = Array.isArray(response) ? response : [];
+    }
+
     // The 3 Tickex boards - New, Catch All, Closed
     let newTickets = document.createElement("div");
     newTickets.classList.add("tx_newTickets");
@@ -491,7 +496,6 @@ async function setTickex() {
                     <thead><tr>
                         <th>Title</th>
                         <th>ID</th>
-                        <th>Location</th>
                         <th>Status</th>
                     </tr></thead>
                     <tbody></tbody>
@@ -504,7 +508,7 @@ async function setTickex() {
                     <span id="newMaxPage">1</span>
                     <button class="k_pager_button" id="new_plus1" onclick="kPagerButton(1, 'newTicket_input', 'newMaxPage')">></button>
                     <button class="k_pager_button" id="new_plus10" onclick="kPagerButton(10, 'newTicket_input', 'newMaxPage')">+10</button>
-                    <span>Items per page: </span>
+                    <div><span>Max Items per Page: </span>
                     <select class="k_pager_button" id="newTicket_dropdown">
                         <option value="5">5</option>
                         <option value="10">10</option>
@@ -515,7 +519,7 @@ async function setTickex() {
                         <option value="50">50</option>
                         <option value="75">75</option>
                         <option value="100">100</option>
-                    </select>
+                    </select></div>
                 </div>
             </div></fieldset>
     `;
@@ -524,13 +528,12 @@ async function setTickex() {
     catchAll.classList.add("tx_catchAllTickets");
     catchAll.id = 'catchAllTicketsBoard';
         catchAll.innerHTML = `
-        <fieldset><legend>Ticket Catch All</legend>
+        <fieldset><legend>CTS Ticket Catch All</legend>
             <div class="tx_ticketContainer" id="catchAll">
                 <table>
                     <thead><tr>
                         <th>Title</th>
                         <th>ID</th>
-                        <th>Location</th>
                         <th>Status</th>
                     </tr></thead>
                     <tbody></tbody>
@@ -543,7 +546,7 @@ async function setTickex() {
                     <span id="catchAllMaxPage">1</span>
                     <button class="k_pager_button" id="catchAll_plus1" onclick="kPagerButton(1, 'catchAllTicket_input', 'catchAllMaxPage')">></button>
                     <button class="k_pager_button" id="catchAll_plus10" onclick="kPagerButton(10, 'catchAllTicket_input', 'catchAllMaxPage')">+10</button>
-                    <span>Items per page: </span>
+                    <div><span>Max Items per Page: </span>
                     <select class="k_pager_button" id="catchAllTicket_dropdown">
                         <option value="5">5</option>
                         <option value="10">10</option>
@@ -554,7 +557,7 @@ async function setTickex() {
                         <option value="50">50</option>
                         <option value="75">75</option>
                         <option value="100">100</option>
-                    </select>
+                    </select></div>
                 </div>
             </div></fieldset>
     `;
@@ -563,7 +566,7 @@ async function setTickex() {
     closedTickets.classList.add("tx_closedTickets");
     closedTickets.id = "closedTicketsBoard";
         closedTickets.innerHTML = `
-        <fieldset><legend>Closed Tickets</legend>
+        <fieldset><legend>Closed CTS Tickets</legend>
             <div class="tx_ticketContainer" id="closed">
                 <table>
                     <thead><tr>
@@ -572,7 +575,7 @@ async function setTickex() {
                     </tr></thead>
                     <tbody></tbody>
                 </table>
-                <div class="k_pager" id="closedPager">
+                <div class="k_pagerClosed" id="closedPager">
                     <button class="k_pager_button" id="closed_minus10" onclick="kPagerButton(-10, 'closedTicket_input', 'closedMaxPage')">-10</button>
                     <button class="k_pager_button" id="closed_minus1" onclick="kPagerButton(-1, 'closedTicket_input', 'closedMaxPage')"><</button>
                     <input type="number" class="k_input_inner" id="closedTicket_input" autocomplete="off" value="1"></input>
@@ -580,18 +583,18 @@ async function setTickex() {
                     <span id="closedMaxPage">1</span>
                     <button class="k_pager_button" id="closed_plus1" onclick="kPagerButton(1, 'closedTicket_input', 'closedMaxPage')">></button>
                     <button class="k_pager_button" id="closed_plus10" onclick="kPagerButton(10, 'closedTicket_input', 'closedMaxPage')">+10</button>
-                    <span>Items per page: </span>
+                    <div><span>Max Items per Page: </span>
                     <select class="k_pager_button" id="closedTicket_dropdown">
                         <option value="5">5</option>
-                        <option value="10">10</option>
-                        <option value="15" selected>15</option>
+                        <option value="10" selected>10</option>
+                        <option value="15">15</option>
                         <option value="20">20</option>
                         <option value="30">30</option>
                         <option value="40">40</option>
                         <option value="50">50</option>
                         <option value="75">75</option>
                         <option value="100">100</option>
-                    </select>
+                    </select></div>
                 </div>
             </div></fieldset>
     `;
@@ -605,8 +608,9 @@ async function setTickex() {
     tx_container.append(closedTickets);
 
     initBoard(tickets, sortBy);
-    initializeListeners();
 
+    await Promise.resolve();
+    initializeListeners(tickets);
 
     // Popup Container - click on ticket for popup to appear
     let popupContainer = document.createElement("div");
