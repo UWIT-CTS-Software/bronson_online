@@ -1436,7 +1436,13 @@ async fn update_room_check_leaderboard(database: &mut Database, req: Arc<RwLock<
             .await
             .expect("[-] PAYLOAD ERROR");
     }
-    let v_7_days: Value = serde_json::from_str(&body_7_days).expect("Empty");
+    let v_7_days: Value = match serde_json::from_str(&body_7_days) {
+        Ok(v)  => v,
+        Err(m) => {
+            warn!("7 days field not found: {}", m);
+            json!({"data": []})
+        }
+    };
     let data_7_days: Vec<Value> = match v_7_days["data"].as_array() {
         Some(data) => data.clone(),
         None => Vec::<Value>::new()
@@ -1453,7 +1459,13 @@ async fn update_room_check_leaderboard(database: &mut Database, req: Arc<RwLock<
             .expect("[-] PAYLOAD ERROR");
     }
 
-    let v_30_days: Value = serde_json::from_str(&body_30_days).expect("Empty");
+    let v_30_days: Value = match serde_json::from_str(&body_30_days) {
+        Ok(v)  => v,
+        Err(m) => {
+            warn!("30 days field not found: {}", m);
+            json!({"data": []})
+        }
+    };
     let data_30_days: Vec<Value> = match v_30_days["data"].as_array() {
         Some(data) => data.clone(),
         None => Vec::<Value>::new()
@@ -1470,7 +1482,13 @@ async fn update_room_check_leaderboard(database: &mut Database, req: Arc<RwLock<
             .expect("[-] PAYLOAD ERROR");
     }
 
-    let v_90_days: Value = serde_json::from_str(&body_90_days).expect("Empty");
+    let v_90_days: Value = match serde_json::from_str(&body_90_days) {
+        Ok(v)  => v,
+        Err(m) => {
+            warn!("90 days field not found: {}", m);
+            json!({"data": []})
+        }
+    };
     let data_90_days: Vec<Value> = match v_90_days["data"].as_array() {
         Some(data) => data.clone(),
         None => Vec::<Value>::new()
