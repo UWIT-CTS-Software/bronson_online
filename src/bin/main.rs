@@ -325,8 +325,8 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
             timestamp: Utc::now() - Duration::from_secs(82799),
         });
         ts.tasks.insert("tickex".to_string(), TaskSchedule {
-            duration: 120,
-            timestamp: Utc::now() - Duration::from_secs(110),
+            duration: 11,
+            timestamp: Utc::now() - Duration::from_secs(1),
         });
     }
     // Database Init
@@ -689,25 +689,58 @@ async fn handle_connection(
             let tickets: Vec<serde_json::Value> = db_tickets.into_iter().map(|t| {
                 json!({
                     "ID": t.ticket_id,
+                    "has_been_viewed": t.has_been_viewed,
                     "Title": t.title,
-                    "LocationName": "", // Not in DB, perhaps add later
                     "StatusName": t.status_name,
-                    "Description": t.description,
                     "RequestorName": t.requestor_name,
+                    "RequestorEmail": t.requestor_email,
+                    "RequestorPhone": t.requestor_phone,
                     "CreatedFullName": t.created_full_name,
+                    "ResponsibleFullName": t.responsible_full_name,
                     "ResponsibleGroupName": t.responsible_group_name,
-                    "ServiceName": "", // Not in DB
+                    "ServiceName": t.service_name,
                     "AccountName": t.account_name,
+                    "TypeName": t.type_name,
                     "TypeCategoryName": t.type_category_name,
-                    "UrgencyName": "", // Not in DB
-                    "PriorityName": "", // Not in DB
+                    "PriorityName": t.priority_name, 
+                    "DaysOld": t.days_old,
                     "CreatedDate": t.created_date,
-                    "ModifiedDate": t.modified_date
+                    "CreatedFullName": t.created_full_name,
+                    "ModifiedDate": t.modified_date,
+                    "ModifiedFullName": t.modified_full_name,
+
+                    "old_type_name": t.old_type_name,
+                    "old_type_category_name": t.old_type_category_name,
+                    "old_title": t.old_title,
+                    "old_account_name": t.old_account_name,
+                    "old_status_name": t.old_status_name,
+                    "old_service_name": t.old_service_name,
+                    "old_priority_name": t.old_priority_name,
+                    "old_modified_date": t.old_modified_date,
+                    "old_modified_full_name": t.old_modified_full_name,
+                    "old_responsible_full_name": t.old_responsible_full_name,
+                    "old_responsible_group_name": t.old_responsible_group_name,
                 })
             }).collect();
             let tickets_json = serde_json::to_string(&tickets).unwrap();
             res.status(STATUS_200);
             res.send_contents(tickets_json.into());
+        },
+        "POST /update/ticket/viewed HTTP/1.1" => { // INCOMING
+            let body_json: Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+            let id: i32 = body_json["id"].as_i64().unwrap() as i32;
+            let viewed: bool = body_json["viewed"].as_bool().unwrap();
+            match database.update_ticket_mark_as_viewed(id, viewed) {
+                Ok(_) => {
+                    res.status(STATUS_200);
+                    res.send_contents("Updated".into());
+                }
+                Err(e) => {
+                    error!("Failed to update ticket viewed: {}", e);
+                    res.status(STATUS_500);
+                    res.send_contents("Error".into());
+                }
+            }
         },
         "POST /lsmData HTTP/1.1"              => { // OUTGOING
             let body_str = String::from_utf8(req.body).expect("AT: LSM Data Err, invalid UTF-8");
@@ -2424,7 +2457,7 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
 
         // Define search
         let search_body = serde_json::json!({
-            "CreatedDateFrom": "2020-01-01T00:00:00Z",
+            "ModifiedDateFrom": "2020-01-01T00:00:00Z",
             "ResponsibilityGroupIDs": [2742], // CTS Group ID
             "MaxResults": 100000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
         });
@@ -2457,12 +2490,14 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
         for ticket_val in &tickets_json {
             let ticket = DB_Ticket {
                 ticket_id: ticket_val["ID"].as_i64().unwrap_or(0) as i32,
+                has_been_viewed: true,
                 type_name: ticket_val["TypeName"].as_str().unwrap_or("").to_string(),
                 type_category_name: ticket_val["TypeCategoryName"].as_str().unwrap_or("").to_string(),
                 title: ticket_val["Title"].as_str().unwrap_or("").to_string(),
-                description: ticket_val["Description"].as_str().unwrap_or("").to_string(),
                 account_name: ticket_val["AccountName"].as_str().unwrap_or("").to_string(),
                 status_name: ticket_val["StatusName"].as_str().unwrap_or("").to_string(),
+                service_name: ticket_val["ServiceName"].as_str().unwrap_or("").to_string(),
+                priority_name: ticket_val["PriorityName"].as_str().unwrap_or("").to_string(),
                 created_date: ticket_val["CreatedDate"].as_str().unwrap_or("").to_string(),
                 created_full_name: ticket_val["CreatedFullName"].as_str().unwrap_or("").to_string(),
                 modified_date: ticket_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
@@ -2473,6 +2508,18 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
                 days_old: ticket_val["DaysOld"].as_i64().unwrap_or(0) as i16,
                 responsible_full_name: ticket_val["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
                 responsible_group_name: ticket_val["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
+
+                old_type_name: "".to_string(),
+                old_type_category_name: "".to_string(),
+                old_title: "".to_string(),
+                old_account_name: "".to_string(),
+                old_status_name: "".to_string(),
+                old_service_name: "".to_string(),
+                old_priority_name: "".to_string(),
+                old_modified_date: "".to_string(),
+                old_modified_full_name: "".to_string(),
+                old_responsible_full_name: "".to_string(),
+                old_responsible_group_name: "".to_string(),
             };
 
             // Insert or update
@@ -2500,7 +2547,7 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
 
         // Fetch tickets from TDX
         let search_body = serde_json::json!({
-            "CreatedDateFrom": from_date,
+            "ModifiedDateFrom": from_date,
             "MaxResults": 10000,
             "ResponsibilityGroupIDs": [2742]
         });
@@ -2525,16 +2572,52 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
         let body = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
         let tickets_json: Vec<serde_json::Value> = serde_json::from_str(&body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, body))?;
 
+
+
         // Map to DB_Ticket and update
         for ticket_val in &tickets_json {
+            // If it exists, get original ticket from database
+            let id = ticket_val["ID"].as_i64().unwrap_or(0) as i32;
+            let mut orig_viewed = true;
+
+            // Try to fetch ticket from DB
+            if let Ok(ticket) = database.get_ticket(id) {
+                orig_viewed = ticket.unwrap().has_been_viewed;
+            }
+
+            // Get old ticket if it exists (new tickets won't and default to empty string)
+            let old_ticket = database.get_ticket(ticket_val["ID"].as_i64().unwrap_or(0) as i32).unwrap_or(None);
+
+            let (
+                old_type_name, old_type_category_name, old_title,
+                old_account_name, old_status_name, old_service_name,
+                old_priority_name, old_modified_date, old_modified_full_name,
+                old_responsible_full_name, old_responsible_group_name,
+            ) = match old_ticket {
+                Some(t) => (
+                    t.type_name, t.type_category_name, t.title,
+                    t.account_name, t.status_name, t.service_name,
+                    t.priority_name, t.modified_date, t.modified_full_name,
+                    t.responsible_full_name, t.responsible_group_name,
+                ),
+                None => (
+                    String::new(), String::new(), String::new(),
+                    String::new(), String::new(), String::new(),
+                    String::new(), String::new(), String::new(),
+                    String::new(), String::new(),
+                ),
+            };
+
             let ticket = DB_Ticket {
                 ticket_id: ticket_val["ID"].as_i64().unwrap_or(0) as i32,
+                has_been_viewed: orig_viewed,
                 type_name: ticket_val["TypeName"].as_str().unwrap_or("").to_string(),
                 type_category_name: ticket_val["TypeCategoryName"].as_str().unwrap_or("").to_string(),
                 title: ticket_val["Title"].as_str().unwrap_or("").to_string(),
-                description: ticket_val["Description"].as_str().unwrap_or("").to_string(),
                 account_name: ticket_val["AccountName"].as_str().unwrap_or("").to_string(),
                 status_name: ticket_val["StatusName"].as_str().unwrap_or("").to_string(),
+                service_name: ticket_val["ServiceName"].as_str().unwrap_or("").to_string(),
+                priority_name: ticket_val["PriorityName"].as_str().unwrap_or("").to_string(),
                 created_date: ticket_val["CreatedDate"].as_str().unwrap_or("").to_string(),
                 created_full_name: ticket_val["CreatedFullName"].as_str().unwrap_or("").to_string(),
                 modified_date: ticket_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
@@ -2545,6 +2628,18 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
                 days_old: ticket_val["DaysOld"].as_i64().unwrap_or(0) as i16,
                 responsible_full_name: ticket_val["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
                 responsible_group_name: ticket_val["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
+            
+                old_type_name,
+                old_type_category_name,
+                old_title,
+                old_account_name,
+                old_status_name,
+                old_service_name,
+                old_priority_name,
+                old_modified_date,
+                old_modified_full_name,
+                old_responsible_full_name,
+                old_responsible_group_name,
             };
 
             // Insert or update

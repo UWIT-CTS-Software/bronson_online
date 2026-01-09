@@ -960,13 +960,14 @@ impl Database {
 			.get_result(&mut conn)
 	}
 
-	pub fn get_ticket(&mut self, id_value: i32) -> Result<DB_Ticket, DieselError> {
+	pub fn get_ticket(&mut self, id_value: i32) -> Result<Option<DB_Ticket>, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
 		tickets
 			.select(DB_Ticket::as_select())
 			.filter(ticket_id.eq(id_value))
 			.first(&mut conn)
+			.optional()
 	}
 
 	pub fn get_latest_ticket(&mut self) -> Result<DB_Ticket, DieselError> {
@@ -999,6 +1000,27 @@ impl Database {
 			.get_result(&mut conn)
 	}
 
+	pub fn update_ticket_mark_as_viewed(&mut self, id: i32, new_bool: bool) -> Result<Option<DB_Ticket>, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		// Try to fetch the ticket first
+		let ticket_opt = tickets
+			.filter(ticket_id.eq(id))
+			.first::<DB_Ticket>(&mut conn)
+			.optional()?;
+
+		// If not found, quietly return
+		let Some(_) = ticket_opt else { return Ok(None); };
+
+		// Update the flag
+		let updated = diesel::update(tickets.filter(ticket_id.eq(id)))
+			.set(has_been_viewed.eq(new_bool))
+			.returning(DB_Ticket::as_returning())
+			.get_result::<DB_Ticket>(&mut conn)?;
+
+		Ok(Some(updated))
+	}
+
 	pub fn get_all_tickets(&mut self) -> Result<Vec<DB_Ticket>, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
@@ -1015,7 +1037,6 @@ impl Database {
 			.returning(DB_Ticket::as_returning())
 			.get_result(&mut conn)
 	}
-	
 }
 
 // impl<'a> Clone for Database {

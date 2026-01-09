@@ -46,7 +46,7 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 
 
 // Initializes all listeners for Tickex
-function initializeListeners(tickets) {
+function initializeListeners() {
     // Escape Key
     document.addEventListener('keydown', (e) => {
         const pressedKey = e.key;
@@ -67,7 +67,7 @@ function initializeListeners(tickets) {
             const searchBar = document.getElementById('searchBar');
             let search = searchBar.value;
 
-            performSearch(search, sortBy, tickets);
+            performSearch(search);
         }
     });
 
@@ -76,12 +76,12 @@ function initializeListeners(tickets) {
         document.getElementById(`${section}Ticket_dropdown`)
             .addEventListener("change", () => {
                 document.getElementById(`${section}Ticket_input`).value = 1; // Reset to page 1
-                performSearch(document.getElementById("searchBar").value, window.currentSortBy, tickets);
+                performSearch(document.getElementById("searchBar").value, window.currentSortBy);
             });
 
         document.getElementById(`${section}Ticket_input`)
             .addEventListener("input", () => {
-                performSearch(document.getElementById("searchBar").value, window.currentSortBy, tickets);
+                performSearch(document.getElementById("searchBar").value, window.currentSortBy);
             });
     });
 
@@ -93,7 +93,7 @@ function initializeListeners(tickets) {
             document.getElementById(`newTicket_input`).value = 1;
             document.getElementById(`catchAllTicket_input`).value = 1;
             document.getElementById(`closedTicket_input`).value = 1;
-            performSearch("", window.currentSortBy, tickets); // Empty Search
+            performSearch("", window.currentSortBy); // Empty Search
         }
     });
 
@@ -109,7 +109,7 @@ function initializeListeners(tickets) {
             document.getElementById(`closedTicket_input`).value = 1;
 
             let search = (this.value || '').trim().toLowerCase();
-            performSearch(search, window.currentSortBy, tickets);
+            performSearch(search, window.currentSortBy);
         }
     });
 }
@@ -123,6 +123,38 @@ function sendToASU() {
 function sendToHelpDesk() {
     alert("This feature is not yet implemented. -Lex");
 }
+
+// Clear all ticket rows of unread notifications
+async function clearNotifications() {
+    // Display loading message while fetching tickets
+    let button = document.getElementById("tx_clearNotificationsButton");
+    button.disabled = true;
+
+    let ellipsis = "";
+    const ellipsisInterval = setInterval(() => {
+        ellipsis += ".";
+        if (ellipsis.length > 3) ellipsis = "";
+        button.textContent = `Clearing${ellipsis}`;
+    }, 1000); // Update every 1 second
+
+    for (const ticket of window.currentTickets) {
+        if (ticket && !ticket.has_been_viewed) {
+            await updateTicketViewed(ticket.ID, true);
+            
+            let tick = document.querySelectorAll(`[id="${ticket.ID}"]`);
+            tick.forEach(t => {
+                t.classList.remove("tx_highlight_row");
+            });
+        }
+    }
+
+    // TODO: Delete ALL OLD Ticket info
+
+    clearInterval(ellipsisInterval);
+    button.textContent = "Dismiss All";
+    button.disabled = false;
+}
+
 
 // Shows the popup with relavent ticket info
 function showPopup(ticket) {
@@ -140,39 +172,95 @@ function showPopup(ticket) {
     popupContainer.classList.add('popupActive');
     // document.getElementById('terminal').style.display = 'none'; // Hide Terminal
 
+    // Mark ticket as viewed
+    updateTicketViewed(ticket.ID, true);
+
+    // Remove highlight (for all HTML instances of the ticket)
+    const ticketRows = document.querySelectorAll(`[id="${ticket.ID}"]`);
+    ticketRows.forEach(ticketRow => {
+        if (ticketRow) {
+            ticketRow.classList.remove('tx_highlight_row');
+        }
+    });
+
+    // Convert Dates to Readable Format
+    if (ticket.CreatedDate != "") ticket.CreatedDate = new Date(ticket.CreatedDate).toLocaleString();
+    if (ticket.ModifiedDate != "") ticket.ModifiedDate = new Date(ticket.ModifiedDate).toLocaleString();
+
+    // Shorten ResponsibleGroupName field to CTS if it's the correct string
+    if (ticket.ResponsibleGroupName === "Classroom Technology Support (CTS)") 
+        ticket.ResponsibleGroupName = "CTS";
+
+    // Fix Phone Number Format => (XXX) YYY-ZZZZ
+    const raw = ticket.RequestorPhone;
+    const digits = (raw.match(/\d/g) || []).join('');
+    if (digits.length === 10) // Invalid numbers just get skipped and raw string is used
+        ticket.RequestorPhone = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+
+    let whatChangedHTML = "";
+    if (true/* IF OLD TICKET INFORMATION EXISTS */) { 
+        // TODO: Grab old ticket info. Compare what changed. (Field: Old info => New info)
+
+        whatChangedHTML = `
+            <div class="tx_whatChangedBox">
+            <span>What Changed:</span>
+            <p></p>
+            <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
+                <button class="popup_linkToTicket">Link to Ticket</button>
+            </a>
+            <button class="popup_dismissChanges" onclick="dismissChanges()">Dismiss</button>
+            </div>
+        `;
+
+        // TODO: Create Dismiss button that will DELETE the old ticket info 
+        //          (make sure "Dismiss All" button does this too)
+    }
+
     popupContainer.innerHTML = `
         <div class="tx_popupBox">
-            <span>${ticket.Title || "No Title"}</span>
-            <p>Ticket ID: ${ticket.ID || ""}</p>
-            <p>Status: ${ticket.StatusName || ""}</p>
-            <p>Description: ${ticket.Description || ""}</p>
-            <p>Requestor: ${ticket.RequestorName || ""}</p>
-            <p>Creator: ${ticket.CreatedFullName || ""}</p>
-            <p>Responsibility: ${ticket.ResponsibleGroupName || ""}</p>
-            <p>Service: ${ticket.ServiceName || ""}</p>
-            <p>Account Department: ${ticket.AccountName || ""}</p>
-            <p>Type: ${ticket.TypeCategoryName || ""}</p>
-            <p>Urgency: ${ticket.UrgencyName || ""}</p>
-            <p>Priority: ${ticket.PriorityName || ""}</p>
-            <p>Date Created: ${ticket.CreatedDate || ""}</p>
-            <p>Last Modified: ${ticket.ModifiedDate || ""}</p>
-            <button class="popup_closeButton" onClick="hidePopup()">Close</button>
+        <span>${ticket.Title || "No Title"}</span>
+        <button class="popup_closeButton" onClick="hidePopup()">X</button>
+            <div class="tx_adjacent"><p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
+            <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
+            <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
+            <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
+            <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
+            <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
+            <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED"} || ${ticket.ResponsibleGroupName || ""}</p>
+            <p class="tx_popup_ServiceName">Service: ${ticket.ServiceName || ""}</p>
+            <p class="tx_popup_AccountName">Account Department: ${ticket.AccountName || ""}</p>
+            <p class="tx_popup_TypeName">Type: ${ticket.TypeName || ""}</p>
+            <p class="tx_popup_TypeCategoryName">Type Category: ${ticket.TypeCategoryName || ""}</p>
+            <p class="tx_popup_Created">Date Created: ${ticket.CreatedDate || ""} || Created by: ${ticket.CreatedFullName || ""}</p>
+            <p class="tx_popup_Modified">Last Modified: ${ticket.ModifiedDate || ""} || Modified by: ${ticket.ModifiedFullName || ""}</p>
+            <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
+                <button class="popup_linkToTicket">Link to Ticket</button>
+            </a>
+            <button disabled class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
+            <button disabled class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
         </div>
+        ${whatChangedHTML}
     `;
-
-    // For later:
-    //      <button class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
-    //      <button class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
 }
 
 // Hides the popup
 function hidePopup() {
     const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
-    // document.getElementById('terminal').style.display = 'block'; // Show Terminal
+    if (popupContainer) popupContainer.classList.remove('popupActive');
+}
 
-    if (popupContainer) {
-        popupContainer.classList.remove('popupActive');
+// Dismisses the "What Changed" box in the popup
+function dismissChanges() {
+    const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
+    if (!popupContainer) return;
+
+    // Remove the "What Changed" box
+    const whatChangedBox = popupContainer.querySelector('.tx_whatChangedBox');
+    if (whatChangedBox) {
+        whatChangedBox.remove();
     }
+
+    // TODO: Delete OLD Ticket Info
 }
 
 // Adjusts input ticket field by value
@@ -199,8 +287,8 @@ function kPagerButton(val, inputId, maxPageId) {
 }
 
 // Performs the search with current text within search bar
-function performSearch(search, sortBy, tickets) {
-    const unalteredTicketData = tickets
+function performSearch(search) {
+    const unalteredTicketData = window.currentTickets
     let matchedTickets = [];
 
     search = search.replaceAll("monday", "mon");
@@ -229,45 +317,45 @@ function performSearch(search, sortBy, tickets) {
             }
         }
 
-        initBoard(matchedTickets, sortBy);
+        initBoard(matchedTickets);
     }
     else {
-        initBoard(unalteredTicketData, sortBy);
+        initBoard(unalteredTicketData);
     }
 }
 
 // Handles sorting of board elements
 //      - sortBy recieves: 'created' or 'status'
-function sortTickets(tickets, sortBy) {
-    tickets = tickets.sort((a, b) => b.ID - a.ID); // ID num corresponds to date created
+function sortTickets() {
+    window.currentTickets = window.currentTickets.sort((a, b) => b.ID - a.ID); // ID num corresponds to date created
     
     // Sort by Status
-    if (sortBy === 'status') {
+    if (window.currentSortBy === 'status') {
         const statusOrder = [
             "New", "In Process", "On Hold", "Resolved", "Cancelled", "Closed"
         ];
 
-        tickets = tickets.sort((a, b) => {
+        window.currentTickets = window.currentTickets.sort((a, b) => {
             const aIndex = statusOrder.indexOf(a.StatusName);
             const bIndex = statusOrder.indexOf(b.StatusName);
             return aIndex - bIndex;
         });
 
-        return tickets;
+        return window.currentTickets;
     }
     // Default sort by Date
-    else { return tickets; }
+    else { return window.currentTickets; }
 }
 
 // Add tickets to the board
-function initBoard(tickets, sortBy) {
+function initBoard() {
     let ticketsHtml = {
         newTickets: "",
         catchAllTickets: "",
         closedTickets: ""
     };
     
-    tickets = sortTickets(tickets, sortBy);
+    window.currentTickets = sortTickets();
 
     let newNumRows, catchAllNumRows, closedNumRows;
     let newInputField, catchAllInputField, closedInputField;
@@ -300,9 +388,10 @@ function initBoard(tickets, sortBy) {
 
     // Put tickets in proper board sections
     let newCount = 0, catchAllCount = 0, closedCount = 0;
-    for (let ticket of tickets) {
+    for (let ticket of window.currentTickets) {
+        let highlightClass = ticket.has_been_viewed ? '' : 'tx_highlight_row';
         let ticketRow = `
-            <tr class="tx_ticket" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
+            <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
                 <td>${ticket.Title}</td>
                 <td>${ticket.ID}</td>
                 <td>${ticket.StatusName}</td>
@@ -335,7 +424,7 @@ function initBoard(tickets, sortBy) {
         }
         if (isClosed) {
             let closedRow = `
-                <tr class="tx_ticket" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
+                <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
                     <td>${ticket.Title}</td>
                     <td>${ticket.ID}</td>
                 </tr>
@@ -376,13 +465,28 @@ async function fetchTickets() {
     }
 }
 
+async function updateTicketViewed(ticketId, viewed) {
+    try {
+        const response = await fetch('/update/ticket/viewed', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id: ticketId, viewed: viewed }),
+        });
+        if (!response.ok) {
+            console.error('Failed to update ticket viewed status');
+        }
+    } catch (error) {
+        console.error('Error updating ticket viewed status:', error);
+    }
+}
+
 async function setTickex() {
     preserveCurrentTool();
 
-    // TEMPORARY:
-    // Clear Tickex cache so new HTML is always loaded
+    // Clear Tickex cache so new HTML and Tickets are always loaded
     sessionStorage.removeItem("Tickex_html");
-    /////////////
 
     document.title = "Tickex - Bronson";
     
@@ -394,7 +498,6 @@ async function setTickex() {
     newCurrent.classList.add("selected");
 
     history.pushState("test", "Tickex", "/tickex");
-
 
     let progGuts = document.querySelector('.program_board .program_guts');
     // Check for preserved space
@@ -431,11 +534,15 @@ async function setTickex() {
 
 
     /* -------------------- Tickex Page -------------------- */
-    // TODO: Reload board when new Tickex Run is COMPLETED 
-    //       - Auto-refresh board if no search is active (persistent "sort by" & page numbers)
-    //       - Color newest tickets differently for a few seconds
-    //       - Make a "New Tickets Available" popup
-    //       - Make the tab strobe
+    // TODO: Make the tab strobe
+    //
+    // TODO: Make a "What Changed:" container next to the popupBox
+    //          (Store OLD ticket data in database by appending what fields I want to track)
+    //
+    // TODO: "Dismiss All" Button should be an elevated permission
+    //
+    // TODO: Eventually change Tickex Run back to 2 minutes & Frontend check to 30 seconds 
+    //          (shorted for now for dev purposes)
 
     // Sort By Box - by date and status
     let sortByBox = document.createElement("div");
@@ -455,6 +562,15 @@ async function setTickex() {
     `;
     tx_container.append(sortByBox);
 
+    // Search Bar
+    let searchBar = document.createElement("div");
+    searchBar.classList.add("tx_search");
+    searchBar.innerHTML = `
+        <legend>Search</legend>
+        <textarea id="searchBar" placeholder="Search: Title, ID, Room, Date, Description, etc...  (Enter)"></textarea>
+        <ul>
+    `;
+    tx_container.append(searchBar);
 
     // TeamDynamix Hotlink
     let tdxHotlink = document.createElement("div");
@@ -467,23 +583,48 @@ async function setTickex() {
     `;
     tx_container.append(tdxHotlink);
 
-
-    // Search Bar
-    let searchBar = document.createElement("div");
-    searchBar.classList.add("tx_search");
-    searchBar.innerHTML = `
-        <legend>Search</legend>
-        <textarea id="searchBar" placeholder="Search: Title, ID, Room, Date, Description, etc...  (Enter)"></textarea>
-        <ul>
+    // Display loading message while fetching tickets
+    let loadingMessage = document.createElement("div");
+    loadingMessage.classList.add("tx_loadingMessage");
+    loadingMessage.innerHTML = `
+        <legend>Loading Tickets</legend>
     `;
-    tx_container.append(searchBar);
+    tx_container.append(loadingMessage);
+
+    let ellipsis = "";
+    const ellipsisInterval = setInterval(() => {
+        ellipsis += ".";
+        if (ellipsis.length > 3) ellipsis = "";
+        loadingMessage.innerHTML = `
+            <legend>Loading Tickets${ellipsis}</legend>
+        `;
+    }, 1000); // Update every 1 second
 
     let tickets = [];
-
     while (!tickets.length) { // Keep trying until tickets are fetched
-        const response = await fetchTickets();
+        let response = await fetchTickets();
         tickets = Array.isArray(response) ? response : [];
     }
+    window.currentTickets = tickets;
+
+    clearInterval(ellipsisInterval);
+    loadingMessage.remove();
+
+    // New Tickets Popup
+    let newTicketsPopup = document.createElement("div");
+    newTicketsPopup.classList.add("tx_newTicketsPopup");
+    newTicketsPopup.innerHTML = `
+        <legend>New Tickets are Available!</legend>
+    `;
+    tx_container.append(newTicketsPopup);
+
+    // Clear Notifications Button
+    let clearNotiButton = document.createElement("div");
+    clearNotiButton.classList.add("tx_clearNotificationsButton");
+    clearNotiButton.innerHTML = `
+        <button id="tx_clearNotificationsButton" onclick="clearNotifications()">Dismiss All</button>
+    `;
+    tx_container.append(clearNotiButton);
 
     // The 3 Tickex boards - New, Catch All, Closed
     let newTickets = document.createElement("div");
@@ -601,16 +742,80 @@ async function setTickex() {
 
     // Initial board on loadup
     let sortBy = "created"; // sort by date created on load up
-    tickets = sortTickets(tickets, sortBy);
+    window.currentSortBy = sortBy;
+    window.currentTickets = sortTickets();
 
     tx_container.append(newTickets);
     tx_container.append(catchAll);
     tx_container.append(closedTickets);
 
-    initBoard(tickets, sortBy);
+    initBoard();
+
+    // Auto-refresh board logic
+    setInterval(() => {
+        fetchTickets().then(newTickets => {
+            if (Array.isArray(newTickets)) {
+                const oldTickets = new Set(window.currentTickets.map(t => t.ModifiedDate));
+                const actuallyNew = newTickets.filter(t => !oldTickets.has(t.ModifiedDate) && t.StatusName != "Closed");
+                const closedTickets = newTickets.filter(t => !oldTickets.has(t.ModifiedDate) && t.StatusName == "Closed");
+
+                // New tickets found
+                if (actuallyNew.length > 0) {
+                    // Mark new tickets as not viewed
+                    actuallyNew.forEach(ticket => {
+                        updateTicketViewed(ticket.ID, false); // mark as not viewed
+
+                        // Update local copy immediately
+                        const index = newTickets.findIndex(t => t.ID === ticket.ID);
+                        if (index !== -1)
+                            newTickets[index].has_been_viewed = false;
+                    });
+
+                    // Enable New Tickets Popup
+                    newTicketsPopup.classList.add("tx_newTicketsPopupActive");
+                    newTicketsPopup.classList.remove("tx_newTicketsPopup");
+                    setTimeout(() => {
+                        newTicketsPopup.classList.add("tx_newTicketsPopup");
+                        newTicketsPopup.classList.remove("tx_newTicketsPopupActive");
+                    }, 60000);
+                }
+
+                // Update New Tickets Popup if needed
+                if (newTicketsPopup.classList.contains("tx_newTicketsPopupActive") && actuallyNew.length == 0) {
+                    newTicketsPopup.classList.add("tx_newTicketsPopup");
+                    newTicketsPopup.classList.remove("tx_newTicketsPopupActive");
+                }
+
+                // Prevent Task Disruption
+                const searchBar = document.getElementById('searchBar'); 
+                if (searchBar && searchBar.value.trim() === '' /* User is using Search Bar */) {
+                    window.currentTickets = newTickets;
+                    initBoard(window.currentSortBy || 'created');
+                }
+
+                // Ticket that just closed
+                if (closedTickets.length > 0) {
+                    closedTickets.forEach(ticket => {
+                        const tick = document.querySelectorAll(`[id="${ticket.ID}"]`);
+                        tick.forEach(t => {
+                            if (t) {
+                                updateTicketViewed(ticket.ID, true); // mark as viewed
+                                t.classList.remove("tx_highlight_row");
+                                t.classList.add("tx_ticket_closed_flash");
+
+                                setTimeout(() => {
+                                    t.classList.remove("tx_ticket_closed_flash");
+                                }, 3000);
+                            }
+                        });
+                    });
+                }
+            }
+        }).catch(error => console.error('Error fetching tickets for update:', error));
+    }, 10000); // Check every 10 seconds
 
     await Promise.resolve();
-    initializeListeners(tickets);
+    initializeListeners();
 
     // Popup Container - click on ticket for popup to appear
     let popupContainer = document.createElement("div");

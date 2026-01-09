@@ -234,17 +234,19 @@ pub struct DB_DataElement {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable, AsChangeset)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable, AsChangeset, Default)]
 #[diesel(table_name = tickets)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct DB_Ticket {
     pub ticket_id: i32,
+    pub has_been_viewed: bool,
     pub type_name: String,              
     pub type_category_name: String,
     pub title: String,
-    pub description: String,
     pub account_name: String,
     pub status_name: String,
+    pub service_name: String,
+    pub priority_name: String,
     pub created_date: String,
     pub created_full_name: String,
     pub modified_date: String,
@@ -255,4 +257,16 @@ pub struct DB_Ticket {
     pub days_old: i16,
     pub responsible_full_name: String,
     pub responsible_group_name: String,
+
+    pub old_type_name: String,
+    pub old_type_category_name: String,
+    pub old_title: String,
+    pub old_account_name: String,
+    pub old_status_name: String,
+    pub old_service_name: String,
+    pub old_priority_name: String,
+    pub old_modified_date: String,
+    pub old_modified_full_name: String,
+    pub old_responsible_full_name: String,
+    pub old_responsible_group_name: String,
 }
