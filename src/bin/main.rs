@@ -2405,13 +2405,11 @@ async fn fetch_tdx_token(database: &mut Database, req: &Client) -> Result<(), St
     // Get TDX login credentials from .env
     let keys_json_raw: String = std::env::var("KEYS_JSON").expect("KEYS_JSON missing from environment");
     let keys_json: Value = serde_json::from_str(&keys_json_raw).expect("KEYS_JSON is not valid JSON");
-    let tdx_api_raw: &str = keys_json["tdx_api_raw"].as_str().expect("tdx_api_raw missing or not a string");
-    let login_json: Value = serde_json::from_str(tdx_api_raw).expect("tdx_api_raw is not valid JSON");
+    let tdx_api_raw = keys_json["tdx_api_raw"].as_object().expect("tdx_api_raw missing or not an object");
 
     // Extract username and password
-    let username: &str = login_json["username"].as_str().expect("TDX username missing");
-    let password: &str = login_json["password"].as_str().expect("TDX password missing");
-
+    let username: &str = tdx_api_raw["username"].as_str().expect("TDX username missing");
+    let password: &str = tdx_api_raw["password"].as_str().expect("TDX password missing");
     // Send the request
     let resp = req
         .post(url)
