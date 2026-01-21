@@ -325,8 +325,8 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
             timestamp: Utc::now() - Duration::from_secs(82799),
         });
         ts.tasks.insert("tickex".to_string(), TaskSchedule {
-            duration: 11,
-            timestamp: Utc::now() - Duration::from_secs(1),
+            duration: 120,
+            timestamp: Utc::now() - Duration::from_secs(110),
         });
     }
     // Database Init
@@ -2576,12 +2576,16 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
         for ticket_val in &tickets_json {
             // If it exists, get original ticket from database
             let id = ticket_val["ID"].as_i64().unwrap_or(0) as i32;
-            let mut orig_viewed = true;
 
             // Try to fetch ticket from DB
-            if let Ok(ticket) = database.get_ticket(id) {
-                orig_viewed = ticket.unwrap().has_been_viewed;
-            }
+            let orig_viewed = match database.get_ticket(id) {
+                Ok(Some(ticket)) => ticket.has_been_viewed,
+                Ok(None) => false,
+                Err(e) => {
+                    error!("DB error fetching ticket {}: {}", id, e);
+                    false
+                }
+            };
 
             // Get old ticket if it exists (new tickets won't and default to empty string)
             let old_ticket = database.get_ticket(ticket_val["ID"].as_i64().unwrap_or(0) as i32).unwrap_or(None);

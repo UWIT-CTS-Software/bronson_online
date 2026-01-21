@@ -24,25 +24,9 @@ Notes:
 
 
 TODO:
-    - Add real ticket fetching from TDX API 
     - Add ticket editing/saving to TDX API (if we get write access)
     - Add "send to ASU"/"send to help desk" button (if we get write access)
-    - Add ticket filtering/sorting options
-    - Add ticket search bar
 */
-
-
-/*
-$$\   $$\ $$$$$$$$\ $$\      $$\ $$\       
-$$ |  $$ |\__$$  __|$$$\    $$$ |$$ |      
-$$ |  $$ |   $$ |   $$$$\  $$$$ |$$ |      
-$$$$$$$$ |   $$ |   $$\$$\$$ $$ |$$ |      
-$$  __$$ |   $$ |   $$ \$$$  $$ |$$ |      
-$$ |  $$ |   $$ |   $$ |\$  /$$ |$$ |      
-$$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\ 
-\__|  \__|   \__|   \__|     \__|\________|
-*/
-
 
 
 // Initializes all listeners for Tickex
@@ -116,45 +100,72 @@ function initializeListeners() {
 
 // For Later - When we have write access to TDX API
 function sendToASU() {
-    alert("This feature is not yet implemented. -Lex");
+    alert("This feature is not yet implemented.");
 }
 
 // For Later - When we have write access to TDX API
 function sendToHelpDesk() {
-    alert("This feature is not yet implemented. -Lex");
+    alert("This feature is not yet implemented.");
 }
 
 // Clear all ticket rows of unread notifications
-async function clearNotifications() {
-    // Display loading message while fetching tickets
-    let button = document.getElementById("tx_clearNotificationsButton");
-    button.disabled = true;
-
-    let ellipsis = "";
-    const ellipsisInterval = setInterval(() => {
-        ellipsis += ".";
-        if (ellipsis.length > 3) ellipsis = "";
-        button.textContent = `Clearing${ellipsis}`;
-    }, 1000); // Update every 1 second
-
-    for (const ticket of window.currentTickets) {
-        if (ticket && !ticket.has_been_viewed) {
-            await updateTicketViewed(ticket.ID, true);
-            
-            let tick = document.querySelectorAll(`[id="${ticket.ID}"]`);
-            tick.forEach(t => {
-                t.classList.remove("tx_highlight_row");
-            });
-        }
+async function dismissAll(confirmed) {
+    // Dismiss Popup
+    const dismissAllPopupContainer = document.querySelector('.tx_dismissAllPopupContainer');
+    if (!dismissAllPopupContainer) {
+        console.error("Dismiss All Popup container not found");
+        return;
     }
+    dismissAllPopupContainer.classList.remove('popupActive');
 
-    // TODO: Delete ALL OLD Ticket info
+    // If confirmed, proceed to dismiss all notifications
+    if (confirmed) {
+        // Display loading message while fetching tickets
+        let button = document.getElementById("tx_dismissAllButton");
+        button.disabled = true;
 
-    clearInterval(ellipsisInterval);
-    button.textContent = "Dismiss All";
-    button.disabled = false;
+        let ellipsis = "";
+        const ellipsisInterval = setInterval(() => {
+            ellipsis += ".";
+            if (ellipsis.length > 3) ellipsis = "";
+            button.textContent = `Clearing${ellipsis}`;
+        }, 1000); // Update every 1 second
+
+        for (const ticket of window.currentTickets) {
+            if (ticket && !ticket.has_been_viewed) {
+                await updateTicketViewed(ticket.ID, true);
+                
+                let tick = document.querySelectorAll(`[id="${ticket.ID}"]`);
+                tick.forEach(t => {
+                    t.classList.remove("tx_highlight_row");
+                });
+            }
+        }
+
+        clearInterval(ellipsisInterval);
+        button.textContent = "Dismiss All";
+        button.disabled = false;
+    }
 }
 
+// Shows the Dismiss All confirmation popup
+function dismissAllPopup() {
+    const dismissAllPopupContainer = document.querySelector('.tx_dismissAllPopupContainer');
+    if (!dismissAllPopupContainer) {
+        console.error("Dismiss All Popup container not found");
+        return;
+    }
+    dismissAllPopupContainer.classList.add('popupActive');
+
+    dismissAllPopupContainer.innerHTML = `
+        <div class="tx_popupBox">
+        <span>Are You Sure?</span>
+        <p>This action will apply to all users.</p>
+        <p>Are you sure you wish to Dismiss All Notifications?</p>
+        <button class="dismissAllButtonConfirm" onClick="dismissAll(true)">Yes, Dismiss All</button>
+        <button class="cancelPopupButton" onClick="dismissAll(false)">Cancel</button>
+    `;
+}
 
 // Shows the popup with relavent ticket info
 function showPopup(ticket) {
@@ -197,23 +208,53 @@ function showPopup(ticket) {
     if (digits.length === 10) // Invalid numbers just get skipped and raw string is used
         ticket.RequestorPhone = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
 
+    if (ticket.old_responsible_group_name === "Classroom Technology Support (CTS)") 
+        ticket.old_responsible_group_name = "CTS";
+
+    oldModDate = new Date(ticket.old_modified_date);
+    newModDate = new Date(ticket.ModifiedDate);
+
     let whatChangedHTML = "";
-    if (true/* IF OLD TICKET INFORMATION EXISTS */) { 
-        // TODO: Grab old ticket info. Compare what changed. (Field: Old info => New info)
+    if (ticket.old_type_name != ticket.TypeName || ticket.old_type_category_name != ticket.TypeCategoryName ||
+        ticket.old_title != ticket.Title || ticket.old_account_name != ticket.AccountName ||
+        ticket.old_status_name != ticket.StatusName || ticket.old_service_name != ticket.ServiceName ||
+        ticket.old_priority_name != ticket.PriorityName || ticket.old_modified_full_name != ticket.ModifiedFullName || 
+        ticket.old_responsible_full_name != ticket.ResponsibleFullName || ticket.old_responsible_group_name != ticket.ResponsibleGroupName) {
+
+        // Grab old ticket info. Compares what changed. (Field: Old info => New info)
+        let whatChangedRows = "";
+        if (ticket.old_type_name != ticket.TypeName)
+            whatChangedRows += `<p>Type: ${ticket.old_type_name} => ${ticket.TypeName}</p>`;
+        if (ticket.old_type_category_name != ticket.TypeCategoryName)
+            whatChangedRows += `<p>Type Category: ${ticket.old_type_category_name} => ${ticket.TypeCategoryName}</p>`;
+        if (ticket.old_title != ticket.Title)
+            whatChangedRows += `<p>Title: ${ticket.old_title} => ${ticket.Title}</p>`;
+        if (ticket.old_account_name != ticket.AccountName)
+            whatChangedRows += `<p>Account: ${ticket.old_account_name} => ${ticket.AccountName}</p>`;
+        if (ticket.old_status_name != ticket.StatusName)
+            whatChangedRows += `<p>Status: ${ticket.old_status_name} => ${ticket.StatusName}</p>`;
+        if (ticket.old_service_name != ticket.ServiceName)
+            whatChangedRows += `<p>Service: ${ticket.old_service_name} => ${ticket.ServiceName}</p>`;
+        if (ticket.old_priority_name != ticket.PriorityName)
+            whatChangedRows += `<p>Priority: ${ticket.old_priority_name} => ${ticket.PriorityName}</p>`;
+        if (ticket.old_modified_full_name != ticket.ModifiedFullName)
+            whatChangedRows += `<p>Modified By: ${ticket.old_modified_full_name} => ${ticket.ModifiedFullName}</p>`;
+        if (ticket.old_responsible_full_name != ticket.ResponsibleFullName)
+            whatChangedRows += `<p>Responsible By: ${ticket.old_responsible_full_name} => ${ticket.ResponsibleFullName}</p>`;
+        if (ticket.old_responsible_group_name != ticket.ResponsibleGroupName)
+            whatChangedRows += `<p>Responsible Group: ${ticket.old_responsible_group_name} => ${ticket.ResponsibleGroupName}</p>`;
 
         whatChangedHTML = `
             <div class="tx_whatChangedBox">
             <span>What Changed:</span>
-            <p></p>
+            ${whatChangedRows}
+            <p>Last Modified: ${ticket.ModifiedDate || ""} by ${ticket.ModifiedFullName || ""}</p>
             <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                 <button class="popup_linkToTicket">Link to Ticket</button>
             </a>
             <button class="popup_dismissChanges" onclick="dismissChanges()">Dismiss</button>
             </div>
         `;
-
-        // TODO: Create Dismiss button that will DELETE the old ticket info 
-        //          (make sure "Dismiss All" button does this too)
     }
 
     popupContainer.innerHTML = `
@@ -259,8 +300,6 @@ function dismissChanges() {
     if (whatChangedBox) {
         whatChangedBox.remove();
     }
-
-    // TODO: Delete OLD Ticket Info
 }
 
 // Adjusts input ticket field by value
@@ -288,7 +327,7 @@ function kPagerButton(val, inputId, maxPageId) {
 
 // Performs the search with current text within search bar
 function performSearch(search) {
-    const unalteredTicketData = window.currentTickets
+    const allTickets = window.allTickets || window.currentTickets;
     let matchedTickets = [];
 
     search = search.replaceAll("monday", "mon");
@@ -302,44 +341,45 @@ function performSearch(search) {
     matchedTickets = []; // Clear
 
     if (search !== "") {
-        for (let i = 0; i < unalteredTicketData.length; i++) {
+        for (let i = 0; i < allTickets.length; i++) {
 
             // Query Specific Fields
-            if (unalteredTicketData[i].ID.toString().includes(search) ||
-                unalteredTicketData[i].Title.toLowerCase().includes(search) ||
-                unalteredTicketData[i].RequestorName.toLowerCase().includes(search) ||
-                unalteredTicketData[i].CreatedFullName.toLowerCase().includes(search) ||
-                unalteredTicketData[i].CreatedDate.toLowerCase().includes(search) ||
-                unalteredTicketData[i].ModifiedDate.toLowerCase().includes(search) ||
-                unalteredTicketData[i].Description.toLowerCase().includes(search))
+            if (allTickets[i].ID.toString().includes(search) ||
+                allTickets[i].Title.toLowerCase().includes(search) ||
+                allTickets[i].RequestorName.toLowerCase().includes(search) ||
+                allTickets[i].CreatedFullName.toLowerCase().includes(search) ||
+                allTickets[i].CreatedDate.toLowerCase().includes(search) ||
+                allTickets[i].ModifiedDate.toLowerCase().includes(search))
             {
-                matchedTickets.push(unalteredTicketData[i]);
+                matchedTickets.push(allTickets[i]);
             }
         }
 
-        initBoard(matchedTickets);
+        window.currentTickets = matchedTickets;
+        initBoard();
     }
     else {
-        initBoard(unalteredTicketData);
+        window.currentTickets = allTickets;
+        initBoard();
     }
 }
 
 // Handles sorting of board elements
-//      - sortBy recieves: 'created' or 'status'
+//      - sortBy recieves: 'created', 'modified', or 'status'
 function sortTickets() {
-    window.currentTickets = window.currentTickets.sort((a, b) => b.ID - a.ID); // ID num corresponds to date created
+    window.currentTickets = window.currentTickets.sort((a, b) => new Date(b.CreatedDate) - new Date(a.CreatedDate));
     
-    // Sort by Status
-    if (window.currentSortBy === 'status') {
-        const statusOrder = [
-            "New", "In Process", "On Hold", "Resolved", "Cancelled", "Closed"
-        ];
+    // Sort by Data Modified
+    if (window.currentSortBy === 'modified') {
+        window.currentTickets = window.currentTickets.sort((a, b) => new Date(b.ModifiedDate) - new Date(a.ModifiedDate));
 
-        window.currentTickets = window.currentTickets.sort((a, b) => {
-            const aIndex = statusOrder.indexOf(a.StatusName);
-            const bIndex = statusOrder.indexOf(b.StatusName);
-            return aIndex - bIndex;
-        });
+        return window.currentTickets;
+    }
+    // Sort by Status
+    else if (window.currentSortBy === 'status') {
+        const statusOrder = ["New", "In Process", "On Hold", "Resolved", "Cancelled", "Closed"];
+
+        window.currentTickets = window.currentTickets.sort((a, b) => statusOrder.indexOf(a.StatusName) - statusOrder.indexOf(b.StatusName));
 
         return window.currentTickets;
     }
@@ -401,9 +441,14 @@ function initBoard() {
         // If days old < 14 or status == new
         const isNew = (Date.now() - new Date(ticket.CreatedDate) < 14 * 24 * 60 * 60 * 1000 
             || ticket.StatusName.toLowerCase() === 'new') 
-            && ticket.StatusName.toLowerCase() !== 'closed';
+            && ticket.StatusName.toLowerCase() !== 'closed'
+            && ticket.StatusName.toLowerCase() !== 'cancelled'
+            && ticket.StatusName.toLowerCase() !== 'resolved';
 
-        const isClosed = ticket.StatusName.toLowerCase() === 'closed';
+
+        const isClosed = ticket.StatusName.toLowerCase() === 'closed' 
+            || ticket.StatusName.toLowerCase() === 'resolved' 
+            || ticket.StatusName.toLowerCase() === 'cancelled';
 
         // Ensure k-pager rows are displaying corresponding to current page number
         if (isNew) {
@@ -450,6 +495,7 @@ function initBoard() {
     document.querySelector("#closedTicketsBoard tbody").innerHTML = ticketsHtml.closedTickets;
 }
 
+// Grab tickets from backend
 async function fetchTickets() {
     try {
         const response = await fetch('/tickets');
@@ -465,6 +511,7 @@ async function fetchTickets() {
     }
 }
 
+// Update ticket's viewed status in backend
 async function updateTicketViewed(ticketId, viewed) {
     try {
         const response = await fetch('/update/ticket/viewed', {
@@ -482,11 +529,14 @@ async function updateTicketViewed(ticketId, viewed) {
     }
 }
 
+// Sets up the Tickex tool page
 async function setTickex() {
     preserveCurrentTool();
 
     // Clear Tickex cache so new HTML and Tickets are always loaded
     sessionStorage.removeItem("Tickex_html");
+    // Clear stash and remove strobing indicator
+    sessionStorage.removeItem("Tickex_stash");
 
     document.title = "Tickex - Bronson";
     
@@ -496,6 +546,8 @@ async function setTickex() {
     }
     let newCurrent = document.getElementById("TXButton");
     newCurrent.classList.add("selected");
+    // Stop the strobing
+    newCurrent.classList.remove("stashed");
 
     history.pushState("test", "Tickex", "/tickex");
 
@@ -506,15 +558,6 @@ async function setTickex() {
         // make sure cache was not overwritten with another tool.
         if(cached_HTML.includes("tx_container")) {
             progGuts.innerHTML = cached_HTML;
-            let stash = JSON.parse(sessionStorage.getItem("Tickex_stash"));
-            if (stash != null) {
-                console.log("Tickex stash found, unloading items");
-                // Reset stash
-                sessionStorage.removeItem("Tickex_stash");
-                // Reset button
-                let txButton = document.getElementById("TXButton");
-                txButton.classList.remove("stashed");
-            }
             return;
         }
     }
@@ -534,11 +577,6 @@ async function setTickex() {
 
 
     /* -------------------- Tickex Page -------------------- */
-    // TODO: Make the tab strobe
-    //
-    // TODO: Make a "What Changed:" container next to the popupBox
-    //          (Store OLD ticket data in database by appending what fields I want to track)
-    //
     // TODO: "Dismiss All" Button should be an elevated permission
     //
     // TODO: Eventually change Tickex Run back to 2 minutes & Frontend check to 30 seconds 
@@ -555,6 +593,10 @@ async function setTickex() {
             <label for="created">Date Created</label>
         </div>
         <div>
+            <input class="tx_radio" type="radio" name="tx_dev" id="modified">
+            <label for="modified">Date Modified</label>
+        </div>
+        <div>
             <input class="tx_radio" type="radio" name="tx_dev" id="status">
             <label for="status">Status</label>
         </div>
@@ -567,7 +609,7 @@ async function setTickex() {
     searchBar.classList.add("tx_search");
     searchBar.innerHTML = `
         <legend>Search</legend>
-        <textarea id="searchBar" placeholder="Search: Title, ID, Room, Date, Description, etc...  (Enter)"></textarea>
+        <textarea id="searchBar" placeholder="Search: Title, ID, Room, Date, etc...  (Enter)"></textarea>
         <ul>
     `;
     tx_container.append(searchBar);
@@ -606,6 +648,7 @@ async function setTickex() {
         tickets = Array.isArray(response) ? response : [];
     }
     window.currentTickets = tickets;
+    window.allTickets = tickets; // Store complete ticket list for auto-refresh comparison
 
     clearInterval(ellipsisInterval);
     loadingMessage.remove();
@@ -618,13 +661,13 @@ async function setTickex() {
     `;
     tx_container.append(newTicketsPopup);
 
-    // Clear Notifications Button
-    let clearNotiButton = document.createElement("div");
-    clearNotiButton.classList.add("tx_clearNotificationsButton");
-    clearNotiButton.innerHTML = `
-        <button id="tx_clearNotificationsButton" onclick="clearNotifications()">Dismiss All</button>
+    // Dismiss Notifications Button
+    let dismissAllButton = document.createElement("div");
+    dismissAllButton.classList.add("tx_dismissAllButton");
+    dismissAllButton.innerHTML = `
+        <button id="tx_dismissAllButton" onclick="dismissAllPopup()">Dismiss All</button>
     `;
-    tx_container.append(clearNotiButton);
+    tx_container.append(dismissAllButton);
 
     // The 3 Tickex boards - New, Catch All, Closed
     let newTickets = document.createElement("div");
@@ -755,9 +798,15 @@ async function setTickex() {
     setInterval(() => {
         fetchTickets().then(newTickets => {
             if (Array.isArray(newTickets)) {
-                const oldTickets = new Set(window.currentTickets.map(t => t.ModifiedDate));
-                const actuallyNew = newTickets.filter(t => !oldTickets.has(t.ModifiedDate) && t.StatusName != "Closed");
-                const closedTickets = newTickets.filter(t => !oldTickets.has(t.ModifiedDate) && t.StatusName == "Closed");
+                const oldTickets = new Set(window.allTickets.map(t => t.ModifiedDate));
+                const actuallyNew = newTickets.filter(t => !oldTickets.has(t.ModifiedDate) && 
+                                                           t.StatusName != "Closed" && 
+                                                           t.StatusName != 'Resolved' && 
+                                                           t.StatusName != 'Cancelled');
+                const closedTickets = newTickets.filter(t => !oldTickets.has(t.ModifiedDate) && 
+                                                            (t.StatusName == "Closed" || 
+                                                             t.StatusName == 'Resolved' || 
+                                                             t.StatusName == 'Cancelled'));
 
                 // New tickets found
                 if (actuallyNew.length > 0) {
@@ -767,28 +816,35 @@ async function setTickex() {
 
                         // Update local copy immediately
                         const index = newTickets.findIndex(t => t.ID === ticket.ID);
-                        if (index !== -1)
-                            newTickets[index].has_been_viewed = false;
+                        if (index !== -1) newTickets[index].has_been_viewed = false;
                     });
 
-                    // Enable New Tickets Popup
-                    newTicketsPopup.classList.add("tx_newTicketsPopupActive");
-                    newTicketsPopup.classList.remove("tx_newTicketsPopup");
-                    setTimeout(() => {
-                        newTicketsPopup.classList.add("tx_newTicketsPopup");
-                        newTicketsPopup.classList.remove("tx_newTicketsPopupActive");
-                    }, 60000);
+                    // Check if user is currently on Tickex page
+                    const txButton = document.getElementById("TXButton");
+                    if (txButton && txButton.classList.contains("selected")) {
+                        // User is on Tickex, show the popup
+                        newTicketsPopup.classList.add("tx_newTicketsPopupActive");
+                        newTicketsPopup.classList.remove("tx_newTicketsPopup");
+                        setTimeout(() => {
+                            newTicketsPopup.classList.add("tx_newTicketsPopup");
+                            newTicketsPopup.classList.remove("tx_newTicketsPopupActive");
+                        }, 60000);
+                    } else {
+                        // User is NOT on Tickex, stash the response and strobe the tab
+                        stashTickexResponse(actuallyNew);
+                    }
                 }
 
                 // Update New Tickets Popup if needed
                 if (newTicketsPopup.classList.contains("tx_newTicketsPopupActive") && actuallyNew.length == 0) {
-                    newTicketsPopup.classList.add("tx_newTicketsPopup");
                     newTicketsPopup.classList.remove("tx_newTicketsPopupActive");
+                    newTicketsPopup.classList.add("tx_newTicketsPopup");
                 }
 
                 // Prevent Task Disruption
                 const searchBar = document.getElementById('searchBar'); 
                 if (searchBar && searchBar.value.trim() === '' /* User is using Search Bar */) {
+                    window.allTickets = newTickets;
                     window.currentTickets = newTickets;
                     initBoard(window.currentSortBy || 'created');
                 }
@@ -812,7 +868,7 @@ async function setTickex() {
                 }
             }
         }).catch(error => console.error('Error fetching tickets for update:', error));
-    }, 10000); // Check every 10 seconds
+    }, 30000); // Check every 30 seconds
 
     await Promise.resolve();
     initializeListeners();
@@ -822,6 +878,9 @@ async function setTickex() {
     popupContainer.classList.add("tx_popupContainer");
     tx_container.append(popupContainer);
 
+    let dismissAllPopupContainer = document.createElement("div");
+    dismissAllPopupContainer.classList.add("tx_dismissAllPopupContainer");
+    tx_container.append(dismissAllPopupContainer);
 
     // Init Hide Bool Variable in session storage
     sessionStorage.setItem("txHideBool", true);

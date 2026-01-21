@@ -1298,7 +1298,7 @@ ol li::marker {
     pointer-events: none;
 }
 
-.tx_clearNotificationsButton {
+.tx_dismissAllButton {
     grid-column: 9 / 10;
     grid-row: 1 / 3;
     place-self: center;
@@ -1484,6 +1484,49 @@ ol li::marker {
     grid-column: 8 / 10;
 }
 
+.tx_dismissAllPopupContainer {
+    position: fixed;
+    width: 100%;
+    height: auto;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    opacity: 0;
+    background-color: rgba(0,0,0,0.4);
+    pointer-events: none;
+    transition: .2s ease;
+}
+
+.tx_dismissAllPopupContainer.popupActive {
+    opacity: 1;
+    pointer-events: auto;
+    transition: .3s ease;
+}
+
+.tx_dismissAllPopupContainer .tx_popupBox {
+    width: 420px;
+    height: fit-content;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 250px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.dismissAllButtonConfirm {
+    float: left;
+    margin: 0px 0px 3px 5px;
+}
+
+.cancelPopupButton {
+    float: right;
+    margin: 0px 5px 3px 0px;
+}
+
 .tx_popupContainer {
     position: fixed;
     width: 100%;
@@ -1544,7 +1587,7 @@ ol li::marker {
 }
 
 .tx_popupContainer .tx_whatChangedBox {
-    max-width: 501px;
+    max-width: 701px;
     min-width: 301px;
     width: fit-content;
     height: fit-content;

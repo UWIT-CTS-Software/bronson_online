@@ -346,6 +346,23 @@ function stashJNResponse(formattedPingRequest, buildingName, devTypes) {
     return;
 }
 
+function stashTickexResponse(newTickets) {
+    let stash = JSON.parse(sessionStorage.getItem("Tickex_stash"));
+    const newItem = {
+        "newTickets": newTickets
+    };
+    if (stash == null) {
+        sessionStorage.setItem("Tickex_stash", JSON.stringify({"stashList": [newItem]}));
+    } else {
+        stash["stashList"].push(newItem);
+        sessionStorage.setItem("Tickex_stash", JSON.stringify(stash));
+    }
+    // add indicator to button
+    let txButton = document.getElementById("TXButton");
+    txButton.classList.add("stashed");
+    return;
+}
+
 // Session Storage Stuff (Tool Responses)
 // Unused
 //  we store the most recent response for a given request in Checkerboard
