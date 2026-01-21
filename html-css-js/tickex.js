@@ -578,9 +578,6 @@ async function setTickex() {
 
     /* -------------------- Tickex Page -------------------- */
     // TODO: "Dismiss All" Button should be an elevated permission
-    //
-    // TODO: Eventually change Tickex Run back to 2 minutes & Frontend check to 30 seconds 
-    //          (shorted for now for dev purposes)
 
     // Sort By Box - by date and status
     let sortByBox = document.createElement("div");
@@ -868,7 +865,7 @@ async function setTickex() {
                 }
             }
         }).catch(error => console.error('Error fetching tickets for update:', error));
-    }, 30000); // Check every 30 seconds
+    }, 15000); // Check every 15 seconds
 
     await Promise.resolve();
     initializeListeners();
