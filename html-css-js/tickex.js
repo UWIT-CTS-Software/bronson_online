@@ -320,7 +320,7 @@ function initializeListeners() {
             document.getElementById(`catchAllTicket_input`).value = 1;
             document.getElementById(`closedTicket_input`).value = 1;
 
-            let search = (this.value || '').trim().toLowerCase();
+            let search = (this.value || '').trim();
             performSearch(search, window.currentSortBy);
         }
     });
@@ -348,6 +348,10 @@ function performSearch(search) {
     const allTickets = window.allTickets || window.currentTickets;
     let matchedTickets = [];
 
+    // Normalize search string
+    search = search.toLowerCase();
+
+    // Abbreviate days of the week for search
     search = search.replaceAll("monday", "mon");
     search = search.replaceAll("tuesday", "tue");
     search = search.replaceAll("wednesday", "wed");
@@ -360,14 +364,13 @@ function performSearch(search) {
 
     if (search !== "") {
         for (let i = 0; i < allTickets.length; i++) {
-
             // Query Specific Fields
-            if (allTickets[i].ID.toString().includes(search) ||
-                allTickets[i].Title.toLowerCase().includes(search) ||
-                allTickets[i].RequestorName.toLowerCase().includes(search) ||
-                allTickets[i].CreatedFullName.toLowerCase().includes(search) ||
-                allTickets[i].CreatedDate.toLowerCase().includes(search) ||
-                allTickets[i].ModifiedDate.toLowerCase().includes(search))
+            if (allTickets[i].ID.includes(search) ||
+                allTickets[i].Title.includes(search) ||
+                allTickets[i].RequestorName.includes(search) ||
+                allTickets[i].CreatedFullName.includes(search) ||
+                allTickets[i].CreatedDate.includes(search) ||
+                allTickets[i].ModifiedDate.includes(search))
             {
                 matchedTickets.push(allTickets[i]);
             }
@@ -451,14 +454,14 @@ function initBoard() {
 
         // If days old < 14 or status == new
         const isNew = (Date.now() - new Date(ticket.CreatedDate) < 14 * 24 * 60 * 60 * 1000 
-                    || ticket.StatusName.toLowerCase() === 'new') 
-                    && ticket.StatusName.toLowerCase() !== 'closed'
-                    && ticket.StatusName.toLowerCase() !== 'cancelled'
-                    && ticket.StatusName.toLowerCase() !== 'resolved';
+                    || ticket.StatusName === 'New') 
+                    && ticket.StatusName !== 'Closed'
+                    && ticket.StatusName !== 'Cancelled'
+                    && ticket.StatusName !== 'Resolved';
 
-        const isClosed = ticket.StatusName.toLowerCase() === 'closed' 
-                      || ticket.StatusName.toLowerCase() === 'resolved' 
-                      || ticket.StatusName.toLowerCase() === 'cancelled';
+        const isClosed = ticket.StatusName === 'Closed' 
+                      || ticket.StatusName === 'Resolved' 
+                      || ticket.StatusName === 'Cancelled';
 
         // Ensure k-pager rows are displaying corresponding to current page number
         if (isNew) {
