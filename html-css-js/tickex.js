@@ -29,22 +29,6 @@ TODO:
 */
 
 
-// Fetches the current user's permission level
-async function getCurrentUserPermissions() {
-    try {
-        const response = await fetch('/currentUser');
-        if (!response.ok) {
-            console.error("Failed to fetch current user permissions");
-            return 0;
-        }
-        const data = await response.json();
-        return data.permissions || 0;
-    } catch (error) {
-        console.error("Error fetching current user permissions:", error);
-        return 0;
-    }
-}
-
 // Initializes all listeners for Tickex
 function initializeListeners() {
     // Escape Key
@@ -231,11 +215,16 @@ function showPopup(ticket) {
     newModDate = new Date(ticket.ModifiedDate);
 
     let whatChangedHTML = "";
-    if (ticket.old_type_name != ticket.TypeName || ticket.old_type_category_name != ticket.TypeCategoryName ||
-        ticket.old_title != ticket.Title || ticket.old_account_name != ticket.AccountName ||
-        ticket.old_status_name != ticket.StatusName || ticket.old_service_name != ticket.ServiceName ||
-        ticket.old_priority_name != ticket.PriorityName || ticket.old_modified_full_name != ticket.ModifiedFullName || 
-        ticket.old_responsible_full_name != ticket.ResponsibleFullName || ticket.old_responsible_group_name != ticket.ResponsibleGroupName) {
+    if (ticket.old_type_name != (ticket.TypeName || "") ||
+        ticket.old_type_category_name != (ticket.TypeCategoryName || "") ||
+        ticket.old_title != (ticket.Title || "") ||
+        ticket.old_account_name != (ticket.AccountName || "") ||
+        ticket.old_status_name != (ticket.StatusName || "") ||
+        ticket.old_service_name != (ticket.ServiceName || "") ||
+        ticket.old_priority_name != (ticket.PriorityName || "") ||
+        ticket.old_modified_full_name != (ticket.ModifiedFullName || "") ||
+        ticket.old_responsible_full_name != (ticket.ResponsibleFullName || "") || 
+        ticket.old_responsible_group_name != (ticket.ResponsibleGroupName || "")) {
 
         // Grab old ticket info. Compares what changed. (Field: Old info => New info)
         let whatChangedRows = "";
@@ -527,6 +516,22 @@ async function fetchTickets() {
     }
 }
 
+// Fetches the current user's permission level
+async function fetchCurrentUserPermissions() {
+    try {
+        const response = await fetch('/currentUser');
+        if (!response.ok) {
+            console.error("Failed to fetch current user permissions");
+            return 0;
+        }
+        const data = await response.json();
+        return data.permissions || 0;
+    } catch (error) {
+        console.error("Error fetching current user permissions:", error);
+        return 0;
+    }
+}
+
 // Update ticket's viewed status in backend
 async function updateTicketViewed(ticketId, viewed) {
     try {
@@ -677,7 +682,7 @@ async function setTickex() {
     // Dismiss Notifications Button (Admin only)
     let dismissAllButton = document.createElement("div");
     dismissAllButton.classList.add("tx_dismissAllButton");
-    const userPermissions = await getCurrentUserPermissions();
+    const userPermissions = await fetchCurrentUserPermissions();
     if (userPermissions >= 6) {
         dismissAllButton.innerHTML = `
             <button id="tx_dismissAllButton" onclick="dismissAllPopup()">Dismiss All</button>
