@@ -176,16 +176,16 @@ function showPopup(ticket) {
 
     // Set the HTML for what changed, if anything changed
     let whatChangedHTML = "";
-    if (ticket.old_type_name != (ticket.TypeName || "") ||
-        ticket.old_type_category_name != (ticket.TypeCategoryName || "") ||
-        ticket.old_title != (ticket.Title || "") ||
-        ticket.old_account_name != (ticket.AccountName || "") ||
-        ticket.old_status_name != (ticket.StatusName || "") ||
-        ticket.old_service_name != (ticket.ServiceName || "") ||
-        ticket.old_priority_name != (ticket.PriorityName || "") ||
-        ticket.old_modified_full_name != (ticket.ModifiedFullName || "") ||
-        ticket.old_responsible_full_name != (ticket.ResponsibleFullName || "") || 
-        ticket.old_responsible_group_name != (ticket.ResponsibleGroupName || "")) {
+    if (ticket.old_type_name != ticket.TypeName || ticket.old_type_name != "" ||
+        ticket.old_type_category_name != ticket.TypeCategoryName || ticket.old_type_category_name != "" ||
+        ticket.old_title != ticket.Title || ticket.old_title != "" ||
+        ticket.old_account_name != ticket.AccountName || ticket.old_account_name != "" ||
+        ticket.old_status_name != ticket.StatusName || ticket.old_status_name != "" ||
+        ticket.old_service_name != ticket.ServiceName || ticket.old_service_name != "" ||
+        ticket.old_priority_name != ticket.PriorityName || ticket.old_priority_name != "" ||
+        ticket.old_modified_full_name != ticket.ModifiedFullName || ticket.old_modified_full_name != "" ||
+        ticket.old_responsible_full_name != ticket.ResponsibleFullName || ticket.old_responsible_full_name != "" ||
+        ticket.old_responsible_group_name != ticket.ResponsibleGroupName || ticket.old_responsible_group_name != "") {
 
         // Grab old ticket info. Compares what changed. (Field: Old info => New info)
         let whatChangedRows = "";
@@ -203,10 +203,8 @@ function showPopup(ticket) {
             whatChangedRows += `<p>Service: ${ticket.old_service_name} => ${ticket.ServiceName}</p>`;
         if (ticket.old_priority_name != ticket.PriorityName)
             whatChangedRows += `<p>Priority: ${ticket.old_priority_name} => ${ticket.PriorityName}</p>`;
-        if (ticket.old_modified_full_name != ticket.ModifiedFullName)
-            whatChangedRows += `<p>Modified By: ${ticket.old_modified_full_name} => ${ticket.ModifiedFullName}</p>`;
         if (ticket.old_responsible_full_name != ticket.ResponsibleFullName)
-            whatChangedRows += `<p>Responsible By: ${ticket.old_responsible_full_name} => ${ticket.ResponsibleFullName}</p>`;
+            whatChangedRows += `<p>Responsible: ${ticket.old_responsible_full_name} => ${ticket.ResponsibleFullName}</p>`;
         if (ticket.old_responsible_group_name != ticket.ResponsibleGroupName)
             whatChangedRows += `<p>Responsible Group: ${ticket.old_responsible_group_name} => ${ticket.ResponsibleGroupName}</p>`;
 

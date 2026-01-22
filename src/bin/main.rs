@@ -2424,8 +2424,6 @@ $$$$$$$$\ $$\           $$\
 */
 
 async fn fetch_tdx_token(database: &mut Database, req: &Client) -> Result<(), String> {
-    // TODO: Fix the error checking to match what Alex added (check return types & error messages)
-
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/auth/login";
 
     // Get TDX login credentials from .env
@@ -2467,7 +2465,7 @@ async fn fetch_tdx_token(database: &mut Database, req: &Client) -> Result<(), St
 }
 
 async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String> {
-    let url = "https://uwyo.teamdynamix.com/TDWebApi/api/tickets/search";
+    let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/search";
 
     // Grab token from database
     let tdx_token = match database.get_key("tdx_api") {
