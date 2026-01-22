@@ -8,95 +8,43 @@
                                   _/ |
                                  |__/
 TOC:
-    - initializeListeners()
-    - sendToASU()
-    - sendToHelpDesk()
-    - sortBy()
-    - fetchTickets()
-
-HTML
-    - setTickex()
+    - sendToASU() (for later)
+    - sendToHelpDesk() (for later)
+    
+    Popups:
+    - dismissAll()
+    - dismissAllPopup()
+    - dismissChanges()
     - showPopup()
     - hidePopup()
+
+    Board Setup:
+    - initializeListeners()
+    - kPagerButton()
+    - performSearch()
+    - sortTickets()
     - initBoard()
 
-Notes:
+    Backend Calls:
+    - fetchTickets()
+    - fetchCurrentUserPermissions()
+    - updateTicketViewed()
 
+    "Main" Function:
+    - setTickex()
+
+
+Notes:
+    - The current state of this tool is read-only from the TDX API. We plan 
+        to have write access to the API in the future once we get permissions.
 
 TODO:
     - Add ticket editing/saving to TDX API (if we get write access)
     - Add "send to ASU"/"send to help desk" button (if we get write access)
+    - Add TDX comments section in popup (if we have access)
+    - Add Description field in popup (if we have access)
 */
 
-
-// Initializes all listeners for Tickex
-function initializeListeners() {
-    // Escape Key
-    document.addEventListener('keydown', (e) => {
-        const pressedKey = e.key;
-
-        if (pressedKey == 'Escape') {
-            if (document.querySelector('.tx_popupContainer.popupActive')) {
-                hidePopup();
-            }
-        }
-    });
-
-    // Listens to radio buttons, for sorting
-    document.getElementById("sortByBox").addEventListener('click', (e) => {
-        if (e.target.matches('input[type="radio"]')) {
-            let sortBy = e.target.id;
-            window.currentSortBy = sortBy;
-
-            const searchBar = document.getElementById('searchBar');
-            let search = searchBar.value;
-
-            performSearch(search);
-        }
-    });
-
-    // k-pager listeners
-    ["new", "catchAll", "closed"].forEach(section => {
-        document.getElementById(`${section}Ticket_dropdown`)
-            .addEventListener("change", () => {
-                document.getElementById(`${section}Ticket_input`).value = 1; // Reset to page 1
-                performSearch(document.getElementById("searchBar").value, window.currentSortBy);
-            });
-
-        document.getElementById(`${section}Ticket_input`)
-            .addEventListener("input", () => {
-                performSearch(document.getElementById("searchBar").value, window.currentSortBy);
-            });
-    });
-
-    const searchBar = document.getElementById('searchBar');
-    // Check for empty search bar
-    searchBar.addEventListener('keyup', function() {
-        if ((this.value || '').trim() === '') {
-            // Reset to page 1
-            document.getElementById(`newTicket_input`).value = 1;
-            document.getElementById(`catchAllTicket_input`).value = 1;
-            document.getElementById(`closedTicket_input`).value = 1;
-            performSearch("", window.currentSortBy); // Empty Search
-        }
-    });
-
-    // Listens for Enter key in search bar
-    searchBar.addEventListener('keydown', function(e) {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            searchBar.blur();
-
-            // Reset to page 1
-            document.getElementById(`newTicket_input`).value = 1;
-            document.getElementById(`catchAllTicket_input`).value = 1;
-            document.getElementById(`closedTicket_input`).value = 1;
-
-            let search = (this.value || '').trim().toLowerCase();
-            performSearch(search, window.currentSortBy);
-        }
-    });
-}
 
 // For Later - When we have write access to TDX API
 function sendToASU() {
@@ -107,6 +55,9 @@ function sendToASU() {
 function sendToHelpDesk() {
     alert("This feature is not yet implemented.");
 }
+
+
+    /* -------------------- Popups -------------------- */
 
 // Clear all ticket rows of unread notifications
 async function dismissAll(confirmed) {
@@ -129,7 +80,7 @@ async function dismissAll(confirmed) {
             ellipsis += ".";
             if (ellipsis.length > 3) ellipsis = "";
             button.textContent = `Clearing${ellipsis}`;
-        }, 1000); // Update every 1 second
+        }, 1000); // every 1 second
 
         for (const ticket of window.currentTickets) {
             if (ticket && !ticket.has_been_viewed) {
@@ -167,6 +118,18 @@ function dismissAllPopup() {
     `;
 }
 
+// Dismisses the "What Changed" box in the popup
+function dismissChanges() {
+    const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
+    if (!popupContainer) return;
+
+    // Remove the "What Changed" box
+    const whatChangedBox = popupContainer.querySelector('.tx_whatChangedBox');
+    if (whatChangedBox) {
+        whatChangedBox.remove();
+    }
+}
+
 // Shows the popup with relavent ticket info
 function showPopup(ticket) {
     if (!ticket) {
@@ -179,9 +142,7 @@ function showPopup(ticket) {
         console.error("Popup container not found");
         return;
     }
-
     popupContainer.classList.add('popupActive');
-    // document.getElementById('terminal').style.display = 'none'; // Hide Terminal
 
     // Mark ticket as viewed
     updateTicketViewed(ticket.ID, true);
@@ -189,9 +150,8 @@ function showPopup(ticket) {
     // Remove highlight (for all HTML instances of the ticket)
     const ticketRows = document.querySelectorAll(`[id="${ticket.ID}"]`);
     ticketRows.forEach(ticketRow => {
-        if (ticketRow) {
+        if (ticketRow) 
             ticketRow.classList.remove('tx_highlight_row');
-        }
     });
 
     // Convert Dates to Readable Format
@@ -201,6 +161,8 @@ function showPopup(ticket) {
     // Shorten ResponsibleGroupName field to CTS if it's the correct string
     if (ticket.ResponsibleGroupName === "Classroom Technology Support (CTS)") 
         ticket.ResponsibleGroupName = "CTS";
+    if (ticket.old_responsible_group_name === "Classroom Technology Support (CTS)") 
+        ticket.old_responsible_group_name = "CTS";
 
     // Fix Phone Number Format => (XXX) YYY-ZZZZ
     const raw = ticket.RequestorPhone;
@@ -208,12 +170,11 @@ function showPopup(ticket) {
     if (digits.length === 10) // Invalid numbers just get skipped and raw string is used
         ticket.RequestorPhone = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
 
-    if (ticket.old_responsible_group_name === "Classroom Technology Support (CTS)") 
-        ticket.old_responsible_group_name = "CTS";
-
+    // Check for changes in date modified
     oldModDate = new Date(ticket.old_modified_date);
     newModDate = new Date(ticket.ModifiedDate);
 
+    // Set the HTML for what changed, if anything changed
     let whatChangedHTML = "";
     if (ticket.old_type_name != (ticket.TypeName || "") ||
         ticket.old_type_category_name != (ticket.TypeCategoryName || "") ||
@@ -262,6 +223,7 @@ function showPopup(ticket) {
         `;
     }
 
+    // Set Popup HTML
     popupContainer.innerHTML = `
         <div class="tx_popupBox">
         <span>${ticket.Title || "No Title"}</span>
@@ -292,35 +254,86 @@ function showPopup(ticket) {
 // Hides the popup
 function hidePopup() {
     const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
-    if (popupContainer) popupContainer.classList.remove('popupActive');
+    if (popupContainer) 
+        popupContainer.classList.remove('popupActive');
 }
 
-// Dismisses the "What Changed" box in the popup
-function dismissChanges() {
-    const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
-    if (!popupContainer) return;
 
-    // Remove the "What Changed" box
-    const whatChangedBox = popupContainer.querySelector('.tx_whatChangedBox');
-    if (whatChangedBox) {
-        whatChangedBox.remove();
-    }
+    /* -------------------- Board Setup -------------------- */
+
+// Initializes all listeners for Tickex
+function initializeListeners() {
+    // Escape Key
+    document.addEventListener('keydown', (e) => {
+        const pressedKey = e.key;
+        if (pressedKey == 'Escape') 
+            if (document.querySelector('.tx_popupContainer.popupActive')) hidePopup();
+    });
+
+    // Listens to radio buttons, for sorting
+    document.getElementById("sortByBox").addEventListener('click', (e) => {
+        if (e.target.matches('input[type="radio"]')) {
+            let sortBy = e.target.id;
+            window.currentSortBy = sortBy;
+
+            const searchBar = document.getElementById('searchBar');
+            let search = searchBar.value;
+
+            performSearch(search);
+        }
+    });
+
+    // k-pager listeners
+    ["new", "catchAll", "closed"].forEach(section => {
+        document.getElementById(`${section}Ticket_dropdown`)
+            .addEventListener("change", () => {
+                document.getElementById(`${section}Ticket_input`).value = 1; // Reset to page 1
+                performSearch(document.getElementById("searchBar").value, window.currentSortBy);
+            });
+
+        document.getElementById(`${section}Ticket_input`)
+            .addEventListener("input", () => {
+                performSearch(document.getElementById("searchBar").value, window.currentSortBy);
+            });
+    });
+
+    // Check for empty search bar
+    const searchBar = document.getElementById('searchBar');
+    searchBar.addEventListener('keyup', function() {
+        if ((this.value || '').trim() === '') {
+            // Reset to page 1
+            document.getElementById(`newTicket_input`).value = 1;
+            document.getElementById(`catchAllTicket_input`).value = 1;
+            document.getElementById(`closedTicket_input`).value = 1;
+            performSearch("", window.currentSortBy); // Empty the Search Bar
+        }
+    });
+
+    // Listens for Enter key in search bar
+    searchBar.addEventListener('keydown', function(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            searchBar.blur();
+
+            // Reset to page 1
+            document.getElementById(`newTicket_input`).value = 1;
+            document.getElementById(`catchAllTicket_input`).value = 1;
+            document.getElementById(`closedTicket_input`).value = 1;
+
+            let search = (this.value || '').trim().toLowerCase();
+            performSearch(search, window.currentSortBy);
+        }
+    });
 }
 
 // Adjusts input ticket field by value
 function kPagerButton(val, inputId, maxPageId) {
     let inputField = document.getElementById(inputId);
-    if (!inputField) {
-        console.warn(`Input field '${inputId}' not found yet.`);
-        return;
-    }
+    if (!inputField) return;
 
     const maxPage = document.getElementById(maxPageId);
     const maxVal = parseInt(maxPage?.textContent);
-    if (isNaN(maxVal)) {
-        console.warn(`Max value from '${maxPage}' is not a number.`);
-        return;
-    }
+    if (isNaN(maxVal)) return;
 
     const newVal = parseInt(inputField.value) + val;
     if (newVal <= 0) { inputField.value = 1; } 
@@ -372,24 +385,22 @@ function performSearch(search) {
 // Handles sorting of board elements
 //      - sortBy recieves: 'created', 'modified', or 'status'
 function sortTickets() {
+    // Sort by Date Created (default)
     window.currentTickets = window.currentTickets.sort((a, b) => new Date(b.CreatedDate) - new Date(a.CreatedDate));
     
     // Sort by Data Modified
     if (window.currentSortBy === 'modified') {
         window.currentTickets = window.currentTickets.sort((a, b) => new Date(b.ModifiedDate) - new Date(a.ModifiedDate));
-
         return window.currentTickets;
     }
     // Sort by Status
     else if (window.currentSortBy === 'status') {
-        const statusOrder = ["New", "In Process", "On Hold", "Resolved", "Cancelled", "Closed"];
-
+        const statusOrder = ["New", "In Process", "On Hold", "Closed", "Resolved", "Cancelled"];
         window.currentTickets = window.currentTickets.sort((a, b) => statusOrder.indexOf(a.StatusName) - statusOrder.indexOf(b.StatusName));
-
         return window.currentTickets;
     }
-    // Default sort by Date
-    else { return window.currentTickets; }
+
+    return window.currentTickets; 
 }
 
 // Add tickets to the board
@@ -414,13 +425,8 @@ function initBoard() {
         closedInputField = parseInt(document.getElementById("closedTicket_input").value);
     } catch (e) {
         // On first time load or on error, use default values
-        newNumRows = 15;
-        catchAllNumRows = 15;
-        closedNumRows = 10;
-
-        newInputField = 1;
-        catchAllInputField = 1;
-        closedInputField = 1;
+        newNumRows = 15; catchAllNumRows = 15; closedNumRows = 10;
+        newInputField = 1; catchAllInputField = 1; closedInputField = 1;
     }
 
     // Update Max Page Numbers
@@ -445,15 +451,14 @@ function initBoard() {
 
         // If days old < 14 or status == new
         const isNew = (Date.now() - new Date(ticket.CreatedDate) < 14 * 24 * 60 * 60 * 1000 
-            || ticket.StatusName.toLowerCase() === 'new') 
-            && ticket.StatusName.toLowerCase() !== 'closed'
-            && ticket.StatusName.toLowerCase() !== 'cancelled'
-            && ticket.StatusName.toLowerCase() !== 'resolved';
-
+                    || ticket.StatusName.toLowerCase() === 'new') 
+                    && ticket.StatusName.toLowerCase() !== 'closed'
+                    && ticket.StatusName.toLowerCase() !== 'cancelled'
+                    && ticket.StatusName.toLowerCase() !== 'resolved';
 
         const isClosed = ticket.StatusName.toLowerCase() === 'closed' 
-            || ticket.StatusName.toLowerCase() === 'resolved' 
-            || ticket.StatusName.toLowerCase() === 'cancelled';
+                      || ticket.StatusName.toLowerCase() === 'resolved' 
+                      || ticket.StatusName.toLowerCase() === 'cancelled';
 
         // Ensure k-pager rows are displaying corresponding to current page number
         if (isNew) {
@@ -500,15 +505,14 @@ function initBoard() {
     document.querySelector("#closedTicketsBoard tbody").innerHTML = ticketsHtml.closedTickets;
 }
 
+
+    /* -------------------- Backend Calls -------------------- */
+
 // Grab tickets from backend
 async function fetchTickets() {
     try {
         const response = await fetch('/tickets');
-
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-
+        if (!response.ok) throw new Error('Network response was not ok');
         return await response.json();
     } catch (error) {
         console.error('Failed to fetch tickets:', error);
@@ -524,6 +528,7 @@ async function fetchCurrentUserPermissions() {
             console.error("Failed to fetch current user permissions");
             return 0;
         }
+
         const data = await response.json();
         return data.permissions || 0;
     } catch (error) {
@@ -537,29 +542,29 @@ async function updateTicketViewed(ticketId, viewed) {
     try {
         const response = await fetch('/update/ticket/viewed', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json', },
             body: JSON.stringify({ id: ticketId, viewed: viewed }),
         });
-        if (!response.ok) {
-            console.error('Failed to update ticket viewed status');
-        }
+
+        if (!response.ok) console.error('Failed to update ticket viewed status');
     } catch (error) {
         console.error('Error updating ticket viewed status:', error);
     }
 }
 
+
+    /* -------------------- "Main" Function -------------------- */
+
 // Sets up the Tickex tool page
 async function setTickex() {
     preserveCurrentTool();
+    document.title = "Tickex - Bronson";
 
     // Clear Tickex cache so new HTML and Tickets are always loaded
     sessionStorage.removeItem("Tickex_html");
+    
     // Clear stash and remove strobing indicator
     sessionStorage.removeItem("Tickex_stash");
-
-    document.title = "Tickex - Bronson";
     
     let current = document.getElementsByClassName("selected");
     if (current.length != 0) {
@@ -567,14 +572,11 @@ async function setTickex() {
     }
     let newCurrent = document.getElementById("TXButton");
     newCurrent.classList.add("selected");
-    // Stop the strobing
-    newCurrent.classList.remove("stashed");
+    newCurrent.classList.remove("stashed"); // Stop the strobing
 
-    history.pushState("test", "Tickex", "/tickex");
-
-    let progGuts = document.querySelector('.program_board .program_guts');
     // Check for preserved space
     let cached_HTML = sessionStorage.getItem("Tickex_html");
+    let progGuts = document.querySelector('.program_board .program_guts');
     if (cached_HTML != null) {
         // make sure cache was not overwritten with another tool.
         if(cached_HTML.includes("tx_container")) {
@@ -583,11 +585,9 @@ async function setTickex() {
         }
     }
 
-
-    // -- No HTML Cache found, build from scratch
+    // No HTML Cache found, build from scratch
     let tx_container = document.createElement("div");
     tx_container.classList.add("tx_container");
-
 
     // Main Container
     let main_container = document.createElement('div');
@@ -598,7 +598,35 @@ async function setTickex() {
 
 
     /* -------------------- Tickex Page -------------------- */
-    // TODO: "Dismiss All" Button should be an elevated permission
+
+    // Display loading message while fetching tickets
+    let loadingMessage = document.createElement("div");
+    loadingMessage.classList.add("tx_loadingMessage");
+    loadingMessage.innerHTML = `
+        <legend>Loading Tickets</legend>
+    `;
+    tx_container.append(loadingMessage);
+
+    let ellipsis = "";
+    const ellipsisInterval = setInterval(() => {
+        ellipsis += ".";
+        if (ellipsis.length > 3) ellipsis = "";
+        loadingMessage.innerHTML = `
+            <legend>Loading Tickets${ellipsis}</legend>
+        `;
+    }, 1000); // Update every 1 second
+
+    let tickets = [];
+    while (!tickets.length) { // Keep trying until tickets are fetched
+        let response = await fetchTickets();
+        tickets = Array.isArray(response) ? response : [];
+    }
+    window.currentTickets = tickets;
+    window.allTickets = tickets; // Store complete ticket list for auto-refresh comparison
+
+    clearInterval(ellipsisInterval);
+    loadingMessage.remove();
+
 
     // Sort By Box - by date and status
     let sortByBox = document.createElement("div");
@@ -643,34 +671,6 @@ async function setTickex() {
     `;
     tx_container.append(tdxHotlink);
 
-    // Display loading message while fetching tickets
-    let loadingMessage = document.createElement("div");
-    loadingMessage.classList.add("tx_loadingMessage");
-    loadingMessage.innerHTML = `
-        <legend>Loading Tickets</legend>
-    `;
-    tx_container.append(loadingMessage);
-
-    let ellipsis = "";
-    const ellipsisInterval = setInterval(() => {
-        ellipsis += ".";
-        if (ellipsis.length > 3) ellipsis = "";
-        loadingMessage.innerHTML = `
-            <legend>Loading Tickets${ellipsis}</legend>
-        `;
-    }, 1000); // Update every 1 second
-
-    let tickets = [];
-    while (!tickets.length) { // Keep trying until tickets are fetched
-        let response = await fetchTickets();
-        tickets = Array.isArray(response) ? response : [];
-    }
-    window.currentTickets = tickets;
-    window.allTickets = tickets; // Store complete ticket list for auto-refresh comparison
-
-    clearInterval(ellipsisInterval);
-    loadingMessage.remove();
-
     // New Tickets Popup
     let newTicketsPopup = document.createElement("div");
     newTicketsPopup.classList.add("tx_newTicketsPopup");
@@ -689,6 +689,12 @@ async function setTickex() {
         `;
         tx_container.append(dismissAllButton);
     }
+
+    // Dismiss All Popup Container - admin only
+    let dismissAllPopupContainer = document.createElement("div");
+    dismissAllPopupContainer.classList.add("tx_dismissAllPopupContainer");
+    tx_container.append(dismissAllPopupContainer);
+
 
     // The 3 Tickex boards - New, Catch All, Closed
     let newTickets = document.createElement("div");
@@ -804,6 +810,12 @@ async function setTickex() {
             </div></fieldset>
     `;
 
+    // Popup Container - click on ticket for popup to appear
+    let popupContainer = document.createElement("div");
+    popupContainer.classList.add("tx_popupContainer");
+    tx_container.append(popupContainer);
+    
+
     // Initial board on loadup
     let sortBy = "created"; // sort by date created on load up
     window.currentSortBy = sortBy;
@@ -894,17 +906,10 @@ async function setTickex() {
     await Promise.resolve();
     initializeListeners();
 
-    // Popup Container - click on ticket for popup to appear
-    let popupContainer = document.createElement("div");
-    popupContainer.classList.add("tx_popupContainer");
-    tx_container.append(popupContainer);
-
-    let dismissAllPopupContainer = document.createElement("div");
-    dismissAllPopupContainer.classList.add("tx_dismissAllPopupContainer");
-    tx_container.append(dismissAllPopupContainer);
-
     // Init Hide Bool Variable in session storage
     sessionStorage.setItem("txHideBool", true);
 
     return;
 }
+
+
