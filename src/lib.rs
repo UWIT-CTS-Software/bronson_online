@@ -673,15 +673,16 @@ impl Database {
 					Ok(kj) => String::from(kj),
 					Err(m) => { return Err(format!("KEYS_JSON environment variable not found: {}", m)); }
 				};
-				let json_keys: HashMap<String, String> = match serde_json::from_str(&key_json) {
+				
+				let json_keys: HashMap<String, Value> = match serde_json::from_str(&key_json) {
 					Ok(k)  => k,
 					Err(m) => { return Err(format!("Unable to parse keys json: {}", m)); }
 				};
-
+				
 				for (id, value) in json_keys.iter() {
 					let new_key = DB_Key {
 						key_id: id.clone(),
-						val: value.clone()
+						val: value.to_string()
 					};
 
 					let _ = self.update_key(&new_key);

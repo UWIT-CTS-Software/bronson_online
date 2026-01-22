@@ -29,6 +29,22 @@ TODO:
 */
 
 
+// Fetches the current user's permission level
+async function getCurrentUserPermissions() {
+    try {
+        const response = await fetch('/currentUser');
+        if (!response.ok) {
+            console.error("Failed to fetch current user permissions");
+            return 0;
+        }
+        const data = await response.json();
+        return data.permissions || 0;
+    } catch (error) {
+        console.error("Error fetching current user permissions:", error);
+        return 0;
+    }
+}
+
 // Initializes all listeners for Tickex
 function initializeListeners() {
     // Escape Key
@@ -658,13 +674,16 @@ async function setTickex() {
     `;
     tx_container.append(newTicketsPopup);
 
-    // Dismiss Notifications Button
+    // Dismiss Notifications Button (Admin only)
     let dismissAllButton = document.createElement("div");
     dismissAllButton.classList.add("tx_dismissAllButton");
-    dismissAllButton.innerHTML = `
-        <button id="tx_dismissAllButton" onclick="dismissAllPopup()">Dismiss All</button>
-    `;
-    tx_container.append(dismissAllButton);
+    const userPermissions = await getCurrentUserPermissions();
+    if (userPermissions >= 6) {
+        dismissAllButton.innerHTML = `
+            <button id="tx_dismissAllButton" onclick="dismissAllPopup()">Dismiss All</button>
+        `;
+        tx_container.append(dismissAllButton);
+    }
 
     // The 3 Tickex boards - New, Catch All, Closed
     let newTickets = document.createElement("div");

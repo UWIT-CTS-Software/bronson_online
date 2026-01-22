@@ -1556,7 +1556,7 @@ ol li::marker {
     border: 3px solid rgb(224, 193, 108);
     background: rgb(60, 60, 60);
     border-radius: 6px;
-    margin-top: 36px;
+    margin-top: 90px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 

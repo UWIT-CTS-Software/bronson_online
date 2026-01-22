@@ -678,6 +678,32 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents(contents);
         },
+        "GET /currentUser HTTP/1.1"        => { // OUTGOING, Current user info
+            let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
+            if let Some(captures) = username_search.captures(&req.headers.get("Cookie").unwrap_or(&String::new())) {
+                let username = &captures["username"];
+                match database.get_user(username) {
+                    Ok(user) => {
+                        res.status(STATUS_200);
+                        res.send_contents(json!({
+                            "username": user.username,
+                            "permissions": user.permissions
+                        }).to_string().into());
+                    },
+                    Err(_) => {
+                        res.status(STATUS_401);
+                        res.send_contents(json!({
+                            "error": "User not found"
+                        }).to_string().into());
+                    }
+                }
+            } else {
+                res.status(STATUS_401);
+                res.send_contents(json!({
+                    "error": "No authentication cookie"
+                }).to_string().into());
+            }
+        },
         "GET /tickets HTTP/1.1"            => { // OUTGOING, Tickets for Tickex
             let db_tickets = match database.get_all_tickets() {
                 Ok(t) => t,
