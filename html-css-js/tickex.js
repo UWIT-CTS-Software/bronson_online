@@ -365,7 +365,7 @@ function performSearch(search) {
     if (search !== "") {
         for (let i = 0; i < allTickets.length; i++) {
             // Query Specific Fields
-            if (allTickets[i].ID.includes(search) ||
+            if (allTickets[i].ID == search ||
                 allTickets[i].Title.includes(search) ||
                 allTickets[i].RequestorName.includes(search) ||
                 allTickets[i].CreatedFullName.includes(search) ||
@@ -829,6 +829,7 @@ async function setTickex() {
     tx_container.append(closedTickets);
 
     initBoard();
+    initializeListeners();
 
     // Auto-refresh board logic
     setInterval(() => {
@@ -907,7 +908,6 @@ async function setTickex() {
     }, 15000); // Check every 15 seconds
 
     await Promise.resolve();
-    initializeListeners();
 
     // Init Hide Bool Variable in session storage
     sessionStorage.setItem("txHideBool", true);
