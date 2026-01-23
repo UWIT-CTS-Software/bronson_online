@@ -183,7 +183,6 @@ function showPopup(ticket) {
         ticket.old_status_name != ticket.StatusName || ticket.old_status_name != "" ||
         ticket.old_service_name != ticket.ServiceName || ticket.old_service_name != "" ||
         ticket.old_priority_name != ticket.PriorityName || ticket.old_priority_name != "" ||
-        ticket.old_modified_full_name != ticket.ModifiedFullName || ticket.old_modified_full_name != "" ||
         ticket.old_responsible_full_name != ticket.ResponsibleFullName || ticket.old_responsible_full_name != "" ||
         ticket.old_responsible_group_name != ticket.ResponsibleGroupName || ticket.old_responsible_group_name != "") {
 
