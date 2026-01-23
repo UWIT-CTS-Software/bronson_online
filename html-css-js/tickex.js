@@ -132,12 +132,30 @@ function dismissChanges() {
 }
 
 // Shows the popup with relavent ticket info
-async function showPopup(ticket) {
+function showPopup(ticket, element) {
+    // Change cursor to loading
+    if (!document.body.classList.contains('tx_waiting-cursor')) 
+        document.body.classList.add('tx_waiting-cursor');
+    if (element != null && !element.classList.contains('tx_waiting-cursor')) 
+        element.classList.add('tx_waiting-cursor');
+
+    // Force cursor wheel to show
+    requestAnimationFrame(() => {
+        show(ticket).finally(() => {
+            // Remove loading cursor
+            if (document.body.classList.contains('tx_waiting-cursor'))
+                document.body.classList.remove('tx_waiting-cursor');
+            if (element != null &&element.classList.contains('tx_waiting-cursor')) 
+                element.classList.remove('tx_waiting-cursor');
+        });
+    });
+}
+async function show(ticket) {
     if (!ticket) {
         console.error("Ticket data not found");
         return;
     }
-
+    
     const desc = await fetchTicketDescription(ticket.ID);
     const description = desc.replace(/<[^>]*>/g, ''); // Scrub HTML tags out
 
@@ -261,6 +279,7 @@ async function showPopup(ticket) {
                 <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
                 <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
                 <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">See Ticket Details</button>
+                <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
                 <p class="tx_Description">${description || "No Description Provided"}</p>
                 <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                     <button class="popup_linkToTicket">Link to Ticket</button>
@@ -489,7 +508,7 @@ function initBoard() {
     for (let ticket of window.currentTickets) {
         let highlightClass = ticket.has_been_viewed ? '' : 'tx_highlight_row';
         let ticketRow = `
-            <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
+            <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
                 <td>${ticket.Title}</td>
                 <td>${ticket.ID}</td>
                 <td>${ticket.StatusName}</td>
@@ -526,7 +545,7 @@ function initBoard() {
         }
         if (isClosed) {
             let closedRow = `
-                <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')})">
+                <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
                     <td>${ticket.Title}</td>
                     <td>${ticket.ID}</td>
                 </tr>
