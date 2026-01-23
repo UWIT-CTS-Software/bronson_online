@@ -251,7 +251,7 @@ async function show(ticket) {
                 <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
                 <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
                 <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
-                <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">See Description</button>
+                <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">Description</button>
                 <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
                 <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED"} || ${ticket.ResponsibleGroupName || ""}</p>
                 <p class="tx_popup_ServiceName">Service: ${ticket.ServiceName || ""}</p>
@@ -268,7 +268,7 @@ async function show(ticket) {
             </div>
             ${whatChangedHTML}
         `;
-    } else {
+    } else { // Description Shown
         popupContainer.innerHTML = `
             <div class="tx_popupBox">
             <span>${ticket.Title || "No Title"}</span>
@@ -278,8 +278,9 @@ async function show(ticket) {
                 <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
                 <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
                 <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
-                <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">See Ticket Details</button>
-                <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
+                <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">Details</button>
+                <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""}</p>
+                <p class="tx_popup_contact">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
                 <p class="tx_Description">${description || "No Description Provided"}</p>
                 <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                     <button class="popup_linkToTicket">Link to Ticket</button>

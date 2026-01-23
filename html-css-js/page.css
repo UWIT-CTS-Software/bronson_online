@@ -1684,6 +1684,10 @@ p.tx_popup_DaysOld {
     padding: 0px 50px 0px 10px;
 }
 
+.tx_popup_Requestor {
+    margin-top: 20px;
+}
+
 p.tx_popup_Title {
     border-bottom: 1px solid rgb(224, 193, 108);
     padding-bottom: 15px;
