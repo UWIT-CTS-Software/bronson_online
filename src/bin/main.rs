@@ -201,7 +201,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         data_sync(data_ts);
     });
 
-    // User Requests / User Thread Pool    let _ = database.backup();
+    // Create TDX Request Client
+    let tdx_request: Client = reqwest::Client::builder()
+        .cookie_store(true)
+        .user_agent("server_lib/1.10.1")
+        .default_headers(construct_headers("tdx", &mut request_database))
+        .timeout(Duration::from_secs(60))
+        .build()
+        .ok()
+        .expect("Unable to build TDX Request Client");
+    let tdx_request = Arc::new(tdx_request);
+
+    // User Requests / User Thread Pool
+    let _ = request_database.backup();
 
     for stream in listener.incoming() {
         let mut stream = match stream {
@@ -219,8 +231,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let req = Request::from(buffer.clone());
         let clone_db = request_database.clone();
         let req_ts = Arc::clone(&thread_schedule);
+        let req_client = Arc::clone(&tdx_request);
         pool.execute(move || {
-            let mut res = handle_connection(req, clone_db, req_ts).unwrap();
+            let mut res = handle_connection(req, clone_db, req_ts, req_client).unwrap();
             stream.write(&res.build()).unwrap();
             stream.flush().unwrap();
             stdout().flush().unwrap();
@@ -471,6 +484,7 @@ async fn handle_connection(
     mut req: Request,
     mut database: Database,
     thread_schedule: Arc<RwLock<ThreadSchedule>>,
+    client: Arc<Client>,
 ) -> Option<Response> {
     let mut user_homepage: &str = "html-css-js/login.html";
     if req.headers.contains_key("Cookie") {
@@ -1548,6 +1562,39 @@ async fn handle_connection(
             res.status(STATUS_200);
             res.send_contents(contents);
         },
+        // Ticket Description - Parse dynamic route
+        start_line if start_line.starts_with("GET /ticket/description/") && start_line.ends_with(" HTTP/1.1") => {
+            // Extract ticket ID from URL: GET /ticket/description/{id} HTTP/1.1
+            let ticket_id_str = start_line
+                .strip_prefix("GET /ticket/description/")
+                .and_then(|s| s.strip_suffix(" HTTP/1.1"))
+                .unwrap_or("");
+            
+            match ticket_id_str.parse::<i32>() {
+                Ok(ticket_id) => {
+                    // Use block_in_place to safely call async code from within the async context
+                    match tokio::task::block_in_place(|| {
+                        tokio::runtime::Handle::current().block_on(
+                            fetch_tdx_ticket_description(&mut database, &client, ticket_id)
+                        )
+                    }) {
+                        Ok(description) => {
+                            res.status(STATUS_200);
+                            res.send_contents(description.into());
+                        },
+                        Err(e) => {
+                            error!("Failed to fetch ticket description: {}", e);
+                            res.status(STATUS_500);
+                            res.send_contents(format!("Error: {}", e).into());
+                        }
+                    }
+                },
+                Err(_) => {
+                    res.status(STATUS_500);
+                    res.send_contents("Invalid ticket ID".into());
+                }
+            }
+        },
         &_                                 => {
             res.status(STATUS_404);
             res.send_file("html-css-js/404.html");
@@ -2462,6 +2509,51 @@ async fn fetch_tdx_token(database: &mut Database, req: &Client) -> Result<(), St
     debug!("[Tickex] Stored new TDX token successfully into Database");
 
     return Ok(());
+}
+
+async fn fetch_tdx_ticket_description(database: &mut Database, req: &Client, ticket_id: i32) -> Result<String, String> {
+    // Get the TDX API token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API token: {}", e)),
+    };
+
+    // Construct the API URL to fetch ticket details
+    // The /feed endpoint gives us ticket activities/notes, but we need the main ticket endpoint for description
+    let url = format!(
+        "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/{}",
+        ticket_id
+    );
+
+    // Make the request to TDX API
+    let resp = req
+        .get(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Accept", "application/json")
+        .send()
+        .await;
+
+    let resp = match resp {
+        Ok(r) => r,
+        Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
+    };
+
+    if !resp.status().is_success() {
+        return Err(format!("TDX API error: {} - {}", resp.status(), resp.status().canonical_reason().unwrap_or("Unknown")));
+    }
+
+    // Parse the response body
+    let body = resp.text().await.map_err(|e| format!("Failed to read response: {}", e))?;
+    let ticket_json: Value = serde_json::from_str(&body)
+        .map_err(|e| format!("Failed to parse ticket JSON: {}", e))?;
+
+    // Extract the description field
+    let description = ticket_json["Description"]
+        .as_str()
+        .unwrap_or("No description available")
+        .to_string();
+
+    Ok(description)
 }
 
 async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String> {

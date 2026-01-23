@@ -27,6 +27,7 @@ TOC:
 
     Backend Calls:
     - fetchTickets()
+    - fetchTicketDescription()
     - fetchCurrentUserPermissions()
     - updateTicketViewed()
 
@@ -131,18 +132,23 @@ function dismissChanges() {
 }
 
 // Shows the popup with relavent ticket info
-function showPopup(ticket) {
+async function showPopup(ticket) {
     if (!ticket) {
         console.error("Ticket data not found");
         return;
     }
+
+    const desc = await fetchTicketDescription(ticket.ID);
+    const description = desc.replace(/<[^>]*>/g, ''); // Scrub HTML tags out
 
     const popupContainer = document.querySelector('.tx_popupContainer');
     if (!popupContainer) {
         console.error("Popup container not found");
         return;
     }
-    popupContainer.classList.add('popupActive');
+
+    if (!popupContainer.classList.contains('popupActive'))
+        popupContainer.classList.add('popupActive');
 
     // Mark ticket as viewed
     updateTicketViewed(ticket.ID, true);
@@ -170,21 +176,17 @@ function showPopup(ticket) {
     if (digits.length === 10) // Invalid numbers just get skipped and raw string is used
         ticket.RequestorPhone = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
 
-    // Check for changes in date modified
-    oldModDate = new Date(ticket.old_modified_date);
-    newModDate = new Date(ticket.ModifiedDate);
-
     // Set the HTML for what changed, if anything changed
     let whatChangedHTML = "";
-    if (ticket.old_type_name != ticket.TypeName || ticket.old_type_name != "" ||
-        ticket.old_type_category_name != ticket.TypeCategoryName || ticket.old_type_category_name != "" ||
-        ticket.old_title != ticket.Title || ticket.old_title != "" ||
-        ticket.old_account_name != ticket.AccountName || ticket.old_account_name != "" ||
-        ticket.old_status_name != ticket.StatusName || ticket.old_status_name != "" ||
-        ticket.old_service_name != ticket.ServiceName || ticket.old_service_name != "" ||
-        ticket.old_priority_name != ticket.PriorityName || ticket.old_priority_name != "" ||
-        ticket.old_responsible_full_name != ticket.ResponsibleFullName || ticket.old_responsible_full_name != "" ||
-        ticket.old_responsible_group_name != ticket.ResponsibleGroupName || ticket.old_responsible_group_name != "") {
+    if (ticket.old_type_name != ticket.TypeName || 
+        ticket.old_type_category_name != ticket.TypeCategoryName || 
+        ticket.old_title != ticket.Title || 
+        ticket.old_account_name != ticket.AccountName || 
+        ticket.old_status_name != ticket.StatusName || 
+        ticket.old_service_name != ticket.ServiceName || 
+        ticket.old_priority_name != ticket.PriorityName || 
+        ticket.old_responsible_full_name != ticket.ResponsibleFullName || 
+        ticket.old_responsible_group_name != ticket.ResponsibleGroupName) {
 
         // Grab old ticket info. Compares what changed. (Field: Old info => New info)
         let whatChangedRows = "";
@@ -221,38 +223,82 @@ function showPopup(ticket) {
     }
 
     // Set Popup HTML
-    popupContainer.innerHTML = `
-        <div class="tx_popupBox">
-        <span>${ticket.Title || "No Title"}</span>
-        <button class="popup_closeButton" onClick="hidePopup()">X</button>
-            <div class="tx_adjacent"><p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
-            <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
-            <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
-            <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
-            <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
-            <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-            <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED"} || ${ticket.ResponsibleGroupName || ""}</p>
-            <p class="tx_popup_ServiceName">Service: ${ticket.ServiceName || ""}</p>
-            <p class="tx_popup_AccountName">Account Department: ${ticket.AccountName || ""}</p>
-            <p class="tx_popup_TypeName">Type: ${ticket.TypeName || ""}</p>
-            <p class="tx_popup_TypeCategoryName">Type Category: ${ticket.TypeCategoryName || ""}</p>
-            <p class="tx_popup_Created">Date Created: ${ticket.CreatedDate || ""} || Created by: ${ticket.CreatedFullName || ""}</p>
-            <p class="tx_popup_Modified">Last Modified: ${ticket.ModifiedDate || ""} || Modified by: ${ticket.ModifiedFullName || ""}</p>
-            <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
-                <button class="popup_linkToTicket">Link to Ticket</button>
-            </a>
-            <button disabled class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
-            <button disabled class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
-        </div>
-        ${whatChangedHTML}
-    `;
+    if (popupContainer.classList.contains('detailsShown')) {
+        popupContainer.innerHTML = `
+            <div class="tx_popupBox">
+            <span>${ticket.Title || "No Title"}</span>
+            <button class="popup_closeButton" onClick="hidePopup()">X</button>
+                <div class="tx_adjacent"><p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
+                <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
+                <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
+                <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
+                <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
+                <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">See Description</button>
+                <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
+                <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED"} || ${ticket.ResponsibleGroupName || ""}</p>
+                <p class="tx_popup_ServiceName">Service: ${ticket.ServiceName || ""}</p>
+                <p class="tx_popup_AccountName">Account Department: ${ticket.AccountName || ""}</p>
+                <p class="tx_popup_TypeName">Type: ${ticket.TypeName || ""}</p>
+                <p class="tx_popup_TypeCategoryName">Type Category: ${ticket.TypeCategoryName || ""}</p>
+                <p class="tx_popup_Created">Date Created: ${ticket.CreatedDate || ""} || Created by: ${ticket.CreatedFullName || ""}</p>
+                <p class="tx_popup_Modified">Last Modified: ${ticket.ModifiedDate || ""} || Modified by: ${ticket.ModifiedFullName || ""}</p>
+                <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
+                    <button class="popup_linkToTicket">Link to Ticket</button>
+                </a>
+                <button disabled class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
+                <button disabled class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
+            </div>
+            ${whatChangedHTML}
+        `;
+    } else {
+        popupContainer.innerHTML = `
+            <div class="tx_popupBox">
+            <span>${ticket.Title || "No Title"}</span>
+            <button class="popup_closeButton" onClick="hidePopup()">X</button>
+                <div class="tx_adjacent"><p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
+                <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
+                <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
+                <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
+                <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
+                <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">See Ticket Details</button>
+                <p class="tx_Description">${description || "No Description Provided"}</p>
+                <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
+                    <button class="popup_linkToTicket">Link to Ticket</button>
+                </a>
+                <button disabled class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
+                <button disabled class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
+            </div>
+            ${whatChangedHTML}
+        `;
+    }
+}
+
+// Toggles the details in the popup
+function toggleDetails(ticketID) {
+    const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
+    if (!popupContainer) return;
+
+    const isDetailsShown = popupContainer.classList.contains('detailsShown');
+    if (isDetailsShown) {
+        popupContainer.classList.remove('detailsShown');
+    } else {
+        popupContainer.classList.add('detailsShown');
+    }
+
+    // Find the ticket data again
+    const ticket = window.currentTickets.find(t => t.ID === ticketID);
+    showPopup(ticket);
 }
 
 // Hides the popup
 function hidePopup() {
     const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
-    if (popupContainer) 
+    if (popupContainer) {
         popupContainer.classList.remove('popupActive');
+
+        if (popupContainer.classList.contains('detailsShown')) 
+            popupContainer.classList.remove('detailsShown');
+    }
 }
 
 
@@ -364,6 +410,7 @@ function performSearch(search) {
             // Query Specific Fields
             if (allTickets[i].ID == search ||
                 allTickets[i].Title.includes(search) ||
+                allTickets[i].Description.includes(search) ||
                 allTickets[i].RequestorName.includes(search) ||
                 allTickets[i].CreatedFullName.includes(search) ||
                 allTickets[i].CreatedDate.includes(search) ||
@@ -520,6 +567,20 @@ async function fetchTickets() {
     }
 }
 
+// Grab ticket Description from backend 
+//  (since TDX doesn't include it in the main 
+//  ticket data when pulling mutliple tickets)
+async function fetchTicketDescription(ticketId) {
+    try {
+        const response = await fetch(`/ticket/description/${ticketId}`);
+        if (!response.ok) throw new Error('Network response was not ok');
+        return await response.text();
+    } catch (error) {
+        console.error('Failed to fetch ticket description:', error);
+        return "Could not fetch Description field.";
+    }
+}
+
 // Fetches the current user's permission level
 async function fetchCurrentUserPermissions() {
     try {
@@ -655,7 +716,7 @@ async function setTickex() {
     searchBar.classList.add("tx_search");
     searchBar.innerHTML = `
         <legend>Search</legend>
-        <textarea id="searchBar" placeholder="Search: Title, ID, Room, Date, etc...  (Enter)"></textarea>
+        <textarea id="searchBar" placeholder="Search: Title, ID, Description, Room, Date, etc...  (Enter)"></textarea>
         <ul>
     `;
     tx_container.append(searchBar);
