@@ -1595,6 +1595,39 @@ async fn handle_connection(
                 }
             }
         },
+        // Ticket Feed - Parse dynamic route
+        start_line if start_line.starts_with("GET /ticket/feed/") && start_line.ends_with(" HTTP/1.1") => {
+            // Extract ticket ID from URL: GET /ticket/feed/{id} HTTP/1.1
+            let ticket_id_str = start_line
+                .strip_prefix("GET /ticket/feed/")
+                .and_then(|s| s.strip_suffix(" HTTP/1.1"))
+                .unwrap_or("");
+            
+            match ticket_id_str.parse::<i32>() {
+                Ok(ticket_id) => {
+                    // Use block_in_place to safely call async code from within the async context
+                    match tokio::task::block_in_place(|| {
+                        tokio::runtime::Handle::current().block_on(
+                            fetch_tdx_ticket_feed(&mut database, &client, ticket_id)
+                        )
+                    }) {
+                        Ok(feed) => {
+                            res.status(STATUS_200);
+                            res.send_contents(feed.into());
+                        },
+                        Err(e) => {
+                            error!("Failed to fetch ticket feed: {}", e);
+                            res.status(STATUS_500);
+                            res.send_contents(format!("Error: {}", e).into());
+                        }
+                    }
+                },
+                Err(_) => {
+                    res.status(STATUS_500);
+                    res.send_contents("Invalid ticket ID".into());
+                }
+            }
+        },
         &_                                 => {
             res.status(STATUS_404);
             res.send_file("html-css-js/404.html");
@@ -2554,6 +2587,74 @@ async fn fetch_tdx_ticket_description(database: &mut Database, req: &Client, tic
         .to_string();
 
     Ok(description)
+}
+
+async fn fetch_tdx_ticket_feed(database: &mut Database, req: &Client, ticket_id: i32) -> Result<String, String> {
+    // Get the TDX API token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API token: {}", e)),
+    };
+
+    // Construct the API URL to fetch ticket details
+    // The /feed endpoint gives us ticket activities/notes, but we need the main ticket endpoint for description
+    let url = format!(
+        "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/{}/feed",
+        ticket_id
+    );
+
+    // Make the request to TDX API
+    let resp = req
+        .get(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Accept", "application/json")
+        .send()
+        .await;
+
+    let resp = match resp {
+        Ok(r) => r,
+        Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
+    };
+
+    if !resp.status().is_success() {
+        return Err(format!("TDX API error: {} - {}", resp.status(), resp.status().canonical_reason().unwrap_or("Unknown")));
+    }
+
+    // Parse the response body
+    let body = resp.text().await.map_err(|e| format!("Failed to read response: {}", e))?;
+    let ticket_json: Value = serde_json::from_str(&body)
+        .map_err(|e| format!("Failed to parse ticket JSON: {}", e))?;
+    let entries = ticket_json.as_array().ok_or("Expected JSON array for ticket feed")?;
+
+    // Build json for frontend
+    let mut items: Vec<Value> = Vec::new();
+
+    for entry in entries {
+        let commenter = entry.get("CreatedFullName")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+
+        let date = entry.get("LastUpdatedDate")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+
+        let body_html = entry.get("Body")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+
+        // Push a JSON object into the array
+        items.push(json!({
+            "commenter": commenter,
+            "date": date,
+            "comment": body_html // regex in frontend
+        }));
+    }
+
+    // Convert Vec<Value> -> JSON string
+    let output_json = serde_json::to_string(&items)
+        .map_err(|e| format!("Failed to serialize JSON: {}", e))?;
+
+    Ok(output_json)
 }
 
 async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String> {

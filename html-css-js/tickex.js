@@ -28,6 +28,7 @@ TOC:
     Backend Calls:
     - fetchTickets()
     - fetchTicketDescription()
+    - fetchTicketComments()
     - fetchCurrentUserPermissions()
     - updateTicketViewed()
 
@@ -42,8 +43,6 @@ Notes:
 TODO:
     - Add ticket editing/saving to TDX API (if we get write access)
     - Add "send to ASU"/"send to help desk" button (if we get write access)
-    - Add TDX comments section in popup (if we have access)
-    - Add Description field in popup (if we have access)
 */
 
 
@@ -155,18 +154,12 @@ async function show(ticket) {
         console.error("Ticket data not found");
         return;
     }
-    
-    const desc = await fetchTicketDescription(ticket.ID);
-    const description = desc.replace(/<[^>]*>/g, ''); // Scrub HTML tags out
 
     const popupContainer = document.querySelector('.tx_popupContainer');
     if (!popupContainer) {
         console.error("Popup container not found");
         return;
     }
-
-    if (!popupContainer.classList.contains('popupActive'))
-        popupContainer.classList.add('popupActive');
 
     // Mark ticket as viewed
     updateTicketViewed(ticket.ID, true);
@@ -193,6 +186,43 @@ async function show(ticket) {
     const digits = (raw.match(/\d/g) || []).join('');
     if (digits.length === 10) // Invalid numbers just get skipped and raw string is used
         ticket.RequestorPhone = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+
+    // Set the HTML for comments section
+    let commentsHTML = "";
+    const container = document.querySelector('.tx_container');
+    if (container.classList.contains('commentsShown')) {
+        let comments = await fetchTicketComments(ticket.ID);
+
+        // Build comments
+        let builtComments = "";
+        for (let i = 0; i < comments.length; i++) {
+            const c = comments[i];
+
+            let formattedDate = "";
+            if (c.date != "") formattedDate = new Date(c.date).toLocaleString();
+
+            builtComments += `
+                <div class="tx_comment">
+                    <p class="tx_comment_header">
+                        <strong>${c.commenter}</strong> - ${formattedDate}
+                    </p>
+                    <p class="tx_comment_body">${c.comment}</p>
+                    <br>
+                </div>
+            `;
+        }
+
+        commentsHTML = `
+            <div class="tx_popupComments">
+                <span>Comments:</span>
+                <button class="popup_closeCommentsButton" onClick="toggleComments(${ticket.ID})">X</button>
+
+                <div class="tx_commentList">
+                    ${builtComments}
+                </div>
+            </div>
+        `;
+    }
 
     // Set the HTML for what changed, if anything changed
     let whatChangedHTML = "";
@@ -243,6 +273,7 @@ async function show(ticket) {
     // Set Popup HTML
     if (popupContainer.classList.contains('detailsShown')) {
         popupContainer.innerHTML = `
+            ${commentsHTML}
             <div class="tx_popupBox">
             <span>${ticket.Title || "No Title"}</span>
             <button class="popup_closeButton" onClick="hidePopup()">X</button>
@@ -260,6 +291,7 @@ async function show(ticket) {
                 <p class="tx_popup_TypeCategoryName">Type Category: ${ticket.TypeCategoryName || ""}</p>
                 <p class="tx_popup_Created">Date Created: ${ticket.CreatedDate || ""} || Created by: ${ticket.CreatedFullName || ""}</p>
                 <p class="tx_popup_Modified">Last Modified: ${ticket.ModifiedDate || ""} || Modified by: ${ticket.ModifiedFullName || ""}</p>
+                <button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>
                 <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                     <button class="popup_linkToTicket">Link to Ticket</button>
                 </a>
@@ -269,7 +301,12 @@ async function show(ticket) {
             ${whatChangedHTML}
         `;
     } else { // Description Shown
+        let description = await fetchTicketDescription(ticket.ID);
+        // Scrub HTML tags out
+        description = description.replace(/<[^>]*>/g, '\n').replace(/\n+/g, '\n').trim(); 
+
         popupContainer.innerHTML = `
+            ${commentsHTML}
             <div class="tx_popupBox">
             <span>${ticket.Title || "No Title"}</span>
             <button class="popup_closeButton" onClick="hidePopup()">X</button>
@@ -281,7 +318,8 @@ async function show(ticket) {
                 <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">Details</button>
                 <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""}</p>
                 <p class="tx_popup_contact">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                <p class="tx_Description">${description || "No Description Provided"}</p>
+                <p class="tx_Description">${description || "--- No Description Provided ---"}</p>
+                <button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>
                 <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                     <button class="popup_linkToTicket">Link to Ticket</button>
                 </a>
@@ -291,6 +329,10 @@ async function show(ticket) {
             ${whatChangedHTML}
         `;
     }
+
+    // Show popup
+    if (!popupContainer.classList.contains('popupActive'))
+        popupContainer.classList.add('popupActive');
 }
 
 // Toggles the details in the popup
@@ -305,7 +347,24 @@ function toggleDetails(ticketID) {
         popupContainer.classList.add('detailsShown');
     }
 
-    // Find the ticket data again
+    // Find the ticket data again - TODO: Optimize search later
+    const ticket = window.currentTickets.find(t => t.ID === ticketID);
+    showPopup(ticket);
+}
+
+// Toggles comments in the popup
+function toggleComments(ticketID) {
+    const container = document.querySelector('.tx_container');
+    if (!container) return;
+
+    const isCommentsShown = container.classList.contains('commentsShown');
+    if (isCommentsShown) {
+        container.classList.remove('commentsShown');
+    } else {
+        container.classList.add('commentsShown');
+    }
+
+    // Find the ticket data again - TODO: Optimize search later
     const ticket = window.currentTickets.find(t => t.ID === ticketID);
     showPopup(ticket);
 }
@@ -314,10 +373,13 @@ function toggleDetails(ticketID) {
 function hidePopup() {
     const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
     if (popupContainer) {
-        popupContainer.classList.remove('popupActive');
-
         if (popupContainer.classList.contains('detailsShown')) 
             popupContainer.classList.remove('detailsShown');
+
+        if (popupContainer.classList.contains('commentsShown')) 
+            popupContainer.classList.remove('commentsShown');
+
+        popupContainer.classList.remove('popupActive');
     }
 }
 
@@ -452,12 +514,12 @@ function performSearch(search) {
 // Handles sorting of board elements
 //      - sortBy recieves: 'created', 'modified', or 'status'
 function sortTickets() {
-    // Sort by Date Created (default)
-    window.currentTickets = window.currentTickets.sort((a, b) => new Date(b.CreatedDate) - new Date(a.CreatedDate));
+    // Sort by Date Modified (default)
+    window.currentTickets = window.currentTickets.sort((a, b) => new Date(b.ModifiedDate) - new Date(a.ModifiedDate));
     
-    // Sort by Data Modified
-    if (window.currentSortBy === 'modified') {
-        window.currentTickets = window.currentTickets.sort((a, b) => new Date(b.ModifiedDate) - new Date(a.ModifiedDate));
+    // Sort by Data Created
+    if (window.currentSortBy === 'created') {
+        window.currentTickets = window.currentTickets.sort((a, b) => new Date(b.CreatedDate) - new Date(a.CreatedDate));
         return window.currentTickets;
     }
     // Sort by Status
@@ -597,7 +659,19 @@ async function fetchTicketDescription(ticketId) {
         return await response.text();
     } catch (error) {
         console.error('Failed to fetch ticket description:', error);
-        return "Could not fetch Description field.";
+        return "Could not fetch description field.";
+    }
+}
+
+// Grab ticket Comments (feed) from backend
+async function fetchTicketComments(ticketId) {
+    try {
+        const response = await fetch(`/ticket/feed/${ticketId}`);
+        if (!response.ok) throw new Error('Network response was not ok');
+        return await response.json();
+    } catch (error) {
+        console.error('Failed to fetch ticket feed:', error);
+        return [];
     }
 }
 
@@ -669,6 +743,7 @@ async function setTickex() {
     // No HTML Cache found, build from scratch
     let tx_container = document.createElement("div");
     tx_container.classList.add("tx_container");
+    tx_container.classList.add("commentsShown");
 
     // Main Container
     let main_container = document.createElement('div');
@@ -679,6 +754,12 @@ async function setTickex() {
 
 
     /* -------------------- Tickex Page -------------------- */
+    // TODO:
+    // - Remove terminal if showing (show reappear if it was previously showing and popup closes)
+    // - Comments
+    // - See why notifications are bugging out
+    // - See why "What Changed" is bugging out
+    // - Add tickex guide?
 
     // Display loading message while fetching tickets
     let loadingMessage = document.createElement("div");
@@ -716,12 +797,12 @@ async function setTickex() {
     sortByBox.innerHTML = `
         <legend>Sort By</legend>
         <div>
-            <input class="tx_radio" type="radio" name="tx_dev" id="created" checked>
-            <label for="created">Date Created</label>
+            <input class="tx_radio" type="radio" name="tx_dev" id="modified" checked>
+            <label for="modified">Date Modified</label>
         </div>
         <div>
-            <input class="tx_radio" type="radio" name="tx_dev" id="modified">
-            <label for="modified">Date Modified</label>
+            <input class="tx_radio" type="radio" name="tx_dev" id="created">
+            <label for="created">Date Created</label>
         </div>
         <div>
             <input class="tx_radio" type="radio" name="tx_dev" id="status">
@@ -898,7 +979,7 @@ async function setTickex() {
     
 
     // Initial board on loadup
-    let sortBy = "created"; // sort by date created on load up
+    let sortBy = "modified"; // sort by date modified on load up
     window.currentSortBy = sortBy;
     window.currentTickets = sortTickets();
 
@@ -961,7 +1042,7 @@ async function setTickex() {
                 if (searchBar && searchBar.value.trim() === '' /* User is using Search Bar */) {
                     window.allTickets = newTickets;
                     window.currentTickets = newTickets;
-                    initBoard(window.currentSortBy || 'created');
+                    initBoard(window.currentSortBy || 'modified');
                 }
 
                 // Ticket that just closed

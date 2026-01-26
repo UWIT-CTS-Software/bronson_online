@@ -145,10 +145,6 @@ button:before {
 button:-webkit-details-marker {
     display: none;
 }
-/* Disable Scroll-Bars In Chrome */
-::-webkit-scrollbar {
-    display: none;
-}
 
 /* Switch Toggle */
 .switch {
@@ -1586,8 +1582,50 @@ ol li::marker {
     text-overflow: ellipsis;
 }
 
+.tx_popupContainer .tx_popupComments {
+    max-width: 401px;
+    min-width: 301px;
+    width: fit-content;
+    max-height: 450px;
+    height: fit-content;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 120px;
+    margin-right: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    overflow-y: auto;
+}
+
+.tx_popupComments span {
+    color: rgb(118, 66, 28);
+    background-color: rgb(224, 193, 108);
+    font-family: "Contrail One", sans-serif;
+    font-size: 18pt;
+    font-weight: 400;
+    font-style: normal;
+    text-align: left;
+    padding: 0px 10px 0px 10px;
+    margin: 0px 0px;
+    border-radius: 0px 0px 6px 0px;
+    max-width: 90%;
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tx_popupComments p {
+    font-size: small;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0px 8px;
+}
+
 .tx_popupContainer .tx_whatChangedBox {
-    max-width: 701px;
+    max-width: 501px;
     min-width: 301px;
     width: fit-content;
     height: fit-content;
@@ -1627,7 +1665,7 @@ ol li::marker {
 
 .popup_closeButton {
     float: right;
-    margin: 3px 3px 0px 0px;
+    margin: 3px;
 }
 
 .popup_dismissChanges {
@@ -1637,7 +1675,29 @@ ol li::marker {
 
 .popup_linkToTicket {
     float: left;
+    margin: 0px 0px 5px 5px;
+}
+
+.popup_commentsButton {
+    float: left;
     margin: 0px 0px 5px 7px;
+}
+
+.tx_comment_header {
+    margin: 0 0 0 5px;
+    font-size: 15px !important;
+}
+
+.tx_comment_body {
+    white-space: pre-wrap !important;
+    margin: 5px;
+    border: 1px solid rgb(144, 118, 26);
+    padding: 8px !important;
+}
+
+.popup_closeCommentsButton {
+    float: right;
+    margin: 3px;
 }
 
 .popup_sendToASU {
@@ -1694,6 +1754,7 @@ p.tx_popup_Title {
 }
 
 p.tx_Description {
+    max-height: 350px;
     white-space: pre-wrap;
     padding: 10px;
     border: 1px solid rgb(144, 118, 26);
@@ -1702,13 +1763,8 @@ p.tx_Description {
 }
 
 .tx_waiting-cursor {
-  cursor: progress !important;
+    cursor: progress !important;
 }
-
-.tx_popupContainer::-webkit-scrollbar {
-  display: none;
-}
-
 
 /* Admin Tools */
 
