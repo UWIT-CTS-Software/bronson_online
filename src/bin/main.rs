@@ -748,6 +748,8 @@ async fn handle_connection(
                     "CreatedFullName": t.created_full_name,
                     "ModifiedDate": t.modified_date,
                     "ModifiedFullName": t.modified_full_name,
+                    "comment_count": t.comment_count,
+
 
                     "old_type_name": t.old_type_name,
                     "old_type_category_name": t.old_type_category_name,
@@ -760,6 +762,7 @@ async fn handle_connection(
                     "old_modified_full_name": t.old_modified_full_name,
                     "old_responsible_full_name": t.old_responsible_full_name,
                     "old_responsible_group_name": t.old_responsible_group_name,
+                    "old_comment_count": t.old_comment_count,
                 })
             }).collect();
             let tickets_json = serde_json::to_string(&tickets).unwrap();
@@ -2552,7 +2555,6 @@ async fn fetch_tdx_ticket_description(database: &mut Database, req: &Client, tic
     };
 
     // Construct the API URL to fetch ticket details
-    // The /feed endpoint gives us ticket activities/notes, but we need the main ticket endpoint for description
     let url = format!(
         "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/{}",
         ticket_id
@@ -2596,8 +2598,7 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &Client, ticket_id:
         Err(e) => return Err(format!("Failed to get TDX API token: {}", e)),
     };
 
-    // Construct the API URL to fetch ticket details
-    // The /feed endpoint gives us ticket activities/notes, but we need the main ticket endpoint for description
+    // Construct the API URL to fetch ticket feed
     let url = format!(
         "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/{}/feed",
         ticket_id
@@ -2629,6 +2630,7 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &Client, ticket_id:
     // Build json for frontend
     let mut items: Vec<Value> = Vec::new();
 
+    let mut comment_count = 0;
     for entry in entries {
         let commenter = entry.get("CreatedFullName")
             .and_then(|v| v.as_str())
@@ -2642,13 +2644,23 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &Client, ticket_id:
             .and_then(|v| v.as_str())
             .unwrap_or("");
 
+        let replies_count = entry.get("RepliesCount")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0);
+
         // Push a JSON object into the array
         items.push(json!({
             "commenter": commenter,
             "date": date,
-            "comment": body_html // regex in frontend
+            "comment": body_html,
+            "replies_count": replies_count
         }));
+
+        comment_count += 1; // The main comment
+        comment_count += replies_count; // Replies to the main comment
     }
+
+    let _ = database.update_ticket_comment_count(ticket_id, comment_count as i16);
 
     // Convert Vec<Value> -> JSON string
     let output_json = serde_json::to_string(&items)
@@ -2656,6 +2668,7 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &Client, ticket_id:
 
     Ok(output_json)
 }
+
 
 async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String> {
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/search";
@@ -2723,6 +2736,8 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
                 days_old: ticket_val["DaysOld"].as_i64().unwrap_or(0) as i16,
                 responsible_full_name: ticket_val["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
                 responsible_group_name: ticket_val["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
+                comment_count: 0 as i16,
+
 
                 old_type_name: "".to_string(),
                 old_type_category_name: "".to_string(),
@@ -2735,6 +2750,7 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
                 old_modified_full_name: "".to_string(),
                 old_responsible_full_name: "".to_string(),
                 old_responsible_group_name: "".to_string(),
+                old_comment_count: 0 as i16,
             };
 
             // Insert or update
@@ -2812,18 +2828,24 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
                 old_account_name, old_status_name, old_service_name,
                 old_priority_name, old_modified_date, old_modified_full_name,
                 old_responsible_full_name, old_responsible_group_name,
+
+                comment_count, old_comment_count
             ) = match old_ticket {
                 Some(t) => (
                     t.type_name, t.type_category_name, t.title,
                     t.account_name, t.status_name, t.service_name,
                     t.priority_name, t.modified_date, t.modified_full_name,
                     t.responsible_full_name, t.responsible_group_name,
+
+                    t.comment_count, t.old_comment_count
                 ),
                 None => (
                     String::new(), String::new(), String::new(),
                     String::new(), String::new(), String::new(),
                     String::new(), String::new(), String::new(),
-                    String::new(), String::new(),
+                    String::new(), String::new(), 
+                    
+                    0_i16, 0_i16,
                 ),
             };
 
@@ -2847,7 +2869,8 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
                 days_old: ticket_val["DaysOld"].as_i64().unwrap_or(0) as i16,
                 responsible_full_name: ticket_val["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
                 responsible_group_name: ticket_val["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
-            
+                comment_count,
+
                 old_type_name,
                 old_type_category_name,
                 old_title,
@@ -2859,6 +2882,7 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
                 old_modified_full_name,
                 old_responsible_full_name,
                 old_responsible_group_name,
+                old_comment_count,
             };
 
             // Insert or update

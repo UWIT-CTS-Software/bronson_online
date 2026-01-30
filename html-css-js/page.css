@@ -1716,6 +1716,10 @@ ol li::marker {
     margin: 16px 0px;
 }
 
+.tx_noMargins {
+    margin: 0;
+}
+
 .popup_toggleButton {
     float: right;
     margin: 0px 7px 5px 0px;
@@ -1754,7 +1758,7 @@ p.tx_popup_Title {
 }
 
 p.tx_Description {
-    max-height: 350px;
+    max-height: 315px;
     white-space: pre-wrap;
     padding: 10px;
     border: 1px solid rgb(144, 118, 26);

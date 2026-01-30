@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS bronson.tickets (
     days_old                    SMALLINT    NOT NULL,
     responsible_full_name       TEXT        NOT NULL,
     responsible_group_name      TEXT        NOT NULL,
+    comment_count           SMALLINT    NOT NULL,
 
     old_type_name               TEXT        NOT NULL,
     old_type_category_name      TEXT        NOT NULL,
@@ -106,6 +107,7 @@ CREATE TABLE IF NOT EXISTS bronson.tickets (
     old_modified_full_name      TEXT        NOT NULL,
     old_responsible_full_name   TEXT        NOT NULL,
     old_responsible_group_name  TEXT        NOT NULL,
+    old_comment_count           SMALLINT    NOT NULL,
 
     CHECK (length(type_name) <= 51),
     CHECK (length(type_category_name) <= 51),

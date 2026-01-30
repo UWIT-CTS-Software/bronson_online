@@ -70,6 +70,7 @@ pub mod bronson {
             days_old -> Int2,
             responsible_full_name -> Text,
             responsible_group_name -> Text,
+            comment_count -> Int2,
             old_type_name -> Text,
             old_type_category_name -> Text,
             old_title -> Text,
@@ -81,6 +82,7 @@ pub mod bronson {
             old_modified_full_name -> Text,
             old_responsible_full_name -> Text,
             old_responsible_group_name -> Text,
+            old_comment_count -> Int2,
         }
     }
 

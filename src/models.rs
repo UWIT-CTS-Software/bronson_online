@@ -257,6 +257,7 @@ pub struct DB_Ticket {
     pub days_old: i16,
     pub responsible_full_name: String,
     pub responsible_group_name: String,
+    pub comment_count: i16,
 
     pub old_type_name: String,
     pub old_type_category_name: String,
@@ -269,4 +270,5 @@ pub struct DB_Ticket {
     pub old_modified_full_name: String,
     pub old_responsible_full_name: String,
     pub old_responsible_group_name: String,
+    pub old_comment_count: i16,
 }
