@@ -63,7 +63,6 @@ TODO:
         - Tickex looks at "Modified Date" property to detect changes
         - This goes for any change to a ticket, even ones I don't care about
     - Dismissing "What Changed" doesn't work 
-    - When ticket is cached, new comments won't update
     
 
     Stretch Goal Features:
