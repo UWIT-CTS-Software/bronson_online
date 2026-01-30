@@ -7,6 +7,8 @@
     |__|  |_|\___|_|\_\___|/_/\_\(_) |___/
                                   _/ |
                                  |__/
+     
+                                 
 TOC:
     Write to TDX Functions (unimplemented for right now):
     - sendToASU() (for later)
@@ -48,9 +50,28 @@ Notes:
         to have write access to the API in the future once we get permissions.
 
 TODO:
-    - Add ticket editing/saving to TDX API (if we get write access)
-    - Add "send to ASU"/"send to help desk" button (if we get write access)
+    Main Features to Add:
+    - Add ticket editing/saving to TDX API (when we get write access)
+    - Add "send to ASU"/"send to help desk" button (when we get write access)
+
+
+    Bugs to Fix:
+    - See why notifications are bugging out
+        - whenever I click "Details," it wants to make a new notification for that ticket
+    - See why "What Changed" is bugging out
+        - Have "What Changed" detect every possible change to a ticket
+        - Tickex looks at "Modified Date" property to detect changes
+        - This goes for any change to a ticket, even ones I don't care about
+    - Dismissing "What Changed" doesn't work 
+    - When ticket is cached, new comments won't update
+    
+
+    Stretch Goal Features:
+    - Add tickex guide
+    - Left/Right or Up/Down arrows while in popup to control going between adjacent tickets
 */
+
+
 
 
     /* -------------------- Write to TDX Functions -------------------- */
@@ -279,8 +300,10 @@ async function show(ticket) {
             whatChangedRows += `<p>Responsible: ${ticket.old_responsible_full_name} => ${ticket.ResponsibleFullName}</p>`;
         if (ticket.old_responsible_group_name != ticket.ResponsibleGroupName)
             whatChangedRows += `<p>Responsible Group: ${ticket.old_responsible_group_name} => ${ticket.ResponsibleGroupName}</p>`;
-        if (ticket.old_comment_count != ticket.comment_count)
+        if (ticket.old_comment_count != ticket.comment_count) {
+            fetchTicketComments(ticket.ID, true)
             whatChangedRows += `<p>New Comments have been added!</p>`;
+        }
 
         whatChangedHTML = `
             <div class="tx_whatChangedBox">
@@ -740,10 +763,10 @@ async function fetchTickets() {
 }
 
 // Grab ticket Description from backend 
-async function fetchTicketDescription(ticketId) {
+async function fetchTicketDescription(ticketId, forceFetch=false) {
     // Check cache first
     const cached = getCachedTicketData(ticketId, 'description');
-    if (cached) return cached;
+    if (cached && !forceFetch) return cached;
 
     try {
         const response = await fetch(`/ticket/description/${ticketId}`);
@@ -761,10 +784,10 @@ async function fetchTicketDescription(ticketId) {
 }
 
 // Grab ticket Comments (feed) from backend
-async function fetchTicketComments(ticketId) {
+async function fetchTicketComments(ticketId, forceFetch=false) {
     // Check cache first
     const cached = getCachedTicketData(ticketId, 'comments');
-    if (cached) return cached;
+    if (cached && !forceFetch) return cached;
 
     try {
         const response = await fetch(`/ticket/feed/${ticketId}`);
@@ -860,18 +883,6 @@ async function setTickex() {
 
 
     /* -------------------- Tickex Page -------------------- */
-    // TODO:
-    //  - See why notifications are bugging out
-    //      - whenever I click "Details," it wants to make a new notification for that ticket
-    //  - See why "What Changed" is bugging out
-    //      - Have "What Changed" detect every possible change to a ticket
-    //      - Tickex looks at "Modified Date" property to detect changes
-    //      - This goes for any change to a ticket, even ones I don't care about
-    //  - Dismissing "What Changed" doesn't work 
-    //
-    // Stretch Goals:
-    //  - Add tickex guide
-    //  - Left/Right or Up/Down arrows while in popup to control going between adjacent tickets
 
     // Display loading message while fetching tickets
     let loadingMessage = document.createElement("div");
