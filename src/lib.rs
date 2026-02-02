@@ -980,6 +980,14 @@ impl Database {
 			.first(&mut conn)
 	}
 
+	pub fn get_all_tickets(&mut self) -> Result<Vec<DB_Ticket>, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		tickets
+			.select(DB_Ticket::as_select())
+			.load::<DB_Ticket>(&mut conn)
+	}
+
 	pub fn check_if_tickets_empty(&mut self) -> bool {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
@@ -1032,29 +1040,26 @@ impl Database {
 			.optional()?;
 
 		// If not found, quietly return
-		let Some(_) = ticket_opt else { return Ok(None); };
+		let Some(ticket) = ticket_opt else { return Ok(None); };
 
-		// Update the old comment counter
-		let _ = diesel::update(tickets.filter(ticket_id.eq(id)))
-			.set(old_comment_count.eq(comment_count))
-			.returning(DB_Ticket::as_returning())
-			.get_result::<DB_Ticket>(&mut conn)?;
+		// If ticket counts match, don't update the counters
+		if new_count != ticket.comment_count { 
+			// Update the old comment counter
+			let _ = diesel::update(tickets.filter(ticket_id.eq(id)))
+				.set(old_comment_count.eq(comment_count))
+				.returning(DB_Ticket::as_returning())
+				.get_result::<DB_Ticket>(&mut conn)?;
 
-		// Update the current comment counter
-		let updated = diesel::update(tickets.filter(ticket_id.eq(id)))
-			.set(comment_count.eq(new_count))
-			.returning(DB_Ticket::as_returning())
-			.get_result::<DB_Ticket>(&mut conn)?;
+			// Update the current comment counter
+			let updated = diesel::update(tickets.filter(ticket_id.eq(id)))
+				.set(comment_count.eq(new_count))
+				.returning(DB_Ticket::as_returning())
+				.get_result::<DB_Ticket>(&mut conn)?;
 
-		Ok(Some(updated))
-	}
+			return Ok(Some(updated))
+		}
 
-	pub fn get_all_tickets(&mut self) -> Result<Vec<DB_Ticket>, DieselError> {
-		let mut conn = self.pool.get().expect("Failed to get DB Connection");
-
-		tickets
-			.select(DB_Ticket::as_select())
-			.load::<DB_Ticket>(&mut conn)
+		Ok(None)
 	}
 
 	pub fn delete_ticket(&mut self, id_value: i32) -> Result<DB_Ticket, DieselError> {

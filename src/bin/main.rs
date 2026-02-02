@@ -338,8 +338,8 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
             timestamp: Utc::now() - Duration::from_secs(82799),
         });
         ts.tasks.insert("tickex".to_string(), TaskSchedule {
-            duration: 120,
-            timestamp: Utc::now() - Duration::from_secs(110),
+            duration: 60,
+            timestamp: Utc::now() - Duration::from_secs(50),
         });
     }
     // Database Init
@@ -2656,10 +2656,8 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &Client, ticket_id:
             "replies_count": replies_count
         }));
 
-        comment_count += 1; // The main comment
-        comment_count += replies_count; // Replies to the main comment
+        comment_count += 1;
     }
-
     let _ = database.update_ticket_comment_count(ticket_id, comment_count as i16);
 
     // Convert Vec<Value> -> JSON string
@@ -2737,7 +2735,6 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
                 responsible_full_name: ticket_val["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
                 responsible_group_name: ticket_val["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
                 comment_count: 0 as i16,
-
 
                 old_type_name: "".to_string(),
                 old_type_category_name: "".to_string(),

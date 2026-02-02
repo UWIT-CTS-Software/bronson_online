@@ -1318,11 +1318,6 @@ ol li::marker {
     text-wrap-style: auto;
 }
 
-.tx_ticketInfo {
-    background-color: rgb(50, 50, 50);
-    grid-column: 2 / 5;
-}
-
 .tx_loadingMessage {
     background-color: rgb(50, 50, 50);
     grid-column: 5 / 7;

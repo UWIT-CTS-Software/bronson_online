@@ -11,8 +11,9 @@
                                  
 TOC:
     Write to TDX Functions (unimplemented for right now):
-    - sendToASU() (for later)
-    - sendToHelpDesk() (for later)
+    - sendToASU()
+    - sendToHelpDesk()
+    - takeResponsibility()
     
     Popups:
     - dismissAll()
@@ -53,21 +54,7 @@ TODO:
     Main Features to Add:
     - Add ticket editing/saving to TDX API (when we get write access)
     - Add "send to ASU"/"send to help desk" button (when we get write access)
-
-
-    Bugs to Fix:
-    - See why notifications are bugging out
-        - whenever I click "Details," it wants to make a new notification for that ticket
-    - See why "What Changed" is bugging out
-        - Have "What Changed" detect every possible change to a ticket
-        - Tickex looks at "Modified Date" property to detect changes
-        - This goes for any change to a ticket, even ones I don't care about
-    - Dismissing "What Changed" doesn't work 
-    
-
-    Stretch Goal Features:
-    - Add tickex guide
-    - Left/Right or Up/Down arrows while in popup to control going between adjacent tickets
+    - Add "Take Responsibility" Button to unassigned tickets (when we get write access)
 */
 
 
@@ -85,6 +72,13 @@ function sendToASU() {
 // For Later - When we have write access to TDX API
 function sendToHelpDesk() {
     alert("This feature is not yet implemented.");
+}
+
+// Macro for taking Responsibility for a Ticket
+// For Later - When we have write access to TDX API
+function takeResponsibility() {
+    alert("This feature is not yet implemented.");
+
 }
 
 
@@ -150,13 +144,15 @@ function dismissAllPopup() {
 }
 
 // Dismisses the "What Changed" box in the popup
-function dismissChanges() {
+function dismissChanges(ticketID) {
     const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
     if (!popupContainer) return;
 
     // Remove the "What Changed" box
     const whatChangedBox = popupContainer.querySelector('.tx_whatChangedBox');
     if (whatChangedBox) whatChangedBox.remove();
+
+    updateTicketViewed(ticketID, true);
 }
 
 // Shows the popup with relavent ticket info
@@ -178,6 +174,7 @@ function showPopup(ticket, element) {
         });
     });
 }
+// Child function to showPopup() - shows the popup
 async function show(ticket) {
     if (!ticket) {
         console.error("Ticket data not found");
@@ -189,9 +186,6 @@ async function show(ticket) {
         console.error("Popup container not found");
         return;
     }
-
-    // Mark ticket as viewed
-    updateTicketViewed(ticket.ID, true);
 
     // Remove highlight (for all HTML instances of the ticket)
     const ticketRows = document.querySelectorAll(`[id="${ticket.ID}"]`);
@@ -215,11 +209,17 @@ async function show(ticket) {
     if (digits.length === 10) // Invalid phone numbers just get skipped and raw string is used
         ticket.RequestorPhone = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
 
+
     // Set the HTML for comments section
     let commentsHTML = "";
     const container = document.querySelector('.tx_container');
     if (container.classList.contains('commentsShown')) {
-        let comments = await fetchTicketComments(ticket.ID);
+        // Fetch from either cache or TDX
+        let comments;
+        if (ticket.has_been_viewed)
+            comments = await fetchTicketComments(ticket.ID); // Try fetching from cache
+        else 
+            comments = await fetchTicketComments(ticket.ID, true); // Force fetch from TDX
 
         // Build comments
         let builtComments = "";
@@ -234,7 +234,7 @@ async function show(ticket) {
 
             // Build replies
             let replies_count = "";
-            if (c.replies_count > 0)
+            if (c.replies_count > 0) {
                 replies_count = `
                     <p class="tx_noMargins">Replies are available for this comment
                         <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
@@ -242,6 +242,7 @@ async function show(ticket) {
                         </a>
                     </p>
                 `;
+            }
 
             builtComments += `
                 <div class="tx_comment">
@@ -255,6 +256,18 @@ async function show(ticket) {
             `;
         }
 
+        if (comments.length == 0) {
+            builtComments = `
+                <div class="tx_comment">
+                    <br>
+                        <p class="tx_comment_header">
+                            <strong>No Comments Exist for this Ticket</strong>
+                        </p>
+                    <br>
+                </div>
+            `;
+        }
+        
         commentsHTML = `
             <div class="tx_popupComments">
                 <span>Comments:</span>
@@ -268,17 +281,9 @@ async function show(ticket) {
 
     // Set the HTML for what changed, if anything changed
     let whatChangedHTML = "";
-    if (ticket.old_type_name != ticket.TypeName || 
-        ticket.old_type_category_name != ticket.TypeCategoryName || 
-        ticket.old_title != ticket.Title || 
-        ticket.old_account_name != ticket.AccountName || 
-        ticket.old_status_name != ticket.StatusName || 
-        ticket.old_service_name != ticket.ServiceName || 
-        ticket.old_priority_name != ticket.PriorityName || 
-        ticket.old_responsible_full_name != ticket.ResponsibleFullName || 
-        ticket.old_responsible_group_name != ticket.ResponsibleGroupName ||
-        ticket.old_comment_count != ticket.comment_count) {
-
+    if (!ticket.has_been_viewed) {
+        ticket.has_been_viewed = true;
+        
         // Grab old ticket info. Compares what changed. (Field: Old info => New info)
         let whatChangedRows = "";
         if (ticket.old_type_name != ticket.TypeName)
@@ -299,20 +304,18 @@ async function show(ticket) {
             whatChangedRows += `<p>Responsible: ${ticket.old_responsible_full_name} => ${ticket.ResponsibleFullName}</p>`;
         if (ticket.old_responsible_group_name != ticket.ResponsibleGroupName)
             whatChangedRows += `<p>Responsible Group: ${ticket.old_responsible_group_name} => ${ticket.ResponsibleGroupName}</p>`;
-        if (ticket.old_comment_count != ticket.comment_count) {
-            fetchTicketComments(ticket.ID, true)
+        if (ticket.old_comment_count != ticket.comment_count)
             whatChangedRows += `<p>New Comments have been added!</p>`;
-        }
 
         whatChangedHTML = `
             <div class="tx_whatChangedBox">
-            <span>What Changed:</span>
-            ${whatChangedRows}
-            <p>Last Modified: ${ticket.ModifiedDate || ""} by ${ticket.ModifiedFullName || ""}</p>
-            <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
-                <button class="popup_linkToTicket">Link to Ticket</button>
-            </a>
-            <button class="popup_dismissChanges" onclick="dismissChanges()">Dismiss</button>
+                <span>What Changed:</span>
+                ${whatChangedRows}
+                <p>Last Modified: ${ticket.ModifiedDate || ""} by ${ticket.ModifiedFullName || ""}</p>
+                <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
+                    <button class="popup_linkToTicket">Link to Ticket</button>
+                </a>
+                <button class="popup_dismissChanges" onclick="dismissChanges(${ticket.ID})">Dismiss</button>
             </div>
         `;
     }
@@ -331,7 +334,7 @@ async function show(ticket) {
                 <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
                 <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">Description</button>
                 <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED"} || ${ticket.ResponsibleGroupName || ""}</p>
+                <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Responsibility</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
                 <p class="tx_popup_ServiceName">Service: ${ticket.ServiceName || ""}</p>
                 <p class="tx_popup_AccountName">Account Department: ${ticket.AccountName || ""}</p>
                 <p class="tx_popup_TypeName">Type: ${ticket.TypeName || ""}</p>
@@ -380,6 +383,9 @@ async function show(ticket) {
     // Show popup
     if (!popupContainer.classList.contains('popupActive'))
         popupContainer.classList.add('popupActive');
+
+    // Mark ticket as viewed
+    updateTicketViewed(ticket.ID, true);
 }
 
 // Toggles the details in the popup
@@ -715,7 +721,8 @@ function getCachedTicketData(ticketId, type) {
 
 // Save Ticket to Cache
 function setCachedTicketData(ticketId, type, value) {
-    const MAX_CACHED = 40; // Stores 20 tickets
+    // Stores 50 tickets, comments & description for every ticket
+    const MAX_CACHED = 100;
 
     const cache = getTicketCache();
     const key = `${ticketId}_${type}`;
