@@ -474,22 +474,22 @@ async fn handle_connection(
     let res: Response = match req.start_line.as_str() {
         // Page Content
         // --------------------------------------------------------------------
-        "GET / HTTP/1.1"                   => {
+        "GET / HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file(user_homepage)
         },
-        "GET /page.css HTTP/1.1"           => {
+        "GET /page.css HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file("html-css-js/page.css")
         },
-        "GET /index.html HTTP/1.1"         => {
+        "GET /index.html HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file("html-css-js/index.html")
         },
-        "GET /login.html HTTP/1.1"         => {
+        "GET /login.html HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file("html-css-js/login.html")
@@ -500,90 +500,90 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_file("html-css-js/bronson-manager.js")
         },
-        "GET /camcode.js HTTP/1.1"         => {
+        "GET /camcode.js HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file("html-css-js/camcode.js")
         },
-        "GET /cc-altmode.js HTTP/1.1"      => {
+        "GET /cc-altmode.js HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file("html-css-js/cc-altmode.js")
         },
-        "GET /checkerboard.js HTTP/1.1"    => {
+        "GET /checkerboard.js HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file("html-css-js/checkerboard.js")
         },
-        "GET /jacknet.js HTTP/1.1"         => {
+        "GET /jacknet.js HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file("html-css-js/jacknet.js")
         },
-        "GET /wiki.js HTTP/1.1"            => {
+        "GET /wiki.js HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file("html-css-js/wiki.js")
         },
-        "GET /admin_tools.js HTTP/1.1"     => {
+        "GET /admin_tools.js HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file("html-css-js/admin_tools.js")
         },
         // Tool Homepage Stuff
-        "GET /cc-altmode HTTP/1.1"         => {
+        "GET /cc-altmode HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file(user_homepage)
                     .insert_onload("setCamcode()")
         },
-        "GET /checkerboard HTTP/1.1"       => {
+        "GET /checkerboard HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file(user_homepage)
                     .insert_onload("setChecker()")
         },
-        "GET /jacknet HTTP/1.1"            => {
+        "GET /jacknet HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file(user_homepage)
                     .insert_onload("setJackNet()")
         },
-        "GET /wiki HTTP/1.1"               => {
+        "GET /wiki HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file(user_homepage)
                     .insert_onload("setWiki()")
         },
-        "GET /admintools HTTP/1.1"         => {
+        "GET /admintools HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file(user_homepage)
                     .insert_onload("setAdminTools()")
         }
         // Assets
-        "GET /favicon.ico HTTP/1.1"        => {
+        "GET /favicon.ico HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file("assets/logo_main.png")
         },
-        "GET /logo.png HTTP/1.1"           => {
+        "GET /logo.png HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file("assets/logo.png")
         },
-        "GET /logo-2-line.png HTTP/1.1"    => {
+        "GET /logo-2-line.png HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file("assets/logo-2-line.png")
         },
-        "GET /button2.png HTTP/1.1"        => {
+        "GET /button2.png HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
                     .send_file("assets/button2.png")
         },
         // Data Requests
-        "GET /techSchedule HTTP/1.1"  => {
+        "GET /techSchedule HTTP/1.1" => {
             let contents = match database.get_data("schedule") {
                 Ok(s)  => s.val,
                 Err(m) => {
@@ -596,7 +596,7 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_contents(contents)
         },
-        "GET /campusData HTTP/1.1"         => {
+        "GET /campusData HTTP/1.1" => {
             let campus = database.get_campus();
             let contents = match campus {
                 Ok(c)  => json!(&c).to_string(),
@@ -610,7 +610,7 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_contents(contents)
         },
-        "GET /zoneData HTTP/1.1"           => { // NEW: returns data in lib.rs as json
+        "GET /zoneData HTTP/1.1" => { // NEW: returns data in lib.rs as json
             let bldgs = database.get_buildings();
             let contents = match bldgs {
                 Ok(b)  => get_zone_data(b),
@@ -624,7 +624,7 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_contents(contents)
         },
-        "GET /dashContents HTTP/1.1"       => { // Dashboard Message
+        "GET /dashContents HTTP/1.1" => { // Dashboard Message
             let contents = json!({
                 "contents": match database.get_data("dashboard") {
                     Ok(e)  => e.val,
@@ -639,7 +639,7 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_contents(contents)
         },
-        "GET /leaderboard HTTP/1.1"        => { // OUTGOING, Dashboard Leaderboard
+        "GET /leaderboard HTTP/1.1" => { // OUTGOING, Dashboard Leaderboard
             let contents = match database.get_data("lsm_leaderboard") {
                 Ok(l)  => l.val,
                 Err(m) => {
@@ -653,7 +653,7 @@ async fn handle_connection(
                     .send_contents(contents)
         },
         // Spares LSM API Call.
-        "GET /spares HTTP/1.1"             => { // OUTGOING, Dashboard Spares
+        "GET /spares HTTP/1.1" => { // OUTGOING, Dashboard Spares
             // Get Spares from Database
             let contents: Vec<u8> = match database.get_data("lsm_spares") {
                 Ok(s)  => s.val,
@@ -667,7 +667,7 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_contents(contents)
         },
-        "POST /lsmData HTTP/1.1"              => { // OUTGOING
+        "POST /lsmData HTTP/1.1" => { // OUTGOING
             let body_str = String::from_utf8(req.body).expect("AT: LSM Data Err, invalid UTF-8");
             let body_parts: Vec<&str> = body_str.split(',').collect();
             if body_parts.len() != 2 {
@@ -739,7 +739,7 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_contents(contents)
         },
-        "POST /updateSchedule HTTP/1.1"        => {
+        "POST /updateSchedule HTTP/1.1" => {
             let new_data = DB_DataElement {
                 key: String::from("schedule"),
                 val: String::from_utf8(req.body).expect("Unable to parse body contents")
@@ -750,7 +750,7 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_contents("".into())
         },
-        "POST /update/dash HTTP/1.1"       => {
+        "POST /update/dash HTTP/1.1" => {
             let _ = database.update_data(&DB_DataElement {
                 key: String::from("dashboard"),
                 val: String::from_utf8(req.body).expect("Unable to parse body contents"),
@@ -760,7 +760,7 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_contents("".into())
         },
-        "POST /update/database_room HTTP/1.1"     => { // destination, newValue
+        "POST /update/database_room HTTP/1.1" => { // destination, newValue
             if !req.has_valid_cookie(&mut database) {
                 Response::new()
                         .status(STATUS_401)
@@ -817,7 +817,7 @@ async fn handle_connection(
                         .send_contents("".into())
             }
         },
-        "POST /insert/database_room HTTP/1.1"     => { // destination
+        "POST /insert/database_room HTTP/1.1" => { // destination
             if !req.has_valid_cookie(&mut database) {
                 Response::new()
                         .status(STATUS_401)
@@ -866,7 +866,7 @@ async fn handle_connection(
                         .send_contents("".into())
             }
         },
-        "POST /remove/database_room HTTP/1.1"     => { // destination
+        "POST /remove/database_room HTTP/1.1" => { // destination
             if !req.has_valid_cookie(&mut database) {
                 Response::new()
                         .status(STATUS_401)
@@ -1110,7 +1110,7 @@ async fn handle_connection(
                         .send_contents(contents)
             }
         },
-        "GET /aliasTable HTTP/1.1"         => {
+        "GET /aliasTable HTTP/1.1" => {
             if !req.has_valid_cookie(&mut database) {
                 Response::new()
                         .status(STATUS_401)
@@ -1134,7 +1134,7 @@ async fn handle_connection(
                         .send_contents(contents)
             }
         },
-        "GET /threadSchedule HTTP/1.1"   => {
+        "GET /threadSchedule HTTP/1.1" => {
             if !req.has_valid_cookie(&mut database) {
                 Response::new()
                         .status(STATUS_401)
@@ -1214,7 +1214,7 @@ async fn handle_connection(
                 }
             }
         }
-        "POST /setAliasTable HTTP/1.1"     => {
+        "POST /setAliasTable HTTP/1.1" => {
             if !req.has_valid_cookie(&mut database) {
                 Response::new()
                         .status(STATUS_401)
@@ -1276,7 +1276,7 @@ async fn handle_connection(
                         .send_contents("Database Alias Table Updated".into())
             }
         },
-        "POST /resetAlias HTTP/1.1"        => {
+        "POST /resetAlias HTTP/1.1" => {
             if !req.has_valid_cookie(&mut database) {
                 Response::new()
                         .status(STATUS_401)
@@ -1324,7 +1324,7 @@ async fn handle_connection(
         },
         // Terminal
         // --------------------------------------------------------------------
-        "POST /terminal HTTP/1.1"          => {
+        "POST /terminal HTTP/1.1" => {
             if !req.has_valid_cookie(&mut database) {
                 Response::new()
                         .status(STATUS_401)
@@ -1354,7 +1354,7 @@ async fn handle_connection(
         // make calls to backend functionality
         // --------------------------------------------------------------------
         // login
-        "POST /login HTTP/1.1"             => {
+        "POST /login HTTP/1.1" => {
             let credential_search = Regex::new(r"uname=(?<user>.*)&remember=[on|off]").unwrap();
             let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return None };
             let user = String::from(credentials["user"].to_string().into_boxed_str());
@@ -1384,7 +1384,7 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_file(user_homepage)
         },
-        "POST /bugreport HTTP/1.1"         => {
+        "POST /bugreport HTTP/1.1" => {
             let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
             let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return None };
             let encoded_title = String::from(credentials["title"].to_string().into_boxed_str());
@@ -1431,7 +1431,7 @@ async fn handle_connection(
                     .send_file(user_homepage)
         },
         // Jacknet
-        "POST /ping HTTP/1.1"              => { // OUTGOING
+        "POST /ping HTTP/1.1" => { // OUTGOING
             let contents = ping_response(String::from_utf8(req.body).expect("Err, invalid UTF-8"), database);
 
             Response::new()
@@ -1439,7 +1439,7 @@ async fn handle_connection(
                     .send_contents(contents)
         },
         // Checkerboard
-        "POST /run_cb HTTP/1.1"            => { // OUTGOING
+        "POST /run_cb HTTP/1.1" => { // OUTGOING
             // get zone selection from request and store
             // ----------------------------------------------------------------
             let building_sel = String::from_utf8(req.body).expect("CheckerBoard Err, invalid UTF-8");
@@ -1493,31 +1493,31 @@ async fn handle_connection(
         },
         // CamCode
         //  - CamCode - CFM Requests
-        "POST /cfm_build HTTP/1.1"         => {
+        "POST /cfm_build HTTP/1.1" => {
             let contents = cfm_build_dir();
             Response::new()
                     .status(STATUS_200)
                     .send_contents(contents)
         },
-        "POST /cfm_build_r HTTP/1.1"       => {
+        "POST /cfm_build_r HTTP/1.1" => {
             let contents = cfm_build_rm(req.body);
             Response::new()
                     .status(STATUS_200)
                     .send_contents(contents)
         },
-        "POST /cfm_c_dir HTTP/1.1"         => {
+        "POST /cfm_c_dir HTTP/1.1" => {
             let contents = get_cfm(req.body);
             Response::new()
                     .status(STATUS_200)
                     .send_contents(contents)
         },
-        "POST /cfm_dir HTTP/1.1"           => {
+        "POST /cfm_dir HTTP/1.1" => {
             let contents = get_cfm_dir(req.body);
             Response::new()
                     .status(STATUS_200)
                     .send_contents(contents)
         },
-        "POST /cfm_file HTTP/1.1"          => {
+        "POST /cfm_file HTTP/1.1" => {
             let contents = get_cfm_file(req.body);
             let mut f = match File::open(&contents) {
                 Ok(file) => file,
@@ -1545,7 +1545,7 @@ async fn handle_connection(
                     .send_contents(file_buffer)
         },
         // Wiki
-        "POST /w_build HTTP/1.1"           => {
+        "POST /w_build HTTP/1.1" => {
             let contents = w_build_articles();
             Response::new()
                     .status(STATUS_200)
