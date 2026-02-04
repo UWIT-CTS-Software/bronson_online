@@ -475,7 +475,7 @@ impl Database {
 					return None;
 				}
 			};
-			let json_keys: HashMap<String, String> = match serde_json::from_str(&k_json) {
+			let json_keys: HashMap<String, Value> = match serde_json::from_str(&k_json) {
 				Ok(jk) => jk,
 				Err(m) => {
 					error!("Unable to parse keys json: {}", m);
@@ -486,7 +486,7 @@ impl Database {
 			for (id, value) in json_keys.iter() {
 				let new_key = DB_Key {
 					key_id: id.clone(),
-					val: value.clone()
+					val: value.to_string()
 				};
 
 				let _ = self.update_key(&new_key);
