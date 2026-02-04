@@ -46,7 +46,6 @@ CREATE TABLE IF NOT EXISTS bronson.rooms (
     checked       TIMESTAMPTZ  NOT NULL,
     needs_checked BOOLEAN      NOT NULL,
     gp            BOOLEAN      NOT NULL,
-    check_period  SMALLINT     NOT NULL,
     offln         BOOLEAN      NOT NULL,
     onln          TIMESTAMPTZ  NOT NULL,
     available     BOOLEAN      NOT NULL,

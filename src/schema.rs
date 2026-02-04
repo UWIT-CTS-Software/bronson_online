@@ -56,7 +56,6 @@ pub mod bronson {
             checked -> Timestamptz,
             needs_checked -> Bool,
             gp -> Bool,
-            check_period -> Int2,
             offln -> Bool,
             onln -> Timestamptz,
             available -> Bool,

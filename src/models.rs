@@ -207,7 +207,6 @@ pub struct DB_Room {
     pub checked: DateTime<Local>,
     pub needs_checked: bool,
     pub gp: bool,
-    pub check_period: i16,
     pub offln: bool,
     pub onln: DateTime<Local>,
     pub available: bool,
