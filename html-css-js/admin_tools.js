@@ -1211,6 +1211,7 @@ async function setDBEditor() {
             let procCount, dispCount, pjCount, tpCount, wsCount, micCount;
             procCount = dispCount = pjCount = tpCount = wsCount = micCount = 0;
             let gpBool = room.gp;
+            // let offlnBool = room.offln;
             
             pingData.forEach(function(device) {
                 let hnObj = device.hostname; // hostname Object
@@ -1250,6 +1251,7 @@ async function setDBEditor() {
                     <td><button id="${roomName}_rmvBtn" class="rmvButton" onclick="removeRoomFromBuilding('${roomName}-row')"> Remove </button></td>
                 </tr>`);
         });
+                    // <td><input type="checkbox" class="dbRoomCheckbox" id="${roomName}-OFFLN" ${offlnBool ? 'checked' : ''}></td>
         tmp.push(`
                 </tbody>
             </table>
@@ -2021,6 +2023,7 @@ function confirmRoomAddition(textareaID, buildingTableID) {
         <td><input type="checkbox" class="dbRoomCheckbox" id="${roomName}-GP"></td>
         <td><button class="rmvButton" id="${roomName}_rmvBtn" onclick="removeRoomFromBuilding('${roomName}-row')"> Remove </button></td>
     </tr>`;
+        // <td><input type="checkbox" class="dbRoomCheckbox" id="${roomName}-OFFLN"></td>
     // Add new Row to Table
     tableElement.innerHTML += tmp;
     syncTablesWithChangelog();
