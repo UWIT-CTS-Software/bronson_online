@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS bronson.rooms (
     checked       TEXT         NOT NULL,
     needs_checked BOOLEAN      NOT NULL,
     gp            BOOLEAN      NOT NULL,
+    offln         BOOLEAN      NOT NULL,
     available     BOOLEAN      NOT NULL,
     until         TEXT         NOT NULL,
     ping_data     bronson.ip_address[] NOT NULL,

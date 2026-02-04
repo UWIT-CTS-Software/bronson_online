@@ -803,11 +803,11 @@ async fn handle_connection(
                     0 => false,
                     _ => false,
                 };
-                // new_db_room.offln = match new_values[7] { 
-                //     1 => true,
-                //     0 => false,
-                //     _ => false,
-                // };
+                new_db_room.offln = match new_values[7] { 
+                    1 => true,
+                    0 => false,
+                    _ => false,
+                };
                 // Build Updated Ping Data Vector
                 let hn_vec = Database::gen_hn(String::from(target_room), &new_values);
                 let ping_vec = Database::gen_ip(&hn_vec);
@@ -855,11 +855,11 @@ async fn handle_connection(
                         0 => false,
                         _ => false,
                     },
-                    // offln: match new_values[7] { 
-                    //     1 => true,
-                    //     0 => false,
-                    //     _ => false,
-                    // },
+                    offln: match new_values[7] { 
+                        1 => true,
+                        0 => false,
+                        _ => false,
+                    },
                     available: false,
                     until: String::from("TOMORROW"),
                     ping_data: ping_vec,

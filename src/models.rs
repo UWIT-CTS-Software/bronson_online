@@ -198,6 +198,7 @@ pub struct DB_Room {
     pub checked: String,
     pub needs_checked: bool,
     pub gp: bool,
+    pub offln: bool,
     pub available: bool,
     pub until: String,
     pub ping_data: Vec<Option<DB_IpAddress>>,

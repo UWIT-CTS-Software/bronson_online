@@ -42,6 +42,7 @@ pub mod bronson {
             checked -> Text,
             needs_checked -> Bool,
             gp -> Bool,
+            offln -> Bool,
             available -> Bool,
             until -> Text,
             ping_data -> Array<Nullable<IpAddress>>,

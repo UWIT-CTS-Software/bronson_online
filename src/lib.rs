@@ -419,10 +419,10 @@ impl Database {
 							0 => false,
 							_ => true,
 						},
-						// offln: match record.get(8).expect("-1").parse().unwrap() {
-						// 	0 => false,
-						// 	_ => true,
-						// },
+						offln: match record.get(8).expect("-1").parse().unwrap() {
+							0 => false,
+							_ => true,
+						},
 						available: false,
 						until: String::from("Tomorrow"),
 						ping_data: ping_vec,
