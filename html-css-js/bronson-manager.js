@@ -293,7 +293,13 @@ function pad(n, width, z) {
     return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
 }
 
-function sendNotification (data) {
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function sendNotification (data, timeout) {
+    await sleep(timeout);
+
     if (data == undefined || !data) { return false }
     var title = (data.title === undefined) ? 'Notification' : data.title
     var clickCallback = data.clickCallback

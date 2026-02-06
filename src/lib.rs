@@ -486,7 +486,7 @@ impl Database {
 			for (id, value) in json_keys.iter() {
 				let new_key = DB_Key {
 					key_id: id.clone(),
-					val: value.to_string()
+					val: value.to_string().trim_matches('"').to_string()
 				};
 
 				let _ = self.update_key(&new_key);
