@@ -1383,6 +1383,7 @@ async fn handle_connection(
                     .insert_header("Access-Control-Expose-Headers", "Set-Cookie")
                     .status(STATUS_200)
                     .send_file(user_homepage)
+                    .insert_onload("window.location.href=\"http://localhost:7878/\";")
         },
         "POST /bugreport HTTP/1.1" => {
             let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
@@ -1570,16 +1571,16 @@ async fn update_room_check_leaderboard(database: &mut Database, req: Arc<RwLock<
     let body_7_days: String;
     let body_30_days: String;
     let body_90_days: String;
-    {
-        body_7_days = req.write().unwrap().get(url_7_days)
-            .timeout(Duration::from_secs(15))
-            .send()
-            .await
-            .expect("[-] RESPONSE ERROR")
-            .text()
-            .await
-            .expect("[-] PAYLOAD ERROR");
-    }
+
+    body_7_days = req.write().unwrap().get(url_7_days)
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .expect("[-] RESPONSE ERROR")
+        .text()
+        .await
+        .expect("[-] PAYLOAD ERROR");
+
     let v_7_days: Value = match serde_json::from_str(&body_7_days) {
         Ok(v)  => v,
         Err(m) => {
@@ -1592,16 +1593,14 @@ async fn update_room_check_leaderboard(database: &mut Database, req: Arc<RwLock<
         None => Vec::<Value>::new()
     };
 
-    {
-        body_30_days = req.write().unwrap().get(url_30_days)
-            .timeout(Duration::from_secs(15))
-            .send()
-            .await
-            .expect("[-] RESPONSE ERROR")
-            .text()
-            .await
-            .expect("[-] PAYLOAD ERROR");
-    }
+    body_30_days = req.write().unwrap().get(url_30_days)
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .expect("[-] RESPONSE ERROR")
+        .text()
+        .await
+        .expect("[-] PAYLOAD ERROR");
 
     let v_30_days: Value = match serde_json::from_str(&body_30_days) {
         Ok(v)  => v,
@@ -1615,16 +1614,14 @@ async fn update_room_check_leaderboard(database: &mut Database, req: Arc<RwLock<
         None => Vec::<Value>::new()
     };
 
-    {
-        body_90_days = req.write().unwrap().get(url_90_days)
-            .timeout(Duration::from_secs(15))
-            .send()
-            .await
-            .expect("[-] RESPONSE ERROR")
-            .text()
-            .await
-            .expect("[-] PAYLOAD ERROR");
-    }
+    body_90_days = req.write().unwrap().get(url_90_days)
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .expect("[-] RESPONSE ERROR")
+        .text()
+        .await
+        .expect("[-] PAYLOAD ERROR");
 
     let v_90_days: Value = match serde_json::from_str(&body_90_days) {
         Ok(v)  => v,
