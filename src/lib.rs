@@ -419,6 +419,7 @@ impl Database {
 							0 => false,
 							_ => true,
 						},
+						offln: false,
 						available: false,
 						until: String::from("Tomorrow"),
 						ping_data: ping_vec,
@@ -846,18 +847,47 @@ impl Database {
 			.first(&mut conn)
 	}
 
-	pub fn update_room(&mut self, room: &DB_Room) -> Result<DB_Room, DieselError>{
+	pub fn update_room(&mut self, room: &DB_Room) -> Result<DB_Room, DieselError> {
 		use crate::schema::bronson::rooms::dsl::name;
+		use crate::schema::bronson::rooms::dsl as r;
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
-		diesel::insert_into(rooms)
-			.values(room)
+		let safe_ping_data = room
+			.ping_data
+			.iter()
+			.map(|opt_ip| opt_ip.as_ref().map(|ip| {
+				let mut ip = ip.clone();
+				if ip.hostname.dev_type == DeviceType::UNKNOWN {
+					ip.hostname.dev_type = DeviceType::PROC; // replace UNKNOWN with default
+				}
+				ip
+			}))
+			.collect::<Vec<_>>();
+
+		let mut room_safe = room.clone();
+		room_safe.ping_data = safe_ping_data;
+
+		let updated: DB_Room = diesel::insert_into(rooms)
+			.values(&room_safe)
 			.on_conflict(name)
 			.do_update()
-			.set(room)
+			.set(( // Explicitely set values to avoid fields getting skipped
+				r::abbrev.eq(&room_safe.abbrev),
+				r::checked.eq(&room_safe.checked),
+				r::needs_checked.eq(room_safe.needs_checked),
+				r::gp.eq(room_safe.gp),
+				r::offln.eq(room_safe.offln),
+				r::available.eq(room_safe.available),
+				r::until.eq(&room_safe.until),
+				r::ping_data.eq(&room_safe.ping_data),
+				r::schedule.eq(&room_safe.schedule),
+			))
 			.returning(DB_Room::as_returning())
-			.get_result(&mut conn)
+			.get_result(&mut conn)?;
+
+		Ok(updated)
 	}
+
 
 	pub fn delete_room(&mut self, id: &String) -> Result<DB_Room, DieselError> {
 		use crate::schema::bronson::rooms::dsl::name;

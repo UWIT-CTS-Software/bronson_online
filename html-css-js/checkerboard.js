@@ -220,7 +220,10 @@ async function printCBResponse(JSON) {
         //  - ROOM ATTRIBUTES
         cbRoomEntry += `<ul class="cbVisRoomAttributes">`
         let check_date = rooms[j]['checked'].split('T')[0];
-        if(rooms[j]['needs_checked']) {
+        if (rooms[j]['offln']) {
+            cbRoomEntry += `<li class="cbVisOffline"><span class="cbVisRoomAttributeSpan "> Room Offline! </span></li>`;
+        }
+        else if(rooms[j]['needs_checked']) {
             cbRoomEntry += `<li class="cbVisNotChecked"><span class="cbVisRoomAttributeSpan "> Needs Checked! (${check_date})</span></li>`;
         } else {
             cbRoomEntry += `<li class="cbVisChecked"><span class="cbVisRoomAttributeSpan "> Recently Checked! (${check_date})</span></li>`;
@@ -228,12 +231,15 @@ async function printCBResponse(JSON) {
         }
         // Is available ?
         let formattedTime = FourDigitToTimeFormat(rooms[j]['until']);
-        if(rooms[j]['available']) {
+        if (rooms[j]['offln']) {
+            cbRoomEntry += `<li class="cbVisBackOnline"><span class="cbVisRoomAttributeSpan "> Room goes Back Online ${-1} </span></li>`;
+        }
+        else if(rooms[j]['available']) {
             // Sometimes, until is 0000, should probably say 'TOMORROW'
             // if (rooms[j]['until'].slice(0,2) == "00") {
             //     rooms[j]['until'] = "TOMORROW";
             // }
-            cbRoomEntry += `<li class="cbVisAvailable"><span class="cbVisRoomAttributeSpan "> Available Until \n ${formattedTime} </span></li>`;
+            cbRoomEntry += `<li class="cbVisAvailable"><span class="cbVisRoomAttributeSpan "> Available Until ${formattedTime} </span></li>`;
         } else { 
             cbRoomEntry += `<li class="cbVisNotAvailable"><span class="cbVisRoomAttributeSpan "> Unavailable Until ${formattedTime} </span></li>`;
         }

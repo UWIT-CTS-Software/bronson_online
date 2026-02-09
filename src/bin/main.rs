@@ -803,6 +803,11 @@ async fn handle_connection(
                     0 => false,
                     _ => false,
                 };
+                new_db_room.offln = match new_values[7] { 
+                    1 => true,
+                    0 => false,
+                    _ => false,
+                };
                 // Build Updated Ping Data Vector
                 let hn_vec = Database::gen_hn(String::from(target_room), &new_values);
                 let ping_vec = Database::gen_ip(&hn_vec);
@@ -811,7 +816,7 @@ async fn handle_connection(
                 // Update Database
                 //println!("DEBUG Updating DB_Room -> \n {:?}", new_db_room);
                 let _ = database.update_room(&new_db_room);
-                
+
                 Response::new()
                         .status(STATUS_200)
                         .send_contents("".into())
@@ -833,7 +838,7 @@ async fn handle_connection(
                     .as_str()
                     .unwrap()
                     .to_string();
-                let new_values: Vec<u8> = [0,0,0,0,0,0,0].to_vec();
+                let new_values: Vec<u8> = [0,0,0,0,0,0,0,0].to_vec();
                 // Note: When we are inserting a new room, we are not providing the inventory in the same call. The intention is that the front-end will send the rooms to insert first and if their is inventory associated with it it will come after.
                 // Build DB_Room Object and insert to Database
                 // Ping Data Vector
@@ -850,6 +855,7 @@ async fn handle_connection(
                         0 => false,
                         _ => false,
                     },
+                    offln: false,
                     available: false,
                     until: String::from("TOMORROW"),
                     ping_data: ping_vec,
@@ -2527,6 +2533,7 @@ mod tests {
             checked: "2000-01-01T00:00:00Z".to_string(),
             needs_checked: true,
             gp: false,
+            offln: false,
             available: false,
             until: String::from("TOMORROW"),
             ping_data: Vec::new(),
@@ -2602,6 +2609,7 @@ mod tests {
             checked: "2000-01-01T00:00:00Z".to_string(),
             needs_checked: true,
             gp: false,
+            offln: false,
             available: false,
             until: String::from("TOMORROW2"),
             ping_data: Vec::new(),

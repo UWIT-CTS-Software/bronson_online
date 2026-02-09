@@ -1036,6 +1036,15 @@ input:checked + .slider:before {
     font-style:oblique;
 }
 
+.cbVisOffline {
+    background-color: rgb(40, 40, 40);
+    /* border: rgb(33, 39, 33) inset 2px; */
+    border-radius: 0px 0px 0px 18px;
+    border-right:rgb(75,45,15) outset 1px;
+    height:100%;
+    padding-left:5px;
+}
+
 .cbVisNotChecked {
     background-color: rgb(102, 53, 54);
     /* border: rgb(94, 46, 17) inset 2px; */
@@ -1052,6 +1061,15 @@ input:checked + .slider:before {
     border-right:rgb(75,45,15) outset 1px;
     height:100%;
     padding-left:5px;
+}
+
+.cbVisBackOnline {
+    background-color: rgb(75, 75, 75);
+    /* border: rgb(94, 46, 17) inset 2px; */
+    border-radius: 0px 0px 18px 0px;
+    border-left:rgb(90,60,30) inset 1px;
+    height:100%;
+    padding-right:5px;
 }
 
 .cbVisAvailable {
@@ -1074,9 +1092,9 @@ input:checked + .slider:before {
 
 /* Maybe use this instead */
 .cbVisRoomAttributeSpan {
-    padding:0px;
-    margin:0px;
     display:flex;
+    justify-content:center;
+    align-items:center;
     text-align:center;
 }
 

@@ -1200,8 +1200,9 @@ async function setDBEditor() {
                             <th scope="col">Displays</th>
                             <th scope="col">Touch Panels</th>
                             <th scope="col">WyoShares</th>
-                            <th scope="col">Celing Mics</th>
+                            <th scope="col">Ceiling Mics</th>
                             <th scope="col">General Pool</th>
+                            <th scope="col">Marked as Offline</th>
                         </tr>
                     </thead>
                     <tbody id="${building}-tbody">`);
@@ -1211,6 +1212,7 @@ async function setDBEditor() {
             let procCount, dispCount, pjCount, tpCount, wsCount, micCount;
             procCount = dispCount = pjCount = tpCount = wsCount = micCount = 0;
             let gpBool = room.gp;
+            let offlnBool = room.offln;
             
             pingData.forEach(function(device) {
                 let hnObj = device.hostname; // hostname Object
@@ -1247,6 +1249,7 @@ async function setDBEditor() {
                     <td><input type="number" class="dbRoomInput" id="${roomName}-WS" value="${wsCount}" min="0"></td>
                     <td><input type="number" class="dbRoomInput" id="${roomName}-CMIC" value="${micCount}" min="0"></td>
                     <td><input type="checkbox" class="dbRoomCheckbox" id="${roomName}-GP" ${gpBool ? 'checked' : ''}></td>
+                    <td><input type="checkbox" class="dbRoomCheckbox" id="${roomName}-OFFLN" ${offlnBool ? 'checked' : ''}></td>
                     <td><button id="${roomName}_rmvBtn" class="rmvButton" onclick="removeRoomFromBuilding('${roomName}-row')"> Remove </button></td>
                 </tr>`);
         });
@@ -1876,6 +1879,7 @@ function confirmDBBuildingAddition() {
                         <th scope="col">WyoShares</th>
                         <th scope="col">Celing Mics</th>
                         <th scope="col">General Pool</th>
+                        <th scope="col">Marked as Offline</th>
                     </tr>
                 </thead>
                 <tbody id="${building}-tbody">
@@ -2019,6 +2023,7 @@ function confirmRoomAddition(textareaID, buildingTableID) {
         <td><input type="number" class="dbRoomInput" id="${roomName}-WS" value="0" min="0"></td>
         <td><input type="number" class="dbRoomInput" id="${roomName}-CMIC" value="0" min="0"></td>
         <td><input type="checkbox" class="dbRoomCheckbox" id="${roomName}-GP"></td>
+        <td><input type="checkbox" class="dbRoomCheckbox" id="${roomName}-OFFLN"></td>
         <td><button class="rmvButton" id="${roomName}_rmvBtn" onclick="removeRoomFromBuilding('${roomName}-row')"> Remove </button></td>
     </tr>`;
     // Add new Row to Table
