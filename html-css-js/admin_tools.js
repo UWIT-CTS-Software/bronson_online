@@ -1644,8 +1644,8 @@ async function parseRSUpload(arr) {
     }
     // Send to Backend in Chunks of 25 rooms at a time.
     let result = [];
-    for (let i = 0; i < roomObjs.length; i += 15) {
-        result.push(roomObjs.slice(i, i + 15));
+    for (let i = 0; i < roomObjs.length; i += 25) {
+        result.push(roomObjs.slice(i, i + 25));
     }
     // Create Object to send to backend
     for (let i = 0; i < result.length; i++) {

@@ -269,7 +269,7 @@ input:checked + .slider:before {
 /* Bronson icon in top left, brings out hamburger menu */
 .site_header {
     color: rgb(118, 66, 28);
-    background-color: rgb(224, 193, 108);
+    background-color: rgb(205, 177, 99);
     text-align: center;
     font-family: "Racing Sans One", sans-serif;
     font-weight: 400;
@@ -943,7 +943,7 @@ input:checked + .slider:before {
 }
 
 .cbProgress::-webkit-progress-value {
-        border-radius: 0px 0px 10px 10px;
+    border-radius: 0px 0px 10px 10px;
     background-color: rgb(166, 175, 86);
 }
 

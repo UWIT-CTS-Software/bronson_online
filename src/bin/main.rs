@@ -178,7 +178,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let database_url = env::var("DATABASE_URL")
         .expect("DATABASE_URL must be set");
     let mut connection = PgConnection::establish(&database_url)
-        .expect("Error Connecting to Database"); 
+        .expect("Error Connecting to Database");
     connection.run_pending_migrations(MIGRATIONS)
             .map_err(|e| format!("Failed to run migrations: {}", e))?;
 
@@ -233,8 +233,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let req_ts = Arc::clone(&thread_schedule);
         let req_client = Arc::clone(&tdx_request);
         pool.execute(move || {
-            let mut res = handle_connection(req, clone_db, req_ts, req_client).unwrap();
-            stream.write(&res.build()).unwrap();
+            let res = match handle_connection(req, clone_db, req_ts, req_client) {
+                Some(r) => r,
+                None    => {
+                    Response::new()
+                            .status(STATUS_500)
+                            .send_contents(format!("An internal error occured. Please contact a system administrator.\n").into())
+                            .build()
+                            .expect("Build failed")
+                }
+            };
+            stream.write(&res).unwrap();
             stream.flush().unwrap();
             stdout().flush().unwrap();
         });
@@ -485,7 +494,7 @@ async fn handle_connection(
     mut database: Database,
     thread_schedule: Arc<RwLock<ThreadSchedule>>,
     client: Arc<Client>,
-) -> Option<Response> {
+) -> Option<Vec<u8>> {
     let mut user_homepage: &str = "html-css-js/login.html";
     if req.headers.contains_key("Cookie") {
         let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
@@ -512,115 +521,136 @@ async fn handle_connection(
     }
     // Handle requests
     // ------------------------------------------------------------------------
-    let mut res: Response = Response::new();
-
-    match req.start_line.as_str() {
+    let res: Response = match req.start_line.as_str() {
         // Page Content
         // --------------------------------------------------------------------
-        "GET / HTTP/1.1"                   => {
-            res.status(STATUS_200);
-            res.send_file(user_homepage);
+        "GET / HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file(user_homepage)
         },
-        "GET /page.css HTTP/1.1"           => {
-            res.status(STATUS_200);
-            res.send_file("html-css-js/page.css");
+        "GET /page.css HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("html-css-js/page.css")
         },
-        "GET /index.html HTTP/1.1"         => {
-            res.status(STATUS_200);
-            res.send_file("html-css-js/index.html");
+        "GET /index.html HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("html-css-js/index.html")
         },
-        "GET /login.html HTTP/1.1"         => {
-            res.status(STATUS_200);
-            res.send_file("html-css-js/login.html");
+        "GET /login.html HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("html-css-js/login.html")
         },
         // Javascript Files
         "GET /bronson-manager.js HTTP/1.1" => {
-            res.status(STATUS_200);
-            res.send_file("html-css-js/bronson-manager.js");
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("html-css-js/bronson-manager.js")
         },
-        "GET /camcode.js HTTP/1.1"         => {
-            res.status(STATUS_200);
-            res.send_file("html-css-js/camcode.js");
+        "GET /camcode.js HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("html-css-js/camcode.js")
         },
-        "GET /cc-altmode.js HTTP/1.1"      => {
-            res.status(STATUS_200);
-            res.send_file("html-css-js/cc-altmode.js");
+        "GET /cc-altmode.js HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("html-css-js/cc-altmode.js")
         },
-        "GET /checkerboard.js HTTP/1.1"    => {
-            res.status(STATUS_200);
-            res.send_file("html-css-js/checkerboard.js");
+        "GET /checkerboard.js HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("html-css-js/checkerboard.js")
         },
-        "GET /tickex.js HTTP/1.1"    => {
-            res.status(STATUS_200);
-            res.send_file("html-css-js/tickex.js");
+        "GET /tickex.js HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("html-css-js/tickex.js")
         },
-        "GET /jacknet.js HTTP/1.1"         => {
-            res.status(STATUS_200);
-            res.send_file("html-css-js/jacknet.js");
+        "GET /jacknet.js HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("html-css-js/jacknet.js")
         },
-        "GET /wiki.js HTTP/1.1"            => {
-            res.status(STATUS_200);
-            res.send_file("html-css-js/wiki.js");
+        "GET /wiki.js HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("html-css-js/wiki.js")
         },
-        "GET /admin_tools.js HTTP/1.1"     => {
-            res.status(STATUS_200);
-            res.send_file("html-css-js/admin_tools.js");
+        "GET /admin_tools.js HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("html-css-js/admin_tools.js")
         },
         // Tool Homepage Stuff
-        "GET /cc-altmode HTTP/1.1"         => {
-            res.status(STATUS_200);
-            res.send_file(user_homepage);
-            res.insert_onload("setCamcode()");
+        "GET /cc-altmode HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file(user_homepage)
+                    .insert_onload("setCamcode()")
         },
-        "GET /checkerboard HTTP/1.1"       => {
-            res.status(STATUS_200);
-            res.send_file(user_homepage);
-            res.insert_onload("setChecker()");
+        "GET /checkerboard HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file(user_homepage)
+                    .insert_onload("setChecker()")
         },
-        "GET /tickex HTTP/1.1"       => {
-            res.status(STATUS_200);
-            res.send_file(user_homepage);
-            res.insert_onload("setTickex()");
+        "GET /tickex HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file(user_homepage)
+                    .insert_onload("setTickex()")
         },
-        "GET /jacknet HTTP/1.1"            => {
-            res.status(STATUS_200);
-            res.send_file(user_homepage);
-            res.insert_onload("setJackNet()");
+        "GET /jacknet HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file(user_homepage)
+                    .insert_onload("setJackNet()")
         },
-        "GET /wiki HTTP/1.1"               => {
-            res.status(STATUS_200);
-            res.send_file(user_homepage);
-            res.insert_onload("setWiki()");
+        "GET /wiki HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file(user_homepage)
+                    .insert_onload("setWiki()")
         },
-        "GET /admintools HTTP/1.1"         => {
-            res.status(STATUS_200);
-            res.send_file(user_homepage);
-            res.insert_onload("setAdminTools()");
+        "GET /admintools HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file(user_homepage)
+                    .insert_onload("setAdminTools()")
         }
         // Assets
-        "GET /favicon.ico HTTP/1.1"        => {
-            res.status(STATUS_200);
-            res.send_file("assets/logo_main.png");
+        "GET /favicon.ico HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("assets/logo_main.png")
         },
-        "GET /logo.png HTTP/1.1"           => {
-            res.status(STATUS_200);
-            res.send_file("assets/logo.png");
+        "GET /logo.png HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("assets/logo.png")
         },
-        "GET /logo-2-line.png HTTP/1.1"    => {
-            res.status(STATUS_200);
-            res.send_file("assets/logo-2-line.png");
+        "GET /logo-2-line.png HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("assets/logo-2-line.png")
         },
-        "GET /button2.png HTTP/1.1"        => {
-            res.status(STATUS_200);
-            res.send_file("assets/button2.png");
+        "GET /button2.png HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("assets/button2.png")
         },
-        "GET /tdx_logo.png HTTP/1.1"        => {
-            res.status(STATUS_200);
-            res.insert_header("Content-Type", "image/png");
-            res.send_file("assets/tdx_logo.png");
+        "GET /tdx_logo.png HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .insert_header("Content-Type", "image/png")
+                    .send_file("assets/tdx_logo.png")
         },
         // Data Requests
-        "GET /techSchedule HTTP/1.1"  => {
+        "GET /techSchedule HTTP/1.1" => {
             let contents = match database.get_data("schedule") {
                 Ok(s)  => s.val,
                 Err(m) => {
@@ -628,22 +658,26 @@ async fn handle_connection(
                     String::from(SCHD_ERR)
                 }
             }.into();
-            res.status(STATUS_200);
-            res.send_contents(contents);
+
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
         },
-        "GET /campusData HTTP/1.1"         => {
+        "GET /campusData HTTP/1.1" => {
             let campus = database.get_campus();
             let contents = match campus {
-                Ok(c)  => json!(&c).to_string().into(),
+                Ok(c)  => json!(&c).to_string(),
                 Err(m) => {
                     error!("DB_ERR: {}", m);
-                    String::from("{}").into()
+                    String::from("{}")
                 }
-            };
-            res.status(STATUS_200);
-            res.send_contents(contents);
+            }.into();
+
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
         },
-        "GET /zoneData HTTP/1.1"           => { // NEW: returns data in lib.rs as json
+        "GET /zoneData HTTP/1.1" => { // NEW: returns data in lib.rs as json
             let bldgs = database.get_buildings();
             let contents = match bldgs {
                 Ok(b)  => get_zone_data(b),
@@ -652,10 +686,12 @@ async fn handle_connection(
                     String::from("{}").into()
                 }
             };
-            res.status(STATUS_200);
-            res.send_contents(contents);
+
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
         },
-        "GET /dashContents HTTP/1.1"       => { // Dashboard Message
+        "GET /dashContents HTTP/1.1" => { // Dashboard Message
             let contents = json!({
                 "contents": match database.get_data("dashboard") {
                     Ok(e)  => e.val,
@@ -665,10 +701,12 @@ async fn handle_connection(
                     }
                 }
             }).to_string().into();
-            res.status(STATUS_200);
-            res.send_contents(contents);
+            
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
         },
-        "GET /leaderboard HTTP/1.1"        => { // OUTGOING, Dashboard Leaderboard
+        "GET /leaderboard HTTP/1.1" => { // OUTGOING, Dashboard Leaderboard
             let contents = match database.get_data("lsm_leaderboard") {
                 Ok(l)  => l.val,
                 Err(m) => {
@@ -676,11 +714,13 @@ async fn handle_connection(
                     String::from(LDRB_ERR)
                 }
             }.into();
-            res.status(STATUS_200);
-            res.send_contents(contents);
+            
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
         },
         // Spares LSM API Call.
-        "GET /spares HTTP/1.1"             => { // OUTGOING, Dashboard Spares
+        "GET /spares HTTP/1.1" => { // OUTGOING, Dashboard Spares
             // Get Spares from Database
             let contents: Vec<u8> = match database.get_data("lsm_spares") {
                 Ok(s)  => s.val,
@@ -689,44 +729,23 @@ async fn handle_connection(
                     String::from(SPRS_ERR)
                 }
             }.into();
-            res.status(STATUS_200);
-            res.send_contents(contents);
+            
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
         },
-        "GET /currentUser HTTP/1.1"        => { // OUTGOING, Current user info
-            let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
-            if let Some(captures) = username_search.captures(&req.headers.get("Cookie").unwrap_or(&String::new())) {
-                let username = &captures["username"];
-                match database.get_user(username) {
-                    Ok(user) => {
-                        res.status(STATUS_200);
-                        res.send_contents(json!({
-                            "username": user.username,
-                            "permissions": user.permissions
-                        }).to_string().into());
-                    },
-                    Err(_) => {
-                        res.status(STATUS_401);
-                        res.send_contents(json!({
-                            "error": "User not found"
-                        }).to_string().into());
-                    }
-                }
-            } else {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "error": "No authentication cookie"
-                }).to_string().into());
-            }
-        },
-        "GET /tickets HTTP/1.1"            => { // OUTGOING, Tickets for Tickex
+        "GET /tickets HTTP/1.1" => { // OUTGOING, Tickets for Tickex
             let db_tickets = match database.get_all_tickets() {
                 Ok(t) => t,
                 Err(e) => {
                     error!("Failed to get tickets: {}", e);
-                    Vec::new()
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("[]".into())
+                        .build();
                 }
             };
-            let tickets: Vec<serde_json::Value> = db_tickets.into_iter().map(|t| {
+            let tickets: Vec<Value> = db_tickets.into_iter().map(|t| {
                 json!({
                     "ID": t.ticket_id,
                     "has_been_viewed": t.has_been_viewed,
@@ -765,42 +784,59 @@ async fn handle_connection(
                     "old_comment_count": t.old_comment_count,
                 })
             }).collect();
-            let tickets_json = serde_json::to_string(&tickets).unwrap();
-            res.status(STATUS_200);
-            res.send_contents(tickets_json.into());
+
+            let contents = serde_json::to_string(&tickets).unwrap().into();
+            Response::new()
+                .status(STATUS_200)
+                .send_contents(contents)
         },
-        "POST /update/ticket/viewed HTTP/1.1" => { // INCOMING
-            let body_json: Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-            let id: i32 = body_json["id"].as_i64().unwrap() as i32;
-            let viewed: bool = body_json["viewed"].as_bool().unwrap();
-            match database.update_ticket_mark_as_viewed(id, viewed) {
-                Ok(_) => {
-                    res.status(STATUS_200);
-                    res.send_contents("Updated".into());
+        "POST /update/ticket/viewed HTTP/1.1" => {
+            // Parse JSON body
+            let body_json: Value = match serde_json::from_slice(&req.body) {
+                Ok(v) => v,
+                Err(_) => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Invalid JSON".into())
+                        .build();
                 }
+            };
+
+            let id = body_json["id"].as_i64().unwrap_or(-1) as i32;
+            let viewed = body_json["viewed"].as_bool().unwrap_or(false);
+
+            // Update DB
+            match database.update_ticket_mark_as_viewed(id, viewed) {
+                Ok(_) => Response::new()
+                    .status(STATUS_200)
+                    .send_contents("Updated".into()),
+
                 Err(e) => {
                     error!("Failed to update ticket viewed: {}", e);
-                    res.status(STATUS_500);
-                    res.send_contents("Error".into());
+                    Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Error".into())
                 }
             }
         },
-        "POST /lsmData HTTP/1.1"              => { // OUTGOING
+        "POST /lsmData HTTP/1.1" => { // OUTGOING
             let body_str = String::from_utf8(req.body).expect("AT: LSM Data Err, invalid UTF-8");
             let body_parts: Vec<&str> = body_str.split(',').collect();
             if body_parts.len() != 2 {
-                res.status(STATUS_500);
-                res.send_contents("Invalid request body.".into());
-                return Some(res);
+                return Response::new()
+                                .status(STATUS_500)
+                                .send_contents("Invalid request body.".into())
+                                .build();
             }
             let building_sel:String = body_parts[0].to_string();
             let device_type = body_parts[1];
             let lsm_building = match database.get_building_by_abbrev(&building_sel) {
                 Ok(b)  => b,
                 Err(m) => {
-                    res.status(STATUS_500);
-                    res.send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into());
-                    return Some(res);
+                    return Response::new()
+                                    .status(STATUS_500)
+                                    .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                    .build();
                 }
             };
             debug!("[Admin Tools] - Grabbing LSM Data for Diagnostics:\n{:?}", &lsm_building.lsm_name.as_str());
@@ -810,9 +846,10 @@ async fn handle_connection(
                 "PJ" => "BuildingProjectors",
                 "TP"   => "BuildingTouchPanels",
                 _    => {
-                    res.status(STATUS_500);
-                    res.send_contents("Invalid device type.".into());
-                    return Some(res);
+                    return Response::new()
+                                    .status(STATUS_500)
+                                    .send_contents("Invalid device type".into())
+                                    .build();
                 }
             };
             debug!("[Admin Tools] - Diagnostic API Endpoint: {}", api_endpoint);
@@ -849,32 +886,41 @@ async fn handle_connection(
             let contents = json!({
                  "data": data_devs
             }).to_string().into();
-            res.status(STATUS_200);
-            res.send_contents(contents);
+            
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
         },
-        "POST /updateSchedule HTTP/1.1"        => {
+        "POST /updateSchedule HTTP/1.1" => {
             let new_data = DB_DataElement {
                 key: String::from("schedule"),
                 val: String::from_utf8(req.body).expect("Unable to parse body contents")
             };
             let _ = database.update_data(&new_data);
-            res.status(STATUS_200);
-            res.send_contents("".into());
+
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents("".into())
         },
-        "POST /update/dash HTTP/1.1"       => {
+        "POST /update/dash HTTP/1.1" => {
             let _ = database.update_data(&DB_DataElement {
                 key: String::from("dashboard"),
                 val: String::from_utf8(req.body).expect("Unable to parse body contents"),
             });
-            res.status(STATUS_200);
-            res.send_contents("".into());
+            
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents("".into())
         },
-        "POST /update/database_room HTTP/1.1"     => { // destination, newValue
+        "POST /update/database_room HTTP/1.1" => { // destination, newValue
             if !req.has_valid_cookie(&mut database) {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "response": "Unauthorized"
-                }).to_string().into());
+                Response::new()
+                        .status(STATUS_401)
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
             } else {
                 // Parse Request Body
                 let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
@@ -896,9 +942,10 @@ async fn handle_connection(
                     Ok(tr) => tr,
                     Err(m) => {
                         error!("DB_ERR: {}", m);
-                        res.status(STATUS_500);
-                        res.send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into());
-                        return Some(res);
+                        return Response::new()
+                                        .status(STATUS_500)
+                                        .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                        .build();
                     }
                 };
                 //println!("DEBUG Existing DB_Room (Pre-Update) -> \n {:?}", new_db_room);
@@ -916,16 +963,21 @@ async fn handle_connection(
                 // Update Database
                 //println!("DEBUG Updating DB_Room -> \n {:?}", new_db_room);
                 let _ = database.update_room(&new_db_room);
-                res.status(STATUS_200);
-                res.send_contents("".into());
+                
+                Response::new()
+                        .status(STATUS_200)
+                        .send_contents("".into())
             }
         },
-        "POST /insert/database_room HTTP/1.1"     => { // destination
+        "POST /insert/database_room HTTP/1.1" => { // destination
             if !req.has_valid_cookie(&mut database) {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "response": "Unauthorized"
-                }).to_string().into());
+                Response::new()
+                        .status(STATUS_401)
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
             } else {
                 // Parse Request Body
                 let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
@@ -959,17 +1011,22 @@ async fn handle_connection(
                 // Note, the schedule field here is initialized as empty.
                 //   we will require some more tooling to get this data in here.
                 //   whether that be some kind of csv import or a manual page.
-                let _ = database.update_room(&new_db_room); // UNCOMMENT ME WHEN READY
-                res.status(STATUS_200);
-                res.send_contents("".into());
+                let _ = database.update_room(&new_db_room);
+
+                Response::new()
+                        .status(STATUS_200)
+                        .send_contents("".into())
             }
         },
-        "POST /remove/database_room HTTP/1.1"     => { // destination
+        "POST /remove/database_room HTTP/1.1" => { // destination
             if !req.has_valid_cookie(&mut database) {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "response": "Unauthorized"
-                }).to_string().into());
+                Response::new()
+                        .status(STATUS_401)
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
             } else {
                 // Parse Request Body
                 let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
@@ -980,17 +1037,22 @@ async fn handle_connection(
                 debug!("[Admin Tools] - REMOVING ROOM -> {:?}", target_room);
                 // Remove Specified Room from Database
                 let _ = database.delete_room(&target_room);
-                res.status(STATUS_200);
-                res.send_contents("".into());
+                
+                Response::new()
+                        .status(STATUS_200)
+                        .send_contents("".into())
             }
         },
         "POST /update/database_building HTTP/1.1" => { // destination, newValue
             //let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "response": "Unauthorized"
-                }).to_string().into());
+                Response::new()
+                        .status(STATUS_401)
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
             } else {
                 // Parse Request Body
                 let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
@@ -1013,9 +1075,10 @@ async fn handle_connection(
                     Ok(b)  => b,
                     Err(m) => {
                         error!("DB_ERR: {}", m);
-                        res.status(STATUS_500);
-                        res.send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into());
-                        return Some(res);
+                        return Response::new()
+                                .status(STATUS_500)
+                                .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                .build();
                     }
                 };
                 // Update Building Values
@@ -1025,18 +1088,23 @@ async fn handle_connection(
                 new_db_building.zone = new_values[3].parse().expect("invalid zone");
                 // Update Database
                 debug!("[Admin Tools] - Updated Building Record:\n{:?}", &new_db_building);
-                let _ = database.update_building(&new_db_building); // UNCOMMENT ME WHEN READY
-                res.status(STATUS_200);
-                res.send_contents("".into());
+                let _ = database.update_building(&new_db_building);
+                
+                Response::new()
+                        .status(STATUS_200)
+                        .send_contents("".into())
             }
         },
         "POST /insert/database_building HTTP/1.1" => { // destination, newValue
             //let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "response": "Unauthorized"
-                }).to_string().into());
+                Response::new()
+                        .status(STATUS_401)
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
             } else {
                 let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
                 //println!("{:?}", body_json);
@@ -1059,18 +1127,23 @@ async fn handle_connection(
                     total_rooms: 0
                 };
                 debug!("Inserting Building Record:\n {:?}", &new_db_building);
-                let _ = database.update_building(&new_db_building); //UNCOMMENT ME WHEN READY
-                res.status(STATUS_200);
-                res.send_contents("".into());
+                let _ = database.update_building(&new_db_building); 
+                
+                Response::new()
+                        .status(STATUS_200)
+                        .send_contents("".into())
             }
         },
         "POST /remove/database_building HTTP/1.1" => { // destination
             //let mut database = arc_database.write().unwrap();
             if !req.has_valid_cookie(&mut database) {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "response": "Unauthorized"
-                }).to_string().into());
+                Response::new()
+                        .status(STATUS_401)
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
             } else {
                 let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
                 let target_building: String = body_json["destination"]
@@ -1079,16 +1152,21 @@ async fn handle_connection(
                     .to_string();
                 debug!("[Admin Tools] - DB Target Building to remove:\n {:?}", target_building);
                 let _ = database.delete_building(&target_building);
-                res.status(STATUS_200);
-                res.send_contents("".into());
+                
+                Response::new()
+                        .status(STATUS_200)
+                        .send_contents("".into())
             }
         },
         "POST /update/database_roomSchedule HTTP/1.1" => { // [Changes to make]
             if !req.has_valid_cookie(&mut database) {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "response": "Unauthorized"
-                }).to_string().into());
+                Response::new()
+                        .status(STATUS_401)
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
             } else {
                 let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
                 // Parse Request Body
@@ -1114,9 +1192,10 @@ async fn handle_connection(
                         Ok(r)  => r,
                         Err(m) => {
                             error!("DB_ERR: {}", m);
-                            res.status(STATUS_500);
-                            res.send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into());
-                            return Some(res);
+                            return Response::new()
+                                    .status(STATUS_500)
+                                    .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                    .build();
                         }
                     };
                     // Update Schedule
@@ -1125,16 +1204,21 @@ async fn handle_connection(
                     let _ = database.update_room(&new_db_room);
                     debug!("[Admin Tools] - Updating Room: {} with Schedule:\n {:?}", target_room, new_schedule);
                 }
-                res.status(STATUS_200);
-                res.send_contents("Room Schedules in Database Updated".into());
+
+                Response::new()
+                        .status(STATUS_200)
+                        .send_contents("Room Schedules in Database Updated".into())
             }
         },
         "POST /update/roomSchd/timestamps HTTP/1.1" => { // Updates the timestamps stored in DB_DataElement
             if !req.has_valid_cookie(&mut database) {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "response": "Unauthorized"
-                }).to_string().into());
+                Response::new()
+                        .status(STATUS_401)
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
             } else {
                 let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
                 let timestamps: Vec<String> = body_json["timestamps"]
@@ -1153,32 +1237,40 @@ async fn handle_connection(
                 };
                 // Uncomment when ready...
                 let _ = database.update_data(&new_timestamps);
-                res.status(STATUS_200);
-                res.send_contents("Successful Room Schedule Timestamps Update".into());
+                Response::new()
+                        .status(STATUS_200)
+                        .send_contents("Successful Room Schedule Timestamps Update".into())
             }
         },
         "GET /roomSchd/timestamps HTTP/1.1" => { // Returns 25Live Report Dates
             if !req.has_valid_cookie(&mut database) {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "response": "Unauthorized"
-                }).to_string().into());
+                Response::new()
+                        .status(STATUS_401)
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
             } else {
                 let timestamps = database.get_data("report_timestamps").unwrap_or( DB_DataElement {key:"report_timestamps".to_string(),val:"[\"Timestamp Not Found\"]".to_string()}).val;
                 debug!("Fetched Timestamps:\n {:?}", &timestamps);
                 let contents = json!({
                     "timestamps": timestamps
                 }).to_string().into();
-                res.status(STATUS_200);
-                res.send_contents(contents);
+                Response::new()
+                        .status(STATUS_200)
+                        .send_contents(contents)
             }
         },
-        "GET /aliasTable HTTP/1.1"         => {
+        "GET /aliasTable HTTP/1.1" => {
             if !req.has_valid_cookie(&mut database) {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "response": "Unauthorized"
-                }).to_string().into());
+                Response::new()
+                        .status(STATUS_401)
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
             } else {
                 let alias_table = database.get_data("alias_table")
                     .unwrap_or(DB_DataElement {
@@ -1189,31 +1281,39 @@ async fn handle_connection(
                 let contents = json!({
                     "response": alias_table
                 }).to_string().into();
-                res.status(STATUS_200);
-                res.send_contents(contents);
+                Response::new()
+                        .status(STATUS_200)
+                        .send_contents(contents)
             }
         },
-        "GET /threadSchedule HTTP/1.1"   => {
+        "GET /threadSchedule HTTP/1.1" => {
             if !req.has_valid_cookie(&mut database) {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "response": "Unauthorized"
-                }).to_string().into());
+                Response::new()
+                        .status(STATUS_401)
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
             } else {
                 let ts = thread_schedule.read().unwrap();
                 let contents = json!({
                     "response": ts.tasks
                 }).to_string().into();
-                res.status(STATUS_200);
-                res.send_contents(contents);
+                Response::new()
+                        .status(STATUS_200)
+                        .send_contents(contents)
             }
         },
         "POST /resetThreadInterval HTTP/1.1" => {
             if !req.has_valid_cookie(&mut database) {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "response": "Unauthorized"
-                }).to_string().into());
+                Response::new()
+                        .status(STATUS_401)
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
             } else {
                 let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
                 let task_name: String = body_json["task_name"]
@@ -1223,20 +1323,25 @@ async fn handle_connection(
                 debug!("[Admin Tools] - Updating ThreadSchedule Task: \"{}\" to run now", task_name);
                 if let Some(task) = thread_schedule.write().unwrap().tasks.get_mut(&task_name) {
                     task.timestamp = task.timestamp - Duration::from_secs(task.duration);
-                    res.status(STATUS_200);
-                    res.send_contents("ThreadSchedule Updated".into());
+                    Response::new()
+                            .status(STATUS_200)
+                            .send_contents("ThreadSchedule Updated".into())
                 } else {
-                    res.status(STATUS_500);
-                    res.send_contents("Task Not Found".into());
+                    Response::new()
+                            .status(STATUS_500)
+                            .send_contents("Task Not Found".into())
                 }
             }
         },
         "POST /setThreadDuration HTTP/1.1" => {
             if !req.has_valid_cookie(&mut database) {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "response": "Unauthorized"
-                }).to_string().into());
+                Response::new()
+                        .status(STATUS_401)
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
             } else {
                 let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
                 let task_name: String = body_json["task"]
@@ -1251,20 +1356,25 @@ async fn handle_connection(
                 //
                 if let Some(task) = thread_schedule.write().unwrap().tasks.get_mut(&task_name) {
                     task.duration = new_duration.parse().unwrap();
-                    res.status(STATUS_200);
-                    res.send_contents("ThreadSchedule Duration Updated".into());
+                    Response::new()
+                            .status(STATUS_200)
+                            .send_contents("ThreadSchedule Duration Updated".into())
                 } else {
-                    res.status(STATUS_500);
-                    res.send_contents("Task Not Found".into());
+                    Response::new()
+                            .status(STATUS_500)
+                            .send_contents("Task Not Found".into())
                 }
             }
         }
-        "POST /setAliasTable HTTP/1.1"     => {
+        "POST /setAliasTable HTTP/1.1" => {
             if !req.has_valid_cookie(&mut database) {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "response": "Unauthorized"
-                }).to_string().into());
+                Response::new()
+                        .status(STATUS_401)
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
             } else {
                 let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
                 // Parse Request Body
@@ -1289,9 +1399,10 @@ async fn handle_connection(
                             Ok(r)  => r,
                             Err(m) => {
                                 error!("DB_ERR: {}", m);
-                                res.status(STATUS_500);
-                                res.send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into());
-                                return Some(res);
+                                return Response::new()
+                                        .status(STATUS_500)
+                                        .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                        .build();
                             }
                         };
                         let mut pd = room.ping_data.clone();
@@ -1311,16 +1422,21 @@ async fn handle_connection(
                     val: String::from_utf8(req.body).expect("Unable to parse body contents")
                 };
                 let _ = database.update_data(&alias_table);
-                res.status(STATUS_200);
-                res.send_contents("Database Alias Table Updated".into());
+
+                Response::new()
+                        .status(STATUS_200)
+                        .send_contents("Database Alias Table Updated".into())
             }
         },
-        "POST /resetAlias HTTP/1.1"        => {
+        "POST /resetAlias HTTP/1.1" => {
             if !req.has_valid_cookie(&mut database) {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "response": "Unauthorized"
-                }).to_string().into());
+                Response::new()
+                        .status(STATUS_401)
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
             } else {
                 let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
                 // Get List of Rooms from body_json
@@ -1333,9 +1449,10 @@ async fn handle_connection(
                         Ok(r)  => r,
                         Err(m) => {
                             error!("DB_ERR: {}", m);
-                            res.status(STATUS_500);
-                            res.send_contents(format!("An internal server error occured. Please contact a system administrator.\n{}", m).into());
-                            return Some(res);
+                            return Response::new()
+                                    .status(STATUS_500)
+                                    .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                    .build();
                         }
                     };
                     let room_name = room.name.clone();
@@ -1351,41 +1468,47 @@ async fn handle_connection(
                     let _ = database.update_room(&room);
                 }
                 debug!("[Alias] - Reverting Alias Change for target_rooms, {:?}", &target_rooms);
-                res.status(STATUS_200);
-                res.send_contents("Reset Requested Rooms".into());
+
+                Response::new()
+                        .status(STATUS_200)
+                        .send_contents("Reset Requested Rooms".into())
             }
         },
         // Terminal
         // --------------------------------------------------------------------
-        "POST /terminal HTTP/1.1"          => {
+        "POST /terminal HTTP/1.1" => {
             if !req.has_valid_cookie(&mut database) {
-                res.status(STATUS_401);
-                res.send_contents(json!({
-                    "response": "Unauthorized"
-                }).to_string().into());
+                Response::new()
+                        .status(STATUS_401)
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
             } else {
-                res = match Terminal::execute(&req) {
+                match Terminal::execute(&req) {
                     Ok(resp) => {
                         resp
                     },
                     Err(e) => {
-                        let mut resp = res;
-                        resp.status(STATUS_500);
-                        resp.send_contents(json!({
-                            "response": format!("Internal error: {:?}", e)
-                        }).to_string().into());
-                        resp
+                        Response::new()
+                                .status(STATUS_500)
+                                .send_contents(
+                                    json!(
+                                        {"response": format!("Internal error: {:?}", e)}
+                                    ).to_string().into()
+                                )
                     }
-                };
+                }
             }
         },
         // --------------------------------------------------------------------
         // make calls to backend functionality
         // --------------------------------------------------------------------
         // login
-        "POST /login HTTP/1.1"             => {
+        "POST /login HTTP/1.1" => {
             let credential_search = Regex::new(r"uname=(?<user>.*)&remember=[on|off]").unwrap();
-            let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Option::Some(res) };
+            let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return None };
             let user = String::from(credentials["user"].to_string().into_boxed_str());
 
             user_homepage = match database.get_user(&user.as_str()) {
@@ -1406,16 +1529,17 @@ async fn handle_connection(
             let mut jar = CookieJar::new();
             jar.signed_mut(&database.get_cookie_key()).add((user.clone(), user.clone()));
             let signed_val = jar.get(&user).cloned().unwrap();
-        
-            res.insert_header("Set-Cookie", &signed_val.to_string());
-            res.insert_header("Access-Control-Expose-Headers", "Set-Cookie");
 
-            res.status(STATUS_200);
-            res.send_file(user_homepage);
+            Response::new()
+                    .insert_header("Set-Cookie", &signed_val.to_string())
+                    .insert_header("Access-Control-Expose-Headers", "Set-Cookie")
+                    .status(STATUS_200)
+                    .send_file(user_homepage)
+                    .insert_onload("window.location.href=\"http://localhost:7878/\";")
         },
-        "POST /bugreport HTTP/1.1"         => {
+        "POST /bugreport HTTP/1.1" => {
             let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
-            let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return Some(res) };
+            let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return None };
             let encoded_title = String::from(credentials["title"].to_string().into_boxed_str());
             let encoded_desc = String::from(credentials["desc"].to_string().into_boxed_str());
 
@@ -1455,17 +1579,20 @@ async fn handle_connection(
                 .await
                 .expect("[-] PAYLOAD ERROR");
 
-            res.status(STATUS_200);
-            res.send_file(user_homepage);
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file(user_homepage)
         },
         // Jacknet
-        "POST /ping HTTP/1.1"              => { // OUTGOING
+        "POST /ping HTTP/1.1" => { // OUTGOING
             let contents = ping_response(String::from_utf8(req.body).expect("Err, invalid UTF-8"), database);
-            res.status(STATUS_200);
-            res.send_contents(contents);
+
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
         },
         // Checkerboard
-        "POST /run_cb HTTP/1.1"            => { // OUTGOING
+        "POST /run_cb HTTP/1.1" => { // OUTGOING
             // get zone selection from request and store
             // ----------------------------------------------------------------
             let building_sel = String::from_utf8(req.body).expect("CheckerBoard Err, invalid UTF-8");
@@ -1477,18 +1604,20 @@ async fn handle_connection(
                 Ok(b)  => b,
                 Err(m) => {
                     error!("DB_ERR: {}", m);
-                    res.status(STATUS_500);
-                    res.send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into());
-                    return Some(res);
+                    return Response::new()
+                            .status(STATUS_500)
+                            .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                            .build();
                 }
             };
             let ret_rooms = match database.get_rooms_by_abbrev(&building_sel) {
                 Ok(rs) => rs,
                 Err(m) => {
                     error!("DB_ERR: {}", m);
-                    res.status(STATUS_500);
-                    res.send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into());
-                    return Some(res);
+                    return Response::new()
+                            .status(STATUS_500)
+                            .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                            .build();
                 }
             };
 
@@ -1509,41 +1638,48 @@ async fn handle_connection(
             });
             
             let contents = json_return.to_string().into();
-            res.status(STATUS_200);
-            res.send_contents(contents);
+
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
             // ----------------------------------------------------------------
         },
         // CamCode
         //  - CamCode - CFM Requests
-        "POST /cfm_build HTTP/1.1"         => {
+        "POST /cfm_build HTTP/1.1" => {
             let contents = cfm_build_dir();
-            res.status(STATUS_200);
-            res.send_contents(contents);
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
         },
-        "POST /cfm_build_r HTTP/1.1"       => {
+        "POST /cfm_build_r HTTP/1.1" => {
             let contents = cfm_build_rm(req.body);
-            res.status(STATUS_200);
-            res.send_contents(contents);
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
         },
-        "POST /cfm_c_dir HTTP/1.1"         => {
+        "POST /cfm_c_dir HTTP/1.1" => {
             let contents = get_cfm(req.body);
-            res.status(STATUS_200);
-            res.send_contents(contents);
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
         },
-        "POST /cfm_dir HTTP/1.1"           => {
+        "POST /cfm_dir HTTP/1.1" => {
             let contents = get_cfm_dir(req.body);
-            res.status(STATUS_200);
-            res.send_contents(contents);
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
         },
-        "POST /cfm_file HTTP/1.1"          => {
+        "POST /cfm_file HTTP/1.1" => {
             let contents = get_cfm_file(req.body);
             let mut f = match File::open(&contents) {
                 Ok(file) => file,
                 Err(e) => {
                     error!("Unable to open file {}: {}", &contents, e);
-                    res.status(STATUS_500);
-                    res.send_contents(format!("File not found: {}", &contents).into());
-                    return Some(res);
+                    return Response::new()
+                            .status(STATUS_500)
+                            .send_contents(format!("File not found: {}", &contents).into())
+                            .build();
                 }
             };
             
@@ -1553,91 +1689,99 @@ async fn handle_connection(
                 Err(e) => error!("Unable to read to end of file: {}", e)
             };
 
-            res.status(STATUS_200);
-            res.insert_header("Content-Type", "application/zip");
             let filename = format!("attachment; filename={}", contents);
-            res.insert_header("Content-Disposition", &filename);
-            res.send_contents(file_buffer);
+
+            Response::new()
+                    .status(STATUS_200)
+                    .insert_header("Content-Type", "application/zip")
+                    .insert_header("Content-Disposition", &filename)
+                    .send_contents(file_buffer)
         },
         // Wiki
-        "POST /w_build HTTP/1.1"           => {
+        "POST /w_build HTTP/1.1" => {
             let contents = w_build_articles();
-            res.status(STATUS_200);
-            res.send_contents(contents);
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
         },
-        // Ticket Description - Parse dynamic route
+        // Ticket Description
         start_line if start_line.starts_with("GET /ticket/description/") && start_line.ends_with(" HTTP/1.1") => {
-            // Extract ticket ID from URL: GET /ticket/description/{id} HTTP/1.1
             let ticket_id_str = start_line
                 .strip_prefix("GET /ticket/description/")
                 .and_then(|s| s.strip_suffix(" HTTP/1.1"))
                 .unwrap_or("");
-            
-            match ticket_id_str.parse::<i32>() {
-                Ok(ticket_id) => {
-                    // Use block_in_place to safely call async code from within the async context
-                    match tokio::task::block_in_place(|| {
-                        tokio::runtime::Handle::current().block_on(
-                            fetch_tdx_ticket_description(&mut database, &client, ticket_id)
-                        )
-                    }) {
-                        Ok(description) => {
-                            res.status(STATUS_200);
-                            res.send_contents(description.into());
-                        },
-                        Err(e) => {
-                            error!("Failed to fetch ticket description: {}", e);
-                            res.status(STATUS_500);
-                            res.send_contents(format!("Error: {}", e).into());
-                        }
-                    }
-                },
+
+            let ticket_id = match ticket_id_str.parse::<i32>() {
+                Ok(id) => id,
                 Err(_) => {
-                    res.status(STATUS_500);
-                    res.send_contents("Invalid ticket ID".into());
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Invalid ticket ID".into())
+                        .build();
+                }
+            };
+
+            let result = tokio::task::block_in_place(|| {
+                tokio::runtime::Handle::current().block_on(
+                    fetch_tdx_ticket_description(&mut database, &client, ticket_id)
+                )
+            });
+
+            match result {
+                Ok(description) => Response::new()
+                    .status(STATUS_200)
+                    .send_contents(description.into()),
+                Err(e) => {
+                    error!("Failed to fetch ticket description: {}", e);
+                    Response::new()
+                        .status(STATUS_500)
+                        .send_contents(format!("Error: {}", e).into())
                 }
             }
         },
-        // Ticket Feed - Parse dynamic route
+        // Ticket Feed
         start_line if start_line.starts_with("GET /ticket/feed/") && start_line.ends_with(" HTTP/1.1") => {
-            // Extract ticket ID from URL: GET /ticket/feed/{id} HTTP/1.1
             let ticket_id_str = start_line
                 .strip_prefix("GET /ticket/feed/")
                 .and_then(|s| s.strip_suffix(" HTTP/1.1"))
                 .unwrap_or("");
-            
-            match ticket_id_str.parse::<i32>() {
-                Ok(ticket_id) => {
-                    // Use block_in_place to safely call async code from within the async context
-                    match tokio::task::block_in_place(|| {
-                        tokio::runtime::Handle::current().block_on(
-                            fetch_tdx_ticket_feed(&mut database, &client, ticket_id)
-                        )
-                    }) {
-                        Ok(feed) => {
-                            res.status(STATUS_200);
-                            res.send_contents(feed.into());
-                        },
-                        Err(e) => {
-                            error!("Failed to fetch ticket feed: {}", e);
-                            res.status(STATUS_500);
-                            res.send_contents(format!("Error: {}", e).into());
-                        }
-                    }
-                },
+
+            let ticket_id = match ticket_id_str.parse::<i32>() {
+                Ok(id) => id,
                 Err(_) => {
-                    res.status(STATUS_500);
-                    res.send_contents("Invalid ticket ID".into());
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Invalid ticket ID".into())
+                        .build();
+                }
+            };
+
+            let result = tokio::task::block_in_place(|| {
+                tokio::runtime::Handle::current().block_on(
+                    fetch_tdx_ticket_feed(&mut database, &client, ticket_id)
+                )
+            });
+
+            match result {
+                Ok(feed) => Response::new()
+                    .status(STATUS_200)
+                    .send_contents(feed.into()),
+                Err(e) => {
+                    error!("Failed to fetch ticket feed: {}", e);
+                    Response::new()
+                        .status(STATUS_500)
+                        .send_contents(format!("Error: {}", e).into())
                 }
             }
         },
         &_                                 => {
-            res.status(STATUS_404);
-            res.send_file("html-css-js/404.html");
+            Response::new()
+                    .status(STATUS_404)
+                    .send_file("html-css-js/404.html")
         }
     };
     
-    return Some(res);
+    return res.build();
 }
 
 
@@ -1649,51 +1793,65 @@ async fn update_room_check_leaderboard(database: &mut Database, req: Arc<RwLock<
     let body_7_days: String;
     let body_30_days: String;
     let body_90_days: String;
-    {
-        body_7_days = req.write().unwrap().get(url_7_days)
-            .timeout(Duration::from_secs(15))
-            .send()
-            .await
-            .expect("[-] RESPONSE ERROR")
-            .text()
-            .await
-            .expect("[-] PAYLOAD ERROR");
-    }
-    let v_7_days: Value = serde_json::from_str(&body_7_days).expect("Empty");
+
+    body_7_days = req.write().unwrap().get(url_7_days)
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .expect("[-] RESPONSE ERROR")
+        .text()
+        .await
+        .expect("[-] PAYLOAD ERROR");
+
+    let v_7_days: Value = match serde_json::from_str(&body_7_days) {
+        Ok(v)  => v,
+        Err(m) => {
+            warn!("7 days field not found: {}", m);
+            json!({"data": []})
+        }
+    };
     let data_7_days: Vec<Value> = match v_7_days["data"].as_array() {
         Some(data) => data.clone(),
         None => Vec::<Value>::new()
     };
 
-    {
-        body_30_days = req.write().unwrap().get(url_30_days)
-            .timeout(Duration::from_secs(15))
-            .send()
-            .await
-            .expect("[-] RESPONSE ERROR")
-            .text()
-            .await
-            .expect("[-] PAYLOAD ERROR");
-    }
+    body_30_days = req.write().unwrap().get(url_30_days)
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .expect("[-] RESPONSE ERROR")
+        .text()
+        .await
+        .expect("[-] PAYLOAD ERROR");
 
-    let v_30_days: Value = serde_json::from_str(&body_30_days).expect("Empty");
+    let v_30_days: Value = match serde_json::from_str(&body_30_days) {
+        Ok(v)  => v,
+        Err(m) => {
+            warn!("30 days field not found: {}", m);
+            json!({"data": []})
+        }
+    };
     let data_30_days: Vec<Value> = match v_30_days["data"].as_array() {
         Some(data) => data.clone(),
         None => Vec::<Value>::new()
     };
 
-    {
-        body_90_days = req.write().unwrap().get(url_90_days)
-            .timeout(Duration::from_secs(15))
-            .send()
-            .await
-            .expect("[-] RESPONSE ERROR")
-            .text()
-            .await
-            .expect("[-] PAYLOAD ERROR");
-    }
+    body_90_days = req.write().unwrap().get(url_90_days)
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .expect("[-] RESPONSE ERROR")
+        .text()
+        .await
+        .expect("[-] PAYLOAD ERROR");
 
-    let v_90_days: Value = serde_json::from_str(&body_90_days).expect("Empty");
+    let v_90_days: Value = match serde_json::from_str(&body_90_days) {
+        Ok(v)  => v,
+        Err(m) => {
+            warn!("90 days field not found: {}", m);
+            json!({"data": []})
+        }
+    };
     let data_90_days: Vec<Value> = match v_90_days["data"].as_array() {
         Some(data) => data.clone(),
         None => Vec::<Value>::new()
@@ -1922,6 +2080,7 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> 
             if !room.needs_checked {
                 checked_rooms += 1;
             }
+            debug!("Checkerboard Room - Inserting room into database: {:?}", &room);
             let _ = database.update_room(&room);
         }
         let ret_building = match database.get_building_by_abbrev(&building.1.abbrev) {

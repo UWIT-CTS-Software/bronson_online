@@ -476,7 +476,7 @@ impl Database {
 					return None;
 				}
 			};
-			let json_keys: HashMap<String, String> = match serde_json::from_str(&k_json) {
+			let json_keys: HashMap<String, Value> = match serde_json::from_str(&k_json) {
 				Ok(jk) => jk,
 				Err(m) => {
 					error!("Unable to parse keys json: {}", m);
@@ -487,7 +487,7 @@ impl Database {
 			for (id, value) in json_keys.iter() {
 				let new_key = DB_Key {
 					key_id: id.clone(),
-					val: value.clone()
+					val: value.to_string().trim_matches('"').to_string()
 				};
 
 				let _ = self.update_key(&new_key);
@@ -673,12 +673,10 @@ impl Database {
 					Ok(kj) => String::from(kj),
 					Err(m) => { return Err(format!("KEYS_JSON environment variable not found: {}", m)); }
 				};
-				
 				let json_keys: HashMap<String, Value> = match serde_json::from_str(&key_json) {
 					Ok(k)  => k,
 					Err(m) => { return Err(format!("Unable to parse keys json: {}", m)); }
 				};
-				
 				for (id, value) in json_keys.iter() {
 					let new_key = DB_Key {
 						key_id: id.clone(),
@@ -1220,15 +1218,19 @@ impl Response {
 		};
 	}
 
-	pub fn status(&mut self, status: &str) {
+	pub fn status(mut self, status: &str) -> Response {
 		self.status = String::from(status);
+
+		self
 	}
 
-	pub fn insert_header(&mut self, header: &str, value: &str) {
+	pub fn insert_header(mut self, header: &str, value: &str) -> Response {
 		self.headers.insert(String::from(header), String::from(value));
+
+		self
 	}
 
-	pub fn send_file(&mut self, filepath: &str) {
+	pub fn send_file(mut self, filepath: &str) -> Response {
 		let file_parts: Vec<&str> = filepath.split(".").collect();
 		let content_type = String::from("Content-Type");
 		match file_parts[1] {
@@ -1253,9 +1255,11 @@ impl Response {
 
 		self.body = read(filepath).unwrap();
 		self.headers.insert(String::from("Content-Length"), self.body.len().to_string());
+
+		self
 	}
 
-	pub fn send_contents(&mut self, contents: Vec<u8>) {
+	pub fn send_contents(mut self, contents: Vec<u8>) -> Response {
 		if self.headers.contains_key("Content-Type") {
 			self.headers.remove("Content-Type");
 		}
@@ -1266,12 +1270,14 @@ impl Response {
 		self.headers.insert(String::from("Content-Type"), String::from("text/text"));
 		self.body = contents.into();
 		self.headers.insert(String::from("Content-Length"), self.body.len().to_string());
+
+		self
 	}
 
-	pub fn insert_onload(&mut self, function: &str) {
+	pub fn insert_onload(mut self, function: &str) -> Response {
 		let pre_post_search = RegBytes::new(r"(?<preamble>[\d\D]*<body).*(?<postamble>>[\d\D]*)").unwrap();
 		let pre_contents = &self.body;
-		let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return () };
+		let Some(pre_post) = pre_post_search.captures(&pre_contents) else { return self };
 		let pre = String::from_utf8(pre_post["preamble"].to_vec()).unwrap();
 		let post = String::from_utf8(pre_post["postamble"].to_vec()).unwrap();
 		let contents = format!("{} onload={}{}", pre, function, post);
@@ -1280,9 +1286,11 @@ impl Response {
 		}
 		self.headers.insert(String::from("Content-Length"), self.body.len().to_string());
 		self.body = contents.into();
+
+		self
 	}
 
-	pub fn build(&mut self) -> Vec<u8> {
+	pub fn build(self) -> Option<Vec<u8>> {
 		let mut content: Vec<u8> = Vec::new();
 		for c in self.status.chars() {
 			content.push(c as u8);
@@ -1305,7 +1313,7 @@ impl Response {
 		content.push(b'\n');
 		content.extend(&self.body);
 
-		return content;
+		return Some(content);
 	}
 }
 
@@ -1337,7 +1345,6 @@ impl Error for TerminalError {}
 pub struct Terminal;
 impl Terminal {
     pub fn execute(req: &Request) -> Result<Response, TerminalError> {
-		let mut res = Response::new();
 		let arg_str: &str = match str::from_utf8(&req.body) {
 			Ok(s) => s,
 			Err(e) => {
@@ -1351,21 +1358,27 @@ impl Terminal {
 			return Err(TerminalError::EmptyArray);
 		}
 
-		let mut contents: Vec<u8> = Vec::new();
-		let mut is_file = false;
-		match arg_vec[0].as_str() {
+		let contents: Vec<u8>;
+		Ok(match arg_vec[0].as_str() {
 			"get"    => {
 				if arg_vec.len() == 1 || arg_vec[1] == "" {
-					return Err(TerminalError::InvalidArgument("Unknown `get` argument. See `get -h` for help".to_owned()))
+					return Err(TerminalError::InvalidArgument("Unknown `get` argument. See `get -h` for help".to_owned()));
 				}
 
 				match arg_vec[1].as_str() {
 					"-h"        => {
-						contents = "get [ log | campus | version | alerts | blacklist ]".into();
+						Response::new()
+								.status(STATUS_200)
+								.send_contents(
+									json!({
+										"response": "get [ log | campus | version | alerts | blacklist ]"
+									}).to_string().into()
+								)
 					},
 					"log"       => {
-						is_file = true;
-						res.send_file(LOG);
+						Response::new()
+								.status(STATUS_200)
+								.send_file(LOG)
 					},
 					"campus"       => {
 						// WARNING: This function call generates an entirely new Database object that will have a cookie key that is different than the database object in main.
@@ -1375,15 +1388,41 @@ impl Terminal {
 							Ok(c)  => json!(c).to_string().into(),
 							Err(_) => "".into()
 						};
+
+						Response::new()
+								.status(STATUS_200)
+								.send_contents(
+									json!({
+										"response": contents
+									}).to_string().into()
+								)
 					},
 					"version"   => {
-						contents = env!("CARGO_PKG_VERSION").into();
+						Response::new()
+								.status(STATUS_200)
+								.send_contents(
+									json!({
+										"response": env!("CARGO_PKG_VERSION")
+									}).to_string().into()
+								)
 					},
 					"alerts"    => {
-						contents = "none".into();
+						Response::new()
+								.status(STATUS_200)
+								.send_contents(
+									json!({
+										"response": "none"
+									}).to_string().into()
+								)
 					},
 					"blacklist" => {
-						contents = "none".into();
+						Response::new()
+								.status(STATUS_200)
+								.send_contents(
+									json!({
+										"response": "none"
+									}).to_string().into()
+								)
 					},
 					&_          => {
 						return Err(TerminalError::InvalidArgument("Unknown `get` argument. See `get -h` for help.".to_owned())).into();
@@ -1391,37 +1430,53 @@ impl Terminal {
 				}
 			},
 			"add"    => {
-				contents = "add page".into();
+				Response::new()
+						.status(STATUS_200)
+						.send_contents(
+							json!({
+								"response": "add page"
+							}).to_string().into()
+						)
 			},
 			"update" => {
-				contents = "update page".into();
+				Response::new()
+						.status(STATUS_200)
+						.send_contents(
+							json!({
+								"response": "update page"
+							}).to_string().into()
+						)
 			},
 			"delete" => {
-				contents = "delete page".into();
+				Response::new()
+						.status(STATUS_200)
+						.send_contents(
+							json!({
+								"response": "delete page"
+							}).to_string().into()
+						)
 			},
 			"help"   => {
-				contents = "
+				let contents = "
 hello  : hello NAME
 get    : get [ log | campus | version | alerts | blacklist ]
 add    : add [ user '{username: permissions}' | data '{key: val}' | key '{key: val}' ]
 update : update []
 delete : delete []
 help   : help
-            ".into();
+            ";
+				Response::new()
+						.status(STATUS_200)
+						.send_contents(
+							json!({
+								"response": contents
+							}).to_string().into()
+						)
 			},
 			&_       => {
 				return Err(TerminalError::InvalidArgument("Unknown comand: ".to_owned() + &arg_vec[0]));
-			},
-		}
-
-		res.status(STATUS_200);
-		if !is_file {
-			res.send_contents(json!({
-				"response": String::from_utf8(contents).unwrap()
-			}).to_string().into());
-		}
-
-		return Ok(res);
+			}
+		})
     }
 
 	pub fn group_delimited(args: Vec<&str>) -> Vec<String> {
