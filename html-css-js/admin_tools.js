@@ -1202,7 +1202,9 @@ async function setDBEditor() {
                             <th scope="col">WyoShares</th>
                             <th scope="col">Ceiling Mics</th>
                             <th scope="col">General Pool</th>
-                            <th scope="col">Marked as Offline</th>
+                            <th scope="col">Room Check Period</th>
+                            <th scope="col">Mark Offline</th>
+                            <th scope="col">Back Online Date</th>
                         </tr>
                     </thead>
                     <tbody id="${building}-tbody">`);
@@ -1212,6 +1214,7 @@ async function setDBEditor() {
             let procCount, dispCount, pjCount, tpCount, wsCount, micCount;
             procCount = dispCount = pjCount = tpCount = wsCount = micCount = 0;
             let gpBool = room.gp;
+            let rmCheckPeriod = room.rmCheckPeriod;
             let offlnBool = room.offln;
             
             pingData.forEach(function(device) {
@@ -1239,6 +1242,19 @@ async function setDBEditor() {
                         break;
                 }
             });
+
+            let rmCheckPeriodHTML = `
+                <option value="0">1 Week</option>
+                <option value="1">2 Week</option>
+                <option value="2">1 Month</option>
+                <option value="3">3 Months</option>
+            `;
+            // Set the correct option to selected based on rmCheckPeriod value
+            for (let i = 0; i < 4; i++) {
+                if (i == rmCheckPeriod) 
+                    rmCheckPeriodHTML = rmCheckPeriodHTML.replace(`value="${i}"`, `value="${i}" selected`);
+            }
+
             tmp.push(`
                 <tr id="${roomName}-row" class="dbeRoomRow" oninput="updateRow('${roomName}-row')">
                     <th scope="row" class="dbRoomName"><span class="dbRoomInputName" id="${roomName}-text" value="${roomName}">${roomName}</span></th>
@@ -1248,8 +1264,10 @@ async function setDBEditor() {
                     <td><input type="number" class="dbRoomInput" id="${roomName}-TP" value="${tpCount}" min="0"></td>
                     <td><input type="number" class="dbRoomInput" id="${roomName}-WS" value="${wsCount}" min="0"></td>
                     <td><input type="number" class="dbRoomInput" id="${roomName}-CMIC" value="${micCount}" min="0"></td>
-                    <td><input type="checkbox" class="dbRoomCheckbox" id="${roomName}-GP" ${gpBool ? 'checked' : ''}></td>
-                    <td><input type="checkbox" class="dbRoomCheckbox" id="${roomName}-OFFLN" ${offlnBool ? 'checked' : ''}></td>
+                    <td><input type="checkbox" class="dbRoomCheckbox gpCheckbox" data-room="${roomName}" id="${roomName}-GP" ${gpBool ? 'checked' : ''}></td>
+                    <td><select class="dbCheckPeriod" id="${roomName}-CHECK" ${gpBool ? 'disabled' : ''}>${rmCheckPeriodHTML}</select></td>
+                    <td><input type="checkbox" class="dbRoomCheckbox offlnCheckbox" data-room="${roomName}" id="${roomName}-OFFLN" ${offlnBool ? 'checked' : ''}></td>
+                    <td><input type="date" class="dbRoomCheckbox" id="${roomName}-ONLN" ${offlnBool ? '' : 'disabled'}></td>
                     <td><button id="${roomName}_rmvBtn" class="rmvButton" onclick="removeRoomFromBuilding('${roomName}-row')"> Remove </button></td>
                 </tr>`);
         });
@@ -1266,7 +1284,30 @@ async function setDBEditor() {
             </menu>
         </fieldset>`);
         db_editor.innerHTML += tmp.join('');
+
+        // Listeners for checkboxes 
+        document.addEventListener('change', function (event) {
+            const target = event.target;
+
+            // GP checkbox toggles room check period dropdown
+            if (target.classList.contains('gpCheckbox')) {
+                const room = target.dataset.room;
+                const checkSelect = document.getElementById(`${room}-CHECK`);
+                if (!checkSelect) return;
+
+                checkSelect.value = "0"; // 1 Week
+                checkSelect.disabled = target.checked;
+            }
+
+            // OFFLN checkbox toggles back-online date field
+            if (target.classList.contains('offlnCheckbox')) {
+                const room = target.dataset.room;
+                const dateInput = document.getElementById(`${room}-ONLN`);
+                if (dateInput) dateInput.disabled = !target.checked;
+            }
+        });
     });
+
     // Get timestamps for last room schedule update, sort them by weekday
     let rsTimestamp = await getLastRoomScheduleUpdate();
     let ts_arr = JSON.parse(rsTimestamp["timestamps"]);
@@ -1877,9 +1918,11 @@ function confirmDBBuildingAddition() {
                         <th scope="col">Displays</th>
                         <th scope="col">Touch Panels</th>
                         <th scope="col">WyoShares</th>
-                        <th scope="col">Celing Mics</th>
+                        <th scope="col">Ceiling Mics</th>
                         <th scope="col">General Pool</th>
-                        <th scope="col">Marked as Offline</th>
+                        <th scope="col">Room Check Period</th>
+                        <th scope="col">Mark Offline</th>
+                        <th scope="col">Back Online Date</th>
                     </tr>
                 </thead>
                 <tbody id="${building}-tbody">
@@ -2012,6 +2055,12 @@ function confirmRoomAddition(textareaID, buildingTableID) {
         console.log(roomName);
         return;
     }
+    let rmCheckPeriodHTML = `
+        <option value="0" selected>1 Week</option>
+        <option value="1">2 Week</option>
+        <option value="2">1 Month</option>
+        <option value="3">3 Months</option>
+    `;
     // Add new row to given building with class = dbRowToBeAdded.
     let tmp = `
     <tr id="${roomName}-row" class="dbRowToBeAdded" oninput="updateRow('${roomName}-row')">
@@ -2022,12 +2071,37 @@ function confirmRoomAddition(textareaID, buildingTableID) {
         <td><input type="number" class="dbRoomInput" id="${roomName}-TP" value="0" min="0"></td>
         <td><input type="number" class="dbRoomInput" id="${roomName}-WS" value="0" min="0"></td>
         <td><input type="number" class="dbRoomInput" id="${roomName}-CMIC" value="0" min="0"></td>
-        <td><input type="checkbox" class="dbRoomCheckbox" id="${roomName}-GP"></td>
-        <td><input type="checkbox" class="dbRoomCheckbox" id="${roomName}-OFFLN"></td>
+        <td><input type="checkbox" class="dbRoomCheckbox gpCheckbox" data-room="${roomName}" id="${roomName}-GP"></td>
+        <td><select class="dbRoomCheckbox" id="${roomName}-CHECK">${rmCheckPeriodHTML}</td>
+        <td><input type="checkbox" class="dbRoomCheckbox offlnCheckbox" data-room="${roomName}" id="${roomName}-OFFLN"></td>
+        <td><input type="date" class="dbRoomCheckbox" id="${roomName}-ONLN" disabled></td>
         <td><button class="rmvButton" id="${roomName}_rmvBtn" onclick="removeRoomFromBuilding('${roomName}-row')"> Remove </button></td>
     </tr>`;
     // Add new Row to Table
     tableElement.innerHTML += tmp;
+
+    // Listeners for checkboxes 
+    document.addEventListener('change', function (event) {
+        const target = event.target;
+
+        // GP checkbox toggles room check period dropdown
+        if (target.classList.contains('gpCheckbox')) {
+            const room = target.dataset.room;
+            const checkSelect = document.getElementById(`${room}-CHECK`);
+            if (!checkSelect) return;
+
+            checkSelect.value = "0"; // 1 Week
+            checkSelect.disabled = target.checked;
+        }
+
+        // OFFLN checkbox toggles back-online date field
+        if (target.classList.contains('offlnCheckbox')) {
+            const room = target.dataset.room;
+            const dateInput = document.getElementById(`${room}-ONLN`);
+            if (dateInput) dateInput.disabled = !target.checked;
+        }
+    });
+
     syncTablesWithChangelog();
     // DBChangelog update
     let changeObj = {
@@ -2223,6 +2297,7 @@ function updateRow(rowElementID) {
     
     // Go through each input in row and grab values
     let inputs = rowElement.getElementsByTagName("input");
+    let selects = rowElement.getElementsByTagName("select");
     let defaultBool = true;
     // If this is an insertion row, we need to remove the first input as it is a text editor for the room name, which we store elsewhere.
     // if(rowElement.classList.contains("dbRowToBeAdded")) {
@@ -2236,13 +2311,44 @@ function updateRow(rowElementID) {
         DefaultValue: [],
         NewValue: []
     }
-    for(let i = 0; i < inputs.length; i++) {
-        let id = inputs[i].getAttribute("id");
-        let devField = id.split("-")[1];
+
+    for (let i = 0; i < inputs.length; i++) {
+        let idInputs = inputs[i].getAttribute("id");
+        let devField = idInputs.split("-")[1]; 
+
         if (devField != "text") {
             newChange.Field.push(devField);
+            
+            if (devField === "GP" && selects.length) { // Perform the CHECK at the same time as GP
+                // GP first
+                let gpDefaultValue = inputs[i].defaultChecked ? "1" : "0";
+                let gpValue = inputs[i].checked ? "1" : "0";
+                newChange.DefaultValue.push(gpDefaultValue);
+                newChange.NewValue.push(gpValue);
+                if (gpDefaultValue !== gpValue) 
+                    defaultBool = false;
+
+                // CHECK second
+                let select = selects[0];
+                let checkDefault;
+                if (gpValue === "1") {
+                    checkDefault = "0"; // Special case: GP is true, then force CHECK to 0
+                } else {
+                    let defaultOption = [...select.options].find(o => o.defaultSelected);
+                    checkDefault = defaultOption ? defaultOption.value : "0";
+                }
+
+                // Determine the CHECK current value
+                let checkValue = gpValue === "1" ? "0" : select.value;
+                newChange.Field.push(select.getAttribute("id").split("-")[1]);
+                newChange.DefaultValue.push(checkDefault);
+                newChange.NewValue.push(checkValue);
+                if (checkDefault !== checkValue) 
+                    defaultBool = false;
+            }
         }
-        if (inputs[i].type == "checkbox") {
+
+        if (inputs[i].type == "checkbox" && devField != "GP") { // GP gets handled above
             if (inputs[i].defaultChecked != inputs[i].checked) {
                 defaultBool = false;
             }
@@ -2262,6 +2368,22 @@ function updateRow(rowElementID) {
             }
             //newChange.DefaultValue.push(inputs[i].defaultValue);
             //newChange.NewValue.push(inputs[i].value);
+        } else if (inputs[i].type == "date") {
+            let dateDefault = inputs[i].defaultValue || "2000-01-01";
+            let offlnValue = newChange.NewValue[newChange.NewValue.length - 1]; // last pushed value
+            let dateValue;
+
+            if (offlnValue === "1")
+                dateValue = inputs[i].value || "3000-01-01"; // allow user input if they manually typed one
+            else
+                dateValue = "2000-01-01"; // force past date
+
+            newChange.DefaultValue.push(dateDefault);
+            newChange.NewValue.push(dateValue);
+
+            if (dateValue != dateDefault) {
+                defaultBool = false;
+            }
         }
     }
     // Update Changelog Object

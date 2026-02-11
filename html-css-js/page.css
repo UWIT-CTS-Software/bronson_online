@@ -56,6 +56,35 @@ textarea {
     resize:none;
 }
 
+input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+    background-color: rgb(221 187 96);
+    border: 2px outset rgb(144,118,26);
+    max-width: 50%;
+    min-width: 5%;
+    padding-left: 4px; 
+}
+
+input[type=date] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+    background-color: rgb(221 187 96);
+    border: 2px outset rgb(144,118,26);
+    padding-left: 4px; 
+    color: black;
+}
+
+input[type=date]:disabled {
+    -moz-appearance: textfield;
+    appearance: textfield;
+    background-color: rgb(133, 112, 57);
+    border: 2px outset rgb(144,118,26);
+    padding-left: 4px; 
+    color: rgb(133, 112, 57);
+    opacity: 0.5;
+}
+
 fieldset {
     border: 2px outset rgb(144,118,26);
     border-radius: 15px;
@@ -1468,6 +1497,7 @@ ol li::marker {
     width: 130px;
     display: inline-block;
     text-align: right;
+    inherits: none;
 }
 
 .DBE_Building_Fields {
@@ -1491,7 +1521,9 @@ ol li::marker {
 .dbBuildingSmallInput {
     width: 40px;
     color: rgb(144, 118, 26);
-    background-color: rgb(50, 50, 50);
+    background-color: rgb(50, 50, 50) !important;
+    border-style: inset !important;
+    border-color: light-dark(rgb(118, 118, 118), rgb(133, 133, 133)) !important;
 }
 
 .dbRoomInputName {
