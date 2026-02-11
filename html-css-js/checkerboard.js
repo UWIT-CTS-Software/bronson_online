@@ -231,8 +231,14 @@ async function printCBResponse(JSON) {
         }
         // Is available ?
         let formattedTime = FourDigitToTimeFormat(rooms[j]['until']);
+        let online;
+        if (rooms[j]['onln'] === "2000-01-01" || rooms[j]['onln'] === "3000-01-01")
+            online = "Offline Indefinitely";
+        else 
+            online = "Room goes Back Online " + rooms[j]['onln'];
+
         if (rooms[j]['offln']) {
-            cbRoomEntry += `<li class="cbVisBackOnline"><span class="cbVisRoomAttributeSpan "> Room goes Back Online ${-1} </span></li>`;
+            cbRoomEntry += `<li class="cbVisBackOnline"><span class="cbVisRoomAttributeSpan "> ${online} </span></li>`;
         }
         else if(rooms[j]['available']) {
             // Sometimes, until is 0000, should probably say 'TOMORROW'
