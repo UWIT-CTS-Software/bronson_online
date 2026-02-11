@@ -784,6 +784,13 @@ async fn handle_connection(
                             .collect()
                     })
                     .unwrap();
+                // Extract the date separately as a string (last element)
+                let new_date: String = body_json["newValue"]
+                    .as_array()
+                    .and_then(|arr| arr.last())
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("0")
+                    .to_string();
                 debug!("[Admin Tools] - Updating Target Room:{}\n New Values: {:?}", target_room, new_values);
                 // Get Existing Room Record from database
                 let mut new_db_room : DB_Room = match database.get_room_by_name(&target_room) {
@@ -803,11 +810,13 @@ async fn handle_connection(
                     0 => false,
                     _ => false,
                 };
-                new_db_room.offln = match new_values[7] { 
+                new_db_room.check_period = new_values[7] as i16;
+                new_db_room.offln = match new_values[8] { 
                     1 => true,
                     0 => false,
                     _ => false,
                 };
+                new_db_room.onln = new_date;
                 // Build Updated Ping Data Vector
                 let hn_vec = Database::gen_hn(String::from(target_room), &new_values);
                 let ping_vec = Database::gen_ip(&hn_vec);
@@ -838,7 +847,7 @@ async fn handle_connection(
                     .as_str()
                     .unwrap()
                     .to_string();
-                let new_values: Vec<u8> = [0,0,0,0,0,0,0,0].to_vec();
+                let new_values: Vec<u8> = [0,0,0,0,0,0,0,0,0,0].to_vec();
                 // Note: When we are inserting a new room, we are not providing the inventory in the same call. The intention is that the front-end will send the rooms to insert first and if their is inventory associated with it it will come after.
                 // Build DB_Room Object and insert to Database
                 // Ping Data Vector
@@ -855,7 +864,9 @@ async fn handle_connection(
                         0 => false,
                         _ => false,
                     },
+                    check_period: 0,
                     offln: false,
+                    onln: "2000-01-01".to_string(),
                     available: false,
                     until: String::from("TOMORROW"),
                     ping_data: ping_vec,

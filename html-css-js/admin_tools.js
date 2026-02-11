@@ -1214,9 +1214,10 @@ async function setDBEditor() {
             let procCount, dispCount, pjCount, tpCount, wsCount, micCount;
             procCount = dispCount = pjCount = tpCount = wsCount = micCount = 0;
             let gpBool = room.gp;
-            let rmCheckPeriod = room.rmCheckPeriod;
+            let rmCheckPeriod = room.check_period;
             let offlnBool = room.offln;
-            
+            let onln = room.onln;
+
             pingData.forEach(function(device) {
                 let hnObj = device.hostname; // hostname Object
                 switch(hnObj.dev_type) {
@@ -1267,7 +1268,7 @@ async function setDBEditor() {
                     <td><input type="checkbox" class="dbRoomCheckbox gpCheckbox" data-room="${roomName}" id="${roomName}-GP" ${gpBool ? 'checked' : ''}></td>
                     <td><select class="dbCheckPeriod" id="${roomName}-CHECK" ${gpBool ? 'disabled' : ''}>${rmCheckPeriodHTML}</select></td>
                     <td><input type="checkbox" class="dbRoomCheckbox offlnCheckbox" data-room="${roomName}" id="${roomName}-OFFLN" ${offlnBool ? 'checked' : ''}></td>
-                    <td><input type="date" class="dbRoomCheckbox" id="${roomName}-ONLN" ${offlnBool ? '' : 'disabled'}></td>
+                    <td><input type="date" class="dbRoomCheckbox" id="${roomName}-ONLN" ${offlnBool ? '' : 'disabled'} value="${onln}"></td>
                     <td><button id="${roomName}_rmvBtn" class="rmvButton" onclick="removeRoomFromBuilding('${roomName}-row')"> Remove </button></td>
                 </tr>`);
         });
@@ -1776,7 +1777,6 @@ async function updateDatabaseFromEditor() {
 }
 
 async function postDBChange(endpoint, packet) {
-    //console.log("DEBUG: Posting to ", endpoint, " with packet ", packet);
     return fetch(`${endpoint}`, {
         method: "POST",
         headers: {
