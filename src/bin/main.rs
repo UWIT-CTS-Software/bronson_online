@@ -1743,7 +1743,7 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> 
     for building in buildings {
         debug!("[Checkerboard] - Processing Building: {:?}", building.1.abbrev);
         //println!("{:?}", building);
-        let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", building.1.lsm_name.as_str());
+        let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last90days%22%2CParentLocation%3A%22{}%22%7D", building.1.lsm_name.as_str());
         // Get Alias Table, to swap incoming room_names from LSM with
         //   Bronson friendly naming. We filter Alias Table to only contain
         //   rooms that are relevant to current LSM request.
@@ -1858,14 +1858,8 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> 
             }
         };
         for mut room in rooms {
-            if check_map.contains_key(&room.name) {
-                room.checked = String::from(match check_map.get(&room.name) {
-                    Some(r) => r,
-                    None => {
-                        warn!("Unable to fetch room, defaulting.");
-                        "2000-01-01T00:00:00Z"
-                    }
-                });
+            if let Some(r) = check_map.get(&room.name) {
+                room.checked = r.clone();
             }
             room.needs_checked = check_lsm(&room);
             let schedule_params = check_schedule(&room);
@@ -1877,6 +1871,7 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> 
             }
             debug!("Checkerboard Room - Inserting room into database: {:?}", &room);
             let _ = database.update_room(&room);
+        }
         }
         let ret_building = match database.get_building_by_abbrev(&building.1.abbrev) {
             Ok(b)  => b,
@@ -2174,32 +2169,29 @@ fn check_schedule(room: &DB_Room) -> (bool, String) {
     return (available, until);
 }
 
+fn check_period_to_delta(period: i16) -> TimeDelta {
+    match period {
+        0 => TimeDelta::weeks(1),   // 1 Week
+        1 => TimeDelta::weeks(2),   // 2 Weeks
+        2 => TimeDelta::days(30),   // 1 Month (approx)
+        3 => TimeDelta::days(90),   // 3 Months (approx)
+        _ => TimeDelta::weeks(1),   // default
+    }
+}
+
 fn check_lsm(room: &DB_Room) -> bool {
-    let needs_checked;
-    // Line below produces -> ParseError(TooShort)
-    let parsed_checked: DateTime<Local> = match room.checked.parse() {
-        Ok(dt) => dt,
+    let parsed_checked: DateTime<Local> = match room.checked.parse::<DateTime<Utc>>() {
+        Ok(dt) => dt.with_timezone(&Local),
         Err(e) => {
-            error!("Unable to parse incoming DateTime: {}", e);
-            String::from("2000-01-01T00:00:00Z").parse().unwrap()
+            error!("Unable to parse incoming DateTime '{}': {}", room.checked, e);
+            return true; // fail-safe: assume it needs checked
         }
     };
-    let time_diff: TimeDelta = Local::now() - parsed_checked;
-    if room.gp {
-        if time_diff.num_seconds() >= 604800 {
-            needs_checked = true;
-        } else {
-            needs_checked = false;
-        }
-    } else {
-        if time_diff.num_days() >= 30 {
-            needs_checked = true;
-        } else {
-            needs_checked = false;
-        }
-    }
 
-    return needs_checked;
+    let elapsed = Local::now() - parsed_checked;
+    let required_delta = check_period_to_delta(room.check_period);
+
+    return elapsed >= required_delta;
 }
 
 /*

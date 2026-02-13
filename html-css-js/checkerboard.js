@@ -224,7 +224,7 @@ async function printCBResponse(JSON) {
             cbRoomEntry += `<li class="cbVisOffline"><span class="cbVisRoomAttributeSpan "> Room Offline! </span></li>`;
         }
         else if(rooms[j]['needs_checked']) {
-            cbRoomEntry += `<li class="cbVisNotChecked"><span class="cbVisRoomAttributeSpan "> Needs Checked! (${check_date})</span></li>`;
+            cbRoomEntry += `<li class="cbVisNotChecked"><span class="cbVisRoomAttributeSpan "> Needs Checked! </span></li>`;
         } else {
             cbRoomEntry += `<li class="cbVisChecked"><span class="cbVisRoomAttributeSpan "> Recently Checked! (${check_date})</span></li>`;
             numberChecked++;
