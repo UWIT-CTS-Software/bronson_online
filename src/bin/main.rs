@@ -1872,7 +1872,6 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> 
             debug!("Checkerboard Room - Inserting room into database: {:?}", &room);
             let _ = database.update_room(&room);
         }
-        }
         let ret_building = match database.get_building_by_abbrev(&building.1.abbrev) {
             Ok(b)  => b,
             Err(m) => { return Err(m.to_string()); }
