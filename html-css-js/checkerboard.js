@@ -222,6 +222,7 @@ async function printCBResponse(JSON) {
         let check_date = rooms[j]['checked'].split('T')[0];
         if (rooms[j]['offln']) {
             cbRoomEntry += `<li class="cbVisOffline"><span class="cbVisRoomAttributeSpan "> Room Offline! </span></li>`;
+            numberChecked++; // Mark offline rooms as checked
         }
         else if(rooms[j]['needs_checked']) {
             cbRoomEntry += `<li class="cbVisNotChecked"><span class="cbVisRoomAttributeSpan "> Needs Checked! </span></li>`;
@@ -262,9 +263,19 @@ async function printCBResponse(JSON) {
     consoleObj.append(cbVisContainer);
 
     //update topper entry
-    let checkedPercent = 100 * (numberChecked / numberRooms);
+    let checkedPercent = 100 * (numberChecked / (numberRooms));
     let topperID = `cbTopper_${building['abbrev']}`;
-    await updateTopperElement(topperID, building['name'], numberChecked, numberRooms);
+    await updateTopperElement(topperID, building['name'], numberChecked, (numberRooms));
+    
+    // Store the calculated checked count for this building in session storage
+    try {
+        let cbBuildingCounts = globalThis.JSON.parse(sessionStorage.getItem('cbBuildingCounts') || '{}');
+        cbBuildingCounts[building['abbrev']] = numberChecked;
+        sessionStorage.setItem('cbBuildingCounts', globalThis.JSON.stringify(cbBuildingCounts));
+    } catch(e) {
+        console.error('Error storing building count:', e);
+    }
+    
     return;
 }
 

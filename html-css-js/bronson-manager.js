@@ -510,6 +510,7 @@ async function dashCheckerboardHTML() {
 async function dashCheckerboard() {
     let cb_dash = JSON.parse(sessionStorage.getItem("db_checker"));
     let zoneObject = JSON.parse(localStorage.getItem("zoneData"));
+    let cbBuildingCounts = JSON.parse(sessionStorage.getItem("cbBuildingCounts")) || {};
     //console.log(cb_dash);
     // GET ZONE OBJ AND ITERATE OVER THAT AND USE THAT ARRAY TO GRAB
     // ENTRIES OUT OF CAMPOBJECT
@@ -519,7 +520,12 @@ async function dashCheckerboard() {
         let bl = await getBuildingAbbrevsFromZone(zone);
         for(bldg in bl) {
             let building = await getBuilding(bl[bldg]);
-            cr += building.checked_rooms;
+            // Use checked counts from checkerboard if available, otherwise use database
+            if (cbBuildingCounts[bl[bldg]] !== undefined) {
+                cr += cbBuildingCounts[bl[bldg]];
+            } else {
+                cr += building.checked_rooms;
+            }
             tr += building.total_rooms;
         }
         // add to cb_dash
