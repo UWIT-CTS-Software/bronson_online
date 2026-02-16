@@ -213,8 +213,9 @@ async function printCBResponse(JSON) {
         // Check to see if the checked room filter is on
         let checkFilter = sessionStorage.getItem("cbHideBool");
         checkFilter = (checkFilter == 'true') ? true : false;
+        let shouldHide = checkFilter && (!rooms[j]['needs_checked'] || rooms[j]['offln']);
         //console.log("CB DEBUG, Check enabled? ",checkFilter);
-        let cbRoomEntry = `<li class="cbVisRoom cbState${rooms[j]['needs_checked']} ${(!checkFilter && !rooms[j]['needs_checked']) ? "hideVisTile" : ""}">`;
+        let cbRoomEntry = `<li class="cbVisRoom cbState${rooms[j]['needs_checked']} ${shouldHide ? "hideVisTile" : ""}">`;
         // Maybe add some generalPool/DepartmentShared indicator
         cbRoomEntry += `<p class="cbVisRoomName">${rooms[j]['name']} </p>`;
         //  - ROOM ATTRIBUTES
@@ -303,21 +304,26 @@ function toggleHideRooms() {
     let currentState = sessionStorage.getItem("cbHideBool");
     let bool = (currentState == 'true');
     if (!bool) {
-        currentState = true;
+        currentState = "true";
         let label = document.getElementById("cbToggleLabel");
         label.innerHTML = "Showing Checked Rooms";
-        let tiles = document.getElementsByClassName("cbStatefalse");
-        for(let i=0; i < tiles.length; i++) {
-            tiles[i].classList.remove("hideVisTile");
-        }
+        // When showing checked rooms, remove hideVisTile from all rooms
+        let allRooms = document.querySelectorAll(".cbVisRoom");
+        allRooms.forEach(room => {
+            room.classList.remove("hideVisTile");
+        });
     } else {
-        currentState = false;
+        currentState = "false";
         let label = document.getElementById("cbToggleLabel");
         label.innerHTML = "Hiding Checked Rooms";
-        let tiles = document.getElementsByClassName("cbStatefalse");
-        for(let i=0; i < tiles.length; i++) {
-            tiles[i].classList.add("hideVisTile");
-        }
+        // When hiding checked rooms, add hideVisTile to needs_checked=false OR offline rooms
+        let allRooms = document.querySelectorAll(".cbVisRoom");
+        allRooms.forEach(room => {
+            // Hide if it's cbStatefalse (needs_checked=false) OR contains "Room Offline"
+            if (room.classList.contains("cbStatefalse") || room.textContent.includes("Room Offline")) {
+                room.classList.add("hideVisTile");
+            }
+        });
     }
     sessionStorage.setItem("cbHideBool", currentState);
     return;
@@ -439,6 +445,6 @@ async function setChecker() {
     progGuts.replaceWith(main_container);
 
     // Init Hide Bool Variable in session storage
-    sessionStorage.setItem("cbHideBool", true);
+    sessionStorage.setItem("cbHideBool", "false");
     return;
 }
