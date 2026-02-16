@@ -109,7 +109,8 @@ async function initLocalStorage() {
         dashCheckerboard(); // poplate cb_dash
         dashSpares(); // populate db_spares
     }
-    //isMobile();
+    // Detect whether page is on Mobile
+    localStorage.setItem("isMobile", isMobile());
     return;
 }
 
@@ -836,10 +837,10 @@ function isMobile() {
     let r = screenWidth / screenHeight;
     //console.log("Screen Width: ", screenWidth, ", Screen Height: ", screenHeight, " Ratio: ", r);
     if (r < 1.2) {
-        //console.log("Mobile User Detected");
+        console.log("Mobile User Detected");
         return true;
     } else {
-        //console.log("Desktop User Detected");
+        // console.log("Desktop User Detected");
         return false;
     }
 }

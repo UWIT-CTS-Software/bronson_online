@@ -734,6 +734,46 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_contents(contents)
         },
+        "GET /currentUser HTTP/1.1" => { // OUTGOING, Current user info
+            let cookie = req.headers
+                .get("Cookie")
+                .cloned()
+                .unwrap_or(String::new());
+
+            let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
+
+            let username = if let Some(captures) = username_search.captures(&cookie) {
+                captures["username"].to_string()
+            } else {
+                return Response::new()
+                    .status(STATUS_401)
+                    .send_contents(json!({
+                        "error": "No authentication cookie"
+                    }).to_string().into())
+                    .build();
+            };
+
+            // Fetch user from DB
+            match database.get_user(&username) {
+                Ok(user) => {
+                    Response::new()
+                        .status(STATUS_200)
+                        .send_contents(json!({
+                            "username": user.username,
+                            "permissions": user.permissions
+                        }).to_string().into())
+                }
+
+                Err(_) => {
+                    return Response::new()
+                        .status(STATUS_401)
+                        .send_contents(json!({
+                            "error": "User not found"
+                        }).to_string().into())
+                        .build();
+                }
+            }
+        },
         "GET /tickets HTTP/1.1" => { // OUTGOING, Tickets for Tickex
             let db_tickets = match database.get_all_tickets() {
                 Ok(t) => t,

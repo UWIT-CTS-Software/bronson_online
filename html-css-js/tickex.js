@@ -855,7 +855,9 @@ async function setTickex() {
     
     // Clear stash and remove strobing indicator
     sessionStorage.removeItem("Tickex_stash");
-    
+
+    const isMobile = (localStorage.getItem("isMobile") === "true") ? true : false;
+
     let current = document.getElementsByClassName("selected");
     if (current.length != 0)
         current[0].classList.remove("selected");
@@ -884,11 +886,19 @@ async function setTickex() {
     let main_container = document.createElement('div');
     main_container.appendChild(tx_container);
     main_container.classList.add('program_guts');
+    
+    // Add mobile class if on mobile device
+    if (isMobile) tx_container.classList.add('mobile');
+    
     progGuts.replaceWith(main_container);
 
 
 
     /* -------------------- Tickex Page -------------------- */
+
+    // TODO: Remove "What Changed" Box from Mobile
+    //          - Also cap width for popups on mobile
+    // Fix "Loading Tickets" Popup on Mobile
 
     // Display loading message while fetching tickets
     let loadingMessage = document.createElement("div");
@@ -941,6 +951,7 @@ async function setTickex() {
     // Sort By Box - by date and status
     let sortByBox = document.createElement("div");
     sortByBox.classList.add("tx_sortByBox");
+    if (isMobile) sortByBox.classList.add("mobile");
     sortByBox.id = "sortByBox";
     sortByBox.innerHTML = `
         <legend>Sort By</legend>
@@ -963,6 +974,7 @@ async function setTickex() {
     // Search Bar
     let searchBar = document.createElement("div");
     searchBar.classList.add("tx_search");
+    if (isMobile) searchBar.classList.add("mobile");
     searchBar.innerHTML = `
         <legend>Search</legend>
         <textarea id="searchBar" placeholder="Search: Title, ID, Description, Room, Date, etc...  (Enter)"></textarea>
@@ -970,45 +982,48 @@ async function setTickex() {
     `;
     tx_container.append(searchBar);
 
-    // TeamDynamix Hotlink
-    let tdxHotlink = document.createElement("div");
-    tdxHotlink.classList.add("tx_tdxHotlink");
-    tdxHotlink.innerHTML = `
-        <legend>Link to TDX</legend>
-        <a href="https://uwyo.teamdynamix.com/TDWorkManagement/" target="_blank" rel="noopener noreferrer">
-            <img src="/tdx_logo.png" alt="TeamDynamix" style="height:45px; vertical-align:middle; cursor:pointer;" />
-        </a>
-    `;
-    tx_container.append(tdxHotlink);
+    if (!isMobile) {
+        // TeamDynamix Hotlink
+        let tdxHotlink = document.createElement("div");
+        tdxHotlink.classList.add("tx_tdxHotlink");
+        tdxHotlink.innerHTML = `
+            <legend>Link to TDX</legend>
+            <a href="https://uwyo.teamdynamix.com/TDWorkManagement/" target="_blank" rel="noopener noreferrer">
+                <img src="/tdx_logo.png" alt="TeamDynamix" style="height:45px; vertical-align:middle; cursor:pointer;" />
+            </a>
+        `;
+        tx_container.append(tdxHotlink);
+        
+        // Dismiss Notifications Button (Admin only)
+        let dismissAllButton = document.createElement("div");
+        dismissAllButton.classList.add("tx_dismissAllButton");
+        const userPermissions = await fetchCurrentUserPermissions();
+        if (userPermissions >= 6) {
+            dismissAllButton.innerHTML = `
+                <button id="tx_dismissAllButton" onclick="dismissAllPopup()">Dismiss All</button>
+            `;
+            tx_container.append(dismissAllButton);
+        }
+
+        // Dismiss All Confirmation Popup (Admin only)
+        let dismissAllPopupContainer = document.createElement("div");
+        dismissAllPopupContainer.classList.add("tx_dismissAllPopupContainer");
+        tx_container.append(dismissAllPopupContainer);
+    }
 
     // New Tickets Popup
     let newTicketsPopup = document.createElement("div");
     newTicketsPopup.classList.add("tx_newTicketsPopup");
+    if (isMobile) newTicketsPopup.classList.add("mobile");
     newTicketsPopup.innerHTML = `
         <legend>New Tickets are Available!</legend>
     `;
     tx_container.append(newTicketsPopup);
 
-    // Dismiss Notifications Button (Admin only)
-    let dismissAllButton = document.createElement("div");
-    dismissAllButton.classList.add("tx_dismissAllButton");
-    const userPermissions = await fetchCurrentUserPermissions();
-    if (userPermissions >= 6) {
-        dismissAllButton.innerHTML = `
-            <button id="tx_dismissAllButton" onclick="dismissAllPopup()">Dismiss All</button>
-        `;
-        tx_container.append(dismissAllButton);
-    }
-
-    // Dismiss All Confirmation Popup (Admin only)
-    let dismissAllPopupContainer = document.createElement("div");
-    dismissAllPopupContainer.classList.add("tx_dismissAllPopupContainer");
-    tx_container.append(dismissAllPopupContainer);
-
-
     // The 3 Tickex boards - New, Catch All, Closed
     let newTickets = document.createElement("div");
     newTickets.classList.add("tx_newTickets");
+    if (isMobile) newTickets.classList.add("mobile");
     newTickets.id = 'newTicketsBoard';
     newTickets.innerHTML = `
         <fieldset><legend>New CTS Tickets</legend>
@@ -1036,10 +1051,12 @@ async function setTickex() {
                         <option value="15" selected>15</option>
                         <option value="20">20</option>
                         <option value="30">30</option>
-                        <option value="40">40</option>
-                        <option value="50">50</option>
-                        <option value="75">75</option>
-                        <option value="100">100</option>
+                        ${!localStorage.getItem("isMobile") ? `
+                            <option value="40">40</option>
+                            <option value="50">50</option>
+                            <option value="75">75</option>
+                            <option value="100">100</option>` : ""
+                        }
                     </select></div>
                 </div>
             </div></fieldset>
@@ -1047,6 +1064,7 @@ async function setTickex() {
 
     let catchAll = document.createElement("div");
     catchAll.classList.add("tx_catchAllTickets");
+    if (isMobile) catchAll.classList.add("mobile");
     catchAll.id = 'catchAllTicketsBoard';
     catchAll.innerHTML = `
         <fieldset><legend>CTS Ticket Catch All</legend>
@@ -1074,10 +1092,12 @@ async function setTickex() {
                         <option value="15" selected>15</option>
                         <option value="20">20</option>
                         <option value="30">30</option>
-                        <option value="40">40</option>
-                        <option value="50">50</option>
-                        <option value="75">75</option>
-                        <option value="100">100</option>
+                        ${!localStorage.getItem("isMobile") ? `
+                            <option value="40">40</option>
+                            <option value="50">50</option>
+                            <option value="75">75</option>
+                            <option value="100">100</option>` : ""
+                        }
                     </select></div>
                 </div>
             </div></fieldset>
@@ -1085,6 +1105,7 @@ async function setTickex() {
 
     let closedTickets = document.createElement("div");
     closedTickets.classList.add("tx_closedTickets");
+    if (isMobile) closedTickets.classList.add("mobile");
     closedTickets.id = "closedTicketsBoard";
     closedTickets.innerHTML = `
         <fieldset><legend>Closed CTS Tickets</legend>
@@ -1111,10 +1132,12 @@ async function setTickex() {
                         <option value="15">15</option>
                         <option value="20">20</option>
                         <option value="30">30</option>
-                        <option value="40">40</option>
-                        <option value="50">50</option>
-                        <option value="75">75</option>
-                        <option value="100">100</option>
+                        ${!localStorage.getItem("isMobile") ? `
+                            <option value="40">40</option>
+                            <option value="50">50</option>
+                            <option value="75">75</option>
+                            <option value="100">100</option>` : ""
+                        }
                     </select></div>
                 </div>
             </div></fieldset>
@@ -1211,7 +1234,7 @@ async function setTickex() {
                 }
             }
         }).catch(error => console.error('Error fetching tickets for update:', error));
-    }, 10000); // Refresh every 10 seconds
+    }, 20000); // Refresh every 20 seconds
 
     await Promise.resolve();
     return;
