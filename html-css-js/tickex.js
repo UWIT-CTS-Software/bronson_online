@@ -7,8 +7,17 @@
     |__|  |_|\___|_|\_\___|/_/\_\(_) |___/
                                   _/ |
                                  |__/
-     
-                                 
+
+Summary:
+    A tool that integrates CTS's every day needs for ticket handling
+    in TeamDynamix. Viewing, responding, assigning, and active monitoring
+    for tickets in the CTS department (exclusively CTS-specified tickets).
+
+Notes:
+    - The current state of this tool is read-only from the TDX API. We plan 
+        to have write access to the API in the future once we get permissions.
+
+        
 TOC:
     Write to TDX Functions (unimplemented for right now):
     - sendToASU()
@@ -16,39 +25,37 @@ TOC:
     - takeResponsibility()
     
     Popups:
-    - dismissAll()
-    - dismissAllPopup()
-    - dismissChanges()
-    - showPopup()
-    - hidePopup()
+    - dismissAll()       : Clear all ticket rows of unread notifications
+    - dismissAllPopup()  : Shows the "Dismiss All" confirmation popup
+    - dismissChanges()   : Dismisses the "What Changed" box in the popup
+    - showPopup()/show() : Shows the popup with relavent ticket info
+    - toggleDetails()    : Toggles the details page in the popup
+    - toggleComments()   : Toggles the comments box in the popup
+    - hidePopup()        : Hides the popup
 
     Board Setup:
-    - initializeListeners()
-    - kPagerButton()
-    - performSearch()
-    - sortTickets()
-    - initBoard()
+    - initializeListeners() : Initializes all listeners for Tickex
+    - kPagerButton()        : Scroll page buttons at bottom of a ticket board
+    - performSearch()       : Performs the search with current text within search bar
+    - sortTickets()         : Handles sorting of board elements
+    - initBoard()           : Add/Refreshes tickets to the board
 
     Cache Functions:
-    - getTicketCache()
-    - getCachedTicketData()
-    - setCachedTicketData()
-    - tokenize()
+    - getTicketCache()      : Grabs the Ticket Cache
+    - getCachedTicketData() : Grabs a Specific Ticket from the Cache
+    - setCachedTicketData() : Saves a Ticket to the Cache
+    - tokenize()            : Helper: simple tokenizer
 
     Backend Calls:
-    - fetchTickets()
-    - fetchTicketDescription()
-    - fetchTicketComments()
-    - fetchCurrentUserPermissions()
-    - updateTicketViewed()
+    - fetchTickets()                : Grab all tickets from backend/api
+    - fetchTicketDescription()      : Grab ticket Description from backend 
+    - fetchTicketComments()         : Grab ticket Comments (feed) from backend
+    - fetchCurrentUserPermissions() : Fetches the current user's permission level
+    - updateTicketViewed()          : Update ticket's viewed status in backend/database
 
     "Main" Function:
-    - setTickex()
+    - setTickex()   : Sets up the Tickex tool page
 
-
-Notes:
-    - The current state of this tool is read-only from the TDX API. We plan 
-        to have write access to the API in the future once we get permissions.
 
 TODO:
     Main Features to Add:
@@ -124,7 +131,7 @@ async function dismissAll(confirmed) {
     }
 }
 
-// Shows the Dismiss All confirmation popup
+// Shows the "Dismiss All" confirmation popup
 function dismissAllPopup() {
     const dismissAllPopupContainer = document.querySelector('.tx_dismissAllPopupContainer');
     if (!dismissAllPopupContainer) {
@@ -269,7 +276,7 @@ async function show(ticket) {
         }
         
         commentsHTML = `
-            <div class="tx_popupComments">
+            <div class="tx_popupComments ${(localStorage.getItem("isMobile") === "true") ? "mobile" : ""}">
                 <span>Comments:</span>
                 <button class="popup_closeCommentsButton" onClick="toggleComments(${ticket.ID})">X</button>
                 <div class="tx_commentList">
@@ -324,7 +331,7 @@ async function show(ticket) {
     if (popupContainer.classList.contains('detailsShown')) { // Details Shown
         popupContainer.innerHTML = `
             ${commentsHTML}
-            <div class="tx_popupBox">
+            <div class="tx_popupBox ${(localStorage.getItem("isMobile") === "true") ? "mobile" : ""}">
             <span>${ticket.Title || "No Title"}</span>
             <button class="popup_closeButton" onClick="hidePopup()">X</button>
                 <div class="tx_adjacent"><p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
@@ -348,7 +355,7 @@ async function show(ticket) {
                 <button disabled class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
                 <button disabled class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
             </div>
-            ${whatChangedHTML}
+            ${(localStorage.getItem("isMobile") === "true") ? "" : whatChangedHTML}
         `;
     } else { // Description Shown
         let description = await fetchTicketDescription(ticket.ID);
@@ -357,7 +364,7 @@ async function show(ticket) {
 
         popupContainer.innerHTML = `
             ${commentsHTML}
-            <div class="tx_popupBox">
+            <div class="tx_popupBox ${(localStorage.getItem("isMobile") === "true") ? "mobile" : ""}">
             <span>${ticket.Title || "No Title"}</span>
             <button class="popup_closeButton" onClick="hidePopup()">X</button>
                 <div class="tx_adjacent"><p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
@@ -388,7 +395,7 @@ async function show(ticket) {
     updateTicketViewed(ticket.ID, true);
 }
 
-// Toggles the details in the popup
+// Toggles the details page in the popup
 function toggleDetails(ticketID) {
     const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
     if (!popupContainer) return;
@@ -404,7 +411,7 @@ function toggleDetails(ticketID) {
     if (ticket) showPopup(ticket);
 }
 
-// Toggles comments in the popup
+// Toggles the comments box in the popup
 function toggleComments(ticketID) {
     const container = document.querySelector('.tx_container');
     if (!container) return;
@@ -502,7 +509,7 @@ function initializeListeners() {
     });
 }
 
-// Adjusts input ticket field by value
+// Scroll page buttons at bottom of a ticket board
 function kPagerButton(val, inputId, maxPageId) {
     let inputField = document.getElementById(inputId);
     if (!inputField) return;
@@ -605,7 +612,7 @@ function sortTickets() {
     return window.currentTickets; 
 }
 
-// Add tickets to the board
+// Add/Refreshes tickets to the board
 function initBoard() {
     let ticketsHtml = {
         newTickets: "",
@@ -704,7 +711,7 @@ function initBoard() {
 
     /* -------------------- Cache Functions -------------------- */
 
-// Grabs the Cache
+// Grabs the Ticket Cache
 function getTicketCache() {
     try {
         return JSON.parse(sessionStorage.getItem('tickex_cache')) || { order: [], data: {} };
@@ -713,13 +720,13 @@ function getTicketCache() {
     }
 }
 
-// Grabs the Ticket from the Cache
+// Grabs a Specific Ticket from the Cache
 function getCachedTicketData(ticketId, type) {
     const cache = getTicketCache();
     return cache.data[`${ticketId}_${type}`] || null;
 }
 
-// Save Ticket to Cache
+// Saves a Ticket to the Cache
 function setCachedTicketData(ticketId, type, value) {
     // Stores 50 tickets, comments & description for every ticket
     const MAX_CACHED = 100;
@@ -756,7 +763,7 @@ function tokenize(text) {
 
     /* -------------------- Backend Calls -------------------- */
 
-// Grab tickets from backend
+// Grab all tickets from backend/api
 async function fetchTickets() {
     try {
         const response = await fetch('/tickets');
@@ -827,7 +834,7 @@ async function fetchCurrentUserPermissions() {
     }
 }
 
-// Update ticket's viewed status in backend
+// Update ticket's viewed status in backend/database
 async function updateTicketViewed(ticketId, viewed) {
     try {
         const response = await fetch('/update/ticket/viewed', {
@@ -896,13 +903,10 @@ async function setTickex() {
 
     /* -------------------- Tickex Page -------------------- */
 
-    // TODO: Remove "What Changed" Box from Mobile
-    //          - Also cap width for popups on mobile
-    // Fix "Loading Tickets" Popup on Mobile
-
     // Display loading message while fetching tickets
     let loadingMessage = document.createElement("div");
     loadingMessage.classList.add("tx_loadingMessage");
+    if (isMobile) loadingMessage.classList.add("mobile");
     loadingMessage.innerHTML = `
         <legend>Loading Tickets</legend>
     `;
@@ -1051,7 +1055,7 @@ async function setTickex() {
                         <option value="15" selected>15</option>
                         <option value="20">20</option>
                         <option value="30">30</option>
-                        ${!localStorage.getItem("isMobile") ? `
+                        ${!isMobile ? `
                             <option value="40">40</option>
                             <option value="50">50</option>
                             <option value="75">75</option>
@@ -1092,7 +1096,7 @@ async function setTickex() {
                         <option value="15" selected>15</option>
                         <option value="20">20</option>
                         <option value="30">30</option>
-                        ${!localStorage.getItem("isMobile") ? `
+                        ${!isMobile ? `
                             <option value="40">40</option>
                             <option value="50">50</option>
                             <option value="75">75</option>
@@ -1132,7 +1136,7 @@ async function setTickex() {
                         <option value="15">15</option>
                         <option value="20">20</option>
                         <option value="30">30</option>
-                        ${!localStorage.getItem("isMobile") ? `
+                        ${!isMobile ? `
                             <option value="40">40</option>
                             <option value="50">50</option>
                             <option value="75">75</option>

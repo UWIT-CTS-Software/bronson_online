@@ -1363,6 +1363,13 @@ ol li::marker {
     background-color: rgb(50, 50, 50);
     grid-column: 5 / 7;
 }
+.tx_loadingMessage.mobile {
+    background-color: rgb(50, 50, 50);
+    grid-column: unset;
+    width: 120%;
+    margin-top: 25px;
+    margin-left: 25x;
+}
 
 .tx_highlight_row {
     background-color: rgba(236, 200, 101, 0.25);
@@ -1612,6 +1619,15 @@ ol li::marker {
     margin-top: 90px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
+.tx_popupBox.mobile {
+    width: 551px;
+    height: fit-content;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 90px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
 
 .tx_popupBox span {
     color: rgb(118, 66, 28);
@@ -1642,6 +1658,20 @@ ol li::marker {
 .tx_popupContainer .tx_popupComments {
     max-width: 401px;
     min-width: 301px;
+    width: fit-content;
+    max-height: 450px;
+    height: fit-content;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 120px;
+    margin-right: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    overflow-y: auto;
+}
+.tx_popupComments.mobile {
+    max-width: 301px;
+    min-width: 251px;
     width: fit-content;
     max-height: 450px;
     height: fit-content;
