@@ -43,6 +43,10 @@
       }
     }
 
+    // setInterval timers for ticket fetching
+    localStorage.setItem("isDBTicketIntervalSet", false);
+    localStorage.setItem("isTXTicketIntervalSet", false);
+
     // Hamburger Menu Toggle
     function toggleHBMenu() {
       const menu = document.querySelector(".hb_menu");
@@ -169,10 +173,17 @@
       let spares = document.createElement("div");
       spares.classList.add("db_spares");
       spares.setAttribute("id", "db_spare");
+
+      // Incoming Tickets Widget
+      let incomingTickets = document.createElement("div");
+      incomingTickets.classList.add("db_tickets");
+      incomingTickets.setAttribute("id", "db_tickets");
+
       db_container.appendChild(consoleOutput);
       db_container.appendChild(leaderboard);
       db_container.appendChild(schedule);
       db_container.appendChild(spares);
+      db_container.appendChild(incomingTickets);
 
       // Check for client-side cached response
       db_container.append(await dashCheckerboardHTML());

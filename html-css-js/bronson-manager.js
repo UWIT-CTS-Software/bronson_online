@@ -78,7 +78,7 @@ const DevTypes = ["PROC", "PJ", "DISP", "TP", "WS", "CMIC"]
 // Sets local strage for data used by the various tools
 //  - Zone Building list array of room names for each zone
 //  - Campus.json used for various things in jacknet
-//  - Leaderboard, displayed on the dashboard
+//  - Leaderboard
 // This function is called when a user visits the dashboard,
 //  the hope is that it keeps things up to date if/when things 
 //  change on the backend.
@@ -108,6 +108,7 @@ async function initLocalStorage() {
         setDashboardDefaults();
         dashCheckerboard(); // poplate cb_dash
         dashSpares(); // populate db_spares
+        dashTickex();
     }
     // Detect whether page is on Mobile
     localStorage.setItem("isMobile", isMobile());
@@ -827,6 +828,99 @@ function dashSpares() {
     tmp += `</ul></fieldset>`;
     spareDiv.innerHTML = tmp;
     return;
+}
+
+// Ticket Widget for Incoming/Unresponded Tickets
+async function dashTickex() {
+    let ticketsDiv = document.getElementById("db_tickets");
+    ticketsDiv.classList.add("db_ticketContainer");
+
+    // Loading Screen until Tickets are fetched
+    let tmp = `
+        <fieldset> 
+            <p>Loading Tickets...</p>
+        </fieldset>
+    `;
+    ticketsDiv.innerHTML = tmp;
+
+    // Fetch the Tickets from TDX
+    let tickets = [];
+    while (!tickets.length) { // Keep trying until tickets are fetched
+        let response = await fetchTickets("dash"); // fetchTickets() defined in tickex.js
+        tickets = Array.isArray(response) ? response : [];
+    }
+
+    buildDBTickets();
+    function buildDBTickets() {
+        // Sort Tickets 
+        tickets = tickets.sort((a, b) => b.ID - a.ID);
+        
+        window.currentTickets = tickets;
+        window.allTickets = tickets;
+
+        // Filter for unresponded/new tickets, 14 Days
+        const unrespondedTickets = tickets.filter(ticket => {
+            const isNew = (Date.now() - new Date(ticket.CreatedDate) < 14 * 24 * 60 * 60 * 1000 
+                        || ticket.StatusName === 'New') 
+                        && ticket.StatusName !== 'Closed'
+                        && ticket.StatusName !== 'Cancelled'
+                        && ticket.StatusName !== 'Resolved';
+            return isNew;
+        });
+
+        // Build the Ticket Content
+        let ticketsContent = `
+            <table>
+                <thead><tr>
+                    <th>Title</th>
+                    <th>ID</th>
+                    <th>Status</th>
+                </tr></thead>
+                <tbody>
+        `;
+
+        let ticketRows = "";
+        for (let ticket of unrespondedTickets) {
+            let highlightClass = ticket.has_been_viewed ? '' : 'tx_highlight_row';
+            ticketRows += `
+                <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showPopupFromDashboard(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
+                    <td>${ticket.Title}</td>
+                    <td>${ticket.ID}</td>
+                    <td>${ticket.StatusName}</td>
+                </tr>
+            `;
+        }
+
+        ticketsContent += `
+                    ${ticketRows}
+                </tbody>
+            </table>
+        `;
+
+        if (ticketRows === "") ticketsContent = "<p>All Caught Up!</p>"; 
+
+        tmp = `
+            <fieldset> 
+                <legend>Unresponded Tickets</legend> 
+                <p class="ticketsHeader"> Only assign yourself if you are actively going to the Ticket </p>
+                ${ticketsContent}
+            </fieldset>
+        `;
+
+        ticketsDiv.innerHTML = tmp;
+    }
+
+    // Auto-refresh board logic
+    if (localStorage.getItem("isDBTicketIntervalSet") == "true") return;
+    localStorage.setItem("isDBTicketIntervalSet", true)
+    setInterval(() => {
+        // Will not fire if Dashboard is not currently Selected
+        if (!document.getElementById("DBButton").classList.contains("selected")) return;
+
+        fetchTickets().then(() => {
+            buildDBTickets();
+        }).catch(error => console.error('Error fetching tickets for update:', error));
+    }, 20000); // Refresh every 20 seconds
 }
 
 // Not really being used, consider this a proof of concept to give more specific

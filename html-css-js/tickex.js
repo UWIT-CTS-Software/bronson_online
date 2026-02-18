@@ -181,6 +181,29 @@ function showPopup(ticket, element) {
         });
     });
 }
+
+// Shows popup from dashboard - opens Tickex first, then shows the popup
+async function showPopupFromDashboard(ticket, element) {
+    // Set up Tickex first
+    await setTickex();
+    
+    // Change cursor to loading
+    if (!document.body.classList.contains('tx_waiting-cursor')) 
+        document.body.classList.add('tx_waiting-cursor');
+    if (element != null && !element.classList.contains('tx_waiting-cursor')) 
+        element.classList.add('tx_waiting-cursor');
+
+    // Force cursor wheel to show
+    requestAnimationFrame(() => {
+        show(ticket).finally(() => {
+            // Remove loading cursor
+            if (document.body.classList.contains('tx_waiting-cursor'))
+                document.body.classList.remove('tx_waiting-cursor');
+            if (element != null &&element.classList.contains('tx_waiting-cursor')) 
+                element.classList.remove('tx_waiting-cursor');
+        });
+    });
+}
 // Child function to showPopup() - shows the popup
 async function show(ticket) {
     if (!ticket) {
@@ -188,8 +211,20 @@ async function show(ticket) {
         return;
     }
 
-    const popupContainer = document.querySelector('.tx_popupContainer');
+    let popupContainer = document.querySelector('.tx_popupContainer');
     if (!popupContainer) {
+        // Wait for popup to load (timeout of 3 seconds)
+        let waited = 0;
+        while (waited < 3000) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const pc = document.querySelector('.tx_popupContainer');
+            if (pc) {
+                popupContainer = pc;
+                break;
+            }
+            waited += 100;
+        }
+
         console.error("Popup container not found");
         return;
     }
@@ -1165,6 +1200,8 @@ async function setTickex() {
 
 
     // Auto-refresh board logic
+    if (localStorage.getItem("isTXTicketIntervalSet") == "true") return;
+    localStorage.setItem("isTXTicketIntervalSet", true)
     setInterval(() => {
         fetchTickets().then(newTickets => {
             if (Array.isArray(newTickets)) {

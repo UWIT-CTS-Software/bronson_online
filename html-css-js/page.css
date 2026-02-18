@@ -418,6 +418,16 @@ input:checked + .slider:before {
 .spareUpdate {
     color:#959DA5;
 }
+
+.db_tickets {
+    grid-column: 4/8;
+    grid-row: 3;
+}
+
+.ticketsHeader {
+    font-size: smaller;
+}
+
 .db_console {
     grid-column: 4 / 8;
     grid-row: 1 / 2;
@@ -1406,6 +1416,18 @@ ol li::marker {
     margin-left: auto;
     margin-right: auto;
     width: 100%;
+}
+
+.db_ticketContainer table {
+    width: 100%;
+    table-layout: fixed;
+    text-align: center;
+}
+
+.db_ticketContainer th {
+    color: rgb(236, 200, 101);
+    border-bottom: 1px solid rgb(144, 118, 26);
+    text-align: center;
 }
 
 .tx_ticketContainer table {
