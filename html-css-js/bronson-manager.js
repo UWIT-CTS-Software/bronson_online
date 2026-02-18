@@ -883,7 +883,7 @@ async function dashTickex() {
         for (let ticket of unrespondedTickets) {
             let highlightClass = ticket.has_been_viewed ? '' : 'tx_highlight_row';
             ticketRows += `
-                <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showPopupFromDashboard(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
+                <tr class="tx_ticket dashboard ${highlightClass}" id="${ticket.ID}" onclick="showPopupFromDashboard(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
                     <td>${ticket.Title}</td>
                     <td>${ticket.ID}</td>
                     <td>${ticket.StatusName}</td>
