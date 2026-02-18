@@ -22,7 +22,7 @@ TOC:
     Write to TDX Functions (unimplemented for right now):
     - sendToASU()
     - sendToHelpDesk()
-    - takeResponsibility()
+    - takeIncident()
     
     Popups:
     - dismissAll()       : Clear all ticket rows of unread notifications
@@ -83,7 +83,8 @@ function sendToHelpDesk() {
 
 // Macro for taking Responsibility for a Ticket
 // For Later - When we have write access to TDX API
-function takeResponsibility() {
+function takeIncident(event) {
+    if (event) event.stopPropagation();
     alert("This feature is not yet implemented.");
 
 }
@@ -376,7 +377,7 @@ async function show(ticket) {
                 <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
                 <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">Description</button>
                 <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Responsibility</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
+                <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Incident</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
                 <p class="tx_popup_ServiceName">Service: ${ticket.ServiceName || ""}</p>
                 <p class="tx_popup_AccountName">Account Department: ${ticket.AccountName || ""}</p>
                 <p class="tx_popup_TypeName">Type: ${ticket.TypeName || ""}</p>

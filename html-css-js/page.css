@@ -420,8 +420,8 @@ input:checked + .slider:before {
 }
 
 .db_tickets {
-    grid-column: 4/8;
-    grid-row: 3;
+    grid-column: 4/8 !important;
+    grid-row: 3 !important;
 }
 
 .ticketsHeader {
@@ -1422,18 +1422,6 @@ ol li::marker {
     width: 100%;
 }
 
-.db_ticketContainer table {
-    width: 100%;
-    table-layout: fixed;
-    text-align: center;
-}
-
-.db_ticketContainer th {
-    color: rgb(236, 200, 101);
-    border-bottom: 1px solid rgb(144, 118, 26);
-    text-align: center;
-}
-
 .tx_ticketContainer table {
     width: 100%;
     table-layout: fixed;
@@ -1480,6 +1468,21 @@ ol li::marker {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/* For Dashboard container specifically*/
+.tx_ticketContainer table td:nth-child(4),
+.tx_ticketContainer table th:nth-child(4) {
+    width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+
+.tx_ticketContainer table td:nth-child(4) select {
+    pointer-events: auto; /* re-enable pointer events for dropdown */
+}
+
 
 .tx_ticketContainer input {
     background-color: rgb(221 187 96);

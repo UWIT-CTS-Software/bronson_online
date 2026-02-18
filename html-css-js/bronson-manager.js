@@ -833,7 +833,8 @@ function dashSpares() {
 // Ticket Widget for Incoming/Unresponded Tickets
 async function dashTickex() {
     let ticketsDiv = document.getElementById("db_tickets");
-    ticketsDiv.classList.add("db_ticketContainer");
+    ticketsDiv.classList.add("db_tickets");
+    ticketsDiv.classList.add("tx_ticketContainer");
 
     // Loading Screen until Tickets are fetched
     let tmp = `
@@ -875,6 +876,7 @@ async function dashTickex() {
                     <th>Title</th>
                     <th>ID</th>
                     <th>Status</th>
+                    <th>Assignment</th>
                 </tr></thead>
                 <tbody>
         `;
@@ -887,9 +889,10 @@ async function dashTickex() {
                     <td>${ticket.Title}</td>
                     <td>${ticket.ID}</td>
                     <td>${ticket.StatusName}</td>
+                    <td>${(ticket.ResponsibleFullName != "") ? ticket.ResponsibleFullName : `UNASSIGNED` }</td>
                 </tr>
             `;
-        }
+        }           // <button onclick="takeIncident(event)">Take Incident</button> Replace "UNASSIGNED" with this when we get write access
 
         ticketsContent += `
                     ${ticketRows}
@@ -901,8 +904,8 @@ async function dashTickex() {
 
         tmp = `
             <fieldset> 
-                <legend>Unresponded Tickets</legend> 
-                <p class="ticketsHeader"> Only assign yourself if you are actively going to the Ticket </p>
+                <legend>New CTS Tickets</legend> 
+                <p class="ticketsHeader"> Only take incident if you are actively going to the Ticket </p>
                 ${ticketsContent}
             </fieldset>
         `;
