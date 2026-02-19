@@ -293,6 +293,46 @@ function pad(n, width, z) {
     return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
 }
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function sendNotification (data, timeout) {
+    await sleep(timeout);
+
+    if (data == undefined || !data) { return false }
+    var title = (data.title === undefined) ? 'Notification' : data.title
+    var clickCallback = data.clickCallback
+    var message = (data.message === undefined) ? 'null' : data.message
+    var icon = (data.icon === undefined) ? 'https://cdn2.iconfinder.com/data/icons/mixed-rounded-flat-icon/512/megaphone-64.png' : data.icon
+    var sendNotification = function (){
+        var notification = new Notification(title, {
+            icon: icon,
+            body: message
+        })
+        if (clickCallback !== undefined) {
+            notification.onclick = function () {
+                clickCallback()
+                notification.close()
+            }
+        }
+    }
+
+    if (!window.Notification) {
+        return false
+    } else {
+        if (Notification.permission === 'default') {
+            Notification.requestPermission(function (p) {
+                if (p !== 'denied') {
+                    sendNotification()
+                }
+            })
+        } else {
+            sendNotification()
+        }
+    }
+}
+
 /*
  ░▒▓██████▓▒░ ░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓████████▓▒░ 
 ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        
@@ -470,6 +510,7 @@ async function dashCheckerboardHTML() {
 async function dashCheckerboard() {
     let cb_dash = JSON.parse(sessionStorage.getItem("db_checker"));
     let zoneObject = JSON.parse(localStorage.getItem("zoneData"));
+    let cbBuildingCounts = JSON.parse(sessionStorage.getItem("cbBuildingCounts")) || {};
     //console.log(cb_dash);
     // GET ZONE OBJ AND ITERATE OVER THAT AND USE THAT ARRAY TO GRAB
     // ENTRIES OUT OF CAMPOBJECT
@@ -479,7 +520,12 @@ async function dashCheckerboard() {
         let bl = await getBuildingAbbrevsFromZone(zone);
         for(bldg in bl) {
             let building = await getBuilding(bl[bldg]);
-            cr += building.checked_rooms;
+            // Use checked counts from checkerboard if available, otherwise use database
+            if (cbBuildingCounts[bl[bldg]] !== undefined) {
+                cr += cbBuildingCounts[bl[bldg]];
+            } else {
+                cr += building.checked_rooms;
+            }
             tr += building.total_rooms;
         }
         // add to cb_dash
@@ -787,3 +833,11 @@ function isMobile() {
 
 // TODO: Temporary Pop-up Notification
 //   I think it would be beneficial to have some kind of message banner to alert users for a number of things. A stashed request along with some kind of error handling to give more specific information about what happened. 
+const defaultNotification = {
+  title: 'New Notification',
+  message: 'Your message goes here',
+  icon:'https://cdn2.iconfinder.com/data/icons/mixed-rounded-flat-icon/512/megaphone-64.png',
+  clickCallback: function () {
+    alert('do something when clicked on notification');
+  }
+};

@@ -784,6 +784,13 @@ async fn handle_connection(
                             .collect()
                     })
                     .unwrap();
+                // Extract the date separately as a string (last element)
+                let new_date: String = body_json["newValue"]
+                    .as_array()
+                    .and_then(|arr| arr.last())
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("0")
+                    .to_string();
                 debug!("[Admin Tools] - Updating Target Room:{}\n New Values: {:?}", target_room, new_values);
                 // Get Existing Room Record from database
                 let mut new_db_room : DB_Room = match database.get_room_by_name(&target_room) {
@@ -803,11 +810,13 @@ async fn handle_connection(
                     0 => false,
                     _ => false,
                 };
-                new_db_room.offln = match new_values[7] { 
+                new_db_room.check_period = new_values[7] as i16;
+                new_db_room.offln = match new_values[8] { 
                     1 => true,
                     0 => false,
                     _ => false,
                 };
+                new_db_room.onln = new_date;
                 // Build Updated Ping Data Vector
                 let hn_vec = Database::gen_hn(String::from(target_room), &new_values);
                 let ping_vec = Database::gen_ip(&hn_vec);
@@ -816,7 +825,7 @@ async fn handle_connection(
                 // Update Database
                 //println!("DEBUG Updating DB_Room -> \n {:?}", new_db_room);
                 let _ = database.update_room(&new_db_room);
-                
+
                 Response::new()
                         .status(STATUS_200)
                         .send_contents("".into())
@@ -838,7 +847,7 @@ async fn handle_connection(
                     .as_str()
                     .unwrap()
                     .to_string();
-                let new_values: Vec<u8> = [0,0,0,0,0,0,0,0].to_vec();
+                let new_values: Vec<u8> = [0,0,0,0,0,0,0,0,0,0].to_vec();
                 // Note: When we are inserting a new room, we are not providing the inventory in the same call. The intention is that the front-end will send the rooms to insert first and if their is inventory associated with it it will come after.
                 // Build DB_Room Object and insert to Database
                 // Ping Data Vector
@@ -855,11 +864,9 @@ async fn handle_connection(
                         0 => false,
                         _ => false,
                     },
-                    offln: match new_values[7] { 
-                        1 => true,
-                        0 => false,
-                        _ => false,
-                    },
+                    check_period: 0,
+                    offln: false,
+                    onln: "2000-01-01".to_string(),
                     available: false,
                     until: String::from("TOMORROW"),
                     ping_data: ping_vec,
@@ -1393,6 +1400,7 @@ async fn handle_connection(
                     .insert_header("Access-Control-Expose-Headers", "Set-Cookie")
                     .status(STATUS_200)
                     .send_file(user_homepage)
+                    .insert_onload("window.location.href=\"http://localhost:7878/\";")
         },
         "POST /bugreport HTTP/1.1" => {
             let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
@@ -1580,16 +1588,16 @@ async fn update_room_check_leaderboard(database: &mut Database, req: Arc<RwLock<
     let body_7_days: String;
     let body_30_days: String;
     let body_90_days: String;
-    {
-        body_7_days = req.write().unwrap().get(url_7_days)
-            .timeout(Duration::from_secs(15))
-            .send()
-            .await
-            .expect("[-] RESPONSE ERROR")
-            .text()
-            .await
-            .expect("[-] PAYLOAD ERROR");
-    }
+
+    body_7_days = req.write().unwrap().get(url_7_days)
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .expect("[-] RESPONSE ERROR")
+        .text()
+        .await
+        .expect("[-] PAYLOAD ERROR");
+
     let v_7_days: Value = match serde_json::from_str(&body_7_days) {
         Ok(v)  => v,
         Err(m) => {
@@ -1602,16 +1610,14 @@ async fn update_room_check_leaderboard(database: &mut Database, req: Arc<RwLock<
         None => Vec::<Value>::new()
     };
 
-    {
-        body_30_days = req.write().unwrap().get(url_30_days)
-            .timeout(Duration::from_secs(15))
-            .send()
-            .await
-            .expect("[-] RESPONSE ERROR")
-            .text()
-            .await
-            .expect("[-] PAYLOAD ERROR");
-    }
+    body_30_days = req.write().unwrap().get(url_30_days)
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .expect("[-] RESPONSE ERROR")
+        .text()
+        .await
+        .expect("[-] PAYLOAD ERROR");
 
     let v_30_days: Value = match serde_json::from_str(&body_30_days) {
         Ok(v)  => v,
@@ -1625,16 +1631,14 @@ async fn update_room_check_leaderboard(database: &mut Database, req: Arc<RwLock<
         None => Vec::<Value>::new()
     };
 
-    {
-        body_90_days = req.write().unwrap().get(url_90_days)
-            .timeout(Duration::from_secs(15))
-            .send()
-            .await
-            .expect("[-] RESPONSE ERROR")
-            .text()
-            .await
-            .expect("[-] PAYLOAD ERROR");
-    }
+    body_90_days = req.write().unwrap().get(url_90_days)
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .expect("[-] RESPONSE ERROR")
+        .text()
+        .await
+        .expect("[-] PAYLOAD ERROR");
 
     let v_90_days: Value = match serde_json::from_str(&body_90_days) {
         Ok(v)  => v,
@@ -1739,7 +1743,7 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> 
     for building in buildings {
         debug!("[Checkerboard] - Processing Building: {:?}", building.1.abbrev);
         //println!("{:?}", building);
-        let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last30days%22%2CParentLocation%3A%22{}%22%7D", building.1.lsm_name.as_str());
+        let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last90days%22%2CParentLocation%3A%22{}%22%7D", building.1.lsm_name.as_str());
         // Get Alias Table, to swap incoming room_names from LSM with
         //   Bronson friendly naming. We filter Alias Table to only contain
         //   rooms that are relevant to current LSM request.
@@ -1854,14 +1858,8 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> 
             }
         };
         for mut room in rooms {
-            if check_map.contains_key(&room.name) {
-                room.checked = String::from(match check_map.get(&room.name) {
-                    Some(r) => r,
-                    None => {
-                        warn!("Unable to fetch room, defaulting.");
-                        "2000-01-01T00:00:00Z"
-                    }
-                });
+            if let Some(r) = check_map.get(&room.name) {
+                room.checked = r.clone();
             }
             room.needs_checked = check_lsm(&room);
             let schedule_params = check_schedule(&room);
@@ -2170,32 +2168,29 @@ fn check_schedule(room: &DB_Room) -> (bool, String) {
     return (available, until);
 }
 
+fn check_period_to_delta(period: i16) -> TimeDelta {
+    match period {
+        0 => TimeDelta::weeks(1),   // 1 Week
+        1 => TimeDelta::weeks(2),   // 2 Weeks
+        2 => TimeDelta::days(30),   // 1 Month (approx)
+        3 => TimeDelta::days(90),   // 3 Months (approx)
+        _ => TimeDelta::weeks(1),   // default
+    }
+}
+
 fn check_lsm(room: &DB_Room) -> bool {
-    let needs_checked;
-    // Line below produces -> ParseError(TooShort)
-    let parsed_checked: DateTime<Local> = match room.checked.parse() {
-        Ok(dt) => dt,
+    let parsed_checked: DateTime<Local> = match room.checked.parse::<DateTime<Utc>>() {
+        Ok(dt) => dt.with_timezone(&Local),
         Err(e) => {
-            error!("Unable to parse incoming DateTime: {}", e);
-            String::from("2000-01-01T00:00:00Z").parse().unwrap()
+            error!("Unable to parse incoming DateTime '{}': {}", room.checked, e);
+            return true; // fail-safe: assume it needs checked
         }
     };
-    let time_diff: TimeDelta = Local::now() - parsed_checked;
-    if room.gp {
-        if time_diff.num_seconds() >= 604800 {
-            needs_checked = true;
-        } else {
-            needs_checked = false;
-        }
-    } else {
-        if time_diff.num_days() >= 30 {
-            needs_checked = true;
-        } else {
-            needs_checked = false;
-        }
-    }
 
-    return needs_checked;
+    let elapsed = Local::now() - parsed_checked;
+    let required_delta = check_period_to_delta(room.check_period);
+
+    return elapsed >= required_delta;
 }
 
 /*

@@ -42,7 +42,9 @@ CREATE TABLE IF NOT EXISTS bronson.rooms (
     checked       TEXT         NOT NULL,
     needs_checked BOOLEAN      NOT NULL,
     gp            BOOLEAN      NOT NULL,
+    check_period  SMALLINT     NOT NULL,
     offln         BOOLEAN      NOT NULL,
+    onln          TEXT         NOT NULL,
     available     BOOLEAN      NOT NULL,
     until         TEXT         NOT NULL,
     ping_data     bronson.ip_address[] NOT NULL,
@@ -51,6 +53,7 @@ CREATE TABLE IF NOT EXISTS bronson.rooms (
     CHECK (length(abbrev) <= 5), 
     CHECK (length(name) <= 10),
     CHECK (length(checked) <= 21),
+    CHECK (length(onln) <= 11),
     CHECK (length(until) <= 9),
 
     CONSTRAINT fk_abbrev
