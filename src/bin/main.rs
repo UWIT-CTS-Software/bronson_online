@@ -500,6 +500,11 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_file("html-css-js/bronson-manager.js")
         },
+        "GET /serviceworker.js HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("html-css-js/serviceworker.js")
+        },
         "GET /camcode.js HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
@@ -1089,6 +1094,33 @@ async fn handle_connection(
                         .status(STATUS_200)
                         .send_contents("Successful Room Schedule Timestamps Update".into())
             }
+        },
+        "POST /notifications/subscribe HTTP/1.1" => {
+           let body_json: Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+           println!("{:?}", body_json);
+
+            let url: &str = body_json["endpoint"].as_str().expect("Endpoint not found.");
+            let req = reqwest::Client::builder()
+                .cookie_store(true)
+                // .cookie_provider(Arc::clone(&cookie_jar))
+                .user_agent("server_lib/1.10.1")
+                .timeout(Duration::from_secs(15))
+                .build()
+                .ok()?
+            ;
+
+            let _ = req.post(url)
+                .timeout(Duration::from_secs(15))
+                .send()
+                .await
+                .expect("[-] RESPONSE ERROR")
+                .text()
+                .await
+                .expect("[-] PAYLOAD ERROR");
+
+           
+           Response::new()
+                    .status(STATUS_200)
         },
         "GET /roomSchd/timestamps HTTP/1.1" => { // Returns 25Live Report Dates
             if !req.has_valid_cookie(&mut database) {

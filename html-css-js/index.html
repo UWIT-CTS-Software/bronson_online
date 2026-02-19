@@ -15,6 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
   </head><!-- Javascript  -->
   <script src="bronson-manager.js" type="text/javascript" charset="utf-8"></script>
+  <script src="serviceworker.js" type="text/javascript" charset="utf-8"></script>
   <script src="checkerboard.js" type="text/javascript" charset="utf-8"></script>
   <script src="camcode.js" type="text/javascript" charset="utf-8"></script>
   <script src="cc-altmode.js" type="text/javascript" charset="utf-8"></script>
@@ -267,7 +268,7 @@
               <img class="tab_img" src="button2.png"/>
               <span> CamCode </span>
             </button>
-            <button id="Notif" onclick="sendNotification(defaultNotification, 2000)" type="button" class="toolTab notifTab" style="display: none;">
+            <button id="Notif" onclick="pushAPISubscribe()" type="button" class="toolTab notifTab">
               <img class="tab_img" src="button2.png"/>
               <span> Notify me! </span>
             </button>
