@@ -1383,7 +1383,7 @@ async fn handle_connection(
                     .insert_header("Access-Control-Expose-Headers", "Set-Cookie")
                     .status(STATUS_200)
                     .send_file(user_homepage)
-                    .insert_onload("window.location.href=\"http://localhost:7878/\";")
+                    .insert_onload(";window.location.href=\"http://localhost:7878/\";")
         },
         "POST /bugreport HTTP/1.1" => {
             let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
