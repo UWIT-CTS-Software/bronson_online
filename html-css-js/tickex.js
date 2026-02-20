@@ -1201,82 +1201,83 @@ async function setTickex() {
 
 
     // Auto-refresh board logic
-    if (localStorage.getItem("isTXTicketIntervalSet") == "true") return;
-    localStorage.setItem("isTXTicketIntervalSet", true)
-    setInterval(() => {
-        fetchTickets().then(newTickets => {
-            if (Array.isArray(newTickets)) {
-                const oldTickets = new Set(window.allTickets.map(t => t.ModifiedDate));
-                const actuallyNew = newTickets.filter(t => !oldTickets.has(t.ModifiedDate) && 
-                                                           t.StatusName != "Closed" && 
-                                                           t.StatusName != 'Resolved' && 
-                                                           t.StatusName != 'Cancelled');
-                const closedTickets = newTickets.filter(t => !oldTickets.has(t.ModifiedDate) && 
-                                                            (t.StatusName == "Closed" || 
-                                                             t.StatusName == 'Resolved' || 
-                                                             t.StatusName == 'Cancelled'));
+    if (localStorage.getItem("isTXTicketIntervalSet") != "true") {
+        localStorage.setItem("isTXTicketIntervalSet", true)
+        setInterval(() => {
+            fetchTickets().then(newTickets => {
+                if (Array.isArray(newTickets)) {
+                    const oldTickets = new Set(window.allTickets.map(t => t.ModifiedDate));
+                    const actuallyNew = newTickets.filter(t => !oldTickets.has(t.ModifiedDate) && 
+                                                            t.StatusName != "Closed" && 
+                                                            t.StatusName != 'Resolved' && 
+                                                            t.StatusName != 'Cancelled');
+                    const closedTickets = newTickets.filter(t => !oldTickets.has(t.ModifiedDate) && 
+                                                                (t.StatusName == "Closed" || 
+                                                                t.StatusName == 'Resolved' || 
+                                                                t.StatusName == 'Cancelled'));
 
-                // New tickets found
-                if (actuallyNew.length > 0) {
-                    // Mark new tickets as not viewed
-                    actuallyNew.forEach(ticket => {
-                        updateTicketViewed(ticket.ID, false); // mark as not viewed
+                    // New tickets found
+                    if (actuallyNew.length > 0) {
+                        // Mark new tickets as not viewed
+                        actuallyNew.forEach(ticket => {
+                            updateTicketViewed(ticket.ID, false); // mark as not viewed
 
-                        // Update local copy immediately
-                        const index = newTickets.findIndex(t => t.ID === ticket.ID);
-                        if (index !== -1) newTickets[index].has_been_viewed = false;
-                    });
+                            // Update local copy immediately
+                            const index = newTickets.findIndex(t => t.ID === ticket.ID);
+                            if (index !== -1) newTickets[index].has_been_viewed = false;
+                        });
 
-                    // Check if user is currently on Tickex page
-                    const txButton = document.getElementById("TXButton");
-                    if (txButton && txButton.classList.contains("selected")) {
-                        // User is on Tickex, show the popup
-                        newTicketsPopup.classList.add("tx_newTicketsPopupActive");
-                        newTicketsPopup.classList.remove("tx_newTicketsPopup");
-                        setTimeout(() => {
-                            newTicketsPopup.classList.add("tx_newTicketsPopup");
-                            newTicketsPopup.classList.remove("tx_newTicketsPopupActive");
-                        }, 60000);
-                    } else {
-                        // User is NOT on Tickex, stash the response and strobe the tab
-                        stashTickexResponse(actuallyNew);
+                        // Check if user is currently on Tickex page
+                        const txButton = document.getElementById("TXButton");
+                        if (txButton && txButton.classList.contains("selected")) {
+                            // User is on Tickex, show the popup
+                            newTicketsPopup.classList.add("tx_newTicketsPopupActive");
+                            newTicketsPopup.classList.remove("tx_newTicketsPopup");
+                            setTimeout(() => {
+                                newTicketsPopup.classList.add("tx_newTicketsPopup");
+                                newTicketsPopup.classList.remove("tx_newTicketsPopupActive");
+                            }, 60000);
+                        } else {
+                            // User is NOT on Tickex, stash the response and strobe the tab
+                            stashTickexResponse(actuallyNew);
+                        }
+                    }
+
+                    // Update New Tickets Popup if needed
+                    if (newTicketsPopup.classList.contains("tx_newTicketsPopupActive") && actuallyNew.length == 0) {
+                        newTicketsPopup.classList.remove("tx_newTicketsPopupActive");
+                        newTicketsPopup.classList.add("tx_newTicketsPopup");
+                    }
+
+                    // Prevent Search Task Disruption
+                    const searchBar = document.getElementById('searchBar'); 
+                    if (searchBar && searchBar.value.trim() === '') {
+                        window.allTickets = newTickets;
+                        window.currentTickets = newTickets;
+                        initBoard(window.currentSortBy || 'modified');
+                    }
+
+                    // Ticket that just closed
+                    if (closedTickets.length > 0) {
+                        closedTickets.forEach(ticket => {
+                            const tick = document.querySelectorAll(`[id="${ticket.ID}"]`);
+                            tick.forEach(t => {
+                                if (t) {
+                                    updateTicketViewed(ticket.ID, true); // mark as viewed
+                                    t.classList.remove("tx_highlight_row");
+                                    t.classList.add("tx_ticket_closed_flash");
+
+                                    setTimeout(() => {
+                                        t.classList.remove("tx_ticket_closed_flash");
+                                    }, 3000);
+                                }
+                            });
+                        });
                     }
                 }
-
-                // Update New Tickets Popup if needed
-                if (newTicketsPopup.classList.contains("tx_newTicketsPopupActive") && actuallyNew.length == 0) {
-                    newTicketsPopup.classList.remove("tx_newTicketsPopupActive");
-                    newTicketsPopup.classList.add("tx_newTicketsPopup");
-                }
-
-                // Prevent Search Task Disruption
-                const searchBar = document.getElementById('searchBar'); 
-                if (searchBar && searchBar.value.trim() === '') {
-                    window.allTickets = newTickets;
-                    window.currentTickets = newTickets;
-                    initBoard(window.currentSortBy || 'modified');
-                }
-
-                // Ticket that just closed
-                if (closedTickets.length > 0) {
-                    closedTickets.forEach(ticket => {
-                        const tick = document.querySelectorAll(`[id="${ticket.ID}"]`);
-                        tick.forEach(t => {
-                            if (t) {
-                                updateTicketViewed(ticket.ID, true); // mark as viewed
-                                t.classList.remove("tx_highlight_row");
-                                t.classList.add("tx_ticket_closed_flash");
-
-                                setTimeout(() => {
-                                    t.classList.remove("tx_ticket_closed_flash");
-                                }, 3000);
-                            }
-                        });
-                    });
-                }
-            }
-        }).catch(error => console.error('Error fetching tickets for update:', error));
-    }, 20000); // Refresh every 20 seconds
+            }).catch(error => console.error('Error fetching tickets for update:', error));
+        }, 20000); // Refresh every 20 seconds
+    }
 
     await Promise.resolve();
     return;
