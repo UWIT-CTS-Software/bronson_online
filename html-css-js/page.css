@@ -145,10 +145,6 @@ button:before {
 button:-webkit-details-marker {
     display: none;
 }
-/* Disable Scroll-Bars In Chrome */
-::-webkit-scrollbar {
-    display: none;
-}
 
 /* Switch Toggle */
 .switch {
@@ -422,6 +418,16 @@ input:checked + .slider:before {
 .spareUpdate {
     color:#959DA5;
 }
+
+.db_tickets {
+    grid-column: 4/8 !important;
+    grid-row: 3 !important;
+}
+
+.ticketsHeader {
+    font-size: smaller;
+}
+
 .db_console {
     grid-column: 4 / 8;
     grid-row: 1 / 2;
@@ -947,7 +953,8 @@ input:checked + .slider:before {
 }
 
 .cbProgress::-webkit-progress-value {
-    background-color: rgb(13, 255, 0);
+    border-radius: 0px 0px 10px 10px;
+    background-color: rgb(166, 175, 86);
 }
 
 .cbProgress::-moz-progress-bar {
@@ -1221,6 +1228,662 @@ ol li::marker {
     background-color: rgb(50, 50, 50);
     color: rgb(236, 200, 101);
     border-top: 2px inset rgb(236, 200, 101);
+}
+
+/*________        _                 _
+ |___  ___|      | |       _    _  (_)   
+    |  |  (_)  __| | _____ \ \/ /   _ ___ 
+    |  |   _ / __| |/ / _ \ \  /   | / __|
+    |  |  | | (__|   <  __/ /  \  _| \__ \
+    |__|  |_|\___|_|\_\___|/_/\_\(_) |___/
+                                  _/ |
+                                 |__/
+*/
+
+.tx_container {
+    position: relative;
+    background-color: rgb(50, 50, 50);
+    display: grid;
+    grid-template-columns: repeat(10,1fr);
+    gap: 1px;
+    grid-auto-rows: minmax(20px, auto);
+}
+
+.tx_container.mobile {
+    display: grid;
+    grid-template-columns: repeat(100, 1fr);
+    gap: 1px;
+    overflow-y: auto;
+    margin: 0 7% 0 7%;
+}
+
+.tx_sortByBox {
+    background-color: rgb(50, 50, 50);
+    grid-column: 3 / 4;
+    grid-row: 1 / 3;
+    width: 100%;
+    height: 100%;
+    align-self: stretch;
+    justify-self: stretch;
+    text-wrap-mode: nowrap;
+}
+
+.tx_sortByBox.mobile {
+    grid-column: 1 / 16;
+    grid-row: 1;
+    width: 100%;
+    height: auto;
+}
+
+.tx_tdxHotlink {
+    background-color: rgb(50, 50, 50);
+    grid-column: 8 / 9;
+    grid-row: 1 / 3;
+    place-self: center;
+    height: 100px;
+}
+
+
+.tx_newTicketsPopupActive {
+    width: 72%;
+    grid-column: 2 / 3;
+    grid-row: 1 / 3;
+    place-self: center;
+    opacity: 100%;
+    transition: .2s ease;
+    pointer-events: none;
+    animation: flash 1.5s ease-in-out infinite;
+}
+.tx_newTicketsPopupActive.mobile {
+    grid-column: 76 / 101;
+    grid-row: 1;
+    width: 100%;
+    height: auto;
+    opacity: 100%;
+    transition: .2s ease;
+    pointer-events: none;
+    animation: flash 1.5s ease-in-out infinite;
+}
+@keyframes flash {
+    0% {
+        background-color: rgb(50, 50, 50);
+        border-radius: 15px;
+    }
+    50% {
+        background-color: rgb(80, 80, 80);
+        border-radius: 15px;
+    }
+    100% {
+        background-color: rgb(50, 50, 50);
+        border-radius: 15px;
+    }
+}
+
+.tx_newTicketsPopup {
+    width: 72%;
+    grid-column: 2 / 3;
+    grid-row: 1 / 3;
+    place-self: center;
+    opacity: 0%;
+    transition: .2s ease;
+    pointer-events: none;
+}
+.tx_newTicketsPopup.mobile {
+    grid-column: 76 / 101;
+    grid-row: 1;
+    width: 100%;
+    height: auto;
+    opacity: 0%;
+    transition: .2s ease;
+    pointer-events: none;
+}
+
+.tx_dismissAllButton {
+    grid-column: 9 / 10;
+    grid-row: 1 / 3;
+    place-self: center;
+}
+
+.tx_search {
+    background-color: rgb(50, 50, 50);
+    grid-column: 4 / 8;
+    grid-row: 1 / 3;
+    height: 100px;
+}
+
+.tx_search.mobile {
+    grid-column: 16 / 76;
+    grid-row: 1;
+    width: 100%;
+    height: auto;
+}
+
+.tx_search textarea {
+    width: 90%;
+    height: 40px;
+    margin: 12px 0px 5% 5%;
+    padding-left: 10px;
+    padding-right: 10px;
+    align-items: center;
+    display: block; 
+    text-wrap-style: auto;
+}
+
+.tx_loadingMessage {
+    background-color: rgb(50, 50, 50);
+    grid-column: 5 / 7;
+}
+.tx_loadingMessage.mobile {
+    background-color: rgb(50, 50, 50);
+    grid-column: unset;
+    width: 120%;
+    margin-top: 25px;
+    margin-left: 25x;
+}
+
+.tx_highlight_row {
+    background-color: rgba(236, 200, 101, 0.25);
+    transition: background-color 0.5s ease;
+}
+
+.tx_ticket_closed_flash.dashboard {
+    /* No background flash on the Dashboard tab */
+    background-color: transparent !important;
+}
+.tx_ticket_closed_flash {
+    background-color: #2ed1299c;
+    animation: closedFlash 3s ease-out 2s forwards;
+}
+@keyframes closedFlash {
+    0% {
+        background-color: #2ed1299c;
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+
+.tx_newTickets {
+    background-color: rgb(50, 50, 50);
+    grid-column: 2 / 5;
+}
+
+.tx_newTickets.mobile {
+    grid-column: 1 / 101;
+    grid-row: 2;
+    width: 100%;
+    min-height: 300px;
+}
+
+.tx_ticketContainer {
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+}
+
+.tx_ticketContainer table {
+    width: 100%;
+    table-layout: fixed;
+    text-align: center;
+}
+
+.tx_ticketContainer th {
+    color: rgb(236, 200, 101);
+    border-bottom: 1px solid rgb(144, 118, 26);
+    text-align: center;
+}
+
+.tx_ticketContainer table td:nth-child(1) {
+    text-align: left;
+}
+
+#closed.tx_ticketContainer table td:nth-child(2),
+#closed.tx_ticketContainer table th:nth-child(2) {
+    width: 75px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tx_ticketContainer table td:nth-child(1),
+.tx_ticketContainer table th:nth-child(1) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tx_ticketContainer table td:nth-child(2),
+.tx_ticketContainer table th:nth-child(2) {
+    width: 75px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tx_ticketContainer table td:nth-child(3),
+.tx_ticketContainer table th:nth-child(3) {
+    width: 80px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* For Dashboard container specifically*/
+.tx_ticketContainer table td:nth-child(4),
+.tx_ticketContainer table th:nth-child(4) {
+    width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+
+.tx_ticketContainer table td:nth-child(4) select {
+    pointer-events: auto; /* re-enable pointer events for dropdown */
+}
+
+
+.tx_ticketContainer input {
+    background-color: rgb(221 187 96);
+    border: 2px outset rgb(144,118,26);
+    max-width: 10%;
+    padding-left: 4px;
+}
+
+.tx_ticketContainer input::-webkit-outer-spin-button,
+.tx_ticketContainer input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.tx_ticketContainer input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield; 
+}
+
+.tx_ticketContainer button {
+    background-color: #ecc865;
+    padding-inline: 4px;
+    margin: 0px;
+    font-weight: bold;
+}
+
+.tx_ticketContainer span {
+    color: rgb(236 200 101);
+    margin-left: 2px;
+}
+
+.tx_ticketContainer select {
+    max-width: 12%;
+    min-width: 64px;
+    font-weight: bold;
+}
+
+.k_pager {
+    margin-top: 5px;
+    text-align: center;
+}
+
+.k_pager button {
+    margin: 1px 2px;
+    width: 100%;
+    max-width: 12%;
+    min-width: 5%;
+}
+
+.k_pagerClosed {
+    margin-top: 5px;
+    text-align: center;
+}
+
+.k_pagerClosed button {
+    margin: 1px 2px;
+    width: 100%;
+    max-width: 12%;
+    min-width: 8%;
+}
+
+.tx_ticket {
+    cursor: pointer;
+    color: rgb(236, 200, 101);
+}
+
+.tx_catchAllTickets {
+    background-color: rgb(50, 50, 50);
+    grid-column: 5 / 8;
+}
+
+.tx_catchAllTickets.mobile {
+    grid-column: 1 / 101;
+    grid-row: 3;
+    width: 100%;
+    min-height: 300px;
+}
+
+.tx_closedTickets {
+    background-color: rgb(50, 50, 50);
+    grid-column: 8 / 10;
+}
+
+.tx_closedTickets.mobile {
+    grid-column: 1 / 101;
+    grid-row: 4;
+    width: 100%;
+    min-height: 300px;
+}
+
+.tx_dismissAllPopupContainer {
+    position: fixed;
+    width: 100%;
+    height: auto;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    opacity: 0;
+    background-color: rgba(0,0,0,0.4);
+    pointer-events: none;
+    transition: .2s ease;
+}
+
+.tx_dismissAllPopupContainer.popupActive {
+    opacity: 1;
+    pointer-events: auto;
+    transition: .3s ease;
+}
+
+.tx_dismissAllPopupContainer .tx_popupBox {
+    width: 420px;
+    height: fit-content;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 250px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.dismissAllButtonConfirm {
+    float: left;
+    margin: 0px 0px 3px 5px;
+}
+
+.cancelPopupButton {
+    float: right;
+    margin: 0px 5px 3px 0px;
+}
+
+.tx_popupContainer {
+    position: fixed;
+    width: 100%;
+    height: auto;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    opacity: 0;
+    background-color: rgba(0,0,0,0.4);
+    pointer-events: none;
+    transition: .2s ease;
+}
+
+.tx_popupContainer.popupActive {
+    opacity: 1;
+    pointer-events: auto;
+    transition: .3s ease;
+}
+
+.tx_popupContainer .tx_popupBox {
+    width: 701px;
+    height: fit-content;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 90px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+.tx_popupBox.mobile {
+    width: 551px;
+    height: fit-content;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 90px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.tx_popupBox span {
+    color: rgb(118, 66, 28);
+    background-color: rgb(224, 193, 108);
+    font-family: "Contrail One", sans-serif;
+    font-size: 18pt;
+    font-weight: 400;
+    font-style: normal;
+    text-align: left;
+    padding: 0px 10px 0px 10px;
+    margin: 0px 0px;
+    border-radius: 0px 0px 6px 0px;
+    max-width: 90%;
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tx_popupBox p {
+    text-align: left;
+    padding: 0px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tx_popupContainer .tx_popupComments {
+    max-width: 401px;
+    min-width: 301px;
+    width: fit-content;
+    max-height: 450px;
+    height: fit-content;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 120px;
+    margin-right: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    overflow-y: auto;
+}
+.tx_popupComments.mobile {
+    max-width: 301px;
+    min-width: 251px;
+    width: fit-content;
+    max-height: 450px;
+    height: fit-content;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 120px;
+    margin-right: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    overflow-y: auto;
+}
+
+.tx_popupComments span {
+    color: rgb(118, 66, 28);
+    background-color: rgb(224, 193, 108);
+    font-family: "Contrail One", sans-serif;
+    font-size: 18pt;
+    font-weight: 400;
+    font-style: normal;
+    text-align: left;
+    padding: 0px 10px 0px 10px;
+    margin: 0px 0px;
+    border-radius: 0px 0px 6px 0px;
+    max-width: 90%;
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tx_popupComments p {
+    font-size: small;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0px 8px;
+}
+
+.tx_popupContainer .tx_whatChangedBox {
+    max-width: 501px;
+    min-width: 301px;
+    width: fit-content;
+    height: fit-content;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 120px;
+    margin-left: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.tx_whatChangedBox span {
+    color: rgb(118, 66, 28);
+    background-color: rgb(224, 193, 108);
+    font-family: "Contrail One", sans-serif;
+    font-size: 18pt;
+    font-weight: 400;
+    font-style: normal;
+    text-align: left;
+    padding: 0px 10px 0px 10px;
+    margin: 0px 0px;
+    border-radius: 0px 0px 6px 0px;
+    max-width: 90%;
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tx_whatChangedBox p {
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0px 8px;
+}
+
+.popup_closeButton {
+    float: right;
+    margin: 3px;
+}
+
+.popup_dismissChanges {
+    float: right;
+    margin: 0px 7px 5px 0px;
+}
+
+.popup_linkToTicket {
+    float: left;
+    margin: 0px 0px 5px 5px;
+}
+
+.popup_commentsButton {
+    float: left;
+    margin: 0px 0px 5px 7px;
+}
+
+.tx_comment_header {
+    margin: 0 0 0 5px;
+    font-size: 15px !important;
+}
+
+.tx_comment_body {
+    white-space: pre-wrap !important;
+    margin: 5px;
+    border: 1px solid rgb(144, 118, 26);
+    padding: 8px !important;
+}
+
+.popup_closeCommentsButton {
+    float: right;
+    margin: 3px;
+}
+
+.popup_sendToASU {
+    float: right;
+    margin: 0px 7px 5px 0px;
+}
+
+.popup_sendToHelpDesk {
+    float: right;
+    margin: 0px 7px 5px 0px;
+}
+
+.tx_adjacent {
+    display: flex;
+    justify-content: space-between;
+    margin: 16px 0px;
+}
+
+.tx_noMargins {
+    margin: 0;
+}
+
+.popup_toggleButton {
+    float: right;
+    margin: 0px 7px 5px 0px;
+}
+
+.tx_popup_ID {
+    margin-block-start: 0px;
+    margin-block-end: 0px;
+}
+.tx_popup_StatusName {
+    margin-block-start: 0px;
+    margin-block-end: 0px;
+}
+p.tx_popup_StatusName {
+    padding: 0px 50px 0px 10px;
+}
+.tx_popup_PriorityName {
+    margin-block-start: 0px;
+    margin-block-end: 0px;
+}
+.tx_popup_DaysOld {
+    margin-block-start: 0px;
+    margin-block-end: 0px;
+}
+p.tx_popup_DaysOld {
+    padding: 0px 50px 0px 10px;
+}
+
+.tx_popup_Requestor {
+    margin-top: 20px;
+}
+
+p.tx_popup_Title {
+    border-bottom: 1px solid rgb(224, 193, 108);
+    padding-bottom: 15px;
+}
+
+p.tx_Description {
+    max-height: 315px;
+    white-space: pre-wrap;
+    padding: 10px;
+    border: 1px solid rgb(144, 118, 26);
+    margin: 15px 10px 15px 10px;
+    overflow-y: auto;
+}
+
+.tx_waiting-cursor {
+    cursor: progress !important;
 }
 
 /* Admin Tools */
