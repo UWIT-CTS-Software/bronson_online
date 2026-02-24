@@ -735,43 +735,52 @@ async fn handle_connection(
                     .send_contents(contents)
         },
         "GET /currentUser HTTP/1.1" => { // OUTGOING, Current user info
-            let cookie = req.headers
-                .get("Cookie")
-                .cloned()
-                .unwrap_or(String::new());
-
-            let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
-
-            let username = if let Some(captures) = username_search.captures(&cookie) {
-                captures["username"].to_string()
-            } else {
-                return Response::new()
-                    .status(STATUS_401)
-                    .send_contents(json!({
-                        "error": "No authentication cookie"
-                    }).to_string().into())
-                    .build();
-            };
-
-            // Fetch user from DB
-            match database.get_user(&username) {
-                Ok(user) => {
-                    Response::new()
-                        .status(STATUS_200)
-                        .send_contents(json!({
-                            "username": user.username,
-                            "permissions": user.permissions
-                        }).to_string().into())
-                }
-
-                Err(_) => {
-                    return Response::new()
+            if !req.has_valid_cookie(&mut database) {
+                Response::new()
                         .status(STATUS_401)
-                        .send_contents(json!({
-                            "error": "User not found"
-                        }).to_string().into())
-                        .build();
-                }
+                        .send_contents(
+                            json!(
+                                {"response": "Unauthorized"}
+                            ).to_string().into()
+                        )
+            } else {
+                // Extract username from cookie
+                let cookie = req.headers
+                    .get("Cookie")
+                    .cloned()
+                    .unwrap_or(String::new());
+                let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
+                let username = match username_search.captures(&cookie) {
+                    Some(caps) => caps["username"].to_string(),
+                    None => {
+                        return Response::new()
+                            .status(STATUS_401)
+                            .send_contents(json!({
+                                "response": "Unauthorized"
+                            }).to_string().into())
+                            .build();
+                    }
+                };
+
+                // Fetch user from DB, default to standard user if not found
+                let user = match database.get_user(&username) {
+                    Ok(u) => u,
+                    Err(e) => {
+                        error!("DB_ERR: {}", e);
+                        DB_User {
+                            username: username.clone(),
+                            permissions: 0, // standard user
+                        }
+                    }
+                };
+
+                // Return user info
+                Response::new()
+                    .status(STATUS_200)
+                    .send_contents(json!({
+                        "username": user.username,
+                        "permissions": user.permissions
+                    }).to_string().into())
             }
         },
         "GET /tickets HTTP/1.1" => { // OUTGOING, Tickets for Tickex
@@ -2708,14 +2717,22 @@ $$$$$$$$\ $$\           $$\
 async fn fetch_tdx_token(database: &mut Database, req: &Client) -> Result<(), String> {
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/auth/login";
 
-    // Get TDX login credentials from .env
-    let keys_json_raw: String = std::env::var("KEYS_JSON").expect("KEYS_JSON missing from environment");
-    let keys_json: Value = serde_json::from_str(&keys_json_raw).expect("KEYS_JSON is not valid JSON");
-    let tdx_api_raw = keys_json["tdx_api_raw"].as_object().expect("tdx_api_raw missing or not an object");
+    // Get TDX login credentials from database
+    let tdx_api_raw = match database.get_key("tdx_api_raw") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get tdx_api_raw key: {}", e)),
+    };
 
-    // Extract username and password
-    let username: &str = tdx_api_raw["username"].as_str().expect("TDX username missing");
-    let password: &str = tdx_api_raw["password"].as_str().expect("TDX password missing");
+    // Parse username and password
+    let raw = tdx_api_raw.val.as_str();
+    let parsed: serde_json::Value = match serde_json::from_str(raw) {
+        Ok(v) => v,
+        Err(e) => return Err(format!("JSON parse error: {}", e)),
+    };
+
+    let username: &str = parsed["username"].as_str().unwrap_or("");
+    let password: &str = parsed["password"].as_str().unwrap_or("");
+    
     // Send the request
     let resp = req
         .post(url)
@@ -2747,17 +2764,17 @@ async fn fetch_tdx_token(database: &mut Database, req: &Client) -> Result<(), St
 }
 
 async fn fetch_tdx_ticket_description(database: &mut Database, req: &Client, ticket_id: i32) -> Result<String, String> {
-    // Get the TDX API token from database
-    let tdx_token = match database.get_key("tdx_api") {
-        Ok(t) => t,
-        Err(e) => return Err(format!("Failed to get TDX API token: {}", e)),
-    };
-
     // Construct the API URL to fetch ticket details
     let url = format!(
         "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/{}",
         ticket_id
     );
+
+    // Get the TDX API token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API token while fetching ticket description: {}", e)),
+    };
 
     // Make the request to TDX API
     let resp = req
@@ -2767,13 +2784,42 @@ async fn fetch_tdx_ticket_description(database: &mut Database, req: &Client, tic
         .send()
         .await;
 
-    let resp = match resp {
+    let mut resp = match resp {
         Ok(r) => r,
         Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
     };
 
-    if !resp.status().is_success() {
-        return Err(format!("TDX API error: {} - {}", resp.status(), resp.status().canonical_reason().unwrap_or("Unknown")));
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !resp.status().is_success() && resp.status() == reqwest::StatusCode::UNAUTHORIZED {
+        warn!("Ticket description fetch failure was due to an unauthorized response, fetching new token and trying again...");
+
+        // Grab new TDX Token
+        let _ = fetch_tdx_token(database, req).await;
+
+        // Get the TDX API token from database
+        let tdx_token = match database.get_key("tdx_api") {
+            Ok(t) => t,
+            Err(e) => return Err(format!("Failed to get TDX API token while fetching ticket description: {}", e)),
+        };
+
+        // Make the request to TDX API
+        let retry_resp = req
+            .get(&url)
+            .header("Authorization", &tdx_token.val)
+            .header("Accept", "application/json")
+            .send()
+            .await;
+
+        resp = match retry_resp {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
+        };
+
+        if !resp.status().is_success() {
+            return Err(format!("TDX API error: {} - {}", resp.status(), resp.status().canonical_reason().unwrap_or("Unknown")));
+        } else {
+            warn!("Successfully recovered new TDX Token & fetched new description data");
+        }
     }
 
     // Parse the response body
@@ -2791,17 +2837,17 @@ async fn fetch_tdx_ticket_description(database: &mut Database, req: &Client, tic
 }
 
 async fn fetch_tdx_ticket_feed(database: &mut Database, req: &Client, ticket_id: i32) -> Result<String, String> {
-    // Get the TDX API token from database
-    let tdx_token = match database.get_key("tdx_api") {
-        Ok(t) => t,
-        Err(e) => return Err(format!("Failed to get TDX API token: {}", e)),
-    };
-
-    // Construct the API URL to fetch ticket feed
+    // Construct the API URL to fetch ticket details
     let url = format!(
         "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/{}/feed",
         ticket_id
     );
+
+    // Get the TDX API token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API token while fetching ticket feed: {}", e)),
+    };
 
     // Make the request to TDX API
     let resp = req
@@ -2811,13 +2857,42 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &Client, ticket_id:
         .send()
         .await;
 
-    let resp = match resp {
+    let mut resp = match resp {
         Ok(r) => r,
         Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
     };
 
-    if !resp.status().is_success() {
-        return Err(format!("TDX API error: {} - {}", resp.status(), resp.status().canonical_reason().unwrap_or("Unknown")));
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !resp.status().is_success() && resp.status() == reqwest::StatusCode::UNAUTHORIZED {
+        warn!("Ticket feed fetch failed due to an unauthorized response, fetching new token and trying again...");
+
+        // Grab new TDX Token
+        let _ = fetch_tdx_token(database, req).await;
+
+        // Get the TDX API token from database
+        let tdx_token = match database.get_key("tdx_api") {
+            Ok(t) => t,
+            Err(e) => return Err(format!("Failed to get TDX API token while fetching ticket feed: {}", e)),
+        };
+
+        // Make the request to TDX API
+        let retry_resp = req
+            .get(&url)
+            .header("Authorization", &tdx_token.val)
+            .header("Accept", "application/json")
+            .send()
+            .await;
+
+        resp = match retry_resp {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
+        };
+
+        if !resp.status().is_success() {
+            return Err(format!("TDX API error: {} - {}", resp.status(), resp.status().canonical_reason().unwrap_or("Unknown")));
+        } else {
+            warn!("Successfully recovered new TDX Token & fetched new feed data");
+        }
     }
 
     // Parse the response body
@@ -2972,33 +3047,64 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
         let latest_date = chrono::NaiveDate::parse_from_str(&latest_ticket_date, "%Y-%m-%d").unwrap();
         let from_date = latest_date.checked_sub_months(chrono::Months::new(6)).unwrap().format("%Y-%m-%dT00:00:00Z").to_string();
 
-        // Fetch tickets from TDX
+        // Define search
         let search_body = serde_json::json!({
             "ModifiedDateFrom": from_date,
             "MaxResults": 10000,
             "ResponsibilityGroupIDs": [2742]
         });
 
-        // Make the request
+        // Make the request to TDX API
         let resp = req
             .post(url)
-            .header("Authorization", tdx_token.val)
+            .header("Authorization", &tdx_token.val)
             .header("Content-Type", "application/json")
             .body(search_body.to_string())
             .send()
             .await;
-        let resp = match resp {
+
+        let mut resp = match resp {
             Ok(r) => r,
-            Err(e) => return Err(format!("Failed to fetch tickets: {}", e)),
+            Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
         };
-        if !resp.status().is_success() {
-            return Err(format!("TDX API error: {}", resp.status()));
+
+        // Try fetching a new tdx token and try again if Unauthorized
+        if !resp.status().is_success() && resp.status() == reqwest::StatusCode::UNAUTHORIZED {
+            warn!("Ticket data fetch failure was due to an unauthorized response, fetching new token and trying again...");
+
+            // Grab new TDX Token
+            let _ = fetch_tdx_token(database, req).await;
+
+            // Get the TDX API token from database
+            let tdx_token = match database.get_key("tdx_api") {
+                Ok(t) => t,
+                Err(e) => return Err(format!("Failed to get TDX API token while fetching ticket data: {}", e)),
+            };
+
+            // Make the request to TDX API
+            let retry_resp = req
+                .post(url)
+                .header("Authorization", &tdx_token.val)
+                .header("Content-Type", "application/json")
+                .body(search_body.to_string())
+                .send()
+                .await;
+
+            resp = match retry_resp {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
+            };
+
+            if !resp.status().is_success() {
+                return Err(format!("TDX API error: {} - {}", resp.status(), resp.status().canonical_reason().unwrap_or("Unknown")));
+            } else {
+                warn!("Successfully recovered new TDX Token & fetched new ticket data");
+            }
         }
 
         // Get the response body as text and convert to JSON
         let body = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
         let tickets_json: Vec<serde_json::Value> = serde_json::from_str(&body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, body))?;
-
 
 
         // Map to DB_Ticket and update
