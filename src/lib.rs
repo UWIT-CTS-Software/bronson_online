@@ -71,11 +71,12 @@ use crate::schema::bronson::{
 	users::dsl::*,
 	keys::dsl::*,
 	data::dsl::*,
+	tickets::dsl::*,
 };
 use crate::models::{
 	DB_Hostname, DB_IpAddress,
 	DB_Room, DB_Building, DB_User, DB_Key, DB_DataElement,
-	DeviceType,
+	DeviceType, DB_Ticket,
 };
 
 trait FnBox {
@@ -676,7 +677,6 @@ impl Database {
 					Ok(k)  => k,
 					Err(m) => { return Err(format!("Unable to parse keys json: {}", m)); }
 				};
-
 				for (id, value) in json_keys.iter() {
 					let new_key = DB_Key {
 						key_id: id.clone(),
@@ -956,6 +956,116 @@ impl Database {
 		diesel::delete(data)
 			.filter(key.eq(data_key))
 			.returning(DB_DataElement::as_returning())
+			.get_result(&mut conn)
+	}
+
+	pub fn get_ticket(&mut self, id_value: i32) -> Result<Option<DB_Ticket>, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		tickets
+			.select(DB_Ticket::as_select())
+			.filter(ticket_id.eq(id_value))
+			.first(&mut conn)
+			.optional()
+	}
+
+	pub fn get_latest_ticket(&mut self) -> Result<DB_Ticket, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		tickets
+			.select(DB_Ticket::as_select())
+			.order(created_date.desc())
+			.first(&mut conn)
+	}
+
+	pub fn get_all_tickets(&mut self) -> Result<Vec<DB_Ticket>, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		tickets
+			.select(DB_Ticket::as_select())
+			.load::<DB_Ticket>(&mut conn)
+	}
+
+	pub fn check_if_tickets_empty(&mut self) -> bool {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		tickets
+			.count()
+			.get_result::<i64>(&mut conn)
+			.unwrap() == 0
+	}
+
+	pub fn update_ticket(&mut self, element: &DB_Ticket) -> Result<DB_Ticket, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		diesel::insert_into(tickets)
+			.values(element)
+			.on_conflict(ticket_id)
+			.do_update()
+			.set(element)
+			.returning(DB_Ticket::as_returning())
+			.get_result(&mut conn)
+	}
+
+	pub fn update_ticket_mark_as_viewed(&mut self, id: i32, new_bool: bool) -> Result<Option<DB_Ticket>, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		// Try to fetch the ticket first
+		let ticket_opt = tickets
+			.filter(ticket_id.eq(id))
+			.first::<DB_Ticket>(&mut conn)
+			.optional()?;
+
+		// If not found, quietly return
+		let Some(_) = ticket_opt else { return Ok(None); };
+
+		// Update the flag
+		let updated = diesel::update(tickets.filter(ticket_id.eq(id)))
+			.set(has_been_viewed.eq(new_bool))
+			.returning(DB_Ticket::as_returning())
+			.get_result::<DB_Ticket>(&mut conn)?;
+
+		Ok(Some(updated))
+	}
+
+	pub fn update_ticket_comment_count(&mut self, id: i32, new_count: i16) -> Result<Option<DB_Ticket>,	DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		// Try to fetch the ticket first
+		let ticket_opt = tickets
+			.filter(ticket_id.eq(id))
+			.first::<DB_Ticket>(&mut conn)
+			.optional()?;
+
+		// If not found, quietly return
+		let Some(ticket) = ticket_opt else { return Ok(None); };
+
+		// If ticket counts match, don't update the counters
+		if new_count != ticket.comment_count { 
+			// Update the old comment counter
+			let _ = diesel::update(tickets.filter(ticket_id.eq(id)))
+				.set(old_comment_count.eq(comment_count))
+				.returning(DB_Ticket::as_returning())
+				.get_result::<DB_Ticket>(&mut conn)?;
+
+			// Update the current comment counter
+			let updated = diesel::update(tickets.filter(ticket_id.eq(id)))
+				.set(comment_count.eq(new_count))
+				.returning(DB_Ticket::as_returning())
+				.get_result::<DB_Ticket>(&mut conn)?;
+
+			return Ok(Some(updated))
+		}
+
+		Ok(None)
+	}
+
+	pub fn delete_ticket(&mut self, id_value: i32) -> Result<DB_Ticket, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		diesel::delete(tickets)
+			.filter(ticket_id.eq(id_value))
+			.returning(DB_Ticket::as_returning())
 			.get_result(&mut conn)
 	}
 }

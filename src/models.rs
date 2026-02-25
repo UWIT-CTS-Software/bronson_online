@@ -4,6 +4,7 @@ use crate::schema::bronson::{
     buildings,
     rooms,
     keys,
+    tickets,
     sql_types::{
         IpAddress,
     }
@@ -230,4 +231,44 @@ pub struct DB_Key {
 pub struct DB_DataElement {
     pub key: String,
     pub val: String,
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable, AsChangeset, Default)]
+#[diesel(table_name = tickets)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct DB_Ticket {
+    pub ticket_id: i32,
+    pub has_been_viewed: bool,
+    pub type_name: String,              
+    pub type_category_name: String,
+    pub title: String,
+    pub account_name: String,
+    pub status_name: String,
+    pub service_name: String,
+    pub priority_name: String,
+    pub created_date: String,
+    pub created_full_name: String,
+    pub modified_date: String,
+    pub modified_full_name: String,
+    pub requestor_name: String,
+    pub requestor_email: String,
+    pub requestor_phone: String,
+    pub days_old: i16,
+    pub responsible_full_name: String,
+    pub responsible_group_name: String,
+    pub comment_count: i16,
+
+    pub old_type_name: String,
+    pub old_type_category_name: String,
+    pub old_title: String,
+    pub old_account_name: String,
+    pub old_status_name: String,
+    pub old_service_name: String,
+    pub old_priority_name: String,
+    pub old_modified_date: String,
+    pub old_modified_full_name: String,
+    pub old_responsible_full_name: String,
+    pub old_responsible_group_name: String,
+    pub old_comment_count: i16,
 }
