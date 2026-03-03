@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<r25:login_challenge pubdate="2006-03-10T11:02:00" xmlns:r25="http://www.collegenet.com/r25">
+    <r25:login>
+        <r25:challenge>Basic realm="R25 WebXervices"</r25:challenge>
+        <r25:username/>
+        <r25:response/>
+    </r25:login>
+</r25:login_challenge>
