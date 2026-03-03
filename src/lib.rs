@@ -683,7 +683,10 @@ impl Database {
 				for (id, value) in json_keys.iter() {
 					let new_key = DB_Key {
 						key_id: id.clone(),
-						val: value.to_string()
+						val: match value {
+							Value::String(s) => s.to_owned(),
+							_ => value.to_string()
+						}
 					};
 
 					let _ = self.update_key(&new_key);
@@ -1486,6 +1489,41 @@ pub struct GeneralRequest {
 	pub buffer: String
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename="r25:login_response")]
+pub struct LoginSuccess {
+	#[serde(rename="@pubdate")]
+	pubdate: Option<String>,
+	#[serde(rename="@engine")]
+	engine: Option<String>,
+	#[serde(rename="r25:login")]
+	login: Login
+}
+
+#[derive(Debug, Deserialize)]
+struct Login {
+	#[serde(rename="r25:message")]
+	message: String,
+	#[serde(rename="r25:success")]
+	success: String,
+	#[serde(rename="r25:user_type")]
+	user_type: String,
+	#[serde(rename="r25:user_id")]
+	user_id: u16,
+	#[serde(rename="r25:username")]
+	username: String,
+	#[serde(rename="r25:contact_name")]
+	contact_name: String,
+	#[serde(rename="r25:security_group_id")]
+	security_group_id: u16,
+	#[serde(rename="r25:security_group_name")]
+	security_group_name: String,
+	#[serde(rename="r25:login_url")]
+	login_url: String,
+	#[serde(rename="r25:logout_url")]
+	logout_url: String
+}
+
 pub static BUFF_SIZE : usize = 4096;
 pub static BACKUP    : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/backup.json");
 pub static TSCH_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/techSchedule.json");
@@ -1497,6 +1535,7 @@ pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
 pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/roomConfig_agg.csv");
 pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.csv");
 pub static LOG       : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/output.log");
+pub static LOGIN_XML : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/dummy_login.xml");
 pub static STATUS_200: &str = "HTTP/1.1 200 OK";
 pub static STATUS_303: &str = "HTTP/1.1 303 See Other";
 pub static STATUS_401: &str = "HTTP/1.1 401 Unauthorized";

@@ -47,7 +47,7 @@ use server_lib::{
     Building, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
-    CFM_DIR, WIKI_DIR, /* LOG, */
+    CFM_DIR, WIKI_DIR, LOGIN_XML, /* LOG, */
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
     SCHD_ERR, DASH_ERR, LDRB_ERR, SPRS_ERR, 
     Database, Terminal, 
@@ -55,6 +55,7 @@ use server_lib::{
         DB_Room, DB_Building, DB_User, DB_DataElement,
         DB_IpAddress,  
     },
+    LoginSuccess, 
 };
 use futures_util::future::FutureExt;
 use getopts::Options;
@@ -83,12 +84,19 @@ use log::{ debug, info, warn, error, }; // trace, };
 use cookie::{ /* Cookie, */ CookieJar, /* Key, */ };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
+use serde::{ Deserialize };
 use regex::Regex;
 use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta,Utc };
 use urlencoding::decode;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
+
+#[macro_use]
+extern crate serde_derive;
+
+extern crate serde;
+extern crate serde_xml_rs;
 // ----------------------------------------------------------------------------
 static JN_THREAD: AtomicBool = AtomicBool::new(false);
 pub const MIGRATIONS : EmbeddedMigrations = embed_migrations!();
@@ -178,7 +186,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .map_err(|e| format!("Failed to run migrations: {}", e))?;
 
     let mut request_database = Database::new();
-    //let data_database = Database::new();
 
     let _ = match request_database.init_if_empty() {
         Some(()) => (),
@@ -292,41 +299,41 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
 async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
     // Init Everyting
     // ThreadSchedule Init
-    //let mut thread_schedule = ThreadSchedule::new();
-    // TODO: Only add print1/2 if Debug is enabled.
-    {
-        let mut ts = thread_schedule.write().unwrap();
-        ts.tasks.insert("print1".to_string(), TaskSchedule {
-            duration: 60,
-            timestamp: Utc::now(),
-        });
-        ts.tasks.insert("print2".to_string(), TaskSchedule {
-            duration: 120,
-            timestamp: Utc::now(),
-        });
-        ts.tasks.insert("leaderboard".to_string(), TaskSchedule {
-            duration: 3600,
-            timestamp: Utc::now() - Duration::from_secs(3599),
-        });
-        ts.tasks.insert("spares".to_string(), TaskSchedule {
-            duration: 3600,
-            timestamp: Utc::now() - Duration::from_secs(3599),
-        });
-        ts.tasks.insert("backup".to_string(), TaskSchedule {
-            duration: 86400,
-            timestamp: Utc::now() - Duration::from_secs(86400)
-        });
-        ts.tasks.insert("checkerboard".to_string(), TaskSchedule {
-            duration: 1800,
-            timestamp: Utc::now() - Duration::from_secs(1799),
-        });
-        ts.tasks.insert("jacknet".to_string(), TaskSchedule {
-            duration: 3600,
-            timestamp: Utc::now() - Duration::from_secs(3580),
-        });
-    }
+    let mut ts = thread_schedule.write().unwrap();
+    ts.tasks.insert("print1".to_string(), TaskSchedule {
+        duration: 60,
+        timestamp: Utc::now(),
+    });
+    ts.tasks.insert("print2".to_string(), TaskSchedule {
+        duration: 120,
+        timestamp: Utc::now(),
+    });
+    ts.tasks.insert("leaderboard".to_string(), TaskSchedule {
+        duration: 3600,
+        timestamp: Utc::now() - Duration::from_secs(3599),
+    });
+    ts.tasks.insert("spares".to_string(), TaskSchedule {
+        duration: 3600,
+        timestamp: Utc::now() - Duration::from_secs(3599),
+    });
+    ts.tasks.insert("backup".to_string(), TaskSchedule {
+        duration: 86400,
+        timestamp: Utc::now() - Duration::from_secs(86400)
+    });
+    ts.tasks.insert("checkerboard".to_string(), TaskSchedule {
+        duration: 1800,
+        timestamp: Utc::now() - Duration::from_secs(1799),
+    });
+    ts.tasks.insert("jacknet".to_string(), TaskSchedule {
+        duration: 3600,
+        timestamp: Utc::now() - Duration::from_secs(3580),
+    });
+
     // Database Init
     let mut database = Database::new();
+
+    println!("{:?}", test_collegenet(&mut database).await);
+
     // Init Datapool
     // TODO: Once there is sufficient need, multithreading this will be done with 'data_threads', in addition, the following loop block will need refactored.
     //let _data_threads = ThreadPool::new(3);
@@ -2098,7 +2105,13 @@ fn construct_headers(call_type: &str,database: &mut Database) -> HeaderMap {
         header_map.insert(ACCEPT, HeaderValue::from_static("application/vnd.github+json"));
         header_map.insert(AUTHORIZATION, HeaderValue::from_str(&database.get_key("gh_api").expect("No key found!").val).expect("[-] KEY_ERR: Not found."));
         header_map.insert(HeaderName::from_static("x-github-api-version"), HeaderValue::from_static("2022-11-28"));
+    } else if call_type == "25l" {
+        header_map.insert(ACCEPT, HeaderValue::from_static("text/xml"));
+        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&database.get_key("25live_api").expect("No key found!").val).expect("[-] KEY_ERR: Not found."));
+        header_map.insert(HeaderName::from_static("www-authenticate"), HeaderValue::from_static("Basic realm=\"R25 WebServices\", charset=\"UTF-8\""));
     }
+
+    println!("{:?}", header_map);
 
     return header_map;
 }
@@ -2496,6 +2509,34 @@ $$$$$$$$\                    $$\
    $$ |\$$$$$$$\ $$$$$$$  |  \$$$$  |$$$$$$$  |
    \__| \_______|\_______/    \____/ \_______/ 
 */
+
+async fn test_collegenet(database: &mut Database) -> LoginSuccess {
+    let url = "https://webservices.collegenet.com/r25ws/wrd/uwyo/run/login.xml";
+    let req = reqwest::Client::builder()
+        .cookie_store(true)
+        // .cookie_provider(Arc::clone(&cookie_jar))
+        .user_agent("server_lib/1.10.1")
+        .default_headers(construct_headers("25l", database))
+        .timeout(Duration::from_secs(15))
+        .build()
+        .ok()
+        .unwrap()
+    ;
+
+    let text = req.get(url)
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .expect("[-] RESPONSE ERROR")
+        .text()
+        .await
+        .expect("[-] PAYLOAD ERROR");
+
+
+    let doc: LoginSuccess = serde_xml_rs::from_str(&text).unwrap();
+
+    doc
+}
 
 #[cfg(test)]
 mod tests {

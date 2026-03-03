@@ -26,6 +26,8 @@ diesel = {version = "2.2.11", features = ["postgres", "r2d2"]}
 dotenvy = "0.15"
 diesel_migrations = "2.2.0"
 futures-util = "0.3.31"
+serde_derive = "1.0.228"
+serde-xml-rs = "0.8.2"
 
 # Default dev level options
 [profile.dev]
