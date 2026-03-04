@@ -1307,7 +1307,7 @@ async function setTickex() {
                     }
                 }
             }).catch(error => console.error('Error fetching tickets for update:', error));
-        }, 20000); // Refresh every 20 seconds
+        }, 60000); // Refresh every 60 seconds
     }
 
     await Promise.resolve();
