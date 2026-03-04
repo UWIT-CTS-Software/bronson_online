@@ -44,6 +44,7 @@ TOC:
     - getTicketCache()      : Grabs the Ticket Cache
     - getCachedTicketData() : Grabs a Specific Ticket from the Cache
     - setCachedTicketData() : Saves a Ticket to the Cache
+    - removeFromCache()     : Removes a Ticket from the Cache 
     - tokenize()            : Helper: simple tokenizer
 
     Backend Calls:
@@ -796,11 +797,26 @@ function setCachedTicketData(ticketId, type, value) {
         delete cache.data[oldest];
     }
 
-    // Save to Cache
+    // Save changes to Cache
     try {
         sessionStorage.setItem('tickex_cache', JSON.stringify(cache));
     } catch (e) {
         console.warn('Failed to save cache:', e);
+    }
+}
+
+function removeFromCache(ticketId) {
+    const cache = getTicketCache();
+    const keysToRemove = [ `${ticketId}_description`, `${ticketId}_comments` ];
+
+    cache.order = cache.order.filter(k => !keysToRemove.includes(k));
+    keysToRemove.forEach(k => delete cache.data[k]);
+
+    // Save changes to Cache
+    try {
+        sessionStorage.setItem('tickex_cache', JSON.stringify(cache));
+    } catch (e) {
+        console.warn('Failed to update cache:', e);
     }
 }
 
@@ -1234,6 +1250,7 @@ async function setTickex() {
                         // Mark new tickets as not viewed
                         actuallyNew.forEach(ticket => {
                             updateTicketViewed(ticket.ID, false); // mark as not viewed
+                            removeFromCache(ticket.ID); // Clear cache for this ticket so new description/comments will be fetched
 
                             // Update local copy immediately
                             const index = newTickets.findIndex(t => t.ID === ticket.ID);
