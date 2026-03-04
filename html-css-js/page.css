@@ -1773,7 +1773,7 @@ ol li::marker {
 
 .tx_whatChangedBox p {
     text-align: left;
-    white-space: nowrap;
+    white-space: normal;
     overflow: hidden;
     text-overflow: ellipsis;
     padding: 0px 8px;

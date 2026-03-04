@@ -328,39 +328,52 @@ async function show(ticket) {
         ticket.has_been_viewed = true;
         
         // Grab old ticket info. Compares what changed. (Field: Old info => New info)
+        //  - TypeName ("General Classroom Issue" or similar)
+        //  - TypeCategoryName ("Instructional Technology & Classroom Support" or similar)
+        //  - Title
+        //  - AccountName (Department Name)
+        //  - StatusName (New, In Process, etc...)
+        //  - ServiceName ("I need help with my classroom" or similar)
+        //  - PriorityName (High, Medium, Low, Not Specified)
+        //  - ResponsibilityFullName (Tech's name)
+        //  - ResponsibilityGropuName (CTS)
+        //  - comment_count (how many comments/replies are on the ticket)
         let whatChangedRows = "";
-        if (ticket.old_type_name != ticket.TypeName)
+        if (ticket.old_type_name != ticket.TypeName && ticket.old_type_name !== "")
             whatChangedRows += `<p>Type: ${ticket.old_type_name} => ${ticket.TypeName}</p>`;
-        if (ticket.old_type_category_name != ticket.TypeCategoryName)
+        if (ticket.old_type_category_name != ticket.TypeCategoryName && ticket.old_type_category_name !== "")
             whatChangedRows += `<p>Type Category: ${ticket.old_type_category_name} => ${ticket.TypeCategoryName}</p>`;
-        if (ticket.old_title != ticket.Title)
+        if (ticket.old_title != ticket.Title  && ticket.old_title !== "")
             whatChangedRows += `<p>Title: ${ticket.old_title} => ${ticket.Title}</p>`;
-        if (ticket.old_account_name != ticket.AccountName)
+        if (ticket.old_account_name != ticket.AccountName  && ticket.old_account_name !== "")
             whatChangedRows += `<p>Account: ${ticket.old_account_name} => ${ticket.AccountName}</p>`;
-        if (ticket.old_status_name != ticket.StatusName)
+        if (ticket.old_status_name != ticket.StatusName  && ticket.old_status_name !== "")
             whatChangedRows += `<p>Status: ${ticket.old_status_name} => ${ticket.StatusName}</p>`;
-        if (ticket.old_service_name != ticket.ServiceName)
+        if (ticket.old_service_name != ticket.ServiceName  && ticket.old_service_name !== "")
             whatChangedRows += `<p>Service: ${ticket.old_service_name} => ${ticket.ServiceName}</p>`;
-        if (ticket.old_priority_name != ticket.PriorityName)
+        if (ticket.old_priority_name != ticket.PriorityName  && ticket.old_priority_name !== "")
             whatChangedRows += `<p>Priority: ${ticket.old_priority_name} => ${ticket.PriorityName}</p>`;
-        if (ticket.old_responsible_full_name != ticket.ResponsibleFullName)
+        if (ticket.old_responsible_full_name != ticket.ResponsibleFullName  && ticket.old_responsible_full_name !== "")
             whatChangedRows += `<p>Responsible: ${ticket.old_responsible_full_name} => ${ticket.ResponsibleFullName}</p>`;
-        if (ticket.old_responsible_group_name != ticket.ResponsibleGroupName)
+        if (ticket.old_responsible_group_name != ticket.ResponsibleGroupName  && ticket.old_responsible_group_name !== "")
             whatChangedRows += `<p>Responsible Group: ${ticket.old_responsible_group_name} => ${ticket.ResponsibleGroupName}</p>`;
-        if (ticket.old_comment_count != ticket.comment_count)
+        if (ticket.old_comment_count != ticket.comment_count || ticket.comment_count !== 0)
             whatChangedRows += `<p>New Comments have been added!</p>`;
 
-        whatChangedHTML = `
-            <div class="tx_whatChangedBox">
-                <span>What Changed:</span>
-                ${whatChangedRows}
-                <p>Last Modified: ${ticket.ModifiedDate || ""} by ${ticket.ModifiedFullName || ""}</p>
-                <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
-                    <button class="popup_linkToTicket">Link to Ticket</button>
-                </a>
-                <button class="popup_dismissChanges" onclick="dismissChanges(${ticket.ID})">Dismiss</button>
-            </div>
-        `;
+        // If fields above don't populate, don't display "What Changed"
+        if (whatChangedRows !== "") {
+            whatChangedHTML = `
+                <div class="tx_whatChangedBox">
+                    <span>What Changed:</span>
+                    ${whatChangedRows}
+                    <p>Last Modified: ${ticket.ModifiedDate || ""} by ${ticket.ModifiedFullName || ""}</p>
+                    <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
+                        <button class="popup_linkToTicket">Link to Ticket</button>
+                    </a>
+                    <button class="popup_dismissChanges" onclick="dismissChanges(${ticket.ID})">Dismiss</button>
+                </div>
+            `;
+        }
     }
 
     // Set Popup HTML
