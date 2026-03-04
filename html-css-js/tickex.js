@@ -361,20 +361,20 @@ async function show(ticket) {
         if (ticket.old_comment_count != ticket.comment_count || ticket.comment_count !== 0)
             whatChangedRows += `<p>New Comments have been added!</p>`;
 
-        // If fields above don't populate, don't display "What Changed"
-        if (whatChangedRows !== "") {
-            whatChangedHTML = `
-                <div class="tx_whatChangedBox">
-                    <span>What Changed:</span>
-                    ${whatChangedRows}
-                    <p>Last Modified: ${ticket.ModifiedDate || ""} by ${ticket.ModifiedFullName || ""}</p>
-                    <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
-                        <button class="popup_linkToTicket">Link to Ticket</button>
-                    </a>
-                    <button class="popup_dismissChanges" onclick="dismissChanges(${ticket.ID})">Dismiss</button>
-                </div>
-            `;
-        }
+        // Brand new ticket if no old info exists
+        if (ticket.old_title === "") whatChangedRows = `<p>This is a Brand-New Ticket!</p>`;
+
+        whatChangedHTML = `
+            <div class="tx_whatChangedBox">
+                <span>What Changed:</span>
+                ${whatChangedRows}
+                <p>Last Modified: ${ticket.ModifiedDate || ""} by ${ticket.ModifiedFullName || ""}</p>
+                <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
+                    <button class="popup_linkToTicket">Link to Ticket</button>
+                </a>
+                <button class="popup_dismissChanges" onclick="dismissChanges(${ticket.ID})">Dismiss</button>
+            </div>
+        `;
     }
 
     // Set Popup HTML
@@ -425,6 +425,7 @@ async function show(ticket) {
                 <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">Details</button>
                 <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""}</p>
                 <p class="tx_popup_contact">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
+                <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Incident</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
                 <p class="tx_Description">${description || "--- No Description Provided ---"}</p>
                 <button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>
                 <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">

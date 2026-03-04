@@ -1874,7 +1874,7 @@ p.tx_popup_Title {
 }
 
 p.tx_Description {
-    max-height: 315px;
+    max-height: 290px;
     white-space: pre-wrap;
     padding: 10px;
     border: 1px solid rgb(144, 118, 26);
