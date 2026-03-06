@@ -63,6 +63,10 @@ TODO:
     - Add ticket editing/saving to TDX API (when we get write access)
     - Add "send to ASU"/"send to help desk" button (when we get write access)
     - Add "Take Responsibility" Button to unassigned tickets (when we get write access)
+    - Add ability to comment on tickets from the popup (when we get write access)
+    - (Optional, but would be nice) Have an AI Summarize the actions of the tickets when closing the ticket 
+            - Client side?/Server side?
+            - TDX sort of has an AI summary, but I want to post it in the comments
 */
 
 
@@ -153,7 +157,9 @@ function dismissAllPopup() {
 }
 
 // Dismisses the "What Changed" box in the popup
-function dismissChanges(ticketID) {
+function dismissChanges(ticketID, event) {
+    if (event) event.stopPropagation();
+    
     const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
     if (!popupContainer) return;
 
@@ -206,6 +212,7 @@ async function showPopupFromDashboard(ticket, element) {
         });
     });
 }
+
 // Child function to showPopup() - shows the popup
 async function show(ticket) {
     if (!ticket) {
@@ -367,45 +374,50 @@ async function show(ticket) {
         whatChangedHTML = `
             <div class="tx_whatChangedBox">
                 <span>What Changed:</span>
+                <button class="popup_dismissChanges" onclick="dismissChanges(${ticket.ID}, event)">Dismiss</button>
                 ${whatChangedRows}
                 <p>Last Modified: ${ticket.ModifiedDate || ""} by ${ticket.ModifiedFullName || ""}</p>
-                <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
-                    <button class="popup_linkToTicket">Link to Ticket</button>
-                </a>
-                <button class="popup_dismissChanges" onclick="dismissChanges(${ticket.ID})">Dismiss</button>
             </div>
         `;
     }
 
     // Set Popup HTML
+    let sideContent = "";
+    if (container.classList.contains('commentsShown'))
+        sideContent += commentsHTML;
+    if (whatChangedHTML && !(localStorage.getItem("isMobile") === "true"))
+        sideContent += whatChangedHTML;
+    
+
     if (popupContainer.classList.contains('detailsShown')) { // Details Shown
         popupContainer.innerHTML = `
-            ${commentsHTML}
-            <div class="tx_popupBox ${(localStorage.getItem("isMobile") === "true") ? "mobile" : ""}">
-            <span>${ticket.Title || "No Title"}</span>
-            <button class="popup_closeButton" onClick="hidePopup()">X</button>
-                <div class="tx_adjacent"><p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
-                <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
-                <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
-                <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
-                <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
-                <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">Description</button>
-                <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Incident</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
-                <p class="tx_popup_ServiceName">Service: ${ticket.ServiceName || ""}</p>
-                <p class="tx_popup_AccountName">Account Department: ${ticket.AccountName || ""}</p>
-                <p class="tx_popup_TypeName">Type: ${ticket.TypeName || ""}</p>
-                <p class="tx_popup_TypeCategoryName">Type Category: ${ticket.TypeCategoryName || ""}</p>
-                <p class="tx_popup_Created">Date Created: ${ticket.CreatedDate || ""} || Created by: ${ticket.CreatedFullName || ""}</p>
-                <p class="tx_popup_Modified">Last Modified: ${ticket.ModifiedDate || ""} || Modified by: ${ticket.ModifiedFullName || ""}</p>
-                <button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>
-                <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
-                    <button class="popup_linkToTicket">Link to Ticket</button>
-                </a>
-                <button disabled class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
-                <button disabled class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
+            <div class="tx_popupWrapper">
+                <div class="tx_popupBox ${(localStorage.getItem("isMobile") === "true") ? "mobile" : ""}">
+                <span>${ticket.Title || "No Title"}</span>
+                <button class="popup_closeButton" onClick="hidePopup()">X</button>
+                    <div class="tx_adjacent"><p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
+                    <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
+                    <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
+                    <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
+                    <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
+                    <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">Description</button>
+                    <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
+                    <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Incident</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
+                    <p class="tx_popup_ServiceName">Service: ${ticket.ServiceName || ""}</p>
+                    <p class="tx_popup_AccountName">Account Department: ${ticket.AccountName || ""}</p>
+                    <p class="tx_popup_TypeName">Type: ${ticket.TypeName || ""}</p>
+                    <p class="tx_popup_TypeCategoryName">Type Category: ${ticket.TypeCategoryName || ""}</p>
+                    <p class="tx_popup_Created">Date Created: ${ticket.CreatedDate || ""} || Created by: ${ticket.CreatedFullName || ""}</p>
+                    <p class="tx_popup_Modified">Last Modified: ${ticket.ModifiedDate || ""} || Modified by: ${ticket.ModifiedFullName || ""}</p>
+                    <button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>
+                    <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
+                        <button class="popup_linkToTicket">Link to Ticket</button>
+                    </a>
+                    <button disabled class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
+                    <button disabled class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
+                </div>
+                ${sideContent ? `<div class="tx_sideContent">${sideContent}</div>` : ''}
             </div>
-            ${(localStorage.getItem("isMobile") === "true") ? "" : whatChangedHTML}
         `;
     } else { // Description Shown
         let description = await fetchTicketDescription(ticket.ID);
@@ -413,34 +425,46 @@ async function show(ticket) {
         description = description.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n+/g, '\n').trim(); 
 
         popupContainer.innerHTML = `
-            ${commentsHTML}
-            <div class="tx_popupBox ${(localStorage.getItem("isMobile") === "true") ? "mobile" : ""}">
-            <span>${ticket.Title || "No Title"}</span>
-            <button class="popup_closeButton" onClick="hidePopup()">X</button>
-                <div class="tx_adjacent"><p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
-                <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
-                <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
-                <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
-                <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
-                <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">Details</button>
-                <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""}</p>
-                <p class="tx_popup_contact">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Incident</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
-                <p class="tx_Description">${description || "--- No Description Provided ---"}</p>
-                <button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>
-                <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
-                    <button class="popup_linkToTicket">Link to Ticket</button>
-                </a>
-                <button disabled class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
-                <button disabled class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
+            <div class="tx_popupWrapper">
+                <div class="tx_popupBox ${(localStorage.getItem("isMobile") === "true") ? "mobile" : ""}">
+                <span>${ticket.Title || "No Title"}</span>
+                <button class="popup_closeButton" onClick="hidePopup()">X</button>
+                    <div class="tx_adjacent"><p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
+                    <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
+                    <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
+                    <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
+                    <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
+                    <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">Details</button>
+                    <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""}</p>
+                    <p class="tx_popup_contact">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
+                    <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Incident</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
+                    <p class="tx_Description">${description || "--- No Description Provided ---"}</p>
+                    <button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>
+                    <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
+                        <button class="popup_linkToTicket">Link to Ticket</button>
+                    </a>
+                    <button disabled class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
+                    <button disabled class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
+                </div>
+                ${sideContent ? `<div class="tx_sideContent">${sideContent}</div>` : ''}
             </div>
-            ${whatChangedHTML}
         `;
     }
 
     // Show popup
-    if (!popupContainer.classList.contains('popupActive'))
+    if (!popupContainer.classList.contains('popupActive')) {
+        // Save terminal state and hide terminal if open
+        const terminal = document.getElementById('terminal');
+        if (terminal) {
+            window.terminalStateBeforePopup = terminal.style.display || 'block';
+            terminal.style.display = 'none';
+        }
+
         popupContainer.classList.add('popupActive');
+
+        // Disable scrolling the main body when popup is active
+        document.body.classList.add('tx_no-scroll');
+    }
 
     // Mark ticket as viewed
     updateTicketViewed(ticket.ID, true);
@@ -489,6 +513,16 @@ function hidePopup() {
             popupContainer.classList.remove('commentsShown');
 
         popupContainer.classList.remove('popupActive');
+
+        // Enable scrolling the main body when popup is inactive
+        document.body.classList.remove('tx_no-scroll');
+
+        // Restore terminal to its previous state
+        const terminal = document.getElementById('terminal');
+        if (terminal && window.terminalStateBeforePopup !== null) {
+            terminal.style.display = window.terminalStateBeforePopup;
+            window.terminalStateBeforePopup = null;
+        }
     }
 }
 
@@ -503,6 +537,20 @@ function initializeListeners() {
         if (pressedKey == 'Escape') 
             if (document.querySelector('.tx_popupContainer.popupActive')) hidePopup();
             if (document.querySelector('.tx_dismissAllPopupContainer.popupActive')) dismissAll(false);
+    });
+
+    // Left Click Outside of Popup
+    document.addEventListener('click', (e) => {
+        if (e.button !== 0) return; // Ensure only left clicking
+
+        const popup = document.querySelector('.tx_popupContainer.popupActive');
+        if (popup) {
+            // Check if clicked element is within popupBox, comments, or whatChangedBox
+            const clickedInPopupBox = e.target.closest('.tx_popupBox');
+            const clickedInSideContent = e.target.closest('.tx_sideContent');
+            
+            if (!clickedInPopupBox && !clickedInSideContent) hidePopup();
+        }
     });
 
     // Listens to radio buttons, for sorting
@@ -929,6 +977,9 @@ async function setTickex() {
     // Clear stash and remove strobing indicator
     sessionStorage.removeItem("Tickex_stash");
 
+    // Track terminal state when popup is shown
+    window.terminalStateBeforePopup = null;
+
     const isMobile = (localStorage.getItem("isMobile") === "true") ? true : false;
 
     let current = document.getElementsByClassName("selected");
@@ -1086,7 +1137,7 @@ async function setTickex() {
     newTicketsPopup.classList.add("tx_newTicketsPopup");
     if (isMobile) newTicketsPopup.classList.add("mobile");
     newTicketsPopup.innerHTML = `
-        <legend>New Tickets are Available!</legend>
+        <legend>New Tickets Available!</legend>
     `;
     tx_container.append(newTicketsPopup);
 
