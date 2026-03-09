@@ -59,14 +59,21 @@ TOC:
 
 
 TODO:
-    Main Features to Add:
-    - Add ticket editing/saving to TDX API (when we get write access)
-    - Add "send to ASU"/"send to help desk" button (when we get write access)
-    - Add "Take Responsibility" Button to unassigned tickets (when we get write access)
-    - Add ability to comment on tickets from the popup (when we get write access)
+    - Display Replies Threads
+
+    Main Features to Add when we get write access:
+    - Add ticket editing/saving to TDX API (Title, Priority, Status, etc...)
+    - Add "Send to ASU"/"Send to Help Desk" button
+    - Add "Take Responsibility" Button to unassigned tickets
+        - This will disappear when a tech takes responsibility
+    - Add "Assign Responsibility" Button to assign other techs to tickets
+        - Maybe a dropdown of all CTS techs that you can assign to? (Can we get this list from the API?)
+    - Reply to Requestor from the popup
+    - Add ability to comment/reply on tickets from the popup
+        - This is meant to act as our "Microsoft Teams" chat, we should theorically move communicate to this
     - (Optional, but would be nice) Have an AI Summarize the actions of the tickets when closing the ticket 
-            - Client side?/Server side?
-            - TDX sort of has an AI summary, but I want to post it in the comments
+        - Client side?/Server side?
+        - TDX sort of has an AI summary, but I want to post it in the comments
 */
 
 
