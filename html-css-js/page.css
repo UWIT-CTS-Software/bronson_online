@@ -1850,8 +1850,40 @@ ol li::marker {
 .tx_comment_body {
     white-space: pre-wrap !important;
     margin: 5px;
-    border: 1px solid rgb(144, 118, 26);
     padding: 8px !important;
+    padding: 14px !important;
+}
+
+.tx_replies {
+    background-color: rgb(75, 75, 75);
+    margin: 0 15px;
+}
+
+.tx_reply {
+    margin-top: 16px;
+}
+
+.tx_reply_header {
+    margin: 2px;
+    padding: 2px !important;
+}
+
+.tx_reply_person {
+    margin: 2px;
+    padding: 2px !important;
+    padding-left: 8px !important;
+}
+
+.tx_reply_body {
+    white-space: pre-wrap !important;
+    margin: 2px;
+    padding: 2px !important;
+    padding-left: 14px !important;
+}
+
+.tx_comment_seperator {
+    border-top: 1px solid rgb(144, 118, 26);
+    margin: 12px 0;
 }
 
 .popup_closeCommentsButton {

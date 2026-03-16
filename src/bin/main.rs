@@ -2910,7 +2910,7 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &Client, ticket_id:
             .and_then(|v| v.as_str())
             .unwrap_or("");
 
-        let date = entry.get("LastUpdatedDate")
+        let date = entry.get("CreatedDate")
             .and_then(|v| v.as_str())
             .unwrap_or("");
 
@@ -2922,15 +2922,27 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &Client, ticket_id:
             .and_then(|v| v.as_i64())
             .unwrap_or(0);
 
+        let replies: (Vec<String>, Vec<String>, Vec<String>) = if replies_count > 0 {
+            fetch_tdx_feed_replies(
+                database, req, entry.get("ID").and_then(|v| v.as_i64()).unwrap_or(0)
+            ).await.map_err(|e| format!("Failed to read response: {}", e))?
+        } else {
+            (Vec::new(), Vec::new(), Vec::new())
+        };
+
         // Push a JSON object into the array
         items.push(json!({
             "commenter": commenter,
             "date": date,
             "comment": body_html,
-            "replies_count": replies_count
+            "replies_count": replies_count,
+            "created_by": &replies.0,
+            "replies": &replies.1,
+            "created_date": &replies.2
         }));
 
-        comment_count += 1;
+        comment_count += 1; // Comment itself
+        comment_count += replies_count; // Replies to the comment
     }
     let _ = database.update_ticket_comment_count(ticket_id, comment_count as i16);
 
@@ -2939,6 +2951,101 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &Client, ticket_id:
         .map_err(|e| format!("Failed to serialize JSON: {}", e))?;
 
     Ok(output_json)
+}
+
+
+async fn fetch_tdx_feed_replies(database: &mut Database, req: &Client, feed_id: i64) -> Result<(Vec<String>, Vec<String>, Vec<String>), String> {
+    // Construct the API URL to fetch feed replies
+    let url = format!(
+        "https://uwyo.teamdynamix.com/TDWebApi/api/feed/{}",
+        feed_id
+    );
+
+    // Get the TDX API token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API token while fetching ticket feed: {}", e)),
+    };
+
+    // Make the request to TDX API
+    let resp = req
+        .get(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Accept", "application/json")
+        .send()
+        .await;
+
+    let mut resp = match resp {
+        Ok(r) => r,
+        Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
+    };
+
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !resp.status().is_success() && resp.status() == reqwest::StatusCode::UNAUTHORIZED {
+        warn!("Ticket replies fetch failed due to an unauthorized response, fetching new token and trying again...");
+
+        // Grab new TDX Token
+        let _ = fetch_tdx_token(database, req).await;
+
+        // Get the TDX API token from database
+        let tdx_token = match database.get_key("tdx_api") {
+            Ok(t) => t,
+            Err(e) => return Err(format!("Failed to get TDX API token while fetching ticket feed: {}", e)),
+        };
+
+        // Make the request to TDX API
+        let retry_resp = req
+            .get(&url)
+            .header("Authorization", &tdx_token.val)
+            .header("Accept", "application/json")
+            .send()
+            .await;
+
+        resp = match retry_resp {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
+        };
+
+        if !resp.status().is_success() {
+            return Err(format!("TDX API error: {} - {}", resp.status(), resp.status().canonical_reason().unwrap_or("Unknown")));
+        } else {
+            warn!("Successfully recovered new TDX Token & fetched new feed data");
+        }
+    }
+
+    // Parse the response body
+    let body = resp.text().await.map_err(|e| format!("Failed to read response: {}", e))?;
+    let replies_json: Value = serde_json::from_str(&body)
+        .map_err(|e| format!("Failed to parse ticket replies JSON: {}", e))?;
+
+    let replies_array = replies_json.get("Replies")
+        .and_then(|v| v.as_array())
+        .map_or(&[][..], |v| v);
+
+
+    let created_by: Vec<String> = replies_array.iter()
+        .map(|reply| {
+            reply.get("CreatedFullName")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string()
+        }).collect();
+    let replies_body: Vec<String> = replies_array.iter()
+        .map(|reply| {
+            reply.get("Body")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string()
+        }).collect();
+    let created_date: Vec<String> = replies_array.iter()
+        .map(|reply| {
+            reply.get("CreatedDate")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string()
+        }).collect();
+
+    Ok((created_by, replies_body, created_date))
 }
 
 

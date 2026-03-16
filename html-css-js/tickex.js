@@ -287,20 +287,37 @@ async function show(ticket) {
             let formattedDate = "";
             if (c.date != "") formattedDate = new Date(c.date).toLocaleString();
 
+            for (let i = 0; i < c.created_date.length; i++) {
+                c.created_date[i] = new Date(c.created_date[i]).toLocaleString();
+            }
+
             // Scrub HTML tags out
             let commentBody = c.comment.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n+/g, '\n').trim(); 
 
             // Build replies
-            let replies_count = "";
-            if (c.replies_count > 0) {
-                replies_count = `
-                    <p class="tx_noMargins">Replies are available for this comment
-                        <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
-                            <button>View in TDX</button>
-                        </a>
+            let repliesRows = "";
+            for (let i = 0; i < c.replies_count; i++) {
+                let reply = c.replies[i];
+
+                // Scrub HTML tags out
+                reply = reply.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n+/g, '\n').trim();
+
+                repliesRows += `
+                <div class="tx_reply">
+                    <p class="tx_reply_person">
+                        <strong>${c.created_by[i]}, ${c.created_date[i]}</strong>
                     </p>
+                    <p class="tx_reply_body">${reply}</p>
+                </div>
                 `;
             }
+
+            let repliesHTML = `
+                <p class="tx_reply_header">
+                    <strong>Replies:</strong>
+                    ${repliesRows}
+                </p>
+            `;
 
             builtComments += `
                 <div class="tx_comment">
@@ -308,8 +325,8 @@ async function show(ticket) {
                         <strong>${c.commenter}</strong> - ${formattedDate}
                     </p>
                     <p class="tx_comment_body">${commentBody}</p>
-                    ${replies_count}
-                    <br>
+                    <div class="tx_replies">${c.replies_count ? repliesHTML : "" }</div>
+                    <p class="tx_comment_seperator"></p>
                 </div>
             `;
         }
