@@ -515,11 +515,13 @@ input:checked + .slider:before {
     background-color: rgb(31, 31, 31);
     border-radius: 10px;
     border: 2px outset rgb(122,113,45);
+    overflow: hidden;
 }
 
-/* .db_checker progress::-webkit-progress-bar {
-    background-color: black;
-} */
+
+progress::-webkit-progress-bar {
+    background-color: rgb(31, 31, 31);
+}
 
 .db_checker progress::-webkit-progress-value {
     background-color: rgb(172, 159, 64);
