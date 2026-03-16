@@ -770,6 +770,12 @@ function initBoard() {
     // Put tickets in proper board sections
     let newCount = 0, catchAllCount = 0, closedCount = 0;
     for (let ticket of window.currentTickets) {
+        // Hard-coded blacklist for tickets that we don't want showing up in Tickex
+        const TICKETID_BLACKLIST = [
+            22873142, 22873186
+        ];
+        if (TICKETID_BLACKLIST.includes(ticket.ID)) continue;
+
         let highlightClass = ticket.has_been_viewed ? '' : 'tx_highlight_row';
         let ticketRow = `
             <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
