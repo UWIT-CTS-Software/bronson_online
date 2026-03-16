@@ -59,8 +59,6 @@ TOC:
 
 
 TODO:
-    - Display Replies Threads
-
     Main Features to Add when we get write access:
     - Add ticket editing/saving to TDX API (Title, Priority, Status, etc...)
     - Add "Send to ASU"/"Send to Help Desk" button
