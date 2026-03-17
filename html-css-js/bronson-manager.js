@@ -42,7 +42,7 @@ TOC:
     - setLeader(jsonValue)
     - rawTimeFormat(rawTime)
     - dashSpares()
-    - isMobile() -------------------------------------------------- UNUSED
+    - isMobile()
 
 This file is set to host functions that are called throughout bronson suite
  that utilize or update session storage for a user.
@@ -86,23 +86,30 @@ async function initLocalStorage() {
     // Campus Data (Effectively a clone of the database)
     let campData = await getCampusData();
     localStorage.setItem("campData", JSON.stringify(campData));
+
+    // Detect whether page is on Mobile
+    localStorage.setItem("isMobile", isMobile());
     
     // Zone Arrays
     if (localStorage.getItem("zoneData") == null) {
         let zoneData = await getZoneData();
         localStorage.setItem("zoneData", JSON.stringify(zoneData));
     }
+
     // Leaderboard
     let leaderboard = await getLeaderboard();
     localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+
     // Spares
     let spares = await getSpares();
     //console.log(spares["spares"]);
     localStorage.setItem("spares", JSON.stringify(spares["spares"]));
+
     // CheckerboardStorage
     if (sessionStorage.getItem("db_checker") == null) {
         initCheckerboardStorage();
     }
+
     // Once data is loaded, set default tab selection
     if(document.title.includes("Dashboard")) {
         setDashboardDefaults();
@@ -110,9 +117,6 @@ async function initLocalStorage() {
         dashSpares(); // populate db_spares
         dashTickex();
     }
-    // Detect whether page is on Mobile
-    localStorage.setItem("isMobile", isMobile());
-    return;
 }
 
 async function getCampusData() {
@@ -923,18 +927,60 @@ async function dashTickex() {
         fetchTickets().then(() => {
             buildDBTickets();
         }).catch(error => console.error('Error fetching tickets for update:', error));
-    }, 20000); // Refresh every 20 seconds
+    }, 60000); // Refresh every 60 seconds
 }
 
-// Not really being used, consider this a proof of concept to give more specific
-// formatting based on user device (this is not perfect)
+// Checking touch points, and searching for "Android"/"iPhone" in the user agent
 function isMobile() {
-    let screenWidth = window.innerWidth;
-    let screenHeight = window.innerHeight;
-    let r = screenWidth / screenHeight;
-    //console.log("Screen Width: ", screenWidth, ", Screen Height: ", screenHeight, " Ratio: ", r);
-    if (r < 1.2) {
+    let isTouchScreen = navigator.maxTouchPoints > 0;
+    let isPhoneModel = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+    // let isTablet = ; // If the need arises
+    
+    // Is a Mobile user
+    if (isTouchScreen && isPhoneModel) {
         console.log("Mobile User Detected");
+
+        // Remove tools that will not be offered on mobile
+        const jacknetButton = document.getElementById("CCButton");
+        if (jacknetButton) jacknetButton.remove();
+
+        const camCodeButton = document.getElementById("JNButton");
+        if (camCodeButton) camCodeButton.remove();
+
+        const terminal = document.getElementById("terminal");
+        if (terminal) terminal.remove();
+
+        const terminalButton = document.getElementById("admin_terminalButton");
+        if (terminalButton) terminalButton.remove();
+
+        // Scale page elements to be larger (done here and where html is dynamically written as well)
+        const programHeader = document.getElementById("bronson_header");
+        if (programHeader) programHeader.classList.add("mobile");
+
+        const messageHeader = document.getElementsByClassName("message_header")[0];
+        if (messageHeader) messageHeader.classList.add("mobile");
+
+        const hamburgerMenu = document.getElementById("hb_menu");
+        if (hamburgerMenu) hamburgerMenu.classList.add("mobile"); 
+
+        const toolTabs = document.getElementsByClassName("toolTab");
+        if (toolTabs.length > 0) {
+            for (let i = 0; i < toolTabs.length; i++) 
+                toolTabs[i].classList.add("mobile");
+        }
+
+        // Move Tool Tabs to grid-row 2 
+        const toolTabRow = document.getElementsByClassName("tab_row header")[0];
+        if (toolTabRow) { 
+            toolTabRow.classList.add("mobile"); 
+            programHeader.appendChild(toolTabRow);
+        }
+        const adminToolsButton = document.getElementsByClassName("admin_tab")[0];
+        if (adminToolsButton) {
+            adminToolsButton.classList.add("mobile");
+            programHeader.appendChild(adminToolsButton); 
+        }
+
         return true;
     } else {
         // console.log("Desktop User Detected");
