@@ -1199,7 +1199,7 @@ async function setDBEditor() {
             </ul>
             </menu>
             <br>
-            <button type="button" class="collapsible" id="${building}-colBtn"> See Rooms</button>
+            <button type="button" class="collapsible ${localStorage.getItem("isMobile") === "true" ? "mobile_font" : ""}" id="${building}-colBtn"> See Rooms</button>
             <div class="collapse_content">
                 <table class="dbBuildingTable">
                     <thead>

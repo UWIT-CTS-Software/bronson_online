@@ -229,7 +229,7 @@ input:checked + .slider:before {
     background-color: rgb(139, 139, 99);
     color: rgb(90,30,30);
     cursor: pointer;
-    padding: 5px;
+    padding: 10px;
     width: 100%;
     border: 2px solid rgb(102, 53, 54);
     text-align: left;
