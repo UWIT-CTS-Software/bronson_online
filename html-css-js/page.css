@@ -469,8 +469,8 @@ input:checked + .slider:before {
 }
 
 .db_tickets {
-    grid-column: 4/8 !important;
-    grid-row: 3 !important;
+    grid-column: 4/8;
+    grid-row: 3;
 }
 
 .ticketsHeader {
@@ -638,22 +638,34 @@ progress::-webkit-progress-bar {
 
 @media (max-width: 1250px) {
     .db_leader {
-        grid-column: 8/11;
+        grid-column: 7/11;
+        grid-row: 2;
     }
     .db_schedule {
         grid-column: 1/-1;
+        grid-row: 3;
     }
     .db_checker {
-        grid-column: 1/4;
+        grid-column: 1/7;
+        grid-row: 2;
+    }
+    .db_console {
+        grid-column: 1/11;
     }
     .db_spares {
-        grid-column: 1/4;
+        grid-column: 1/5;
+        grid-row: 4;
+    }
+    .db_tickets {
+        grid-column: 5/11;
+        grid-row: 4;
     }
     .db_checker progress {
         width: 92%;
+        height: 30px;
     }
     .db_checker p {
-        font-size: 15pt;
+        font-size: 22pt;
         margin: 0px 0pc 0px 0px
     }
 }
@@ -1544,10 +1556,14 @@ ol li::marker {
     pointer-events: none;
 }
 
-.tx_ticketContainer table td:nth-child(4) select {
-    pointer-events: auto; /* re-enable pointer events for dropdown */
+td.mobile_td,
+td.mobile_th { 
+    width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
 }
-
 
 .tx_ticketContainer input {
     background-color: rgb(221 187 96);
@@ -2071,6 +2087,10 @@ p.tx_Description::-webkit-scrollbar-track {
     font-size: x-large;
 }
 
+.mobile_font_leaderboard {
+    font-size: 14pt;
+}
+
 .tmpDBRecord {
     background-color: #5e5b3b;
 }
@@ -2551,11 +2571,23 @@ p.tx_Description::-webkit-scrollbar-track {
     display: flex;
 }
 
+.leader.mobile {
+    scale: 135%;
+    width: 72%;
+    transform: translate(46px, 13px);
+}
+
 .schedule {
     transform: translate(90px, -11px);
     width: 500px;
     z-index: 0;
     position: absolute;
+}
+
+.schedule.mobile {
+    margin-top: 10px;
+    scale: 135%;
+    transform: translate(111px, -15px);
 }
 
 .leaderTab {
