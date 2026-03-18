@@ -168,6 +168,8 @@ async function setAdminTools() {
     let admin_tab_row = document.createElement("div");
     admin_tab_row.classList.add("tab_row");
     admin_tab_row.classList.add("admin_tabs");
+    if (localStorage.getItem("isMobile") === "true") 
+        admin_tab_row.classList.add("mobile");
     admin_tab_row.innerHTML = `
     <button id="at_message" onclick="setMessageEditor()" type="button" class="atTab">
         <img class="at_tab_img" src="button2.png"/>

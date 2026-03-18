@@ -120,8 +120,13 @@ button {
 }
 
 .mobile_button {
+    padding: 2px 8px;
     font-size: 24px;
     line-height: 40px;
+}
+
+.mobile_checkbox {
+    scale: 150%;
 }
 
 button:hover {
@@ -167,6 +172,11 @@ button:-webkit-details-marker {
   width: 42px;
   height: 18px;
   margin: 5px 2px 2px 2px;
+}
+
+.mobile_switch {
+  scale: 150%;
+  margin: 10px 4px 10px 10px;
 }
 
 /* Hide default HTML checkbox */
@@ -364,7 +374,7 @@ input:checked + .slider:before {
 
 */
 .hb_menu {
-    z-index: 1;
+    z-index: 5;
     position: fixed;
     grid-row: 3x;
     border:4px double rgb(133, 60, 60);
@@ -904,7 +914,7 @@ progress::-webkit-progress-bar {
 }
 
 #cbToggleLabel {
-    font-size: 12pt;
+    font-size: 16pt;
 }
 
 /* New classes from checkerboard overhaul*/
@@ -1420,6 +1430,10 @@ ol li::marker {
     text-wrap-style: auto;
 }
 
+.tx_search.mobile textarea {
+    font-size: 11pt;
+}
+
 .tx_loadingMessage {
     background-color: rgb(50, 50, 50);
     grid-column: 5 / 7;
@@ -1712,6 +1726,7 @@ ol li::marker {
     border-radius: 6px;
     margin-top: 90px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    scale: 135%;
 }
 
 .tx_popupBox span {
@@ -1748,6 +1763,13 @@ ol li::marker {
     height: 100%;
 }
 
+.tx_popupWrapper.mobile {
+    justify-content: flex-start;
+    margin-top: 90px;
+    flex-direction: column;
+    align-items: center;
+}
+
 .tx_sideContent {
     margin-top: 90px;
     margin-left: 5px;
@@ -1768,18 +1790,10 @@ ol li::marker {
     overflow-y: auto;
 }
 .tx_popupComments.mobile {
-    max-width: 301px;
+    max-width: 401px;
     min-width: 251px;
-    width: fit-content;
-    max-height: 450px;
-    height: fit-content;
-    border: 3px solid rgb(224, 193, 108);
-    background: rgb(60, 60, 60);
-    border-radius: 6px;
-    margin-top: 120px;
-    margin-right: 10px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    overflow-y: auto;
+    margin-top: 110px;
+    scale: 135%;
 }
 
 .tx_popupComments::-webkit-scrollbar {
@@ -1992,6 +2006,10 @@ p.tx_Description {
     border: 1px solid rgb(144, 118, 26);
     margin: 15px 10px 15px 10px;
     overflow-y: scroll;
+}
+
+p.tx_textwrap {
+    white-space: pre-wrap !important;
 }
 
 p.tx_Description::-webkit-scrollbar {
@@ -2714,6 +2732,12 @@ p.tx_Description::-webkit-scrollbar-track {
     padding: 0px 0px 1px 13px;
     width: 350px;
     display: flex;
+}
+
+.admin_tabs.mobile {
+    margin-top: 10px;
+    scale: 150%;
+    transform: translate(64px, 10px);
 }
 
 .atTab {

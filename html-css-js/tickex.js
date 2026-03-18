@@ -225,6 +225,8 @@ async function show(ticket) {
         return;
     }
 
+    const isMobile = localStorage.getItem("isMobile") === "true";
+
     let popupContainer = document.querySelector('.tx_popupContainer');
     if (!popupContainer) {
         // Wait for popup to load (timeout of 3 seconds)
@@ -342,7 +344,7 @@ async function show(ticket) {
         }
         
         commentsHTML = `
-            <div class="tx_popupComments ${(localStorage.getItem("isMobile") === "true") ? "mobile" : ""}">
+            <div class="tx_popupComments ${isMobile ? "mobile" : ""}">
                 <span>Comments:</span>
                 <button class="popup_closeCommentsButton" onClick="toggleComments(${ticket.ID})">X</button>
                 <div class="tx_commentList">
@@ -407,30 +409,30 @@ async function show(ticket) {
     let sideContent = "";
     if (container.classList.contains('commentsShown'))
         sideContent += commentsHTML;
-    if (whatChangedHTML && !(localStorage.getItem("isMobile") === "true"))
+    if (whatChangedHTML && !isMobile)
         sideContent += whatChangedHTML;
     
 
     if (popupContainer.classList.contains('detailsShown')) { // Details Shown
         popupContainer.innerHTML = `
-            <div class="tx_popupWrapper">
-                <div class="tx_popupBox ${(localStorage.getItem("isMobile") === "true") ? "mobile" : ""}">
+            <div class="tx_popupWrapper ${isMobile ? "mobile" : ""}">
+                <div class="tx_popupBox ${isMobile ? "mobile" : ""}">
                 <span>${ticket.Title || "No Title"}</span>
                 <button class="popup_closeButton" onClick="hidePopup()">X</button>
                     <div class="tx_adjacent"><p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
                     <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
                     <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
                     <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
-                    <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
+                    <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
                     <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">Description</button>
-                    <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                    <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Incident</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
-                    <p class="tx_popup_ServiceName">Service: ${ticket.ServiceName || ""}</p>
-                    <p class="tx_popup_AccountName">Account Department: ${ticket.AccountName || ""}</p>
-                    <p class="tx_popup_TypeName">Type: ${ticket.TypeName || ""}</p>
-                    <p class="tx_popup_TypeCategoryName">Type Category: ${ticket.TypeCategoryName || ""}</p>
-                    <p class="tx_popup_Created">Date Created: ${ticket.CreatedDate || ""} || Created by: ${ticket.CreatedFullName || ""}</p>
-                    <p class="tx_popup_Modified">Last Modified: ${ticket.ModifiedDate || ""} || Modified by: ${ticket.ModifiedFullName || ""}</p>
+                    <p class="tx_popup_Requestor tx_textwrap">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
+                    <p class="tx_popup_Responsible tx_textwrap">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Incident</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
+                    <p class="tx_popup_ServiceName tx_textwrap">Service: ${ticket.ServiceName || ""}</p>
+                    <p class="tx_popup_AccountName tx_textwrap">Account Department: ${ticket.AccountName || ""}</p>
+                    <p class="tx_popup_TypeName tx_textwrap">Type: ${ticket.TypeName || ""}</p>
+                    <p class="tx_popup_TypeCategoryName tx_textwrap">Type Category: ${ticket.TypeCategoryName || ""}</p>
+                    <p class="tx_popup_Created tx_textwrap">Date Created: ${ticket.CreatedDate || ""} || Created by: ${ticket.CreatedFullName || ""}</p>
+                    <p class="tx_popup_Modified tx_textwrap">Last Modified: ${ticket.ModifiedDate || ""} || Modified by: ${ticket.ModifiedFullName || ""}</p>
                     <button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                         <button class="popup_linkToTicket">Link to Ticket</button>
@@ -447,19 +449,19 @@ async function show(ticket) {
         description = description.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n+/g, '\n').trim(); 
 
         popupContainer.innerHTML = `
-            <div class="tx_popupWrapper">
-                <div class="tx_popupBox ${(localStorage.getItem("isMobile") === "true") ? "mobile" : ""}">
+            <div class="tx_popupWrapper ${isMobile ? "mobile" : ""}">
+                <div class="tx_popupBox ${isMobile ? "mobile" : ""}">
                 <span>${ticket.Title || "No Title"}</span>
                 <button class="popup_closeButton" onClick="hidePopup()">X</button>
                     <div class="tx_adjacent"><p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
                     <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
                     <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
                     <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
-                    <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
+                    <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
                     <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">Details</button>
-                    <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""}</p>
-                    <p class="tx_popup_contact">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                    <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Incident</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
+                    <p class="tx_popup_Requestor tx_textwrap">Requestor: ${ticket.RequestorName || ""}</p>
+                    <p class="tx_popup_contact tx_textwrap">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
+                    <p class="tx_popup_Responsible tx_textwrap">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Incident</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
                     <p class="tx_Description">${description || "--- No Description Provided ---"}</p>
                     <button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
@@ -741,6 +743,7 @@ function initBoard() {
         closedTickets: ""
     };
     
+    const isMobile = localStorage.getItem("isMobile") === "true";
     window.currentTickets = sortTickets();
 
     let newNumRows, catchAllNumRows, closedNumRows;
