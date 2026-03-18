@@ -910,8 +910,8 @@ async function dashTickex() {
             ticketRows += `
                 <tr class="tx_ticket dashboard ${highlightClass}" id="${ticket.ID}" onclick="showPopupFromDashboard(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
                     <td>${ticket.Title}</td>
-                    ${isMobile ? "" : "<td>${ticket.ID}</td>"}
-                    ${isMobile ? "" : "<td>${ticket.StatusName}</td>"}
+                    ${isMobile ? "" : `<td>${ticket.ID}</td>`}
+                    ${isMobile ? "" : `<td>${ticket.StatusName}</td>`}
                     ${isMobile ? "" : `<td>${(ticket.ResponsibleFullName != "") ? ticket.ResponsibleFullName : `UNASSIGNED` }</td>`}
                 </tr>
             `;
