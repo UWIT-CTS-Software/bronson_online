@@ -346,7 +346,7 @@ async function show(ticket) {
         commentsHTML = `
             <div class="tx_popupComments ${isMobile ? "mobile" : ""}">
                 <span>Comments:</span>
-                <button class="popup_closeCommentsButton" onClick="toggleComments(${ticket.ID})">X</button>
+                ${isMobile ? "" : `<button class="popup_closeCommentsButton" onClick="toggleComments(${ticket.ID})">X</button>`}
                 <div class="tx_commentList">
                     ${builtComments}
                 </div>
@@ -419,7 +419,8 @@ async function show(ticket) {
                 <div class="tx_popupBox ${isMobile ? "mobile" : ""}">
                 <span>${ticket.Title || "No Title"}</span>
                 <button class="popup_closeButton" onClick="hidePopup()">X</button>
-                    <div class="tx_adjacent"><p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
+                <div class="tx_adjacent">
+                <p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
                     <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
                     <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
                     <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
@@ -433,7 +434,7 @@ async function show(ticket) {
                     <p class="tx_popup_TypeCategoryName tx_textwrap">Type Category: ${ticket.TypeCategoryName || ""}</p>
                     <p class="tx_popup_Created tx_textwrap">Date Created: ${ticket.CreatedDate || ""} || Created by: ${ticket.CreatedFullName || ""}</p>
                     <p class="tx_popup_Modified tx_textwrap">Last Modified: ${ticket.ModifiedDate || ""} || Modified by: ${ticket.ModifiedFullName || ""}</p>
-                    <button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>
+                    ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                         <button class="popup_linkToTicket">Link to Ticket</button>
                     </a>
@@ -452,8 +453,9 @@ async function show(ticket) {
             <div class="tx_popupWrapper ${isMobile ? "mobile" : ""}">
                 <div class="tx_popupBox ${isMobile ? "mobile" : ""}">
                 <span>${ticket.Title || "No Title"}</span>
-                <button class="popup_closeButton" onClick="hidePopup()">X</button>
-                    <div class="tx_adjacent"><p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
+                ${isMobile ? "" : `<button class="popup_closeButton" onClick="hidePopup()">X</button>`}
+                <div class="tx_adjacent">
+                    <p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
                     <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
                     <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
                     <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
@@ -463,7 +465,7 @@ async function show(ticket) {
                     <p class="tx_popup_contact tx_textwrap">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
                     <p class="tx_popup_Responsible tx_textwrap">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Incident</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
                     <p class="tx_Description">${description || "--- No Description Provided ---"}</p>
-                    <button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>
+                    ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                         <button class="popup_linkToTicket">Link to Ticket</button>
                     </a>
