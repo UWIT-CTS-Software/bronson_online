@@ -304,7 +304,6 @@ async function setChecker() {
     preserveCurrentTool();
 
     const isMobile = localStorage.getItem("isMobile") === "true";
-    console.log("Checkerboard - isMobile? ", isMobile);
 
     document.title = "CheckerBoard - Bronson";
     // remove currently active status mark tab has active.
