@@ -64,6 +64,7 @@ fieldset {
 
 legend {
     color: rgb(236, 200, 101);
+    background-color: rgb(50, 50, 50);
     text-align: center;
     /* font-family:'Courier New', Courier, monospace; */
     font-family: 'Lucida Sans', sans-serif;
@@ -123,6 +124,12 @@ button {
     padding: 2px 8px;
     font-size: 24px;
     line-height: 40px;
+}
+
+.mobile_tx_button {
+    padding: 2px 8px;
+    font-size: 19px;
+    line-height: 28px;
 }
 
 .mobile_checkbox {
@@ -1443,7 +1450,7 @@ ol li::marker {
 }
 
 .tx_search.mobile textarea {
-    font-size: 11pt;
+    font-size: 16pt;
 }
 
 .tx_loadingMessage {
@@ -1533,6 +1540,7 @@ ol li::marker {
 .tx_ticketContainer table td:nth-child(2),
 .tx_ticketContainer table th:nth-child(2) {
     width: 75px;
+    min-width: 30px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2084,7 +2092,23 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .mobile_font {
-    font-size: x-large;
+    font-size: x-large !important;
+}
+
+.mobile_tx_font {
+    font-size: 15pt;
+}
+
+.mobile_tx_font p {
+    font-size: 15pt;
+}
+
+.mobile_tx_font strong {
+    font-size: 15pt;
+}
+
+.mobile_tx_font span {
+    font-size: 22pt;
 }
 
 .mobile_font_leaderboard {

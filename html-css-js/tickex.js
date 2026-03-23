@@ -415,7 +415,7 @@ async function show(ticket) {
 
     if (popupContainer.classList.contains('detailsShown')) { // Details Shown
         popupContainer.innerHTML = `
-            <div class="tx_popupWrapper ${isMobile ? "mobile" : ""}">
+            <div class="tx_popupWrapper ${isMobile ? "mobile mobile_tx_font" : ""}">
                 <div class="tx_popupBox ${isMobile ? "mobile" : ""}">
                 <span>${ticket.Title || "No Title"}</span>
                 <button class="popup_closeButton" onClick="hidePopup()">X</button>
@@ -425,9 +425,9 @@ async function show(ticket) {
                     <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
                     <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
                     <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
-                    <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">Description</button>
+                    <button class="popup_toggleButton ${isMobile ? "mobile_tx_button" : ""}" onClick="toggleDetails(${ticket.ID})">Description</button>
                     <p class="tx_popup_Requestor tx_textwrap">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                    <p class="tx_popup_Responsible tx_textwrap">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Incident</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
+                    <p class="tx_popup_Responsible tx_textwrap">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED <button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>`}} || ${ticket.ResponsibleGroupName || ""}</p>
                     <p class="tx_popup_ServiceName tx_textwrap">Service: ${ticket.ServiceName || ""}</p>
                     <p class="tx_popup_AccountName tx_textwrap">Account Department: ${ticket.AccountName || ""}</p>
                     <p class="tx_popup_TypeName tx_textwrap">Type: ${ticket.TypeName || ""}</p>
@@ -436,10 +436,10 @@ async function show(ticket) {
                     <p class="tx_popup_Modified tx_textwrap">Last Modified: ${ticket.ModifiedDate || ""} || Modified by: ${ticket.ModifiedFullName || ""}</p>
                     ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
-                        <button class="popup_linkToTicket">Link to Ticket</button>
+                        <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
                     </a>
-                    <button disabled class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
-                    <button disabled class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
+                    <button disabled class="popup_sendToASU ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToASU()">Send to ASU</button>
+                    <button disabled class="popup_sendToHelpDesk ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToHelpDesk()">Send to Help Desk</button>
                 </div>
                 ${sideContent ? `<div class="tx_sideContent">${sideContent}</div>` : ''}
             </div>
@@ -450,7 +450,7 @@ async function show(ticket) {
         description = description.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n+/g, '\n').trim(); 
 
         popupContainer.innerHTML = `
-            <div class="tx_popupWrapper ${isMobile ? "mobile" : ""}">
+            <div class="tx_popupWrapper ${isMobile ? "mobile mobile_tx_font" : ""}">
                 <div class="tx_popupBox ${isMobile ? "mobile" : ""}">
                 <span>${ticket.Title || "No Title"}</span>
                 ${isMobile ? "" : `<button class="popup_closeButton" onClick="hidePopup()">X</button>`}
@@ -460,17 +460,17 @@ async function show(ticket) {
                     <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
                     <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
                     <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
-                    <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">Details</button>
+                    <button class="popup_toggleButton ${isMobile ? "mobile_tx_button" : ""}" onClick="toggleDetails(${ticket.ID})">Details</button>
                     <p class="tx_popup_Requestor tx_textwrap">Requestor: ${ticket.RequestorName || ""}</p>
                     <p class="tx_popup_contact tx_textwrap">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                    <p class="tx_popup_Responsible tx_textwrap">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Incident</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
+                    <p class="tx_popup_Responsible tx_textwrap${isMobile ? "mobile_tx_button" : ""}">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED <button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>`} || ${ticket.ResponsibleGroupName || ""}</p>
                     <p class="tx_Description">${description || "--- No Description Provided ---"}</p>
                     ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
-                        <button class="popup_linkToTicket">Link to Ticket</button>
+                        <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
                     </a>
-                    <button disabled class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
-                    <button disabled class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
+                    <button disabled class="popup_sendToASU ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToASU()">Send to ASU</button>
+                    <button disabled class="popup_sendToHelpDesk ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToHelpDesk()">Send to Help Desk</button>
                 </div>
                 ${sideContent ? `<div class="tx_sideContent">${sideContent}</div>` : ''}
             </div>
@@ -1131,7 +1131,7 @@ async function setTickex() {
     if (isMobile) searchBar.classList.add("mobile");
     searchBar.innerHTML = `
         <legend ${isMobile ? "class='mobile_legend'" : ""}>Search</legend>
-        <textarea id="searchBar" placeholder="Search: Title, ID, Description, Room, Date, etc..."></textarea>
+        <textarea id="searchBar" placeholder="${isMobile ? "Search..." : "Search: Title, ID, Description, Room, Date, etc... (Press Enter)"}"></textarea>
         <ul>
     `;
     tx_container.append(searchBar);
@@ -1170,7 +1170,7 @@ async function setTickex() {
     newTicketsPopup.classList.add("tx_newTicketsPopup");
     if (isMobile) newTicketsPopup.classList.add("mobile");
     newTicketsPopup.innerHTML = `
-        <legend>New Tickets Available!</legend>
+        <legend ${isMobile ? "class='mobile_font'" : ""}>New Tickets Available!</legend>
     `;
     tx_container.append(newTicketsPopup);
 
