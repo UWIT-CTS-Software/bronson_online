@@ -32,6 +32,10 @@ label {
     font-style: bold;
 }
 
+.mobile_label {
+    font-size: x-large;
+}
+
 ul {
     list-style-type: none;
 }
@@ -2448,8 +2452,8 @@ p.tx_Description::-webkit-scrollbar-track {
 
 .tab_row.header.mobile {
     position: absolute;
-    transform: translate(56px, 144px);
-    gap: 108px;
+    transform: translate(36px, 149px);
+    gap: 54px;
 }
 
 .toolTab {
@@ -2467,7 +2471,7 @@ p.tx_Description::-webkit-scrollbar-track {
     grid-row: 2;
     grid-column: 1 / 3;
     height: fit-content;
-    scale: 180%;
+    scale: 138% 150%;
     transform: translate(0px, 4px);
 }
 
@@ -2526,7 +2530,7 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .toolTab.selected.mobile {
-    transform: matrix(1, 0, 0, .7, 0, 4) translate(0px, 4px);
+    transform: matrix(1, 0, 0, .7, 0, 8);
 }
 
 .toolTab.selected span {
@@ -2779,7 +2783,7 @@ p.tx_Description::-webkit-scrollbar-track {
 .admin_tab.mobile {
     grid-row: 2;
     grid-column: 4;
-    transform: matrix(1, 0, 0, 1, -44, 25);
+    transform: matrix(1, 0, 0, 1, -24, 30);
 }
 
 /* The row inside admin tool page */

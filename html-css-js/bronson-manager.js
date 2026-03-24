@@ -965,9 +965,6 @@ function isMobile() {
         const jacknetButton = document.getElementById("CCButton");
         if (jacknetButton) jacknetButton.remove();
 
-        const camCodeButton = document.getElementById("JNButton");
-        if (camCodeButton) camCodeButton.remove();
-
         const terminal = document.getElementById("terminal");
         if (terminal) terminal.remove();
 
