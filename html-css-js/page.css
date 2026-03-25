@@ -32,6 +32,10 @@ label {
     font-style: bold;
 }
 
+.mobile_label {
+    font-size: x-large;
+}
+
 ul {
     list-style-type: none;
 }
@@ -93,6 +97,7 @@ fieldset {
 
 legend {
     color: rgb(236, 200, 101);
+    background-color: rgb(50, 50, 50);
     text-align: center;
     /* font-family:'Courier New', Courier, monospace; */
     font-family: 'Lucida Sans', sans-serif;
@@ -102,6 +107,11 @@ legend {
     border: rgb(152, 141, 56) outset 2px;
     border-radius: 15px;
     box-shadow: 2px 2px 3px black;
+}
+
+.mobile_legend {
+    margin: 10px 0;
+    font-size: x-large;
 }
 
 /* Dropdown Menu */
@@ -141,6 +151,22 @@ button {
     touch-action: manipulation;
     white-space: nowrap;
     word-wrap: break-word;
+}
+
+.mobile_button {
+    padding: 2px 8px;
+    font-size: 24px;
+    line-height: 40px;
+}
+
+.mobile_tx_button {
+    padding: 2px 8px;
+    font-size: 19px;
+    line-height: 28px;
+}
+
+.mobile_checkbox {
+    scale: 150%;
 }
 
 button:hover {
@@ -186,6 +212,11 @@ button:-webkit-details-marker {
   width: 42px;
   height: 18px;
   margin: 5px 2px 2px 2px;
+}
+
+.mobile_switch {
+  scale: 150%;
+  margin: 10px 4px 10px 10px;
 }
 
 /* Hide default HTML checkbox */
@@ -248,7 +279,7 @@ input:checked + .slider:before {
     background-color: rgb(139, 139, 99);
     color: rgb(90,30,30);
     cursor: pointer;
-    padding: 5px;
+    padding: 10px;
     width: 100%;
     border: 2px solid rgb(102, 53, 54);
     text-align: left;
@@ -299,6 +330,13 @@ input:checked + .slider:before {
     box-shadow: 5px 7px 7px black;
 }
 
+.program_header.mobile {
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    grid-template-rows: 2fr 1fr;
+    grid-auto-rows: 1fr 1fr;
+}
+
 /* Bronson icon in top left, brings out hamburger menu */
 .site_header {
     color: rgb(118, 66, 28);
@@ -316,6 +354,11 @@ input:checked + .slider:before {
     padding-left: 10px;
     padding-right: 10px;
     margin-left: 15px;
+}
+
+.program_header.mobile .site_header {
+    font-size: 50pt;
+    border-radius: 30px;
 }
 
 .site_header:hover {
@@ -351,6 +394,13 @@ input:checked + .slider:before {
     width: 90%
 }
 
+.message_header.mobile {
+    font-size: x-large;
+    text-align: center;
+    margin-top: 15px;
+    width: 75%;
+}
+
 /* Tabs are located towards the bottom of the file. */
  
 /*
@@ -364,7 +414,7 @@ input:checked + .slider:before {
 
 */
 .hb_menu {
-    z-index: 1;
+    z-index: 5;
     position: fixed;
     grid-row: 3x;
     border:4px double rgb(133, 60, 60);
@@ -376,6 +426,12 @@ input:checked + .slider:before {
     margin-top: 100px;
     width: 11rem;
     box-shadow: 3px 4px 4px;
+}
+
+.hb_menu.mobile {
+    margin-top: 300px;
+    margin-left: 85px;
+    scale: 200%
 }
 
 .hb_menu legend {
@@ -453,8 +509,8 @@ input:checked + .slider:before {
 }
 
 .db_tickets {
-    grid-column: 4/8 !important;
-    grid-row: 3 !important;
+    grid-column: 4/8;
+    grid-row: 3;
 }
 
 .ticketsHeader {
@@ -622,22 +678,34 @@ progress::-webkit-progress-bar {
 
 @media (max-width: 1250px) {
     .db_leader {
-        grid-column: 8/11;
+        grid-column: 7/11;
+        grid-row: 2;
     }
     .db_schedule {
         grid-column: 1/-1;
+        grid-row: 3;
     }
     .db_checker {
-        grid-column: 1/4;
+        grid-column: 1/7;
+        grid-row: 2;
+    }
+    .db_console {
+        grid-column: 1/11;
     }
     .db_spares {
-        grid-column: 1/4;
+        grid-column: 1/5;
+        grid-row: 4;
+    }
+    .db_tickets {
+        grid-column: 5/11;
+        grid-row: 4;
     }
     .db_checker progress {
         width: 92%;
+        height: 30px;
     }
     .db_checker p {
-        font-size: 15pt;
+        font-size: 22pt;
         margin: 0px 0pc 0px 0px
     }
 }
@@ -898,7 +966,7 @@ progress::-webkit-progress-bar {
 }
 
 #cbToggleLabel {
-    font-size: 12pt;
+    font-size: 16pt;
 }
 
 /* New classes from checkerboard overhaul*/
@@ -1432,6 +1500,10 @@ ol li::marker {
     text-wrap-style: auto;
 }
 
+.tx_search.mobile textarea {
+    font-size: 16pt;
+}
+
 .tx_loadingMessage {
     background-color: rgb(50, 50, 50);
     grid-column: 5 / 7;
@@ -1519,6 +1591,7 @@ ol li::marker {
 .tx_ticketContainer table td:nth-child(2),
 .tx_ticketContainer table th:nth-child(2) {
     width: 75px;
+    min-width: 30px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1542,10 +1615,14 @@ ol li::marker {
     pointer-events: none;
 }
 
-.tx_ticketContainer table td:nth-child(4) select {
-    pointer-events: auto; /* re-enable pointer events for dropdown */
+td.mobile_td,
+td.mobile_th { 
+    width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
 }
-
 
 .tx_ticketContainer input {
     background-color: rgb(221 187 96);
@@ -1724,6 +1801,7 @@ ol li::marker {
     border-radius: 6px;
     margin-top: 90px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    scale: 135%;
 }
 
 .tx_popupBox span {
@@ -1760,6 +1838,13 @@ ol li::marker {
     height: 100%;
 }
 
+.tx_popupWrapper.mobile {
+    justify-content: flex-start;
+    margin-top: 90px;
+    flex-direction: column;
+    align-items: center;
+}
+
 .tx_sideContent {
     margin-top: 90px;
     margin-left: 5px;
@@ -1780,18 +1865,10 @@ ol li::marker {
     overflow-y: auto;
 }
 .tx_popupComments.mobile {
-    max-width: 301px;
+    max-width: 401px;
     min-width: 251px;
-    width: fit-content;
-    max-height: 450px;
-    height: fit-content;
-    border: 3px solid rgb(224, 193, 108);
-    background: rgb(60, 60, 60);
-    border-radius: 6px;
-    margin-top: 120px;
-    margin-right: 10px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    overflow-y: auto;
+    margin-top: 110px;
+    scale: 135%;
 }
 
 .tx_popupComments::-webkit-scrollbar {
@@ -2006,6 +2083,10 @@ p.tx_Description {
     overflow-y: scroll;
 }
 
+p.tx_textwrap {
+    white-space: pre-wrap !important;
+}
+
 p.tx_Description::-webkit-scrollbar {
     display: block !important;
     width: 8px;
@@ -2059,6 +2140,30 @@ p.tx_Description::-webkit-scrollbar-track {
     border:2px inset rgb(122,113,45);
     padding-bottom: 5px;
     margin-bottom:5px;
+}
+
+.mobile_font {
+    font-size: x-large !important;
+}
+
+.mobile_tx_font {
+    font-size: 15pt;
+}
+
+.mobile_tx_font p {
+    font-size: 15pt;
+}
+
+.mobile_tx_font strong {
+    font-size: 15pt;
+}
+
+.mobile_tx_font span {
+    font-size: 22pt;
+}
+
+.mobile_font_leaderboard {
+    font-size: 14pt;
 }
 
 .tmpDBRecord {
@@ -2395,6 +2500,12 @@ p.tx_Description::-webkit-scrollbar-track {
     transform: translate(0px,22px);
 }
 
+.tab_row.header.mobile {
+    position: absolute;
+    transform: translate(36px, 149px);
+    gap: 54px;
+}
+
 .toolTab {
     margin: -12px -7px;
     opacity: 100%;
@@ -2404,6 +2515,14 @@ p.tx_Description::-webkit-scrollbar-track {
     background-color: transparent;
     box-sizing: content-box;
     box-shadow: none;
+}
+
+.toolTab.mobile {
+    grid-row: 2;
+    grid-column: 1 / 3;
+    height: fit-content;
+    scale: 138% 150%;
+    transform: translate(0px, 4px);
 }
 
 .toolTab span { 
@@ -2458,6 +2577,10 @@ p.tx_Description::-webkit-scrollbar-track {
     transition-duration: 0.1s;
     filter: hue-rotate(-60deg);
     /* margin: -12px -6px; */
+}
+
+.toolTab.selected.mobile {
+    transform: matrix(1, 0, 0, .7, 0, 8);
 }
 
 .toolTab.selected span {
@@ -2526,11 +2649,23 @@ p.tx_Description::-webkit-scrollbar-track {
     display: flex;
 }
 
+.leader.mobile {
+    scale: 135%;
+    width: 72%;
+    transform: translate(46px, 13px);
+}
+
 .schedule {
     transform: translate(90px, -11px);
     width: 500px;
     z-index: 0;
     position: absolute;
+}
+
+.schedule.mobile {
+    margin-top: 10px;
+    scale: 135%;
+    transform: translate(111px, -15px);
 }
 
 .leaderTab {
@@ -2695,12 +2830,24 @@ p.tx_Description::-webkit-scrollbar-track {
     transform: matrix(1,0,0,1,-5,2);
 }
 
+.admin_tab.mobile {
+    grid-row: 2;
+    grid-column: 4;
+    transform: matrix(1, 0, 0, 1, -24, 30);
+}
+
 /* The row inside admin tool page */
 .admin_tabs {
     margin: -9px 0px 26px 0px;
     padding: 0px 0px 1px 13px;
     width: 350px;
     display: flex;
+}
+
+.admin_tabs.mobile {
+    margin-top: 10px;
+    scale: 150%;
+    transform: translate(64px, 10px);
 }
 
 .atTab {

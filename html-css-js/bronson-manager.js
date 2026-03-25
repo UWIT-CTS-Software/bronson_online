@@ -42,7 +42,7 @@ TOC:
     - setLeader(jsonValue)
     - rawTimeFormat(rawTime)
     - dashSpares()
-    - isMobile() -------------------------------------------------- UNUSED
+    - isMobile()
 
 This file is set to host functions that are called throughout bronson suite
  that utilize or update session storage for a user.
@@ -86,23 +86,30 @@ async function initLocalStorage() {
     // Campus Data (Effectively a clone of the database)
     let campData = await getCampusData();
     localStorage.setItem("campData", JSON.stringify(campData));
+
+    // Detect whether page is on Mobile
+    localStorage.setItem("isMobile", isMobile());
     
     // Zone Arrays
     if (localStorage.getItem("zoneData") == null) {
         let zoneData = await getZoneData();
         localStorage.setItem("zoneData", JSON.stringify(zoneData));
     }
+
     // Leaderboard
     let leaderboard = await getLeaderboard();
     localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+
     // Spares
     let spares = await getSpares();
     //console.log(spares["spares"]);
     localStorage.setItem("spares", JSON.stringify(spares["spares"]));
+
     // CheckerboardStorage
     if (sessionStorage.getItem("db_checker") == null) {
         initCheckerboardStorage();
     }
+
     // Once data is loaded, set default tab selection
     if(document.title.includes("Dashboard")) {
         setDashboardDefaults();
@@ -110,9 +117,6 @@ async function initLocalStorage() {
         dashSpares(); // populate db_spares
         dashTickex();
     }
-    // Detect whether page is on Mobile
-    localStorage.setItem("isMobile", isMobile());
-    return;
 }
 
 async function getCampusData() {
@@ -500,12 +504,20 @@ function initCheckerboardStorage() {
 //  then this is called to load a HTML snippet detailing
 //  the zones in checkerboard.
 async function dashCheckerboardHTML() {
+    const isMobile = localStorage.getItem("isMobile") === "true";
+
     // DATABASE_TODO: get out of local storage (once set up with database)
     let object = JSON.parse(sessionStorage.getItem("db_checker"));
     let cb_dashDiv = document.createElement("div");
     cb_dashDiv.classList.add("db_checker");
     cb_dashDiv.setAttribute("id", "db_checker");
-    let cb_dashDivHTML = `<fieldset><legend>Checkerboard Zone Overview</legend><ul>`;
+    let cb_dashDivHTML = `
+    <fieldset>
+        <legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}>
+            Checkerboard Zone Overview
+        </legend>
+    <ul>
+    `;
     for (item in object) {
         if (object[item]["rooms"] != 0) {
             let zoneNum = object[item]["zone"];
@@ -514,8 +526,8 @@ async function dashCheckerboardHTML() {
             let percent = checkedRooms / totalRooms;
             percent = String((100*percent).toFixed(5)).slice(0,5);
             cb_dashDivHTML += `<li> 
-            <div style="display: inline;"><p class="db_cbZonep">Zone ${zoneNum}: </p><p class="db_cbRoomCountp">${checkedRooms} / ${totalRooms}</p>
-            <label class="dbCbProgLabel" for="${zoneNum}_prog"> ${percent}%</label>
+            <div style="display: inline;"><p class="db_cbZonep ${isMobile ? "mobile_font" : ""}">Zone ${zoneNum}: </p><p class="db_cbRoomCountp">${checkedRooms} / ${totalRooms}</p>
+            <label class="dbCbProgLabel ${isMobile ? "mobile_font" : ""}" for="${zoneNum}_prog"> ${percent}%</label>
             <progress id="${zoneNum}_prog" value="${percent}" max="100"></progress></div>
             </li>`;
         }
@@ -810,26 +822,35 @@ function rawTimeFormat(rawTime) {
 // dashSpares();
 //  Populate the spares widget on the dashboard with information.
 function dashSpares() {
+    const isMobile = localStorage.getItem("isMobile") === "true";
+
     let spareDiv = document.getElementById("db_spare");
     let spareData = JSON.parse(localStorage.getItem("spares"));
-    let tmp = `<fieldset> <legend> PC Spares </legend> <p class="spareHeader"> Deployed Spares </p> <ul>`;
+    let tmp = `
+        <fieldset ${isMobile ? "class='mobile_font'" : ""}> 
+        <legend ${isMobile ? "class='mobile_legend'" : ""}> 
+            PC Spares 
+        </legend> 
+        <p class="spareHeader ${isMobile ? "mobile_font" : ""}"> Deployed Spares </p>
+        <ul>
+    `;
     let tmp_deployed = ``;
     let tmp_notDeployed = ``;
     for(let i = 0; i < spareData.length; i++) {
         if(spareData[i]["Location"]["name"] == "ITC 0173") {
-            tmp_notDeployed += `<li><span class="sparePCName">${spareData[i]["Asset Tag"]}: </span>
+            tmp_notDeployed += `<li><span class="sparePCName ${isMobile ? "mobile_font" : ""}">${spareData[i]["Asset Tag"]}: </span>
         <span class="spareLocale">Located in ${spareData[i]["Location"]["name"]} </span><br> 
         <span class="spareUpdate">Updated ${rawTimeFormat(spareData[i]["Last Updated"])} <br>
         by ${spareData[i]["User"]["displayName"]}</span></li>`;
         } else {
-            tmp_deployed += `<li><span class="sparePCName">${spareData[i]["Asset Tag"]}: </span>
+            tmp_deployed += `<li><span class="sparePCName ${isMobile ? "mobile_font" : ""}">${spareData[i]["Asset Tag"]}: </span>
         <span class="spareLocale">Located in ${spareData[i]["Location"]["name"]} </span><br> 
         <span class="spareUpdate">Updated ${rawTimeFormat(spareData[i]["Last Updated"])} <br>
         by ${spareData[i]["User"]["displayName"]}</span></li>`;
         }
     }
     tmp += tmp_deployed;
-    tmp += `</ul><p> Stored in ITC 173 </p><ul>`;
+    tmp += `</ul><p ${isMobile ? "class='mobile_font'" : ""}> Stored in ITC 173 </p><ul>`;
     tmp += tmp_notDeployed;
     tmp += `</ul></fieldset>`;
     spareDiv.innerHTML = tmp;
@@ -838,6 +859,8 @@ function dashSpares() {
 
 // Ticket Widget for Incoming/Unresponded Tickets
 async function dashTickex() {
+    const isMobile = localStorage.getItem("isMobile") === "true";
+
     let ticketsDiv = document.getElementById("db_tickets");
     ticketsDiv.classList.add("db_tickets");
     ticketsDiv.classList.add("tx_ticketContainer");
@@ -845,7 +868,7 @@ async function dashTickex() {
     // Loading Screen until Tickets are fetched
     let tmp = `
         <fieldset> 
-            <p>Loading Tickets...</p>
+            <p ${isMobile ? "class='mobile_font'" : ""}>Loading Tickets...</p>
         </fieldset>
     `;
     ticketsDiv.innerHTML = tmp;
@@ -877,12 +900,12 @@ async function dashTickex() {
 
         // Build the Ticket Content
         let ticketsContent = `
-            <table>
+            <table ${isMobile ? "class='mobile_font'" : ""}>
                 <thead><tr>
                     <th>Title</th>
-                    <th>ID</th>
-                    <th>Status</th>
-                    <th>Assignment</th>
+                    ${isMobile ? "" : "<th>ID</th>"}
+                    ${isMobile ? "" : "<th>Status</th>"}
+                    ${isMobile ? "" : "<th>Assignment</th>"}
                 </tr></thead>
                 <tbody>
         `;
@@ -893,9 +916,9 @@ async function dashTickex() {
             ticketRows += `
                 <tr class="tx_ticket dashboard ${highlightClass}" id="${ticket.ID}" onclick="showPopupFromDashboard(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
                     <td>${ticket.Title}</td>
-                    <td>${ticket.ID}</td>
-                    <td>${ticket.StatusName}</td>
-                    <td>${(ticket.ResponsibleFullName != "") ? ticket.ResponsibleFullName : `UNASSIGNED` }</td>
+                    ${isMobile ? "" : `<td>${ticket.ID}</td>`}
+                    ${isMobile ? "" : `<td>${ticket.StatusName}</td>`}
+                    ${isMobile ? "" : `<td>${(ticket.ResponsibleFullName != "") ? ticket.ResponsibleFullName : `UNASSIGNED` }</td>`}
                 </tr>
             `;
         }           // <button onclick="takeIncident(event)">Take Incident</button> Replace "UNASSIGNED" with this when we get write access
@@ -910,8 +933,10 @@ async function dashTickex() {
 
         tmp = `
             <fieldset> 
-                <legend>New CTS Tickets</legend> 
-                <p class="ticketsHeader"> Only take incident if you are actively going to the Ticket </p>
+                <legend ${isMobile ? "class='mobile_legend'" : ""}>
+                    New CTS Tickets
+                </legend> 
+                <p class="ticketsHeader ${isMobile ? "mobile_font" : ""}"> Only take incident when going to Ticket! </p>
                 ${ticketsContent}
             </fieldset>
         `;
@@ -929,18 +954,57 @@ async function dashTickex() {
         fetchTickets().then(() => {
             buildDBTickets();
         }).catch(error => console.error('Error fetching tickets for update:', error));
-    }, 20000); // Refresh every 20 seconds
+    }, 60000); // Refresh every 60 seconds
 }
 
-// Not really being used, consider this a proof of concept to give more specific
-// formatting based on user device (this is not perfect)
+// Checking touch points, and searching for "Android"/"iPhone" in the user agent
 function isMobile() {
-    let screenWidth = window.innerWidth;
-    let screenHeight = window.innerHeight;
-    let r = screenWidth / screenHeight;
-    //console.log("Screen Width: ", screenWidth, ", Screen Height: ", screenHeight, " Ratio: ", r);
-    if (r < 1.2) {
+    let isTouchScreen = navigator.maxTouchPoints > 0;
+    let isPhoneModel = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+    // let isTablet = ; // If the need arises
+    
+    // Is a Mobile user
+    if (isTouchScreen && isPhoneModel) {
         console.log("Mobile User Detected");
+
+        // Remove tools that will not be offered on mobile
+        const camCodeButton = document.getElementById("CCButton");
+        if (camCodeButton) camCodeButton.remove();
+
+        const terminal = document.getElementById("terminal");
+        if (terminal) terminal.remove();
+
+        const terminalButton = document.getElementById("admin_terminalButton");
+        if (terminalButton) terminalButton.remove();
+
+        // Scale page elements to be larger (done here and where html is dynamically written as well)
+        const programHeader = document.getElementById("bronson_header");
+        if (programHeader) programHeader.classList.add("mobile");
+
+        const messageHeader = document.getElementsByClassName("message_header")[0];
+        if (messageHeader) messageHeader.classList.add("mobile");
+
+        const hamburgerMenu = document.getElementById("hb_menu");
+        if (hamburgerMenu) hamburgerMenu.classList.add("mobile"); 
+
+        const toolTabs = document.getElementsByClassName("toolTab");
+        if (toolTabs.length > 0) {
+            for (let i = 0; i < toolTabs.length; i++) 
+                toolTabs[i].classList.add("mobile");
+        }
+
+        // Move Tool Tabs to grid-row 2 
+        const toolTabRow = document.getElementsByClassName("tab_row header")[0];
+        if (toolTabRow) { 
+            toolTabRow.classList.add("mobile"); 
+            programHeader.appendChild(toolTabRow);
+        }
+        const adminToolsButton = document.getElementsByClassName("admin_tab")[0];
+        if (adminToolsButton) {
+            adminToolsButton.classList.add("mobile");
+            programHeader.appendChild(adminToolsButton); 
+        }
+
         return true;
     } else {
         // console.log("Desktop User Detected");

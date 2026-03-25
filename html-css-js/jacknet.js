@@ -593,6 +593,8 @@ async function postJNVis(formPing, building, totalDevices, totalNotFound, devTyp
 async function setJackNet() {
     preserveCurrentTool();
 
+    const isMobile = localStorage.getItem("isMobile") === "true";
+
     document.title = "JackNet - Bronson";
     // remove currently active status mark tab has active.
     // Update active_tab_header
@@ -644,7 +646,7 @@ async function setJackNet() {
     let buildingSelect = document.createElement("div");
     buildingSelect.classList.add('jn_buildSelect');
     let set_inner_html = `
-        <select id="building_list">
+        <select id="building_list" ${isMobile ? "class='mobile_font'" : ""}>
         <option>
             All Buildings
         </option>`;
@@ -658,7 +660,7 @@ async function setJackNet() {
     set_inner_html += '</select>';
     buildingSelect.innerHTML = `
         <fieldset>
-        <legend>
+        <legend ${isMobile ? "class='mobile_legend'" : ""}>
             Choose Building(s):
         </legend>
         ${set_inner_html}
@@ -670,30 +672,30 @@ async function setJackNet() {
     devSelect.classList.add('jn_devSelect');
     devSelect.innerHTML = `
         <fieldset>
-            <legend>
+            <legend ${isMobile ? "class='mobile_legend'" : ""}>
                 Choose Devices to Search For: </legend>
-            <input class="cbDev" type ="checkbox" id="proc" name="jn_dev" value="Processors"/>
-            <label for="proc"> 
+            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="proc" name="jn_dev" value="Processors"/>
+            <label ${isMobile ? "class='mobile_label'" : ""} for="proc"> 
                 Processors</label>
             <br>
-            <input class="cbDev" type="checkbox" id="pj" name="jn_dev" value="Projectors"/>
-            <label for="pj">
+            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="pj" name="jn_dev" value="Projectors"/>
+            <label ${isMobile ? "class='mobile_label'" : ""} for="pj">
                 Projectors</label>
             <br>
-            <input class="cbDev" type="checkbox" id="disp" name="jn_dev" value="Display"/>
-            <label for="disp">
+            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="disp" name="jn_dev" value="Display"/>
+            <label ${isMobile ? "class='mobile_label'" : ""} for="disp">
                 Displays</label>
             <br>
-            <input class="cbDev" type="checkbox" id="ws" name="jn_dev" value="Wyo Shares"/>
-            <label for="ws">
+            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="ws" name="jn_dev" value="Wyo Shares"/>
+            <label ${isMobile ? "class='mobile_label'" : ""} for="ws">
                 Wyo Shares</label>
             <br>
-            <input class="cbDev" type="checkbox" id="tp" name="jn_dev" value="Touch Panels"/>
-            <label for="tp">
+            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="tp" name="jn_dev" value="Touch Panels"/>
+            <label ${isMobile ? "class='mobile_label'" : ""} for="tp">
                 Touch Panels</label>
             <br>
-            <input class="cbDev" type ="checkbox" id="cmicx" name="jn_dev" value="Ceiling Mics"/>
-            <label for="cmicx">
+            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="cmicx" name="jn_dev" value="Ceiling Mics"/>
+            <label ${isMobile ? "class='mobile_label'" : ""} for="cmicx">
                 Ceiling Mics </label>
             <br>
         </fieldset>`;
@@ -705,9 +707,9 @@ async function setJackNet() {
     consoleOutput.classList.add('jn_console');
     consoleOutput.innerHTML = `
         <fieldset>
-            <legend> 
+            <legend ${isMobile ? "class='mobile_legend'" : ""}> 
                 Console Output: </legend>
-            <textarea readonly rows="15" cols ="75" class="jn_innerConsole" name="consoleOutput" spellcheck="false">                JackNet Console: Responses will be printed here along with some tiles below.
+            <textarea readonly rows="15" cols ="75" class="jn_innerConsole ${isMobile ? "mobile_tx_font" : ""}" name="consoleOutput" spellcheck="false">                JackNet Console: Responses will be printed here along with some tiles below.
 
 DISCLAIMER: This application is moreso a proof of concept rather than a functional everyday tool. Just because a device does not return back, does not neccessarily mean that it is in need of servicing. Many devices such as Ceiling Mics are not even on the network to begin with (specifically the A/V VLAN). Many functional rooms on campus utilize local networks to facilitate communication. This tool does a very simple ICMP ping request using what the hostname for a given device SHOULD be and returns back the IP address if it is found. This means devices without a DHCP reservation (or port) will not appear online. The only way we can access the information as we envisioned is by connecting to a room's network switch via SNMP and pulling information from there and that is currently not implemented in this tool. We are waiting for an instance of an API used by the university that will provide the framework to utilize SNMP. The goal is to leverage the detailed information we get from SNMP to provide diagnostic recommendations. For example, if the biamp is connected but not transmitting data, indicative of a restart. Giving us a quick way to jump to the heart of the problem in the context of live troubleshooting. This tool is far from ready for that use case. 
             </textarea>
@@ -719,13 +721,12 @@ DISCLAIMER: This application is moreso a proof of concept rather than a function
     bottomMenu.classList.add('jn_bottomMenu');
     bottomMenu.innerHTML = `
         <fieldset>
-            <legend>
+            <legend ${isMobile ? "class='mobile_legend'" : ""}>
                 Options: </legend>
-            <button id="run" onclick="runSearch()" class="headButton">
+            <button id="run" onclick="runSearch()" class="headButton ${isMobile ? "mobile_button" : ""}">
                 Run Search</button>
-            <button id="export" onclick="runExport()" class="headButton">
-                Export as .csv </button>
-            <button id="clearCon" onclick="clearConsole()" class="headButton"> 
+            ${isMobile ? "" : `<button id="export" onclick="runExport()" class="headButton">Export as .csv </button>`}
+            <button id="clearCon" onclick="clearConsole()" class="headButton ${isMobile ? "mobile_button" : ""}"> 
                 Clear</button>
         </fieldset>`;
 
