@@ -968,8 +968,8 @@ function isMobile() {
         console.log("Mobile User Detected");
 
         // Remove tools that will not be offered on mobile
-        const jacknetButton = document.getElementById("CCButton");
-        if (jacknetButton) jacknetButton.remove();
+        const camCodeButton = document.getElementById("CCButton");
+        if (camCodeButton) camCodeButton.remove();
 
         const terminal = document.getElementById("terminal");
         if (terminal) terminal.remove();
