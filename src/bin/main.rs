@@ -1065,7 +1065,7 @@ async fn handle_connection(
                         0 => false,
                         _ => false,
                     },
-                    check_period: 0,
+                    check_period: 2,
                     offln: false,
                     onln: "2000-01-01".to_string(),
                     available: false,

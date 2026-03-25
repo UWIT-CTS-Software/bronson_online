@@ -411,16 +411,18 @@ impl Database {
 					let hn_vec = Self::gen_hn(String::from(room_name), &item_vec);
 					let ping_vec = Self::gen_ip(&hn_vec);
 
+					let is_gp = match record.get(7).expect("-1").parse().unwrap() {
+						0 => false,
+						_ => true,
+					};
+					
 					let new_room = DB_Room {
 						abbrev: String::from(room_name.split(' ').next().unwrap()),
 						name: String::from(room_name),
 						checked: String::from("2000-01-01T00:00:00Z"),
 						needs_checked: true,
-						gp: match record.get(7).expect("-1").parse().unwrap() {
-							0 => false,
-							_ => true,
-						},
-						check_period: 0,
+						gp: is_gp,
+						check_period: if is_gp { 0 } else { 2 },
 						offln: false,
 						onln: "2000-01-01".to_string(),
 						available: false,
