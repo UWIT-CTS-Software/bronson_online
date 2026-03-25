@@ -11,3 +11,4 @@ output.log
 DAILYLOG.md
 .env
 *.tar
+/data/backup.json

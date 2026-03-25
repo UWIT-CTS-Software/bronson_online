@@ -213,27 +213,41 @@ async function printCBResponse(JSON) {
         // Check to see if the checked room filter is on
         let checkFilter = sessionStorage.getItem("cbHideBool");
         checkFilter = (checkFilter == 'true') ? true : false;
+        let shouldHide = checkFilter && (!rooms[j]['needs_checked'] || rooms[j]['offln']);
         //console.log("CB DEBUG, Check enabled? ",checkFilter);
-        let cbRoomEntry = `<li class="cbVisRoom cbState${rooms[j]['needs_checked']} ${(!checkFilter && !rooms[j]['needs_checked']) ? "hideVisTile" : ""}">`;
+        let cbRoomEntry = `<li class="cbVisRoom cbState${rooms[j]['needs_checked']} ${shouldHide ? "hideVisTile" : ""}">`;
         // Maybe add some generalPool/DepartmentShared indicator
         cbRoomEntry += `<p class="cbVisRoomName">${rooms[j]['name']} </p>`;
         //  - ROOM ATTRIBUTES
         cbRoomEntry += `<ul class="cbVisRoomAttributes">`
         let check_date = rooms[j]['checked'].split('T')[0];
-        if(rooms[j]['needs_checked']) {
-            cbRoomEntry += `<li class="cbVisNotChecked"><span class="cbVisRoomAttributeSpan "> Needs Checked! (${check_date})</span></li>`;
+        if (rooms[j]['offln']) {
+            cbRoomEntry += `<li class="cbVisOffline"><span class="cbVisRoomAttributeSpan "> Room Offline! </span></li>`;
+            numberChecked++; // Mark offline rooms as checked
+        }
+        else if(rooms[j]['needs_checked']) {
+            cbRoomEntry += `<li class="cbVisNotChecked"><span class="cbVisRoomAttributeSpan "> Needs Checked! </span></li>`;
         } else {
             cbRoomEntry += `<li class="cbVisChecked"><span class="cbVisRoomAttributeSpan "> Recently Checked! (${check_date})</span></li>`;
             numberChecked++;
         }
         // Is available ?
         let formattedTime = FourDigitToTimeFormat(rooms[j]['until']);
-        if(rooms[j]['available']) {
+        let online;
+        if (rooms[j]['onln'] === "2000-01-01" || rooms[j]['onln'] === "3000-01-01")
+            online = "Offline Indefinitely";
+        else 
+            online = "Room goes Back Online " + rooms[j]['onln'];
+
+        if (rooms[j]['offln']) {
+            cbRoomEntry += `<li class="cbVisBackOnline"><span class="cbVisRoomAttributeSpan "> ${online} </span></li>`;
+        }
+        else if(rooms[j]['available']) {
             // Sometimes, until is 0000, should probably say 'TOMORROW'
             // if (rooms[j]['until'].slice(0,2) == "00") {
             //     rooms[j]['until'] = "TOMORROW";
             // }
-            cbRoomEntry += `<li class="cbVisAvailable"><span class="cbVisRoomAttributeSpan "> Available Until \n ${formattedTime} </span></li>`;
+            cbRoomEntry += `<li class="cbVisAvailable"><span class="cbVisRoomAttributeSpan "> Available Until ${formattedTime} </span></li>`;
         } else { 
             cbRoomEntry += `<li class="cbVisNotAvailable"><span class="cbVisRoomAttributeSpan "> Unavailable Until ${formattedTime} </span></li>`;
         }
@@ -250,9 +264,19 @@ async function printCBResponse(JSON) {
     consoleObj.append(cbVisContainer);
 
     //update topper entry
-    let checkedPercent = 100 * (numberChecked / numberRooms);
+    let checkedPercent = 100 * (numberChecked / (numberRooms));
     let topperID = `cbTopper_${building['abbrev']}`;
-    await updateTopperElement(topperID, building['name'], numberChecked, numberRooms);
+    await updateTopperElement(topperID, building['name'], numberChecked, (numberRooms));
+    
+    // Store the calculated checked count for this building in session storage
+    try {
+        let cbBuildingCounts = globalThis.JSON.parse(sessionStorage.getItem('cbBuildingCounts') || '{}');
+        cbBuildingCounts[building['abbrev']] = numberChecked;
+        sessionStorage.setItem('cbBuildingCounts', globalThis.JSON.stringify(cbBuildingCounts));
+    } catch(e) {
+        console.error('Error storing building count:', e);
+    }
+    
     return;
 }
 
@@ -280,21 +304,26 @@ function toggleHideRooms() {
     let currentState = sessionStorage.getItem("cbHideBool");
     let bool = (currentState == 'true');
     if (!bool) {
-        currentState = true;
+        currentState = "true";
         let label = document.getElementById("cbToggleLabel");
         label.innerHTML = "Showing Checked Rooms";
-        let tiles = document.getElementsByClassName("cbStatefalse");
-        for(let i=0; i < tiles.length; i++) {
-            tiles[i].classList.remove("hideVisTile");
-        }
+        // When showing checked rooms, remove hideVisTile from all rooms
+        let allRooms = document.querySelectorAll(".cbVisRoom");
+        allRooms.forEach(room => {
+            room.classList.remove("hideVisTile");
+        });
     } else {
-        currentState = false;
+        currentState = "false";
         let label = document.getElementById("cbToggleLabel");
         label.innerHTML = "Hiding Checked Rooms";
-        let tiles = document.getElementsByClassName("cbStatefalse");
-        for(let i=0; i < tiles.length; i++) {
-            tiles[i].classList.add("hideVisTile");
-        }
+        // When hiding checked rooms, add hideVisTile to needs_checked=false OR offline rooms
+        let allRooms = document.querySelectorAll(".cbVisRoom");
+        allRooms.forEach(room => {
+            // Hide if it's cbStatefalse (needs_checked=false) OR contains "Room Offline"
+            if (room.classList.contains("cbStatefalse") || room.textContent.includes("Room Offline")) {
+                room.classList.add("hideVisTile");
+            }
+        });
     }
     sessionStorage.setItem("cbHideBool", currentState);
     return;
@@ -417,6 +446,6 @@ async function setChecker() {
     progGuts.replaceWith(main_container);
 
     // Init Hide Bool Variable in session storage
-    sessionStorage.setItem("cbHideBool", true);
+    sessionStorage.setItem("cbHideBool", "false");
     return;
 }

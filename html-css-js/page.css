@@ -60,6 +60,35 @@ textarea {
     resize:none;
 }
 
+input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+    background-color: rgb(221 187 96);
+    border: 2px outset rgb(144,118,26);
+    max-width: 50%;
+    min-width: 5%;
+    padding-left: 4px; 
+}
+
+input[type=date] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+    background-color: rgb(221 187 96);
+    border: 2px outset rgb(144,118,26);
+    padding-left: 4px; 
+    color: black;
+}
+
+input[type=date]:disabled {
+    -moz-appearance: textfield;
+    appearance: textfield;
+    background-color: rgb(133, 112, 57);
+    border: 2px outset rgb(144,118,26);
+    padding-left: 4px; 
+    color: rgb(133, 112, 57);
+    opacity: 0.5;
+}
+
 fieldset {
     border: 2px outset rgb(144,118,26);
     border-radius: 15px;
@@ -1117,6 +1146,15 @@ progress::-webkit-progress-bar {
     font-style:oblique;
 }
 
+.cbVisOffline {
+    background-color: rgb(40, 40, 40);
+    /* border: rgb(33, 39, 33) inset 2px; */
+    border-radius: 0px 0px 0px 18px;
+    border-right:rgb(75,45,15) outset 1px;
+    height:100%;
+    padding-left:5px;
+}
+
 .cbVisNotChecked {
     background-color: rgb(102, 53, 54);
     /* border: rgb(94, 46, 17) inset 2px; */
@@ -1133,6 +1171,15 @@ progress::-webkit-progress-bar {
     border-right:rgb(75,45,15) outset 1px;
     height:100%;
     padding-left:5px;
+}
+
+.cbVisBackOnline {
+    background-color: rgb(75, 75, 75);
+    /* border: rgb(94, 46, 17) inset 2px; */
+    border-radius: 0px 0px 18px 0px;
+    border-left:rgb(90,60,30) inset 1px;
+    height:100%;
+    padding-right:5px;
 }
 
 .cbVisAvailable {
@@ -1155,9 +1202,9 @@ progress::-webkit-progress-bar {
 
 /* Maybe use this instead */
 .cbVisRoomAttributeSpan {
-    padding:0px;
-    margin:0px;
     display:flex;
+    justify-content:center;
+    align-items:center;
     text-align:center;
 }
 
@@ -2309,6 +2356,7 @@ p.tx_Description::-webkit-scrollbar-track {
     width: 130px;
     display: inline-block;
     text-align: right;
+    inherits: none;
 }
 
 .DBE_Building_Fields {
@@ -2332,7 +2380,9 @@ p.tx_Description::-webkit-scrollbar-track {
 .dbBuildingSmallInput {
     width: 40px;
     color: rgb(144, 118, 26);
-    background-color: rgb(50, 50, 50);
+    background-color: rgb(50, 50, 50) !important;
+    border-style: inset !important;
+    border-color: light-dark(rgb(118, 118, 118), rgb(133, 133, 133)) !important;
 }
 
 .dbRoomInputName {
