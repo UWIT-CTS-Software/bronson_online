@@ -1023,6 +1023,8 @@ async function setTickex() {
     newCurrent.classList.add("selected");
     newCurrent.classList.remove("stashed"); // Stop the strobing
 
+    history.pushState("test", "Tickex", "/tickex");
+
     // Check for preserved space
     let cached_HTML = sessionStorage.getItem("Tickex_html");
     let progGuts = document.querySelector('.program_board .program_guts');

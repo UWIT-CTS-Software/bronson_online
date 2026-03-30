@@ -609,6 +609,8 @@ async function setJackNet() {
     // newCurrent.classList.add("active");
     newCurrent.classList.add("selected");
 
+    history.pushState("test", "JackNet", "/jacknet");
+
     let progGuts = document.querySelector('.program_board .program_guts');
     // Check for preserved space
     let cached_HTML = sessionStorage.getItem("JackNet_html");

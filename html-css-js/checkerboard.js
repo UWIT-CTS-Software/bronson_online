@@ -347,6 +347,9 @@ async function setChecker() {
     // newCurrent.classList.add("active");
     newCurrent.classList.add("selected");
 
+    history.pushState("test", "Checkerboard", "/checkerboard");
+
+
     let progGuts = document.querySelector('.program_board .program_guts');
     // Check for preserved space
     let cached_HTML = sessionStorage.getItem("CheckerBoard_html");
