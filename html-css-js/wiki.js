@@ -1,4 +1,4 @@
-    /*
+/*
             _ _    _   _     
             (_) |  (_) (_)    
     __      ___| | ___   _ ___ 
@@ -32,8 +32,6 @@ async function setWiki() {
     document.title = "Wiki - Bronson";
     history.pushState("test", "Wiki", "/wiki");
     
-    
-    
     // remove currently active status mark tab has active.
     // Update active_tab_header
     // let active_tab_header = document.querySelector('.active_tab_header');
@@ -49,56 +47,14 @@ async function setWiki() {
     let main_container = document.createElement('div');
     main_container.classList.add('program_guts');
     
-    // Wiki editor container
-    let w_editor = document.createElement('div');
-    w_editor.classList.add("w_editor");
 
-    // Wiki input page
-    let w_input = document.createElement('div');
-    w_input.classList.add("w_input");
-    w_input.innerHTML = `
-        <textarea id="input" class="inputWindow" placeholder="# MMm markdown" onkeyup="updatePreview()"></textarea>`;
+    /* -------------------- Wiki Page -------------------- */
 
-    // Wiki preview/output Page
-    let w_preview = document.createElement('div');
-    w_preview.classList.add("w_preview");
-    w_preview.innerHTML = `
-        <p>
-            This is text
-        </p><br>`;
-
-    // Option Menu buttons
-    // [ Generate Files ] [ Clear Console ] [ Reset ]
-    let optionMenu = document.createElement("div");
-    optionMenu.classList.add('w_optionMenu');
-    optionMenu.innerHTML = `
-        <fieldset class='w_fieldset'>
-            <legend class='w_legend'>
-                Options: </legend>
-            <button id="run" onclick="wiki_button()"> 
-                Wiki Button </button>
-            <button id="reset" onclick="setWiki()"> 
-                Reset </button>
-        </fieldset>`;
-
-    // Option Menu buttons
-    // [ Generate Files ] [ Clear Console ] [ Reset ]
     let w_toc = document.createElement("div");
     w_toc.classList.add('w_toc');
-    // replace <ul> with something else
+
     let article_list_html = await getTocHTML();
     w_toc.innerHTML = article_list_html;
-    //     <fieldset class='w_fieldset'>
-    //         <legend class='w_legend'>
-    //             Articles: 
-    //         </legend>
-    //         <ul>
-    //             <li> Item 1 </li>
-    //             <li> Item 2 </li>
-    //             <li> Item tmp </li>
-    //             <li> Item 3 </li>
-    //         </ul>
-    //     </fieldset>`;
 
     //w_toc.innerHTML = await getTocHTML();
     w_toc.innerHTML = `  
@@ -179,7 +135,6 @@ async function setWiki() {
     w_container.appendChild(wf_popup);
     main_container.appendChild(w_container);
     progGuts.replaceWith(main_container);
-    return;
 }
 
 async function getTocHTML() {
@@ -658,12 +613,11 @@ function deleteButton(node){
     let html = `
         <fieldset class='w_fieldset'>
             <legend class='w_legend'>
-                Articles:
+                Table of Contents:
             </legend>
-            <p> Test File </p>
-            <p> Test File 2 </p>
-            <p> ${articles[0]} </p>
-        </fieldset>`;
+            ${articles.map(article => `<p>${article}</p>`).join('')}
+        </fieldset>
+    `;
     
     return html;
 }
