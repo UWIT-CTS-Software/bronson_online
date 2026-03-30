@@ -590,7 +590,19 @@ async fn handle_connection(
             Response::new()
                     .status(STATUS_200)
                     .send_file(user_homepage)
-                    .insert_onload("setCamcode()")
+                    .insert_onload("setCrestronFile()")
+        },
+        "GET /camcode HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file(user_homepage)
+                    .insert_onload("setCamCode()")
+        },
+        "GET /dashboard HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file(user_homepage)
+                    .insert_onload("setDashboard()")
         },
         "GET /checkerboard HTTP/1.1" => {
             Response::new()

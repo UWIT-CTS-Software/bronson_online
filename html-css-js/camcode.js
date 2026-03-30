@@ -152,6 +152,9 @@ async function setCamCode() {
     console.log('Switching to camcode');
     let tool_header = document.querySelector('.tool_header');
     tool_header.innerHTML = 'CamCode';
+    
+    history.pushState("test", "CamCode", "/camcode");
+
 
     let progGuts = document.querySelector('.program_board .program_guts');
     let main_container = document.createElement('div');

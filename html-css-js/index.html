@@ -69,6 +69,8 @@
       // Makes sure data is here and upto date
       initLocalStorage();
 
+      history.pushState("test", "Dashboard", "/dashboard");
+
       const isMobile = localStorage.getItem("isMobile") === "true";
 
       // remove currently active status, mark tab has active.
