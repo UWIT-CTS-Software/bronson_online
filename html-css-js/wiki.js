@@ -21,17 +21,9 @@ async function setWiki() {
 
     document.title = "Wiki - Bronson";
     history.pushState("test", "Wiki", "/wiki");
-    
-    // remove currently active status mark tab has active.
-    // Update active_tab_header
-    // let active_tab_header = document.querySelector('.active_tab_header');
-    // active_tab_header.innerHTML = 'Wiki';
+
     let current = document.getElementsByClassName("selected");
-    console.log(current);
-    if (current.length != 0) {
-        // current[0].classList.remove("active");
-        current[0].classList.remove("selected");
-    }
+    if (current.length != 0) current[0].classList.remove("selected");
 
     let progGuts = document.querySelector('.program_board .program_guts');
     let main_container = document.createElement('div');
@@ -74,8 +66,6 @@ async function getTocHTML() {
 |_|   \___| \__| \___||_| |_|    
 */
 
-// getW_BuildArticles()
-//    "w_build"
 async function getW_BuildArticles() {
     return await fetch('w_build', {
         method: 'POST',
