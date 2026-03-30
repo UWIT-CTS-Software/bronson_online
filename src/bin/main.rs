@@ -1019,7 +1019,7 @@ async fn handle_connection(
                 };
                 new_db_room.onln = new_date;
                 // Build Updated Ping Data Vector
-                let hn_vec = Database::gen_hn(String::from(target_room), &new_values);
+                let hn_vec = Database::gen_hn(String::from(target_room), &new_values[0..6].to_vec()); // Only device fields
                 let ping_vec = Database::gen_ip(&hn_vec);
                 // Update Ping Data in room
                 new_db_room.ping_data = ping_vec;
@@ -1052,7 +1052,7 @@ async fn handle_connection(
                 // Note: When we are inserting a new room, we are not providing the inventory in the same call. The intention is that the front-end will send the rooms to insert first and if their is inventory associated with it it will come after.
                 // Build DB_Room Object and insert to Database
                 // Ping Data Vector
-                let hn_vec = Database::gen_hn(new_room.clone(), &new_values);
+                let hn_vec = Database::gen_hn(new_room.clone(), &new_values[0..6].to_vec()); // Only device fields
                 let ping_vec = Database::gen_ip(&hn_vec);
                 // Insert New Room to Database
                 let new_db_room = DB_Room {
