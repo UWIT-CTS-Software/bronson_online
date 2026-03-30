@@ -1,4 +1,4 @@
-/*
+    /*
             _ _    _   _     
             (_) |  (_) (_)    
     __      ___| | ___   _ ___ 
@@ -11,7 +11,17 @@
     A wiki / knowledge base interface for the CTS team.
 */
 
-// setWiki() sets up container 
+// update the realtime guy
+async function updatePreview() {
+    console.log("Typing...");
+    let text = document.querySelector('.inputWindow');
+    let wp   = document.querySelector('.w_preview');
+    console.log(text);
+    wp.innerHTML = marked.parse(text.value);
+    return;
+}
+
+// setWiki()
 async function setWiki() {
     const menuItems = document.querySelectorAll(".menuItem");
 
@@ -21,30 +31,74 @@ async function setWiki() {
 
     document.title = "Wiki - Bronson";
     history.pushState("test", "Wiki", "/wiki");
+    
+    
+    
+    // remove currently active status mark tab has active.
+    // Update active_tab_header
+    // let active_tab_header = document.querySelector('.active_tab_header');
+    // active_tab_header.innerHTML = 'Wiki';
     let current = document.getElementsByClassName("selected");
-    if (current.length != 0) current[0].classList.remove("selected");
+    console.log(current);
+    if (current.length != 0) {
+        // current[0].classList.remove("active");
+        current[0].classList.remove("selected");
+    }
 
     let progGuts = document.querySelector('.program_board .program_guts');
-
-
     let main_container = document.createElement('div');
     main_container.classList.add('program_guts');
-
     
+    // Wiki editor container
+    let w_editor = document.createElement('div');
+    w_editor.classList.add("w_editor");
 
-    /* -------------------- Wiki Page -------------------- */
+    // Wiki input page
+    let w_input = document.createElement('div');
+    w_input.classList.add("w_input");
+    w_input.innerHTML = `
+        <textarea id="input" class="inputWindow" placeholder="# MMm markdown" onkeyup="updatePreview()"></textarea>`;
 
-     await getW_tree();
-    let defult_wiki = "/home/rkilduff/Desktop/bronson_online/data/wiki_articles/BronsonWiki.pdf"
-    getWiki_File(defult_wiki);
+    // Wiki preview/output Page
+    let w_preview = document.createElement('div');
+    w_preview.classList.add("w_preview");
+    w_preview.innerHTML = `
+        <p>
+            This is text
+        </p><br>`;
 
-    let w_container = document.createElement('div');
-    w_container.classList.add('w_container');
+    // Option Menu buttons
+    // [ Generate Files ] [ Clear Console ] [ Reset ]
+    let optionMenu = document.createElement("div");
+    optionMenu.classList.add('w_optionMenu');
+    optionMenu.innerHTML = `
+        <fieldset class='w_fieldset'>
+            <legend class='w_legend'>
+                Options: </legend>
+            <button id="run" onclick="wiki_button()"> 
+                Wiki Button </button>
+            <button id="reset" onclick="setWiki()"> 
+                Reset </button>
+        </fieldset>`;
 
-
+    // Option Menu buttons
+    // [ Generate Files ] [ Clear Console ] [ Reset ]
     let w_toc = document.createElement("div");
     w_toc.classList.add('w_toc');
-    w_toc.id = "w_toc";
+    // replace <ul> with something else
+    let article_list_html = await getTocHTML();
+    w_toc.innerHTML = article_list_html;
+    //     <fieldset class='w_fieldset'>
+    //         <legend class='w_legend'>
+    //             Articles: 
+    //         </legend>
+    //         <ul>
+    //             <li> Item 1 </li>
+    //             <li> Item 2 </li>
+    //             <li> Item tmp </li>
+    //             <li> Item 3 </li>
+    //         </ul>
+    //     </fieldset>`;
 
     //w_toc.innerHTML = await getTocHTML();
     w_toc.innerHTML = `  
@@ -125,57 +179,22 @@ async function setWiki() {
     w_container.appendChild(wf_popup);
     main_container.appendChild(w_container);
     progGuts.replaceWith(main_container);
-    await renderToC(treeJSON); 
-
-
-     renderToC(treeJSON); 
-
-
-    // const isAuthorized = await fetchCurrentUserPermissions() >= 6; // Is a boolean
-    // // const adminOnlyHTML = isAuthorized ? `
-    // //     <div>
-    // //         your content here
-    // //     </div>
-    // // ` : ""; // If not authorized, return nothing
-
-    // console.log(isAuthorized);
-   
-}
-
-// Table of Contents (ToC)
-//-------------------------------------------------------------------
-
-
-async function renderToC(treeJSON) {
-    const isAuthorized = await fetchCurrentUserPermissions() >= 6; // Is a boolean
-    let tocFieldset = document.getElementById("toc_fieldset"); 
-    let buttonHTML = "";
-    tocFieldset.innerHTML = `
-        <legend> Table of Contents </legend>
-        ${ await parseTreeToC(treeJSON.tree)}
-        ${(isAuthorized) ? 
-       ` <button class="file-btn" id=${"Root"} data-path="${""}" onClick="uploadNewFile(this)">📄</button>
-        <button class="folder-btn" id=${"Root"} data-path="${""}" onClick="uploadNewFolder(this)">📁</button>`
-        :"" } 
-    `;
     return;
 }
 
- function parseTreeToC(root) {
-    if (!root) return;
-    let buttonHTML = "";
-    let addButtonHTML = "";
-    let deleteButtonHTML = "";
-    let addFileButtonHTML = "";
-    let retHTML = "";
-     for (let child of root.children) {
-        retHTML += dfs(child)
-     }
-     return retHTML;
-    function dfs(node){
-        let buttonHTML = "";
-        let childHTML = "";
-        let isFile = node.children === null; 
+async function getTocHTML() {
+    let default_html = `
+        <fieldset class='w_fieldset'>
+            <legend class='w_legend'>
+                Articles: 
+            </legend>
+            <ul>
+                <li> Item 1 </li>
+                <li> Item 2 </li>
+                <li> Item tmp </li>
+                <li> Item 3 </li>
+            </ul>
+        </fieldset>`;
 
         if(isFile) { // Child is null
         buttonHTML = deleteButton(node);
@@ -636,7 +655,17 @@ function deleteButton(node){
 
     }
 
+    let html = `
+        <fieldset class='w_fieldset'>
+            <legend class='w_legend'>
+                Articles:
+            </legend>
+            <p> Test File </p>
+            <p> Test File 2 </p>
+            <p> ${articles[0]} </p>
+        </fieldset>`;
     
+    return html;
 }
 
 /*
@@ -647,6 +676,8 @@ function deleteButton(node){
 |_|   \___| \__| \___||_| |_|    
 */
 
+// getW_BuildArticles()
+//    "w_build"
 async function getW_BuildArticles() {
     return await fetch('w_build', {
         method: 'POST',
@@ -656,163 +687,6 @@ async function getW_BuildArticles() {
     })
     .then((response) => response.json())
     .then((json) => {
-        sessionStorage.setItem("wikiArticles", JSON.stringify(json));
-        return json;
+        return json.names;
     });
 };
-
-
-async function getW_tree(){
-    return await fetch('w_build_tree', {
-        method: 'POST',
-        body: JSON.stringify({
-            message: 'w_build_tree'
-        })
-    })
-
-    .then((response) => response.json())
-    .then((json) => {
-        sessionStorage.setItem("wikiTree", JSON.stringify(json));
-        return json;
-    });
-
-};
-
-async function getWiki_File(filepath) {
-    // If no display name provided, extract it from the filepath
-    let filename = filepath.split('/').pop();
-    let relativePath = filepath.split('wiki_articles').pop();
-    return await fetch('w_file', {
-        method: 'POST',
-        body: JSON.stringify({
-            filename: relativePath
-        })
-    })
-    .then((response) => {
-        if (!response.ok && response.status !== 500) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.blob();
-    })
-    .then((blob) => getArticleHTML(blob, filename))
-    .catch((error) => {
-        // Log error but don't throw - file may still be downloading
-        console.warn("Download completed (server error ignored):", error);
-    });
-}
-
-
-
-// Fetches the current user's permission level
-async function fetchCurrentUserPermissions() {
-    try {
-        const response = await fetch('/currentUser');
-        if (!response.ok) {
-            console.error("Failed to fetch current user permissions");
-            return 0;
-        }
- 
-        const data = await response.json();
-        return data.permissions || 0;
-    } catch (error) {
-        console.error("Error fetching current user permissions:", error);
-        return 0;
-    }
-}
- 
-
-// send file new file to backend 
-
-async function uploadNewFile(button){
-     let parent_path = button.dataset.path;
-      sessionStorage.setItem("Parent Path", parent_path);
-    showWikiPopup();
-}
-
-async function uploadNewFolder(button){
-     let parent_path = button.dataset.path;
-      sessionStorage.setItem("Parent Path", parent_path);
-    showFolderPopup();
-}
-
-
-
-
-async function submitFile(){
-    const newFile = document.getElementById("newFile").files[0];
-    const parent_path = sessionStorage.getItem("Parent Path") + "/";
-    const newFileBytes = await newFile.bytes();
-    const base64 = btoa(String.fromCharCode(...newFileBytes));
-
-
-    const file_obj = {
-        filename: newFile.name, 
-        parent_path: parent_path, 
-        fileblob:base64
-    }
-
-   
-    const response = await fetch('/w_upload-json',{
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json; charset=utf-8'
-            },
-            body: JSON.stringify(file_obj)
-        })
-
-    hidePopupHTML()
-    setWiki()
-
-}
-
-async function submitFolder(){
-    const newFolder = document.getElementById("newFolder").value;
-    const parent_path = sessionStorage.getItem("Parent Path") + "/";
-
-
-    const folder_obj = {
-        filename: newFolder,
-        parent_path: parent_path, 
-    }
-
-
-
-    const response = await fetch('/w_upload_folder',{
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json; charset=utf-8'
-            },
-            body: JSON.stringify(folder_obj)
-        })
-        .then(response => console.log("item added"))
-        .catch(error => console.log("Error", error));
-        hideDirPopup();
-        setWiki()
-
-}
-
-
-async function deleteElement(button) {
-     let parent_path = button.dataset.path;
-      sessionStorage.setItem("Parent Path", parent_path);
-    showDeletePopup();
-}
-
-async function submitDelete(){
-    const parent_path = sessionStorage.getItem("Parent Path");
-    const filePath = {
-        filepath: parent_path
-    }
-
-    const response = await fetch('/w_delete',{
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json; charset=utf-8'
-        },
-        body: JSON.stringify(filePath)
-    })
-    .then(response => console.log("item deleted"))
-    .catch(error => console.log("Error", error));
-    hideDeletePopup()
-    setWiki()
-}
