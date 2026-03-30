@@ -11,16 +11,6 @@
     A wiki / knowledge base interface for the CTS team.
 */
 
-// update the realtime guy
-async function updatePreview() {
-    console.log("Typing...");
-    let text = document.querySelector('.inputWindow');
-    let wp   = document.querySelector('.w_preview');
-    console.log(text);
-    wp.innerHTML = marked.parse(text.value);
-    return;
-}
-
 // setWiki()
 async function setWiki() {
     const menuItems = document.querySelectorAll(".menuItem");
