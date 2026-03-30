@@ -21,7 +21,6 @@ async function setWiki() {
 
     document.title = "Wiki - Bronson";
     history.pushState("test", "Wiki", "/wiki");
-
     let current = document.getElementsByClassName("selected");
     if (current.length != 0) current[0].classList.remove("selected");
 
