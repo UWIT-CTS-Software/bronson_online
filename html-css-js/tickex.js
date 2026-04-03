@@ -426,7 +426,7 @@ async function show(ticket) {
                     <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
                     <button class="popup_toggleButton ${isMobile ? "mobile_tx_button" : ""}" onClick="toggleDetails(${ticket.ID})">Description</button>
                     <p class="tx_popup_Requestor tx_textwrap">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                    <p class="tx_popup_Responsible tx_textwrap">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED <button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>`}} || ${ticket.ResponsibleGroupName || ""}</p>
+                    <p class="tx_popup_Responsible tx_textwrap">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED <button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>`} || ${ticket.ResponsibleGroupName || ""}</p>
                     <p class="tx_popup_ServiceName tx_textwrap">Service: ${ticket.ServiceName || ""}</p>
                     <p class="tx_popup_AccountName tx_textwrap">Account Department: ${ticket.AccountName || ""}</p>
                     <p class="tx_popup_TypeName tx_textwrap">Type: ${ticket.TypeName || ""}</p>

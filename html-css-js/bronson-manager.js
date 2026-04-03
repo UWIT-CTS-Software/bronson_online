@@ -789,21 +789,39 @@ function setLeader(jsonValue) {
     }
     let newCurrent = document.getElementById(`${buttonId}`);
     newCurrent.classList.add("leader_selected");
-    // number of characters per row
-    //const COL_LIMIT = 28; // 28 Columns On Mobile, 41 On desktop.
-    //let r = window.innerWidth / window.innerHeight;
-    //let col = Math.round(COL_LIMIT * (COL_LIMIT*r) / 41) - 3;
-    let col = Math.round(4*Math.atan(1/70*window.innerWidth - 23.6) + 32);
-    // print
+
+    // Build formatted string with columns
+    const isMobile = (localStorage.getItem("isMobile") === "true");
+    const rowMaxWidth = (isMobile ? 34 : 48);
+    const COL1_WIDTH = 4;
+
     let leaderString = "";
-    for (let i=0; i<leader.length; i++) {
-        let n = col - leader[i].Name.length;
-        let spacer = n > 0 ? " ".repeat(n) : "";
-        leaderString += `${i+1}. ${leader[i].Name}: ${spacer}${leader[i].Count}\n`;
+    for (let i = 0; i < leader.length; i++) {
+        // Column 1 (rank)
+        let col1 = `${i + 1}.`;
+        col1 = col1.padEnd(COL1_WIDTH, " ");
+
+        // Column 3 (count, dynamic width)
+        let countStr = String(leader[i].Count).slice(0, 4); // max 4 digits
+        let col3 = " " + countStr; // always starts with space
+        const col3Width = col3.length;
+
+        // Column 2 gets remaining space
+        const col2Width = rowMaxWidth - COL1_WIDTH - col3Width;
+
+        let col2 = leader[i].Name + ":";
+
+        if (col2.length > col2Width) {
+            col2 = col2.slice(0, col2Width - 4) + "...:";
+        } else {
+            col2 = col2.padEnd(col2Width, " ");
+        }
+
+        leaderString += col1 + col2 + col3 + "\n";
     }
+    
     let leaderboard = document.getElementById("leaderboard");
-    leaderboard.innerHTML = leaderString;
-    return;
+    leaderboard.value = leaderString;
 }
 
 // IE: YEAR-MT-DYT15:59:59Z
