@@ -921,7 +921,7 @@ async function dashTickex() {
                     ${isMobile ? "" : `<td>${(ticket.ResponsibleFullName != "") ? ticket.ResponsibleFullName : `UNASSIGNED` }</td>`}
                 </tr>
             `;
-        }           // <button onclick="takeIncident(event)">Take Incident</button> Replace "UNASSIGNED" with this when we get write access
+        }
 
         ticketsContent += `
                     ${ticketRows}

@@ -93,8 +93,7 @@ function sendToHelpDesk() {
 
 // Macro for taking Responsibility for a Ticket
 // For Later - When we have write access to TDX API
-function takeResponsibility(event) {
-    if (event) event.stopPropagation();
+function takeResponsibility() {
     alert("This feature is not yet implemented.");
 
 }
