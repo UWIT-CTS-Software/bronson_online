@@ -792,8 +792,8 @@ function setLeader(jsonValue) {
 
     // Build formatted string with columns
     const isMobile = (localStorage.getItem("isMobile") === "true");
-    const rowMaxWidth = (isMobile ? 34 : 48);
-    const COL1_WIDTH = 4;
+    const rowMaxWidth = (isMobile ? 34 : 48); // Mobile leader board is 34 chars, desktop is 48 chars
+    const COL1_WIDTH = (leader.length > 9 ? 4 : 3);
 
     let leaderString = "";
     for (let i = 0; i < leader.length; i++) {
@@ -804,17 +804,16 @@ function setLeader(jsonValue) {
         // Column 3 (count, dynamic width)
         let countStr = String(leader[i].Count).slice(0, 4); // max 4 digits
         let col3 = " " + countStr; // always starts with space
-        const col3Width = col3.length;
+        const COL3_WIDTH = col3.length;
 
         // Column 2 gets remaining space
-        const col2Width = rowMaxWidth - COL1_WIDTH - col3Width;
+        const COL2_WIDTH = rowMaxWidth - COL1_WIDTH - COL3_WIDTH;
 
         let col2 = leader[i].Name + ":";
-
-        if (col2.length > col2Width) {
-            col2 = col2.slice(0, col2Width - 4) + "...:";
+        if (col2.length > COL2_WIDTH) {
+            col2 = col2.slice(0, COL2_WIDTH - 4) + "...:";
         } else {
-            col2 = col2.padEnd(col2Width, " ");
+            col2 = col2.padEnd(COL2_WIDTH, " ");
         }
 
         leaderString += col1 + col2 + col3 + "\n";
