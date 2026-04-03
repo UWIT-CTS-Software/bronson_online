@@ -45,6 +45,7 @@ TOC:
     - isMobile()
   Auto Scroller
     - toggleAutoScroll()
+    - executeScrollable()
 
 This file is set to host functions that are called throughout bronson suite
  that utilize or update session storage for a user.
