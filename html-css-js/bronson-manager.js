@@ -790,9 +790,28 @@ function setLeader(jsonValue) {
     let newCurrent = document.getElementById(`${buttonId}`);
     newCurrent.classList.add("leader_selected");
 
-    // Build formatted string with columns
-    const isMobile = (localStorage.getItem("isMobile") === "true");
-    const rowMaxWidth = (isMobile ? 34 : 48); // Mobile leader board is 34 chars, desktop is 48 chars
+    // Add resize listener if not already added
+    if (!window.isLeaderResizerAdded) {
+        window.addEventListener('resize', () => {
+            let selectedButton = document.querySelector('.leader_selected');
+            if (selectedButton) {
+                let jsonValue;
+                if (selectedButton.id === 'SemesterButton') jsonValue = '90days';
+                else if (selectedButton.id === 'MonthButton') jsonValue = '30days';
+                else if (selectedButton.id === 'WeekButton') jsonValue = '7days';
+                setLeader(jsonValue);
+            }
+        });
+        window.isLeaderResizerAdded = true;
+    }
+    // Dynamically calculate row max width based on textarea width
+    let leaderboardElement = document.getElementById("leaderboard");
+    let rect = leaderboardElement.getBoundingClientRect();
+    let widthPx = rect.width;
+    let style = window.getComputedStyle(leaderboardElement);
+    let fontSize = parseFloat(style.fontSize);
+    let charWidth = fontSize * 0.6;
+    const rowMaxWidth = Math.floor(widthPx / charWidth);
     const COL1_WIDTH = (leader.length > 9 ? 4 : 3);
 
     let leaderString = "";
@@ -803,7 +822,7 @@ function setLeader(jsonValue) {
 
         // Column 3 (count, dynamic width)
         let countStr = String(leader[i].Count).slice(0, 4); // max 4 digits
-        let col3 = " " + countStr; // always starts with space
+        let col3 = countStr;
         const COL3_WIDTH = col3.length;
 
         // Column 2 gets remaining space
@@ -813,7 +832,7 @@ function setLeader(jsonValue) {
         if (col2.length > COL2_WIDTH) {
             col2 = col2.slice(0, COL2_WIDTH - 4) + "...:";
         } else {
-            col2 = col2.padEnd(COL2_WIDTH, " ");
+            col2 = col2.padEnd(COL2_WIDTH + 2, " ");
         }
 
         leaderString += col1 + col2 + col3 + "\n";
