@@ -980,6 +980,15 @@ function isMobile() {
         const terminalButton = document.getElementById("admin_terminalButton");
         if (terminalButton) terminalButton.remove();
 
+        const adminHBFieldset = document.getElementById("admin_hb_fieldset");
+        if (adminHBFieldset) adminHBFieldset.remove();
+
+        const fullScreenButton = document.getElementById("full_screen_button");
+        if (fullScreenButton) fullScreenButton.remove();
+
+        const autoScrollButton = document.getElementById("auto_scroll_button");
+        if (autoScrollButton) autoScrollButton.remove();
+
         // Scale page elements to be larger (done here and where html is dynamically written as well)
         const programHeader = document.getElementById("bronson_header");
         if (programHeader) programHeader.classList.add("mobile");
@@ -1163,6 +1172,14 @@ async function executeScrollable(param) {
 }
 
 
+
+// Fullscreen button
+function toggleFullScreen() {
+    if (!document.fullscreenElement)
+        document.documentElement.requestFullscreen();
+    else 
+        if (document.exitFullscreen) document.exitFullscreen();
+}
 
 // TODO: Temporary Pop-up Notification
 //   I think it would be beneficial to have some kind of message banner to alert users for a number of things. A stashed request along with some kind of error handling to give more specific information about what happened. 

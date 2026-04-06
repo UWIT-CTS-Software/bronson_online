@@ -111,7 +111,7 @@ async function setAdminBronson() {
     // Add Admin Buttons to hamburger button
     //  - Hide Terminal
     hamburger = document.getElementById("hb_menu");
-    hamburger.innerHTML += `<fieldset>
+    hamburger.innerHTML += `<fieldset id="admin_hb_fieldset">
     <legend>Admin Buttons</legend>
     <button id="admin_terminalButton" class="hb_button" onclick="hideTerminal()">Hide Terminal</button>
     </fieldset>`;
