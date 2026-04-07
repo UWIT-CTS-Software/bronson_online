@@ -49,8 +49,6 @@ async function cfmFiles() {
     }
   
     setFileBrowser(header, files);
-
-    return;
 }
 
 // This is a onclick function tied to entries in "File Selection"
@@ -80,8 +78,6 @@ async function getCFMF(filename, classtype) {
     }
     
     await getCFM_File(cmff);
-
-    return;
 }
 
 function downloadFile(s, fn) {
@@ -93,8 +89,6 @@ function downloadFile(s, fn) {
 
     a.download = fn;
     a.click();
-
-    return;
 }
   
 /*
@@ -115,7 +109,7 @@ async function getCFMBuildingSelection() {
   
 function cfmGetBuildingRoom(){
     let bl = document.getElementById('building_list');
-    let rl = document.getElementById('room_list');;
+    let rl = document.getElementById('room_list');
   
     let building = bl.options[bl.selectedIndex].text;
     let room     = rl.options[rl.selectedIndex].text;
@@ -143,10 +137,9 @@ async function setFileBrowser(header, files) {
             <ol class='cfm_list'>
                 ${await populateFileList(files)}
             </ol>
-        </body>`;
+        </body>
+    `;
     fs.replaceWith(new_fs);
-
-    return;
 }
 
 // Need to figure out a mechanism to differntiate file types
@@ -164,7 +157,8 @@ async function populateFileList(list) {
         html += `
             <li class=${classtype} onclick=\"getCFMF(\'${list[i]}\', \'${classtype}\')\">
                 ${list[i]}
-            </li>`; 
+            </li>
+        `; 
     }
 
     return html;
@@ -179,7 +173,8 @@ async function populateDropdown(list) {
         html += `
         <option value=${i}>
             ${list[i]}
-        </option>`;
+        </option>
+    `;
     }
 
     return html;
@@ -206,10 +201,9 @@ async function updateRoomList() {
         <legend>
             Rooms(s): 
         </legend> 
-        ${set_inner_html}`;
+        ${set_inner_html}
+    `;
     rl.replaceWith(rms);
-
-    return;
 }
 
 //      setCrestronFile()
@@ -251,12 +245,14 @@ async function setCrestronFile() {
     let set_inner_html = `
         <select id="building_list" onchange="updateRoomList()">
             ${await populateDropdown(cfmDirList)}
-        </select>`;
+        </select>
+    `;
     buildingSelect.innerHTML = `
         <legend>
             Building(s):
         </legend> 
-        ${set_inner_html}`;
+        ${set_inner_html}
+    `;
   
     // ROOM Directory Dropdown
     let roomSelect = document.createElement("fieldset");
@@ -265,12 +261,14 @@ async function setCrestronFile() {
     set_inner_html = `
         <select id="room_list">
             ${await populateDropdown(rl)}
-        </select>`;
+        </select>
+    `;
     roomSelect.innerHTML = `
         <legend>
             Room(s): 
         </legend> 
-        ${set_inner_html}`;
+        ${set_inner_html}
+    `;
 
     // option buttons
     // [ Generate Files ] [ Clear Console ] [ Reset ]
@@ -282,7 +280,8 @@ async function setCrestronFile() {
         <button id="run" onclick="cfmFiles()" class='headButton'> 
             Generate Files </button>
         <button id="reset" onclick="setCrestronFile()" class='headButton'> 
-            Reset </button>`;
+            Reset </button>
+    `;
 
     // End cfm_paramContainer
     cfm_ParamContainer.appendChild(buildingSelect);
@@ -302,7 +301,8 @@ async function setCrestronFile() {
         </legend>
         <p class='cfm_text'>
             Please Select Room and Generate Files
-        </p>`;
+        </p>
+    `;
 
     cfm_FileContainer.appendChild(fileSelection);
     
@@ -320,8 +320,6 @@ async function setCrestronFile() {
     main_container.classList.add('program_guts');
     
     progGuts.replaceWith(main_container);
-
-    return;
 }
 
 /*
