@@ -1550,7 +1550,7 @@ pub struct CFMRequestFile {
 pub struct CFMTreeNode {
     pub name: String,
     pub file_path: String,
-    pub children: Vec<CFMTreeNode>,
+    pub children: Option<Vec<CFMTreeNode>>, // can be null (None)
 }
 
 impl CFMTreeNode {
@@ -1558,7 +1558,7 @@ impl CFMTreeNode {
         Self {
             name: String::new(),
             file_path: String::new(),
-            children: Vec::new(),
+            children: Some(Vec::new()),
         }
     }
 
@@ -1566,12 +1566,18 @@ impl CFMTreeNode {
         Self {
             name: node_name.into(),
             file_path: file_path.into(),
-            children: Vec::new(),
+            children: Some(Vec::new()),
         }
     }
 
     pub fn push(&mut self, child: CFMTreeNode) {
-        self.children.push(child);
+        match &mut self.children {
+            Some(children) => children.push(child),
+            None => {
+                // If children is None, we can convert it to Some(vec) and push
+                self.children = Some(vec![child]);
+            }
+        }
     }
 }
 

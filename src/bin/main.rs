@@ -2591,11 +2591,15 @@ fn cfm_build_tree(database: &mut Database) -> Result<(), String> {
     for item in cfm_dirs.iter() {
         println!("Processing item: {}", item);
 
-        // TODO: Ignore files with '_' and '.' prefix & other specific files
-
-
-        // TODO: set children for files/zips to null. Folders are allowed to have 0 children
-
+        // Ignore files with '_' and '.' prefix & other specific files
+        // Skip hidden/system files
+        if let Some(file_name) = Path::new(item).file_name().and_then(|s| s.to_str()) {
+            if file_name.starts_with('_') || file_name.starts_with('.') || 
+               file_name.ends_with(".xlsx") || file_name.starts_with("README") ||
+               file_name.ends_with(".txt") {
+                continue;
+            }
+        }
     
         tree_root.push(build_cfm_subtree(item));
     }
@@ -2615,16 +2619,40 @@ fn cfm_build_tree(database: &mut Database) -> Result<(), String> {
     Ok(())
 }
 fn build_cfm_subtree(path: &str) -> CFMTreeNode {
+    use std::path::Path;
+
     let name = Path::new(path)
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or("")
         .to_string();
 
-    let mut node = CFMTreeNode::with_name_path(name, path.to_string());
+    let mut node = if is_this_dir(path) {
+        // Folder: children starts as empty vec
+        CFMTreeNode::with_name_path(name, path.to_string())
+    } else {
+        // File / leaf: children = None
+        CFMTreeNode {
+            name,
+            file_path: path.to_string(),
+            children: None,
+        }
+    };
+
     if is_this_dir(path) {
         let path_contents = get_dir_contents(path);
         for entry in path_contents.iter() {
+            println!("Processing entry: {}", entry);
+
+            // Skip hidden/system files
+            if let Some(file_name) = Path::new(entry).file_name().and_then(|s| s.to_str()) {
+                if file_name.starts_with('_') || file_name.starts_with('.') || 
+                   file_name.ends_with(".xlsx") || file_name.starts_with("README") ||
+                   file_name.ends_with(".txt") {
+                    continue;
+                }
+            }
+
             node.push(build_cfm_subtree(entry));
         }
     }

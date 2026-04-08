@@ -336,28 +336,11 @@ async function setCrestronFile() {
     progGuts.replaceWith(main_container);
 }
 
-// Temp Function for testing backend structure
+// Print tree strucute to console
 function printTree() {
-    console.log("Printing Tree");
-
     getCFMTree().then((tree) => {
         console.log(tree);
-
-        const maxDepth = getMaxDepth(tree);
-        console.log("Max Depth:", maxDepth);
     });
-}
-function getMaxDepth(node) {
-    // Base case: no children
-    if (!node.children || node.children.length === 0) {
-        return 1;
-    }
-
-    // Compute depth of each child
-    let depths = node.children.map(child => getMaxDepth(child));
-
-    // Return max depth + current node
-    return 1 + Math.max(...depths);
 }
 
 
