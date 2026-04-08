@@ -1,10 +1,10 @@
-/*       _                                                
-        | |                            |           o      
-  __,   | |  _|_   _  _  _     __    __|    _          ,  
- /  |   |/    |   / |/ |/ |   /  \_ /  |   |/      |  / \_
- \_/|_/ |__/  |_/   |  |  |_/ \__/  \_/|_/ |__/ o  |/  \/ 
-                                                  /|      
-                                                  \|      
+/*                   _                                                
+                    | |                            |           o      
+  __ __  ___  __,   | |  _|_   _  _  _     __    __|    _          ,  
+ /  /   /__/ /  |   |/    |   / |/ |/ |   /  \_ /  |   |/      |  / \_
+ \__\__      \_/|_/ |__/  |_/   |  |  |_/ \__/  \_/|_/ |__/ o  |/  \/ 
+                                                              /|      
+                                                              \|      
 
     Crestron File Manger (CFM)
 
@@ -80,6 +80,7 @@ async function getCFMF(filename, classtype) {
     await getCFM_File(cmff);
 }
 
+// Simulated click for downloading file
 function downloadFile(s, fn) {
     //const blob = new Blob(s, { });
     const url = URL.createObjectURL(s);
@@ -206,6 +207,7 @@ async function updateRoomList() {
     rl.replaceWith(rms);
 }
 
+
 //      setCrestronFile()
 // Change the DOM for Crestron File Manager
 async function setCrestronFile() {
@@ -226,7 +228,10 @@ async function setCrestronFile() {
 
     history.pushState("test", "CamCode", "/cc-altmode");
 
+
   
+    /* --------------------- CC-AltMode --------------------- */
+
     // Pull List of Directories
     let cfmDirList = await getCFM_BuildDirs();
   
@@ -271,7 +276,7 @@ async function setCrestronFile() {
     `;
 
     // option buttons
-    // [ Generate Files ] [ Clear Console ] [ Reset ]
+    // [ Generate Files ] [ Reset ]
     let optionMenu = document.createElement("fieldset");
     optionMenu.classList.add('cfm_optionMenu');
     optionMenu.innerHTML = `
@@ -283,10 +288,11 @@ async function setCrestronFile() {
             Reset </button>
     `;
 
-    // End cfm_paramContainer
     cfm_ParamContainer.appendChild(buildingSelect);
     cfm_ParamContainer.appendChild(roomSelect);
     cfm_ParamContainer.appendChild(optionMenu);
+    // End cfm_paramContainer
+
 
     // Start cfm_FileContainer
     let cfm_FileContainer = document.createElement('div');
@@ -308,19 +314,52 @@ async function setCrestronFile() {
     
     cfm_container.appendChild(cfm_ParamContainer);
     cfm_container.appendChild(cfm_FileContainer);
+    // End cfm_FileContainer
+
 
     // main_container
     let main_container = document.createElement('div');
     // main_container.innerHTML = `
     //     <button id="cam_code" onclick="setCamCode()">
     //         CamCode (Q-SYS) </button>
-    //     <p>\n</p>`;
+    //     <p>\n</p>
+    // `;
+    
+    main_container.innerHTML = `
+        <button onclick="printTree()">
+            Print Tree</button>
+    `;
 
     main_container.appendChild(cfm_container);
     main_container.classList.add('program_guts');
     
     progGuts.replaceWith(main_container);
 }
+
+// Temp Function for testing backend structure
+function printTree() {
+    console.log("Printing Tree");
+
+    getCFMTree().then((tree) => {
+        console.log(tree);
+
+        const maxDepth = getMaxDepth(tree);
+        console.log("Max Depth:", maxDepth);
+    });
+}
+function getMaxDepth(node) {
+    // Base case: no children
+    if (!node.children || node.children.length === 0) {
+        return 1;
+    }
+
+    // Compute depth of each child
+    let depths = node.children.map(child => getMaxDepth(child));
+
+    // Return max depth + current node
+    return 1 + Math.max(...depths);
+}
+
 
 /*
  __        _          _     
@@ -329,6 +368,21 @@ async function setCrestronFile() {
 |  _||  __/| |_ | (__ | | | |
 |_|   \___| \__| \___||_| |_|    
 */
+
+// getCFMTree()
+//    "cfm_get_tree" 
+async function getCFMTree() {
+    return await fetch('cfm_get_tree', {
+        method: 'POST',
+        body: JSON.stringify({
+            message: 'cfm_get_tree'
+        })
+    })
+    .then((response) => response.json())
+    .then((json) => {
+        return json.tree;
+    });
+}
 
 // getCFM_BuildDirs()
 //    "cfm_build"
@@ -361,6 +415,7 @@ async function getCFM_BuildRooms(sel_building) {
 // getCFM_FileDirectory
 //    "cfm_cDir" Crestron File Manager Current Directory
 async function getCFM_FileDirectory(building, rm) {
+    console.log("Getting CFM File Directory for Building:", building, "Room:", rm);
     return await fetch('cfm_c_dir', {
         method: 'POST',
         body: JSON.stringify({

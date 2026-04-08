@@ -1547,6 +1547,35 @@ pub struct CFMRequestFile {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct CFMTreeNode {
+    pub name: String,
+    pub file_path: String,
+    pub children: Vec<CFMTreeNode>,
+}
+
+impl CFMTreeNode {
+    pub fn new() -> Self {
+        Self {
+            name: String::new(),
+            file_path: String::new(),
+            children: Vec::new(),
+        }
+    }
+
+    pub fn with_name_path(node_name: impl Into<String>, file_path: impl Into<String>) -> Self {
+        Self {
+            name: node_name.into(),
+            file_path: file_path.into(),
+            children: Vec::new(),
+        }
+    }
+
+    pub fn push(&mut self, child: CFMTreeNode) {
+        self.children.push(child);
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct GeneralRequest {
 	pub request: String,
 	pub host: String,

@@ -50,7 +50,7 @@ use server_lib::{
     BUFF_SIZE, 
     ThreadPool, ThreadSchedule, TaskSchedule, PingRequest, 
     Building, 
-    CFMRequest, CFMRoomRequest, CFMRequestFile, 
+    CFMRequest, CFMRoomRequest, CFMRequestFile, CFMTreeNode,
     jp::{ ping_this, },
     CFM_DIR, WIKI_DIR, /* LOG, */
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
@@ -342,6 +342,10 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
             duration: 3600,
             timestamp: Utc::now() - Duration::from_secs(3580),
         });
+        ts.tasks.insert("cfmTree".to_string(), TaskSchedule {
+            duration: 86400,
+            timestamp: Utc::now() - Duration::from_secs(86370),
+        });
         ts.tasks.insert("tdxToken".to_string(), TaskSchedule {
             duration: 82800,
             timestamp: Utc::now() - Duration::from_secs(82799),
@@ -455,6 +459,13 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                         execute_ping(&mut database).await;
                     }
                     info!("[Data] - JackNet Complete");
+                },
+                "cfmTree"         => {
+                    info!("[Data] - Building CFM Tree");
+                    let _ = match cfm_build_tree(&mut database) {
+                        Ok(_)     =>  info!("[Data] - CFM Tree Build Complete"),
+                        Err(m)    => error!("[Data] - CFM Tree Build FAILED: {}", m)
+                    };
                 },
                 "tdxToken"        => {
                     info!("[Data] - Pulling New TDX Token");
@@ -1724,6 +1735,22 @@ async fn handle_connection(
         },
         // CamCode
         //  - CamCode - CFM Requests
+        "POST /cfm_get_tree HTTP/1.1" => {
+            let contents = match database.get_data("cfm_tree") {
+                Ok(s)  => s.val,
+                Err(m) => {
+                    error!("DB_ERR: {}", m);
+                    return Response::new()
+                            .status(STATUS_500)
+                            .send_contents(format!("Failed to fetch CFM tree: \n{}", m).into())
+                            .build();
+                }
+            }.into();
+
+            Response::new()
+                .status(STATUS_200)
+                .send_contents(contents)
+        },
         "POST /cfm_build HTTP/1.1" => {
             let contents = cfm_build_dir();
             Response::new()
@@ -2555,15 +2582,61 @@ fn get_dir_contents(path: &str) -> Vec<String> {
 \\ |/  \/\\ \\ \\  \\/  \\ \\,/   \\,  ,-_-  
   _/                
 */
-                                             
+
+// cfm_build_tree() - build virtual tree of files and directories and store in database as JSON
+fn cfm_build_tree(database: &mut Database) -> Result<(), String> {
+    let mut tree_root: CFMTreeNode = CFMTreeNode::with_name_path("root", CFM_DIR);
+
+    let cfm_dirs = get_dir_contents(CFM_DIR);
+    for item in cfm_dirs.iter() {
+        println!("Processing item: {}", item);
+
+        // TODO: Ignore files with '_' and '.' prefix & other specific files
+
+
+        // TODO: set children for files/zips to null. Folders are allowed to have 0 children
+
+    
+        tree_root.push(build_cfm_subtree(item));
+    }
+
+    let json_return = json!({
+        "tree": tree_root
+    });
+
+    match database.update_data(&DB_DataElement {
+        key: String::from("cfm_tree"),
+        val: json_return.to_string(),
+    }) {
+        Ok(_) => {}
+        Err(e) => return Err(format!("Failed to update database: {}", e)),
+    }
+
+    Ok(())
+}
+fn build_cfm_subtree(path: &str) -> CFMTreeNode {
+    let name = Path::new(path)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_string();
+
+    let mut node = CFMTreeNode::with_name_path(name, path.to_string());
+    if is_this_dir(path) {
+        let path_contents = get_dir_contents(path);
+        for entry in path_contents.iter() {
+            node.push(build_cfm_subtree(entry));
+        }
+    }
+
+    node
+}
+
 //   cfm_build_dir() - post BUILDING dropdown
 fn cfm_build_dir() -> Vec<u8> {
     // Vars
     let mut final_dirs: Vec<String> = Vec::new();
-    // Check for CFM_Code Directory
-    if dir_exists(CFM_DIR) {
 
-    }
     let cfm_dirs = get_dir_contents(CFM_DIR);
     // iterate over cfm_dirs and snip ../CFM_Code/
     // DO NOT INCLUDE DIRS w/ '_'
@@ -2636,10 +2709,6 @@ fn get_cfm(body: Vec<u8>) -> Vec<u8> {
     let tmp = String::from_utf8(body).expect("CamCode Err, invalid UTF-8");
     let cfmr: CFMRequest = serde_json::from_str(&tmp)
         .expect("Failed to build cfm request");
-    // Check CFM_Code Directory
-    if dir_exists(CFM_DIR) {
-
-    }
     
     let cfm_files = find_files(cfmr.building, cfmr.rm);
 
