@@ -1551,7 +1551,6 @@ pub struct CFMTreeNode {
     pub name: String,
     pub file_path: String,
     pub children: Option<Vec<CFMTreeNode>>, // can be null (None)
-	pub is_open: bool,
 }
 
 impl CFMTreeNode {
@@ -1560,7 +1559,6 @@ impl CFMTreeNode {
             name: String::new(),
             file_path: String::new(),
             children: Some(Vec::new()),
-			is_open: false,
         }
     }
 
@@ -1569,7 +1567,6 @@ impl CFMTreeNode {
             name: node_name.into(),
             file_path: file_path.into(),
             children: Some(Vec::new()),
-			is_open: false,
         }
     }
 

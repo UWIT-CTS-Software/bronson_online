@@ -242,6 +242,11 @@ async function setCrestronFile() {
 
     let cfm_filePathTracker = document.createElement('div');
     cfm_filePathTracker.classList.add("cfm_filePathTracker");
+    cfm_filePathTracker.innerHTML = `
+        <strong style="float: left; padding: 10px;">
+            . / CamCode / File 1 (Placeholder Text) /
+        </strong>
+    `;
 
     let cfm_search = document.createElement('div');
     cfm_search.classList.add("cfm_search");
@@ -251,9 +256,12 @@ async function setCrestronFile() {
 
     let cfm_fileTreeInspector = document.createElement('div');
     cfm_fileTreeInspector.classList.add("cfm_fileTreeInspector");
+    cfm_fileTreeInspector.innerHTML = ``;
 
     let cfm_FileContainer = document.createElement('div');
     cfm_FileContainer.classList.add("cfm_FileContainer");
+    cfm_FileContainer.innerHTML = ``;
+
 
     cfm_container.appendChild(cfm_filePathTracker);
     cfm_container.appendChild(cfm_search);
@@ -273,8 +281,6 @@ async function setCrestronFile() {
     main_container.innerHTML = `
         <button onclick="searchTree(document.getElementById('search_input').value)">
             Search Tree</button>
-        <button onclick="printTree()">
-            Print Full Tree</button>
     `;
     /////////
 
@@ -286,15 +292,6 @@ async function setCrestronFile() {
     // Initialize the CFM interface with tree data
     initializeCFM();
 }
-
-/////////// Remove Later
-// Print tree strucute to console
-function printTree() {
-    getCFMTree().then((tree) => {
-        console.log(tree);
-    });
-}
-///////////
 
 
 // Search tree for file and print path to console
@@ -378,12 +375,13 @@ function buildTreeHTML(node, depth) {
                 html += `<span style="margin-right: 5px; min-width: 15px;"></span>`;
             
             // Folder icon and name
-            html += `<span onclick="selectFolderFromTree('${child.name}', '${folderPath}')">${child.name}</span>`;
+            html += `<span onclick="selectFolderFromTree('${folderPath}')">${child.name}</span>`;
             html += `</p>`;
             
             // Show children only if expanded
-            if (isExpanded)
+            if (isExpanded) {
                 html += buildTreeHTML(child, depth + 1);
+            }
         }
     }
     return html;
@@ -401,15 +399,13 @@ function toggleExpandFolder(folderPath) {
         cfmState.expandedFolders.delete(folderPath);
     else
         cfmState.expandedFolders.add(folderPath);
-
     updateFileTreeDisplay();
 }
 
 // Find path to a node in the tree
 function findPathToNode(node, targetName, currentPath = []) {
-    if (node.name === targetName) {
+    if (node.name === targetName)
         return [...currentPath, node.name];
-    }
     
     if (node.children) {
         for (let child of node.children) {
@@ -458,8 +454,8 @@ function updateFileContainer() {
     if (cfmState.currentNode.children && cfmState.currentNode.children.length > 0) {
         for (let child of cfmState.currentNode.children) {
             if (child.children) // It's a folder
-                html += `<p style="cursor: pointer;" onclick="selectFolderFromTree('${child.name}', '${buildPathToChild(child)}')">📁${child.name}</p>`;
-            else // It's a file  
+                html += `<p style="cursor: pointer;" onclick="selectFolderFromTree('${buildPathToChild(child)}')">📁${child.name}</p>`;
+            else // It's a file
                 html += `<p style="cursor: pointer;" onclick="downloadFileFromPath('${buildPathToChild(child)}')">📄${child.name}</p>`;
         }
     } else {
@@ -499,11 +495,10 @@ function updatePathTracker() {
     for (let i = 0; i < cfmState.currentPath.length; i++) {
         let pathUpToHere = cfmState.currentPath.slice(0, i + 1).join('/');
         let folderName = cfmState.currentPath[i];
-        breadcrumb += `<span style="cursor: pointer; text-decoration: underline;" onclick="selectFolderFromTree('${folderName}', '${pathUpToHere}')">${folderName}</span>`;
+        breadcrumb += `<span style="cursor: pointer; text-decoration: underline;" onclick="selectFolderFromTree('${pathUpToHere}')">${folderName}</span>`;
         
-        if (i < cfmState.currentPath.length - 1) {
+        if (i < cfmState.currentPath.length - 1)
             breadcrumb += ` / `;
-        }
     }
     
     breadcrumb += ` / `;

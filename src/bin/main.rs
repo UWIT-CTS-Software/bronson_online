@@ -2635,7 +2635,6 @@ fn build_cfm_subtree(path: &str) -> CFMTreeNode {
             name,
             file_path: path.to_string(),
             children: None,
-            is_open: false,
         }
     };
 
