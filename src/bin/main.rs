@@ -1794,7 +1794,9 @@ async fn handle_connection(
                 Err(e) => error!("Unable to read to end of file: {}", e)
             };
 
-            let filename = format!("attachment; filename={}", contents);
+            // Extract just the filename from the full path
+            let filename_only = contents.split('/').last().unwrap_or("file");
+            let filename = format!("attachment; filename={}", filename_only);
 
             Response::new()
                     .status(STATUS_200)
@@ -2589,8 +2591,6 @@ fn cfm_build_tree(database: &mut Database) -> Result<(), String> {
 
     let cfm_dirs = get_dir_contents(CFM_DIR);
     for item in cfm_dirs.iter() {
-        println!("Processing item: {}", item);
-
         // Ignore files with '_' and '.' prefix & other specific files
         // Skip hidden/system files
         if let Some(file_name) = Path::new(item).file_name().and_then(|s| s.to_str()) {
@@ -2600,7 +2600,6 @@ fn cfm_build_tree(database: &mut Database) -> Result<(), String> {
                 continue;
             }
         }
-    
         tree_root.push(build_cfm_subtree(item));
     }
 
@@ -2636,14 +2635,13 @@ fn build_cfm_subtree(path: &str) -> CFMTreeNode {
             name,
             file_path: path.to_string(),
             children: None,
+            is_open: false,
         }
     };
 
     if is_this_dir(path) {
         let path_contents = get_dir_contents(path);
         for entry in path_contents.iter() {
-            println!("Processing entry: {}", entry);
-
             // Skip hidden/system files
             if let Some(file_name) = Path::new(entry).file_name().and_then(|s| s.to_str()) {
                 if file_name.starts_with('_') || file_name.starts_with('.') || 
@@ -2652,7 +2650,6 @@ fn build_cfm_subtree(path: &str) -> CFMTreeNode {
                     continue;
                 }
             }
-
             node.push(build_cfm_subtree(entry));
         }
     }
@@ -2770,6 +2767,7 @@ fn get_cfm_file(body: Vec<u8>) -> String {
 
     // Full Path
     let mut path_raw: String = String::from(CFM_DIR);
+    path_raw.push('/');
     path_raw.push_str(&cfmr_f.filename);
 
 
