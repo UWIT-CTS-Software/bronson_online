@@ -148,13 +148,13 @@ async function populateFileList(list) {
     html = ``;
     let classtype  = "";
     for(var i in list) {
-        if(list[i].includes(".zip")) {
+        if(list[i].includes(".zip")) 
             classtype = "cfm_zip";
-        } else if (list[i].includes(".")) {
+        else if (list[i].includes(".")) 
             classtype = "cfm_file";
-        } else {
+        else 
             classtype = "cfm_dir";
-        }
+        
         html += `
             <li class=${classtype} onclick=\"getCFMF(\'${list[i]}\', \'${classtype}\')\">
                 ${list[i]}
@@ -214,16 +214,12 @@ async function setCrestronFile() {
     preserveCurrentTool();
     
     document.title = "CamCode - Bronson";
-    // remove currently active status mark tab has active.
-    // let active_tab_header = document.querySelector('.active_tab_header');
-    // active_tab_header.innerHTML = 'CamCode';
+
     let current = document.getElementsByClassName("selected");
-    if (current.length != 0) {
-        // current[0].classList.remove("active");
+    if (current.length != 0) 
         current[0].classList.remove("selected");
-    }
+
     let newCurrent = document.getElementById("CCButton");
-    // newCurrent.classList.add("active");
     newCurrent.classList.add("selected");
 
     history.pushState("test", "CamCode", "/cc-altmode");
@@ -242,11 +238,6 @@ async function setCrestronFile() {
 
     let cfm_filePathTracker = document.createElement('div');
     cfm_filePathTracker.classList.add("cfm_filePathTracker");
-    cfm_filePathTracker.innerHTML = `
-        <strong style="float: left; padding: 10px;">
-            . / CamCode / File 1 (Placeholder Text) /
-        </strong>
-    `;
 
     let cfm_search = document.createElement('div');
     cfm_search.classList.add("cfm_search");
@@ -277,10 +268,12 @@ async function setCrestronFile() {
     //     <p>\n</p>
     // `;
     
-    ///////// Remove Later
+    ///////// Move to under Search Bar Later
     main_container.innerHTML = `
         <button onclick="searchTree(document.getElementById('search_input').value)">
-            Search Tree</button>
+            Search</button>
+        <button onclick="initializeCFM()">
+            Clear</button>
     `;
     /////////
 
@@ -297,9 +290,36 @@ async function setCrestronFile() {
 // Search tree for file and print path to console
 function searchTree(search="") {
     getCFMTree().then((tree) => {
-        let searchResults = searchTreeHelper(tree, search);
-        console.log("Search: \n");
-        console.log(searchResults);
+        if (search === "") {
+            initializeCFM();
+            return;
+        }
+
+        // Grab File Container and display search results
+        const container = document.querySelector('.cfm_FileContainer');
+        if (!container) return;
+
+        const searchResults = searchTreeHelper(tree, search);
+
+        let html = `<strong>Search Results for "${search.trim()}":</strong><br>`;
+        if (searchResults.length === 0) {
+            html += `<p>No matches found.</p>`;
+        } else {
+            for (let result of searchResults) {
+                let fullPath = result.path;
+                let displayPath = fullPath.startsWith('/CamCode/') ? fullPath.slice(9) : fullPath;
+                let targetPath = result.isFolder ? fullPath.slice(1) : fullPath.slice(1, fullPath.lastIndexOf('/'));
+                let displayText = displayPath;
+                if (displayPath.length > 30) {
+                    let prefix = displayPath.substring(0, displayPath.indexOf("/", displayPath.indexOf("/") + 1) + 1);
+                    let suffix = displayPath.substring(displayPath.lastIndexOf("/") + 1);
+                    displayText = prefix + ".../" + (suffix.length > 40 ? "..." + suffix.substring(suffix.length - 20, suffix.length) : suffix);
+                    if (prefix.length === 0) displayText = displayPath; 
+                }
+                html += `<p style="cursor: pointer;" onclick="selectFolderFromTree('${targetPath}')">${displayText}</p>`;
+            }
+        }
+        container.innerHTML = html;
     });
 
     // Will traverse with DFS search algorithm
@@ -307,12 +327,15 @@ function searchTree(search="") {
     // If a match doesn't exist, will return empty array
     function searchTreeHelper(node, target, currentPath = "", results = []) {
         if (target === "") return results; // if empty search, return empty array
-        if (currentPath === "") target = target.toLowerCase(); // toLower just the one time
+        if (currentPath === "") {
+            target = target.trim();
+            target = target.toLowerCase();
+        } // scrub search one time
 
         const fullPath = currentPath + "/" + node.name;
         const nodeLowerCase = node.name.toLowerCase();
 
-        if (nodeLowerCase.includes(target)) results.push(fullPath);
+        if (nodeLowerCase.includes(target)) results.push({path: fullPath, isFolder: !!node.children});
 
         // Recurseive DFS Search of every child
         if (node.children) {
@@ -336,6 +359,9 @@ const cfmState = {
 
 // Initialize CFM with tree data
 async function initializeCFM() {
+    const searchBar = document.getElementById('search_input');
+    if (searchBar) searchBar.value = ""; // clear
+
     cfmState.fullTree = await getCFMTree();
     cfmState.currentNode = cfmState.fullTree;
     cfmState.currentPath = [cfmState.fullTree.name];

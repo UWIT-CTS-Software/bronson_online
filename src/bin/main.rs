@@ -2587,7 +2587,7 @@ fn get_dir_contents(path: &str) -> Vec<String> {
 
 // cfm_build_tree() - build virtual tree of files and directories and store in database as JSON
 fn cfm_build_tree(database: &mut Database) -> Result<(), String> {
-    let mut tree_root: CFMTreeNode = CFMTreeNode::with_name_path("root", CFM_DIR);
+    let mut tree_root: CFMTreeNode = CFMTreeNode::with_name_path("CamCode", CFM_DIR);
 
     let cfm_dirs = get_dir_contents(CFM_DIR);
     for item in cfm_dirs.iter() {
