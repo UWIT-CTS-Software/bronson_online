@@ -168,6 +168,8 @@ async function setAdminTools() {
     let admin_tab_row = document.createElement("div");
     admin_tab_row.classList.add("tab_row");
     admin_tab_row.classList.add("admin_tabs");
+    if (localStorage.getItem("isMobile") === "true") 
+        admin_tab_row.classList.add("mobile");
     admin_tab_row.innerHTML = `
     <button id="at_message" onclick="setMessageEditor()" type="button" class="atTab">
         <img class="at_tab_img" src="button2.png"/>
@@ -181,14 +183,16 @@ async function setAdminTools() {
         <img class="at_tab_img" src="button2.png"/>
         <span> Database Editor </span>
     </button>
-    <button id="at_alias" onclick="setAliasEditor()" type="button" class="atTab">
-        <img class="at_tab_img" src="button2.png"/>
-        <span> Alias Editor </span>
-    </button>
-    <button id="at_diag" onclick="setDiag()" type="button" class="atTab">
-        <img class="at_tab_img" src="button2.png"/>
-        <span> Diagnostics </span>
-    </button>
+    ${localStorage.getItem("isMobile") === "true" ? "" : `
+        <button id="at_alias" onclick="setAliasEditor()" type="button" class="atTab">
+            <img class="at_tab_img" src="button2.png"/>
+            <span> Alias Editor </span>
+        </button>
+        <button id="at_diag" onclick="setDiag()" type="button" class="atTab">
+            <img class="at_tab_img" src="button2.png"/>
+            <span> Diagnostics </span>
+        </button>`
+    }
     <button id="at_thread" onclick="setThreadEditor()" type="button" class="atTab">
         <img class="at_tab_img" src="button2.png"/>
         <span> Thread Editor </span>
@@ -196,11 +200,12 @@ async function setAdminTools() {
     // init admin tool guts
     let admin_internals = document.createElement("div");
     admin_internals.setAttribute("id", "admin_internals");
-    admin_internals.innerHTML = `<p> Please Select an Administrative Tool </p>`;
+    admin_internals.innerHTML = `<p ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}> Please Select an Administrative Tool </p>`;
     // fieldset
     let at_fieldset = document.createElement('fieldset');
     at_fieldset.classList.add('at_fieldset');
-    at_fieldset.innerHTML = `<legend> Admin Tools </legend>`;
+    at_fieldset.innerHTML = 
+        `<legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}> Admin Tools </legend>`;
     at_fieldset.appendChild(admin_tab_row);
     at_fieldset.appendChild(admin_internals);
     at_container.appendChild(at_fieldset);
@@ -230,10 +235,10 @@ function setMessageEditor() {
     dashboard_message_editor.classList.add('at_dme'); //dashboard message editor, acronym
     dashboard_message_editor.innerHTML = `
     <fieldset>
-        <legend> Edit Dashboard Message: </legend>
-        <textarea id="dme_editor"></textarea>
-        <button onclick="setDashboardMessage()"> Set Message </button>
-        <button onclick="clearEditor()"> Clear Editor </button> 
+        <legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}> Edit Dashboard Message: </legend>
+        <textarea id="dme_editor" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}></textarea>
+        <button onclick="setDashboardMessage()" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Set Message </button>
+        <button onclick="clearEditor()" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Clear Editor </button> 
     </fieldset>`;
     // replace admin_internals
     let admin_internals = document.getElementById('admin_internals');
@@ -290,15 +295,16 @@ async function setScheduleEditor() {
     buttonFieldset.classList.add("schdEditorButtonsDiv");
     buttonFieldset.innerHTML = `
     <fieldset id="techSchdOptions" className="techSchdOptions">
-        <legend> Options </legend>
-        <button class="exeButton" onclick="updateAllTechSchedules()"> Save All Schedules </button>
-        <button id="addNewTechBttn" onclick="addBlankTechSchedule(0)"> Add a Technician </button>
-        <button onclick="setRemoveMode()" class="rmvButton"> Remove a Technician </button>
-        <button onclick="exportSchd()"> Export Schedules (CSV)</button>
+        <legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}> Options </legend>
+        <button class="exeButton ${localStorage.getItem("isMobile") === "true" ? "mobile_button" : ""}" onclick="updateAllTechSchedules()"> Save All Schedules </button>
+        <button id="addNewTechBttn" onclick="addBlankTechSchedule(0)" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Add Technician </button>
+        <button onclick="setRemoveMode()" class="rmvButton ${localStorage.getItem("isMobile") === "true" ? "mobile_button" : ""}"> Remove Technician </button>
+        ${localStorage.getItem("isMobile") ? "" : `<button onclick="exportSchd()"> Export Schedules (CSV)</button>`}
+        ${localStorage.getItem("isMobile") ? "" : `
         <div class="techFilterDiv">
             <label for="techSchdFilter">Filter Technicians:</label>
             <textarea id="techSchdFilter" placeholder="Name:" onkeyup="filterTechs()"></textarea>
-        </div>
+        </div>`}
     </fieldset>`;
     schedule_editor.appendChild(buttonFieldset);
     // Make filters (?)
@@ -346,14 +352,16 @@ async function setRemoveMode() {
     // HTML
     let html = `
     <fieldset>
-    <legend> Remove a technician from the schedule </legend>
+    <legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}> Remove a technician from the schedule </legend>
     <ul id="techSchdRemoveList">`;
     Object.values(scheduleData).forEach(function(tech) {
-        html += `<li id="rm_${tech.Name}" onclick="removeTechSelect('rm_${tech.Name}')"><span style="text-align: left; color: rgb(236, 200, 101)">${tech.Name}</span></li>`;
+        html += `<li id="rm_${tech.Name}" onclick="removeTechSelect('rm_${tech.Name}')">
+            <span style="text-align: left; color: rgb(236, 200, 101)" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}>${tech.Name}</span>
+        </li>`;
     })
     html +=`</ul>`;
-    html += `<button onclick="exitRemoveMode()">Exit Remove Mode</button>
-    <button onclick="removeSelectedTechs()">Confirm Selection</button>
+    html += `<button onclick="exitRemoveMode()" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}>Exit Remove Mode</button>
+    <button onclick="removeSelectedTechs()" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}>Confirm Selection</button>
     </fieldset>`;
     // place new element on page
     fireSomeoneMenu.innerHTML = html;
@@ -496,7 +504,7 @@ function makeTechEditTable(techObj) {
     //let techSchedule = techObj.Schedule;
     let tableHTML = `
         <fieldset id="${techObj.Name.split(" ")[1]}_table" class="techFieldset">
-        <legend>Technician: ${techObj.Name}</legend>
+        <legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}>Technician: ${techObj.Name}</legend>
         <fieldset class="schdTechFields">
             <label for="techNameEdit${techObj.Name}">Name:</label>
             <textarea id="techNameEdit${techObj.Name}" spellcheck="false" rows="1" cols="10">${techObj.Name}</textarea><br>
@@ -1137,26 +1145,30 @@ async function setDBEditor() {
     db_editor.setAttribute("id", "admin_internals");
     db_editor.classList.add('at_dbedit'); //dashboard message editor, acronym
     db_editor.innerHTML = `<fieldset id="DBE_Header">
-        <legend> Datbase Editor </legend>
-        <p> Use this interface to update Bronson's database, specifically the inventory side.
+        <legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}> Database Editor </legend>
+        <p ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}> Use this interface to update Bronson's database, specifically the inventory side.
         This page manages the data that JackNet uses to know what and where to look for. Be 
         careful when making changes here, as it can and will break things if mistakes are made.
         While updating things below, the changelog will keep track of what changes have been made.
         The changes will not be applied to the database until you hit "Save Changes to Database."
         <br>
         <fieldset>
-            <legend> Changelog: </legend>
-            <textarea id="DBE-Changelog" spellcheck="false" rows="8" cols="50" readonly></textarea>
+            <legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}> Changelog: </legend>
+            <textarea id="DBE-Changelog" spellcheck="false" rows="8" cols="50" readonly ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}></textarea>
         </fieldset>
         <menu id="DBE_MainMenu">
-            <button id="updateDatabaseButton" class="exeButton" onclick="updateDatabaseFromEditor()"> Save Changes to Database </button>
-            <button onclick="setDBBuildingAddition()"> Add Building </button>
-            <button onclick="setDBEditor()"> Refresh Editor </button>
-            <button onclick="setDBRoomSchedule()"> Upload Room Schedule </button>
-            <div class="databaseFilterDiv">
-            <label for="databaseFilter"> Search: </label>
-            <textarea id="databaseFilter" placeholder="Building Name/Abbreviation" onkeyup="filterDatabase()"></textarea>
-            </div>
+            <button id="updateDatabaseButton" class="exeButton ${localStorage.getItem("isMobile") === "true" ? "mobile_button" : ""}" onclick="updateDatabaseFromEditor()"> Save Changes to Database </button>
+            <button onclick="setDBBuildingAddition()" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Add Building </button>
+            <button onclick="setDBEditor()" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Refresh Editor </button>
+            ${localStorage.getItem("isMobile") === "true" ? "" : `
+                <button onclick="setDBRoomSchedule()"> Upload Room Schedule </button>`
+            }
+            ${localStorage.getItem("isMobile") === "true" ? "" : `
+                    <div class="databaseFilterDiv">
+                <label for="databaseFilter"> Search: </label>
+                <textarea id="databaseFilter" placeholder="Building Name/Abbreviation" onkeyup="filterDatabase()"></textarea>
+                </div>`
+            }
         </menu>
         </fieldset>`;
     //let tmp = ``;
@@ -1167,7 +1179,7 @@ async function setDBEditor() {
         let lsmName = campData[building].lsm_name;
         tmp.push(`
         <fieldset class="dbBuildingFieldset" id="${building}-fieldset">
-            <legend class="dbe-legend"> Building: ${buildingName} - (${building}) </legend>
+            <legend class="dbe-legend ${localStorage.getItem("isMobile") === "true" ? "mobile_legend" : ""}"> Building: ${buildingName} - (${building}) </legend>
             <menu id="${building}-buildingMenu" oninput="updateBuilding('${building}-buildingMenu')" class="DBE_Building_Menu">
             <ul class="DBE_Building_Fields">
                 <li>
@@ -1189,7 +1201,7 @@ async function setDBEditor() {
             </ul>
             </menu>
             <br>
-            <button type="button" class="collapsible" id="${building}-colBtn"> See Rooms</button>
+            <button type="button" class="collapsible ${localStorage.getItem("isMobile") === "true" ? "mobile_font" : ""}" id="${building}-colBtn"> See Rooms</button>
             <div class="collapse_content">
                 <table class="dbBuildingTable">
                     <thead>
@@ -1276,12 +1288,12 @@ async function setDBEditor() {
                 </tbody>
             </table>
             <menu id="${building}-roomMenu">
-                <button onclick="setRoomAddition('${building}-roomMenu', '${building}-tbody')"> Add Room </button>
-                <button id="${building}-compareLSMBtn" onclick="compareDBEditLSM('${building}')"> Compare Inventory With LSM </button>
+                <button onclick="setRoomAddition('${building}-roomMenu', '${building}-tbody')" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Add Room </button>
+                <button id="${building}-compareLSMBtn" onclick="compareDBEditLSM('${building}')" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Compare Inventory With LSM </button>
             </menu>
             </div>
             <menu id="${building}-menu">
-                <button id="${building}-rmvBtn" class="rmvButton" onclick="markBuildingToRemove('${building}-fieldset')"> Remove Building</button>
+                <button id="${building}-rmvBtn" class="rmvButton ${localStorage.getItem("isMobile") === "true" ? "mobile_button" : ""}" onclick="markBuildingToRemove('${building}-fieldset')"> Remove Building</button>
             </menu>
         </fieldset>`);
         db_editor.innerHTML += tmp.join('');
@@ -1951,13 +1963,18 @@ function confirmDBBuildingAddition() {
 function cancelDBBuildingAddition() {
     let mainMenu = document.getElementById("DBE_MainMenu");
     mainMenu.innerHTML = `
-        <button id="updateDatabaseButton" class="exeButton" onclick="updateDatabaseFromEditor()"> Save Changes to Database </button>
-        <button onclick="setDBBuildingAddition()"> Add Building </button>
-        <button onclick="setDBEditor()"> Refresh Editor </button>
-        <button onclick="setDBRoomSchedule()"> Upload Room Schedule </button>
-        <div class="databaseFilterDiv">
-        <label for="databaseFilter"> Search: </label>
-        <textarea id="databaseFilter" placeholder="Building Name/Abbreviation" onkeyup="filterDatabase()"></textarea></div>`;
+            <button id="updateDatabaseButton" class="exeButton ${localStorage.getItem("isMobile") === "true" ? "mobile_button" : ""}" onclick="updateDatabaseFromEditor()"> Save Changes to Database </button>
+            <button onclick="setDBBuildingAddition()" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Add Building </button>
+            <button onclick="setDBEditor()" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Refresh Editor </button>
+            ${localStorage.getItem("isMobile") === "true" ? "" : `
+                <button onclick="setDBRoomSchedule()"> Upload Room Schedule </button>`
+            }
+            ${localStorage.getItem("isMobile") === "true" ? "" : `
+                    <div class="databaseFilterDiv">
+                <label for="databaseFilter"> Search: </label>
+                <textarea id="databaseFilter" placeholder="Building Name/Abbreviation" onkeyup="filterDatabase()"></textarea>
+                </div>`
+            }`;
     return;
 }
 
@@ -3276,17 +3293,18 @@ async function setThreadEditor() {
     console.log(ts);
     let tmp = `
     <fieldset>
-        <legend> Thread Schedule Editor: </legend>`;
+        <legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}> Thread Schedule Editor: </legend>`;
     for(let i = 0; i < tsKeys.length; i++) {
         tmp += `<fieldset>
-            <legend>${tsKeys[i]}</legend>
+            <legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}>${tsKeys[i]}</legend>
             <div style="float:left">
-                <input type="number" id="thread-${tsKeys[i]}-interval" value="${ts[tsKeys[i]].duration}" min="60"> <span style="color: rgba(166, 172, 114, 1)"> Seconds between runs </span>
-                <button onclick="setNewThreadDuration('${tsKeys[i]}')"> Set Duration </button>
+                <input type="number" id="thread-${tsKeys[i]}-interval" value="${ts[tsKeys[i]].duration}" min="60" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}> 
+                <span style="color: rgba(166, 172, 114, 1)" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}> Seconds between runs </span>
+                <button onclick="setNewThreadDuration('${tsKeys[i]}')" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Set Duration </button>
             </div>
-            <div style="float:right">
-                <span style="color: rgba(166, 172, 114, 1)"> Last Run: ${ts[tsKeys[i]].timestamp} </span>
-                <button onclick="resetThreadInterval('${tsKeys[i]}')"> Run Now </button>
+            <div style="float:${localStorage.getItem("isMobile") === "true" ? "left" : "right"}">
+                <span style="color: rgba(166, 172, 114, 1)" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}> Last Run: ${new Date(ts[tsKeys[i]].timestamp).toLocaleString()} </span>
+                <button onclick="resetThreadInterval('${tsKeys[i]}')" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Run Now </button>
             </div>
             </fieldset>`;
     }

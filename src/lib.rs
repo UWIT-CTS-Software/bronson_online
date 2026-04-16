@@ -411,16 +411,18 @@ impl Database {
 					let hn_vec = Self::gen_hn(String::from(room_name), &item_vec);
 					let ping_vec = Self::gen_ip(&hn_vec);
 
+					let is_gp = match record.get(7).expect("-1").parse().unwrap() {
+						0 => false,
+						_ => true,
+					};
+					
 					let new_room = DB_Room {
 						abbrev: String::from(room_name.split(' ').next().unwrap()),
 						name: String::from(room_name),
 						checked: String::from("2000-01-01T00:00:00Z"),
 						needs_checked: true,
-						gp: match record.get(7).expect("-1").parse().unwrap() {
-							0 => false,
-							_ => true,
-						},
-						check_period: 0,
+						gp: is_gp,
+						check_period: if is_gp { 0 } else { 2 },
 						offln: false,
 						onln: "2000-01-01".to_string(),
 						available: false,
@@ -854,45 +856,15 @@ impl Database {
 
 	pub fn update_room(&mut self, room: &DB_Room) -> Result<DB_Room, DieselError> {
 		use crate::schema::bronson::rooms::dsl::name;
-		use crate::schema::bronson::rooms::dsl as r;
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
-		let safe_ping_data = room
-			.ping_data
-			.iter()
-			.map(|opt_ip| opt_ip.as_ref().map(|ip| {
-				let mut ip = ip.clone();
-				if ip.hostname.dev_type == DeviceType::UNKNOWN {
-					ip.hostname.dev_type = DeviceType::PROC; // replace UNKNOWN with default
-				}
-				ip
-			}))
-			.collect::<Vec<_>>();
-
-		let mut room_safe = room.clone();
-		room_safe.ping_data = safe_ping_data;
-
-		let updated: DB_Room = diesel::insert_into(rooms)
-			.values(&room_safe)
+		diesel::insert_into(rooms)
+			.values(room)
 			.on_conflict(name)
 			.do_update()
-			.set(( // Explicitely set values to avoid fields getting skipped
-				r::abbrev.eq(&room_safe.abbrev),
-				r::checked.eq(&room_safe.checked),
-				r::needs_checked.eq(room_safe.needs_checked),
-				r::gp.eq(room_safe.gp),
-				r::check_period.eq(room_safe.check_period),
-				r::offln.eq(room_safe.offln),
-				r::onln.eq(&room_safe.onln),
-				r::available.eq(room_safe.available),
-				r::until.eq(&room_safe.until),
-				r::ping_data.eq(&room_safe.ping_data),
-				r::schedule.eq(&room_safe.schedule),
-			))
+			.set(room)
 			.returning(DB_Room::as_returning())
-			.get_result(&mut conn)?;
-
-		Ok(updated)
+			.get_result(&mut conn)
 	}
 
 

@@ -600,7 +600,19 @@ async fn handle_connection(
             Response::new()
                     .status(STATUS_200)
                     .send_file(user_homepage)
-                    .insert_onload("setCamcode()")
+                    .insert_onload("setCrestronFile()")
+        },
+        "GET /camcode HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file(user_homepage)
+                    .insert_onload("setCamCode()")
+        },
+        "GET /dashboard HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file(user_homepage)
+                    .insert_onload("setDashboard()")
         },
         "GET /checkerboard HTTP/1.1" => {
             Response::new()
@@ -1029,7 +1041,7 @@ async fn handle_connection(
                 };
                 new_db_room.onln = new_date;
                 // Build Updated Ping Data Vector
-                let hn_vec = Database::gen_hn(String::from(target_room), &new_values);
+                let hn_vec = Database::gen_hn(String::from(target_room), &new_values[0..6].to_vec()); // Only device fields
                 let ping_vec = Database::gen_ip(&hn_vec);
                 // Update Ping Data in room
                 new_db_room.ping_data = ping_vec;
@@ -1062,7 +1074,7 @@ async fn handle_connection(
                 // Note: When we are inserting a new room, we are not providing the inventory in the same call. The intention is that the front-end will send the rooms to insert first and if their is inventory associated with it it will come after.
                 // Build DB_Room Object and insert to Database
                 // Ping Data Vector
-                let hn_vec = Database::gen_hn(new_room.clone(), &new_values);
+                let hn_vec = Database::gen_hn(new_room.clone(), &new_values[0..6].to_vec()); // Only device fields
                 let ping_vec = Database::gen_ip(&hn_vec);
                 // Insert New Room to Database
                 let new_db_room = DB_Room {
@@ -1075,7 +1087,7 @@ async fn handle_connection(
                         0 => false,
                         _ => false,
                     },
-                    check_period: 0,
+                    check_period: 2,
                     offln: false,
                     onln: "2000-01-01".to_string(),
                     available: false,
@@ -1611,7 +1623,7 @@ async fn handle_connection(
                     .insert_header("Access-Control-Expose-Headers", "Set-Cookie")
                     .status(STATUS_200)
                     .send_file(user_homepage)
-                    .insert_onload(";window.location.href=\"http://localhost:7878/\";")
+                    .insert_onload(";window.location.href=window.location.origin;")
         },
         "POST /bugreport HTTP/1.1" => {
             let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();

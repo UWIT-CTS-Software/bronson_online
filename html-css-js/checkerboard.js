@@ -202,7 +202,7 @@ async function printCBResponse(JSON) {
     HTML_cbBuildingHeader = `
     <div class="cbVisHeader" id="cbVis_${building['abbrev']}"> 
         <span class="cbHeaderSpan">${building['name']} (${building['abbrev']}) </span>
-        <button class="visButton" onclick="cbJumpTo(\'cbTopID\')"> Jump to Top </button>
+        ${localStorage.getItem("isMobile") ? "" : `<button class="visButton" onclick="cbJumpTo(\'cbTopID\')"> Jump to Top </button>`}
     </div>`;
     //console.log(building);
     // Start the room processing
@@ -306,7 +306,7 @@ function toggleHideRooms() {
     if (!bool) {
         currentState = "true";
         let label = document.getElementById("cbToggleLabel");
-        label.innerHTML = "Showing Checked Rooms";
+        label.innerHTML = "Hiding Checked Rooms";
         // When showing checked rooms, remove hideVisTile from all rooms
         let allRooms = document.querySelectorAll(".cbVisRoom");
         allRooms.forEach(room => {
@@ -315,7 +315,7 @@ function toggleHideRooms() {
     } else {
         currentState = "false";
         let label = document.getElementById("cbToggleLabel");
-        label.innerHTML = "Hiding Checked Rooms";
+        label.innerHTML = "Showing Checked Rooms";
         // When hiding checked rooms, add hideVisTile to needs_checked=false OR offline rooms
         let allRooms = document.querySelectorAll(".cbVisRoom");
         allRooms.forEach(room => {
@@ -332,6 +332,8 @@ function toggleHideRooms() {
 async function setChecker() {
     preserveCurrentTool();
 
+    const isMobile = localStorage.getItem("isMobile") === "true";
+
     document.title = "CheckerBoard - Bronson";
     // remove currently active status mark tab has active.
     // let active_tab_header = document.querySelector('.active_tab_header');
@@ -345,10 +347,14 @@ async function setChecker() {
     // newCurrent.classList.add("active");
     newCurrent.classList.add("selected");
 
+    history.pushState("test", "Checkerboard", "/checkerboard");
+
+
     let progGuts = document.querySelector('.program_board .program_guts');
     // Check for preserved space
     let cached_HTML = sessionStorage.getItem("CheckerBoard_html");
-    if (cached_HTML != null) {
+        let cached_isMobile = sessionStorage.getItem("CheckerBoard_isMobile");
+    if (cached_HTML != null && cached_isMobile == String(isMobile)) {
         // make sure cache was not overwritten with another tool.
         if(cached_HTML.includes("cb_container")) {
             progGuts.innerHTML = cached_HTML;
@@ -381,22 +387,21 @@ async function setChecker() {
     map_select.classList.add('cb_mapSelect');
     map_select.innerHTML = `
         <fieldset>
-            <legend>
-                Zones: </legend>
-            <input class="cbDev" type ="checkbox" id="1" name="cb_dev" value="zone1"/>
-            <label for="1"> 
+            <legend ${isMobile ? "class='mobile_legend'" : ""}>Zones: </legend>
+            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type ="checkbox" id="1" name="cb_dev" value="zone1"/>
+            <label for="1" ${isMobile ? "class='mobile_font'" : ""}> 
                 Zone 1</label>
             <br>
-            <input class="cbDev" type="checkbox" id="2" name="cb_dev" value="zone2"/>
-            <label for="2">
+            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="2" name="cb_dev" value="zone2"/>
+            <label for="2" ${isMobile ? "class='mobile_font'" : ""}>
                 Zone 2</label>
             <br>
-            <input class="cbDev" type="checkbox" id="3" name="cb_dev" value="zone3"/>
-            <label for="3">
+            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="3" name="cb_dev" value="zone3"/>
+            <label for="3" ${isMobile ? "class='mobile_font'" : ""}>
                 Zone 3</label>
             <br>
-            <input class="cbDev" type="checkbox" id="4" name="cb_dev" value="zone4"/>
-            <label for="4">
+            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="4" name="cb_dev" value="zone4"/>
+            <label for="4" ${isMobile ? "class='mobile_font'" : ""}>
                 Zone 4</label>
             <br>
         </fieldset>`;
@@ -407,18 +412,18 @@ async function setChecker() {
     button_menu.classList.add('cb_buttonRow');
     button_menu.innerHTML = `
         <fieldset>
-            <legend>
-                Options: </legend>
-            <button id="cb_run" onclick="run()" class="headButton">
+            <legend ${isMobile ? "class='mobile_legend'" : ""}>Options: </legend>
+            <button id="cb_run" onclick="run()" class="headButton ${isMobile ? "mobile_button" : ""}">
                 Run!</button>
-            <button id="cb_clear" onclick="cb_clear()" class="headButton">
+            <button id="cb_clear" onclick="cb_clear()" class="headButton ${isMobile ? "mobile_button" : ""}">
                 Clear</button>
             <br>
-            <label id="cbHideChkedRoomsToggle" class="switch">
+            <label id="cbHideChkedRoomsToggle" class="switch ${isMobile ? "mobile_switch" : ""}">
                 <input id="cbToggleHide" type="checkbox" onclick="toggleHideRooms()">
                 <span class="slider round"></span>
             </label>
-            <label id="cbToggleLabel" for="cbHideChkedRoomsToggle">Showing Checked Rooms</label>
+            <label id="cbToggleLabel" for="cbHideChkedRoomsToggle" ${isMobile ? "class='mobile_font'" : ""}>
+                Showing Checked Rooms</label>
         </fieldset>`;
 
     // Console Output
@@ -426,10 +431,9 @@ async function setChecker() {
     console_output.classList.add('cb_console');
     console_output.innerHTML = `
         <fieldset>
-            <legend>
-                Console Output: </legend>
+            <legend ${isMobile ? "class='mobile_legend'" : ""}>Console Output: </legend>
             <div class="cbTopperContainer" id="cbTopID">
-                <p class="cfm_text">Select Zone(s) and click Run to run search.</p>
+                <p class="cfm_text ${isMobile ? "mobile_font" : ""}">Select Zone(s) and click Run to run search.</p>
             </div>
             <div id="cbVisConID" class="cbVisContainer">
             </div>

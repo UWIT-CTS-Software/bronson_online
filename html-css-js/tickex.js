@@ -93,8 +93,7 @@ function sendToHelpDesk() {
 
 // Macro for taking Responsibility for a Ticket
 // For Later - When we have write access to TDX API
-function takeResponsibility(event) {
-    if (event) event.stopPropagation();
+function takeResponsibility() {
     alert("This feature is not yet implemented.");
 
 }
@@ -225,6 +224,8 @@ async function show(ticket) {
         return;
     }
 
+    const isMobile = localStorage.getItem("isMobile") === "true";
+
     let popupContainer = document.querySelector('.tx_popupContainer');
     if (!popupContainer) {
         // Wait for popup to load (timeout of 3 seconds)
@@ -342,9 +343,9 @@ async function show(ticket) {
         }
         
         commentsHTML = `
-            <div class="tx_popupComments ${(localStorage.getItem("isMobile") === "true") ? "mobile" : ""}">
+            <div class="tx_popupComments ${isMobile ? "mobile" : ""}">
                 <span>Comments:</span>
-                <button class="popup_closeCommentsButton" onClick="toggleComments(${ticket.ID})">X</button>
+                ${isMobile ? "" : `<button class="popup_closeCommentsButton" onClick="toggleComments(${ticket.ID})">X</button>`}
                 <div class="tx_commentList">
                     ${builtComments}
                 </div>
@@ -407,36 +408,37 @@ async function show(ticket) {
     let sideContent = "";
     if (container.classList.contains('commentsShown'))
         sideContent += commentsHTML;
-    if (whatChangedHTML && !(localStorage.getItem("isMobile") === "true"))
+    if (whatChangedHTML && !isMobile)
         sideContent += whatChangedHTML;
     
 
     if (popupContainer.classList.contains('detailsShown')) { // Details Shown
         popupContainer.innerHTML = `
-            <div class="tx_popupWrapper">
-                <div class="tx_popupBox ${(localStorage.getItem("isMobile") === "true") ? "mobile" : ""}">
+            <div class="tx_popupWrapper ${isMobile ? "mobile mobile_tx_font" : ""}">
+                <div class="tx_popupBox ${isMobile ? "mobile" : ""}">
                 <span>${ticket.Title || "No Title"}</span>
                 <button class="popup_closeButton" onClick="hidePopup()">X</button>
-                    <div class="tx_adjacent"><p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
+                <div class="tx_adjacent">
+                <p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
                     <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
                     <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
                     <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
-                    <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
-                    <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">Description</button>
-                    <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                    <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Incident</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
-                    <p class="tx_popup_ServiceName">Service: ${ticket.ServiceName || ""}</p>
-                    <p class="tx_popup_AccountName">Account Department: ${ticket.AccountName || ""}</p>
-                    <p class="tx_popup_TypeName">Type: ${ticket.TypeName || ""}</p>
-                    <p class="tx_popup_TypeCategoryName">Type Category: ${ticket.TypeCategoryName || ""}</p>
-                    <p class="tx_popup_Created">Date Created: ${ticket.CreatedDate || ""} || Created by: ${ticket.CreatedFullName || ""}</p>
-                    <p class="tx_popup_Modified">Last Modified: ${ticket.ModifiedDate || ""} || Modified by: ${ticket.ModifiedFullName || ""}</p>
-                    <button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>
+                    <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
+                    <button class="popup_toggleButton ${isMobile ? "mobile_tx_button" : ""}" onClick="toggleDetails(${ticket.ID})">Description</button>
+                    <p class="tx_popup_Requestor tx_textwrap">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
+                    <p class="tx_popup_Responsible tx_textwrap">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED <button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>`} || ${ticket.ResponsibleGroupName || ""}</p>
+                    <p class="tx_popup_ServiceName tx_textwrap">Service: ${ticket.ServiceName || ""}</p>
+                    <p class="tx_popup_AccountName tx_textwrap">Account Department: ${ticket.AccountName || ""}</p>
+                    <p class="tx_popup_TypeName tx_textwrap">Type: ${ticket.TypeName || ""}</p>
+                    <p class="tx_popup_TypeCategoryName tx_textwrap">Type Category: ${ticket.TypeCategoryName || ""}</p>
+                    <p class="tx_popup_Created tx_textwrap">Date Created: ${ticket.CreatedDate || ""} || Created by: ${ticket.CreatedFullName || ""}</p>
+                    <p class="tx_popup_Modified tx_textwrap">Last Modified: ${ticket.ModifiedDate || ""} || Modified by: ${ticket.ModifiedFullName || ""}</p>
+                    ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
-                        <button class="popup_linkToTicket">Link to Ticket</button>
+                        <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
                     </a>
-                    <button disabled class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
-                    <button disabled class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
+                    <button disabled class="popup_sendToASU ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToASU()">Send to ASU</button>
+                    <button disabled class="popup_sendToHelpDesk ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToHelpDesk()">Send to Help Desk</button>
                 </div>
                 ${sideContent ? `<div class="tx_sideContent">${sideContent}</div>` : ''}
             </div>
@@ -447,26 +449,27 @@ async function show(ticket) {
         description = description.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n+/g, '\n').trim(); 
 
         popupContainer.innerHTML = `
-            <div class="tx_popupWrapper">
-                <div class="tx_popupBox ${(localStorage.getItem("isMobile") === "true") ? "mobile" : ""}">
+            <div class="tx_popupWrapper ${isMobile ? "mobile mobile_tx_font" : ""}">
+                <div class="tx_popupBox ${isMobile ? "mobile" : ""}">
                 <span>${ticket.Title || "No Title"}</span>
-                <button class="popup_closeButton" onClick="hidePopup()">X</button>
-                    <div class="tx_adjacent"><p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
+                ${isMobile ? "" : `<button class="popup_closeButton" onClick="hidePopup()">X</button>`}
+                <div class="tx_adjacent">
+                    <p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
                     <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
                     <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
                     <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
-                    <p class="tx_popup_Title">Title: ${ticket.Title || "No Title"}</p>
-                    <button class="popup_toggleButton" onClick="toggleDetails(${ticket.ID})">Details</button>
-                    <p class="tx_popup_Requestor">Requestor: ${ticket.RequestorName || ""}</p>
-                    <p class="tx_popup_contact">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                    <p class="tx_popup_Responsible">Responsible: ${ticket.ResponsibleFullName || "UNASSIGNED <button onClick='takeResponsibility()' disabled>Take Incident</button>"} || ${ticket.ResponsibleGroupName || ""}</p>
+                    <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
+                    <button class="popup_toggleButton ${isMobile ? "mobile_tx_button" : ""}" onClick="toggleDetails(${ticket.ID})">Details</button>
+                    <p class="tx_popup_Requestor tx_textwrap">Requestor: ${ticket.RequestorName || ""}</p>
+                    <p class="tx_popup_contact tx_textwrap">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
+                    <p class="tx_popup_Responsible tx_textwrap${isMobile ? "mobile_tx_button" : ""}">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED <button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>`} || ${ticket.ResponsibleGroupName || ""}</p>
                     <p class="tx_Description">${description || "--- No Description Provided ---"}</p>
-                    <button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>
+                    ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
-                        <button class="popup_linkToTicket">Link to Ticket</button>
+                        <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
                     </a>
-                    <button disabled class="popup_sendToASU" onClick="sendToASU()">Send to ASU</button>
-                    <button disabled class="popup_sendToHelpDesk" onClick="sendToHelpDesk()">Send to Help Desk</button>
+                    <button disabled class="popup_sendToASU ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToASU()">Send to ASU</button>
+                    <button disabled class="popup_sendToHelpDesk ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToHelpDesk()">Send to Help Desk</button>
                 </div>
                 ${sideContent ? `<div class="tx_sideContent">${sideContent}</div>` : ''}
             </div>
@@ -741,6 +744,7 @@ function initBoard() {
         closedTickets: ""
     };
     
+    const isMobile = localStorage.getItem("isMobile") === "true";
     window.currentTickets = sortTickets();
 
     let newNumRows, catchAllNumRows, closedNumRows;
@@ -780,7 +784,7 @@ function initBoard() {
         let ticketRow = `
             <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
                 <td>${ticket.Title}</td>
-                <td>${ticket.ID}</td>
+                ${isMobile ? "" : `<td>${ticket.ID}</td>`}
                 <td>${ticket.StatusName}</td>
             </tr>
         `;
@@ -813,7 +817,7 @@ function initBoard() {
             let closedRow = `
                 <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
                     <td>${ticket.Title}</td>
-                    <td>${ticket.ID}</td>
+                    ${isMobile ? "" : `<td>${ticket.ID}</td>`}
                 </tr>
             `;
 
@@ -1018,6 +1022,8 @@ async function setTickex() {
     newCurrent.classList.add("selected");
     newCurrent.classList.remove("stashed"); // Stop the strobing
 
+    history.pushState("test", "Tickex", "/tickex");
+
     // Check for preserved space
     let cached_HTML = sessionStorage.getItem("Tickex_html");
     let progGuts = document.querySelector('.program_board .program_guts');
@@ -1053,7 +1059,7 @@ async function setTickex() {
     loadingMessage.classList.add("tx_loadingMessage");
     if (isMobile) loadingMessage.classList.add("mobile");
     loadingMessage.innerHTML = `
-        <legend>Loading Tickets</legend>
+        <legend ${isMobile ? "class='mobile_legend'" : ""}>Loading Tickets</legend>
     `;
     tx_container.append(loadingMessage);
 
@@ -1062,7 +1068,7 @@ async function setTickex() {
         ellipsis += ".";
         if (ellipsis.length > 3) ellipsis = "";
         loadingMessage.innerHTML = `
-            <legend>Loading Tickets${ellipsis}</legend>
+            <legend ${isMobile ? "class='mobile_legend'" : ""}>Loading Tickets${ellipsis}</legend>
         `;
     }, 1000); // Update every 1 second
 
@@ -1103,7 +1109,7 @@ async function setTickex() {
     if (isMobile) sortByBox.classList.add("mobile");
     sortByBox.id = "sortByBox";
     sortByBox.innerHTML = `
-        <legend>Sort By</legend>
+        <legend ${isMobile ? "class='mobile_legend'" : ""}>Sort By</legend>
         <div>
             <input class="tx_radio" type="radio" name="tx_dev" id="modified" checked>
             <label for="modified">Date Modified</label>
@@ -1125,8 +1131,8 @@ async function setTickex() {
     searchBar.classList.add("tx_search");
     if (isMobile) searchBar.classList.add("mobile");
     searchBar.innerHTML = `
-        <legend>Search</legend>
-        <textarea id="searchBar" placeholder="Search: Title, ID, Description, Room, Date, etc...  (Enter)"></textarea>
+        <legend ${isMobile ? "class='mobile_legend'" : ""}>Search</legend>
+        <textarea id="searchBar" placeholder="${isMobile ? "Search..." : "Search: Title, ID, Description, Room, Date, etc... (Press Enter)"}"></textarea>
         <ul>
     `;
     tx_container.append(searchBar);
@@ -1165,7 +1171,7 @@ async function setTickex() {
     newTicketsPopup.classList.add("tx_newTicketsPopup");
     if (isMobile) newTicketsPopup.classList.add("mobile");
     newTicketsPopup.innerHTML = `
-        <legend>New Tickets Available!</legend>
+        <legend ${isMobile ? "class='mobile_font'" : ""}>New Tickets Available!</legend>
     `;
     tx_container.append(newTicketsPopup);
 
@@ -1175,26 +1181,26 @@ async function setTickex() {
     if (isMobile) newTickets.classList.add("mobile");
     newTickets.id = 'newTicketsBoard';
     newTickets.innerHTML = `
-        <fieldset><legend>New CTS Tickets</legend>
+        <fieldset><legend ${isMobile ? "class='mobile_legend'" : ""}>New CTS Tickets</legend>
             <div class="tx_ticketContainer" id="new">
-                <table>
+                <table ${isMobile ? "class='mobile_font'" : ""}>
                     <thead><tr>
                         <th>Title</th>
-                        <th>ID</th>
+                        ${isMobile ? "" : "<th>ID</th>"}
                         <th>Status</th>
                     </tr></thead>
                     <tbody></tbody>
                 </table>
                 <div class="k_pager" id="newPager">
-                    <button class="k_pager_button" id="new_minus10" onclick="kPagerButton(-10, 'newTicket_input', 'newMaxPage')">-10</button>
-                    <button class="k_pager_button" id="new_minus1" onclick="kPagerButton(-1, 'newTicket_input', 'newMaxPage')"><</button>
-                    <input type="number" class="k_input_inner" id="newTicket_input" autocomplete="off" value="1"></input>
-                    <span>of </span>
-                    <span id="newMaxPage">1</span>
-                    <button class="k_pager_button" id="new_plus1" onclick="kPagerButton(1, 'newTicket_input', 'newMaxPage')">></button>
-                    <button class="k_pager_button" id="new_plus10" onclick="kPagerButton(10, 'newTicket_input', 'newMaxPage')">+10</button>
-                    <div><span>Max Items per Page: </span>
-                    <select class="k_pager_button" id="newTicket_dropdown">
+                    <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="new_minus10" onclick="kPagerButton(-10, 'newTicket_input', 'newMaxPage')">-10</button>
+                    <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="new_minus1" onclick="kPagerButton(-1, 'newTicket_input', 'newMaxPage')"><</button>
+                    <input type="number" class="k_input_inner ${isMobile ? "mobile_font" : ""}" id="newTicket_input" autocomplete="off" value="1"></input>
+                    <span ${isMobile ? "class='mobile_font'" : ""}>of </span>
+                    <span ${isMobile ? "class='mobile_font'" : ""} id="newMaxPage">1</span>
+                    <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="new_plus1" onclick="kPagerButton(1, 'newTicket_input', 'newMaxPage')">></button>
+                    <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="new_plus10" onclick="kPagerButton(10, 'newTicket_input', 'newMaxPage')">+10</button>
+                    <div><span ${isMobile ? "class='mobile_font'" : ""}>Max Items per Page: </span>
+                    <select class="k_pager_button ${isMobile ? "mobile_font" : ""}" id="newTicket_dropdown">
                         <option value="5">5</option>
                         <option value="10">10</option>
                         <option value="15" selected>15</option>
@@ -1216,26 +1222,26 @@ async function setTickex() {
     if (isMobile) catchAll.classList.add("mobile");
     catchAll.id = 'catchAllTicketsBoard';
     catchAll.innerHTML = `
-        <fieldset><legend>CTS Ticket Catch All</legend>
+        <fieldset><legend ${isMobile ? "class='mobile_legend'" : ""}>CTS Ticket Catch All</legend>
             <div class="tx_ticketContainer" id="catchAll">
-                <table>
+                <table ${isMobile ? "class='mobile_font'" : ""}>
                     <thead><tr>
                         <th>Title</th>
-                        <th>ID</th>
+                        ${isMobile ? "" : "<th>ID</th>"}
                         <th>Status</th>
                     </tr></thead>
                     <tbody></tbody>
                 </table>
                 <div class="k_pager" id="catchAllPager">
-                    <button class="k_pager_button" id="catchAll_minus10" onclick="kPagerButton(-10, 'catchAllTicket_input', 'catchAllMaxPage')">-10</button>
-                    <button class="k_pager_button" id="catchAll_minus1" onclick="kPagerButton(-1, 'catchAllTicket_input', 'catchAllMaxPage')"><</button>
-                    <input type="number" class="k_input_inner" id="catchAllTicket_input" autocomplete="off" value="1"></input>
-                    <span>of </span>
-                    <span id="catchAllMaxPage">1</span>
-                    <button class="k_pager_button" id="catchAll_plus1" onclick="kPagerButton(1, 'catchAllTicket_input', 'catchAllMaxPage')">></button>
-                    <button class="k_pager_button" id="catchAll_plus10" onclick="kPagerButton(10, 'catchAllTicket_input', 'catchAllMaxPage')">+10</button>
-                    <div><span>Max Items per Page: </span>
-                    <select class="k_pager_button" id="catchAllTicket_dropdown">
+                    <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="catchAll_minus10" onclick="kPagerButton(-10, 'catchAllTicket_input', 'catchAllMaxPage')">-10</button>
+                    <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="catchAll_minus1" onclick="kPagerButton(-1, 'catchAllTicket_input', 'catchAllMaxPage')"><</button>
+                    <input type="number" class="k_input_inner ${isMobile ? "mobile_font" : ""}" id="catchAllTicket_input" autocomplete="off" value="1"></input>
+                    <span ${isMobile ? "class='mobile_font'" : ""}>of </span>
+                    <span ${isMobile ? "class='mobile_font'" : ""} id="catchAllMaxPage">1</span>
+                    <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="catchAll_plus1" onclick="kPagerButton(1, 'catchAllTicket_input', 'catchAllMaxPage')">></button>
+                    <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="catchAll_plus10" onclick="kPagerButton(10, 'catchAllTicket_input', 'catchAllMaxPage')">+10</button>
+                    <div><span ${isMobile ? "class='mobile_font'" : ""}>Max Items per Page: </span>
+                    <select class="k_pager_button ${isMobile ? "mobile_font" : ""}" id="catchAllTicket_dropdown">
                         <option value="5">5</option>
                         <option value="10">10</option>
                         <option value="15" selected>15</option>
@@ -1257,25 +1263,25 @@ async function setTickex() {
     if (isMobile) closedTickets.classList.add("mobile");
     closedTickets.id = "closedTicketsBoard";
     closedTickets.innerHTML = `
-        <fieldset><legend>Closed CTS Tickets</legend>
+        <fieldset><legend ${isMobile ? "class='mobile_legend'" : ""}>Closed CTS Tickets</legend>
             <div class="tx_ticketContainer" id="closed">
-                <table>
+                <table ${isMobile ? "class='mobile_font'" : ""}>
                     <thead><tr>
                         <th>Title</th>
-                        <th>ID</th>
+                        ${isMobile ? "" : "<th>ID</th>"}
                     </tr></thead>
                     <tbody></tbody>
                 </table>
                 <div class="k_pagerClosed" id="closedPager">
-                    <button class="k_pager_button" id="closed_minus10" onclick="kPagerButton(-10, 'closedTicket_input', 'closedMaxPage')">-10</button>
-                    <button class="k_pager_button" id="closed_minus1" onclick="kPagerButton(-1, 'closedTicket_input', 'closedMaxPage')"><</button>
-                    <input type="number" class="k_input_inner" id="closedTicket_input" autocomplete="off" value="1"></input>
-                    <span>of </span>
-                    <span id="closedMaxPage">1</span>
-                    <button class="k_pager_button" id="closed_plus1" onclick="kPagerButton(1, 'closedTicket_input', 'closedMaxPage')">></button>
-                    <button class="k_pager_button" id="closed_plus10" onclick="kPagerButton(10, 'closedTicket_input', 'closedMaxPage')">+10</button>
-                    <div><span>Max Items per Page: </span>
-                    <select class="k_pager_button" id="closedTicket_dropdown">
+                    <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="closed_minus10" onclick="kPagerButton(-10, 'closedTicket_input', 'closedMaxPage')">-10</button>
+                    <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="closed_minus1" onclick="kPagerButton(-1, 'closedTicket_input', 'closedMaxPage')"><</button>
+                    <input type="number" class="k_input_inner ${isMobile ? "mobile_font" : ""}" id="closedTicket_input" autocomplete="off" value="1"></input>
+                    <span ${isMobile ? "class='mobile_font'" : ""}>of </span>
+                    <span ${isMobile ? "class='mobile_font'" : ""} id="closedMaxPage">1</span>
+                    <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="closed_plus1" onclick="kPagerButton(1, 'closedTicket_input', 'closedMaxPage')">></button>
+                    <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="closed_plus10" onclick="kPagerButton(10, 'closedTicket_input', 'closedMaxPage')">+10</button>
+                    <div><span ${isMobile ? "class='mobile_font'" : ""}>Max Items per Page: </span>
+                    <select class="k_pager_button ${isMobile ? "mobile_font" : ""}" id="closedTicket_dropdown">
                         <option value="5">5</option>
                         <option value="10" selected>10</option>
                         <option value="15">15</option>
