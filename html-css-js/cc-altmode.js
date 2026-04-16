@@ -242,8 +242,34 @@ async function setCrestronFile() {
     let cfm_search = document.createElement('div');
     cfm_search.classList.add("cfm_search");
     cfm_search.innerHTML = `
-        <textarea class="cfm_searchBar" id="search_input" placeholder="Search CFM..."></textarea>
+        <textarea class="cfm_searchBar searchButton" id="search_input" placeholder="Search keywords..."></textarea>
+        <button class="cfm_searchButtons" onclick="searchTree(document.getElementById('search_input').value)">
+            Search</button>
+        <button class="cfm_searchButtons clearButton" onclick="initializeCFM()">
+            Clear</button>
     `;
+
+    setTimeout(() => { // Wait for DOM to load
+        document.getElementById("search_input").focus(); // Have text area selected upon loading CamCode
+    }, 10);
+
+    // Pressing enter/escape for search bar
+    cfm_search.addEventListener('keydown', function(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            cfm_search.blur();
+            document.getElementById("search_input").focus(); // keep text area select
+
+            const search = (document.getElementById("search_input").value || '');
+            searchTree(search);
+        
+            setTimeout(() => { // Wait for search
+                document.getElementById("search_input").focus(); // Have text area selected upon loading CamCode
+            }, 10);
+        }
+
+        if (e.key == 'Escape') initializeCFM(); // clear search and return to home page
+    });
 
     let cfm_fileTreeInspector = document.createElement('div');
     cfm_fileTreeInspector.classList.add("cfm_fileTreeInspector");
@@ -267,15 +293,6 @@ async function setCrestronFile() {
     //         CamCode (Q-SYS) </button>
     //     <p>\n</p>
     // `;
-    
-    ///////// Move to under Search Bar Later
-    main_container.innerHTML = `
-        <button onclick="searchTree(document.getElementById('search_input').value)">
-            Search</button>
-        <button onclick="initializeCFM()">
-            Clear</button>
-    `;
-    /////////
 
     main_container.appendChild(cfm_container);
     main_container.classList.add('program_guts');

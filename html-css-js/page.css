@@ -1270,6 +1270,16 @@ progress::-webkit-progress-bar {
 
 .cfm_searchBar {
     padding: 6px;
+    height: 65%;
+}
+
+.cfm_searchButtons {
+    height: 35%;
+    width: 30%;
+}
+
+.cfm_searchButtons.clearButton {
+    float: right;
 }
 
 .cfm_fileTreeInspector {
