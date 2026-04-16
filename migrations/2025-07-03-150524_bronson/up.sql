@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS bronson.buildings (
 CREATE TABLE IF NOT EXISTS bronson.rooms (
     abbrev        TEXT         NOT NULL,
     name          TEXT         PRIMARY KEY,
+    25live_id     SMALLINT             ,
     checked       TEXT         NOT NULL,
     needs_checked BOOLEAN      NOT NULL,
     gp            BOOLEAN      NOT NULL,
@@ -143,3 +144,11 @@ CREATE TABLE IF NOT EXISTS bronson.tickets (
     CHECK (length(old_responsible_group_name) <= 128)
 );
 
+/* CREATE TABLE IF NOT EXISTS bronson.api_schedule {
+    api_id TEXT PRIMARY KEY,
+    tstamp TIMESTAMPTZ NOT NULL,
+    duration INTEGER NOT NULL,
+
+    CHECK (duration >= 0)
+};
+ */

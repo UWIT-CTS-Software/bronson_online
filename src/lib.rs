@@ -419,6 +419,7 @@ impl Database {
 					let new_room = DB_Room {
 						abbrev: String::from(room_name.split(' ').next().unwrap()),
 						name: String::from(room_name),
+						25live_id: Option::None, 
 						checked: String::from("2000-01-01T00:00:00Z"),
 						needs_checked: true,
 						gp: is_gp,
@@ -1190,7 +1191,7 @@ impl Request {
         };
         let user = match database.get_user(&uname["username"]) {
             Ok(u)  => u,
-            Err(_) => DB_User{ username: String::new(), permissions: 0 },
+            Err(_) => DB_User{ username: String::new(), permissions: 5 },
         };
 
         let mut jar = CookieJar::new();
@@ -1604,6 +1605,22 @@ struct Login {
 	login_url: String,
 	#[serde(rename="r25:logout_url")]
 	logout_url: String
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename="r25:events")]
+struct Events {
+	#[serde(rename="@pudate")]
+	pubdate: Option<String>,
+	#[serde(rename="@engine")]
+	engine: Option<String>,
+	#[serde(rename="r25:event")]
+	events: Vec<Event>
+}
+
+#[derive(Debug, Deserialize)]
+struct Event {
+	
 }
 
 pub static BUFF_SIZE : usize = 4096;

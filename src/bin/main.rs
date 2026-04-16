@@ -52,7 +52,7 @@ use server_lib::{
     Building, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
-    CFM_DIR, WIKI_DIR, LOGIN_XML, /* LOG, */
+    CFM_DIR, WIKI_DIR, /* LOG, */
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
     SCHD_ERR, DASH_ERR, LDRB_ERR, SPRS_ERR, 
     Database, Terminal, 
@@ -89,16 +89,12 @@ use log::{ debug, info, warn, error, }; // trace, };
 use cookie::{ /* Cookie, */ CookieJar, /* Key, */ };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
-use serde::{ Deserialize };
 use regex::Regex;
-use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta,Utc };
+use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta, Utc };
 use urlencoding::decode;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
-
-#[macro_use]
-extern crate serde_derive;
 
 extern crate serde;
 extern crate serde_xml_rs;
@@ -361,7 +357,10 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
     // Database Init
     let mut database = Database::new();
 
-    println!("{:?}", test_collegenet(&mut database).await);
+    match collegenet_login(&mut database).await {
+        Err(m) => { error!("25L_ERR: {}", m); }
+        Ok(_)  => { }
+    };
 
     // Init Datapool
     // TODO: Once there is sufficient need, multithreading this will be done with 'data_threads', in addition, the following loop block will need refactored.
@@ -515,9 +514,12 @@ async fn handle_connection(
         //let mut database = arc_database.write().unwrap();
         let user = match database.get_user(&username["username"]) {
             Ok(u)  => u,
+            Err(diesel::result::Error::NotFound) => {
+                DB_User{ username: String::new(), permissions: 5 }
+            },
             Err(m) => {
                 error!("DB_ERR: {}", m);
-                DB_User{ username: String::new(), permissions: 0 }
+                DB_User{ username: String::new(), permissions: 0}
             }
         };
         if req.has_valid_cookie(&mut database) {
@@ -1594,7 +1596,7 @@ async fn handle_connection(
         // make calls to backend functionality
         // --------------------------------------------------------------------
         // login
-        "POST /login HTTP/1.1" => {
+        "POST / HTTP/1.1" => {
             let credential_search = Regex::new(r"uname=(?<user>.*)&remember=[on|off]").unwrap();
             let Some(credentials) = credential_search.captures(str::from_utf8(&req.body).expect("Empty")) else { return None };
             let user = String::from(credentials["user"].to_string().into_boxed_str());
@@ -1608,9 +1610,12 @@ async fn handle_connection(
                         _ => "html-css-js/index.html",     // tech default
                     }
                 },
-                Err(m) => {
-                    error!("DB_ERR: {}", m);
+                Err(diesel::result::Error::NotFound) => {
                     "html-css-js/index.html"
+                },
+                Err(m) => {
+                    error!("1603: DB_ERR: {}", m);
+                    "html-css-js/login.html"
                 }
             };
 
@@ -1623,7 +1628,6 @@ async fn handle_connection(
                     .insert_header("Access-Control-Expose-Headers", "Set-Cookie")
                     .status(STATUS_200)
                     .send_file(user_homepage)
-                    .insert_onload(";window.location.href=window.location.origin;")
         },
         "POST /bugreport HTTP/1.1" => {
             let credential_search = Regex::new(r#"title=(?<title>.*)&desc=(?<desc>.*)"#).unwrap();
@@ -2396,8 +2400,6 @@ fn construct_headers(call_type: &str,database: &mut Database) -> HeaderMap {
         header_map.insert(AUTHORIZATION, HeaderValue::from_str(&database.get_key("25live_api").expect("No key found!").val).expect("[-] KEY_ERR: Not found."));
         header_map.insert(HeaderName::from_static("www-authenticate"), HeaderValue::from_static("Basic realm=\"R25 WebServices\", charset=\"UTF-8\""));
     }
-
-    println!("{:?}", header_map);
 
     return header_map;
 }
@@ -3398,7 +3400,7 @@ $$$$$$$$\                    $$\
    \__| \_______|\_______/    \____/ \_______/ 
 */
 
-async fn test_collegenet(database: &mut Database) -> LoginSuccess {
+async fn collegenet_login(database: &mut Database) -> Result<LoginSuccess, String> {
     let url = "https://webservices.collegenet.com/r25ws/wrd/uwyo/run/login.xml";
     let req = reqwest::Client::builder()
         .cookie_store(true)
@@ -3411,19 +3413,26 @@ async fn test_collegenet(database: &mut Database) -> LoginSuccess {
         .unwrap()
     ;
 
-    let text = req.get(url)
+    let text = match req.get(url)
         .timeout(Duration::from_secs(15))
         .send()
-        .await
-        .expect("[-] RESPONSE ERROR")
-        .text()
-        .await
-        .expect("[-] PAYLOAD ERROR");
+        .await {
+            Ok(r) => {
+                match r.text().await {
+                    Ok(t) => t,
+                    Err(m) => { return Err(m.to_string()); }
+                }
+            },
+            Err(m) => { return Err(m.to_string()); }
+        };
 
 
-    let doc: LoginSuccess = serde_xml_rs::from_str(&text).unwrap();
+    let doc: LoginSuccess = match serde_xml_rs::from_str(&text) {
+        Ok(d) => d,
+        Err(m) => { return Err(m.to_string()); }
+    };
 
-    doc
+    Ok(doc)
 }
 
 #[cfg(test)]

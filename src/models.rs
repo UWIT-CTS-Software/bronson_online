@@ -14,6 +14,7 @@ use serde::{
     Serialize,
     Deserialize,
 };
+use::chrono::{ DateTime, Utc };
 use diesel::{
     prelude::*,
     pg::{
@@ -275,3 +276,13 @@ pub struct DB_Ticket {
     pub old_responsible_group_name: String,
     pub old_comment_count: i16,
 }
+
+/* #[allow(non_camel_case_types)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable)]
+#[diseel(table_name = api_schedule)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct DB_APISchedule {
+    pub api_id: String,
+    pub timestamp: DateTime<Utc>,
+    pub duration: i16
+} */
