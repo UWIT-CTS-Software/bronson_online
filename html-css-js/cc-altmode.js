@@ -6,29 +6,25 @@
                                                               /|      
                                                               \|      
 
-    Crestron File Manger (CFM)
+    Crestron File Manager (CFM)
 
-Originally in camcode.js, accesses a database on the server for crestron room files and allows the user to retreive any they may need.
- 
- - cfmFiles()
- - getCFMF(filename, classtype)
- - downloadFile(s, fn)
+Originally in camcode.js, accesses a database on the server for crestron 
+room files and allows the user to retreive any they may need.
+
+ - setCrestronFile()          - Initialize the CFM interface
+ - initializeCFM()            - Initialize with tree data
+ - searchTree(search)         - Search and filter files by keyword
 
 HMTL-CFM
- - getCFMBuildingSelection()   -- notsure if this should ever be used
- - cfmGetBuildingRoom()
- - setFileBrowser(header, files)
- - populateFileList(list)
- - populateDropdown(list)
- - updateRoomList()
- - setCrestronFile()
+ - selectFolderFromTree(pathString) - Navigate to a folder
+ - updateFileTreeDisplay()          - Update folder tree panel
+ - updateFileContainer()            - Update file list panel
+ - updatePathTracker()              - Update breadcrumb path
+ - controlButton(button)            - Handle navigation buttons
 
 fetch
- - getCFM_BuildDirs()                    - flag: "cfm_build"
- - getCFM_BuildRooms(sel_building)       - flag: "cfm_build_r"
- - getCFM_FileDirectory(building,rm)     - flag: "cfm_c_dir"
- - getCFM_File(filename)                 - flag: "cfm_file"
- - getCFM_Dir()                          - flag: "cfm_dir"
+ - downloadFileFromPath(filePath)   - Download a file
+ - getCFM_File(filepath)            - Fetch file from server
 */
   
 // cfmFiles()
@@ -54,17 +50,14 @@ async function cfmFiles() {
 // This is a onclick function tied to entries in "File Selection"
 async function getCFMF(filename, classtype) {
     let brs = cfmGetBuildingRoom();
+
     // Get the header value instead
     let current_header = getCurrentHeader();
-    // current_header = current_header + '/';
 
     let cmff = `${current_header}/${filename}`;
 
     // User Selects a Directory
     if (classtype == "cfm_dir") {
-        //updateConsole("ERRORSelected Directory");
-        // It would be sweet to go into room sub-directories
-        // do that
         let files = await getCFM_Dir(cmff);
         //update filebrowser
 
@@ -82,7 +75,6 @@ async function getCFMF(filename, classtype) {
 
 // Simulated click for downloading file
 function downloadFile(s, fn) {
-    //const blob = new Blob(s, { });
     const url = URL.createObjectURL(s);
     const a = document.createElement('a');
     
@@ -103,11 +95,6 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 \__|  \__|   \__|   \__|     \__|\________|
 */
 
-async function getCFMBuildingSelection() {
-    let select = document.getElementById('building_list');
-    return select.value;
-}
-  
 function cfmGetBuildingRoom(){
     let bl = document.getElementById('building_list');
     let rl = document.getElementById('room_list');
@@ -163,48 +150,6 @@ async function populateFileList(list) {
     }
 
     return html;
-}
-
-//   populateDropdown(list)
-// May want to pull directory for dropdown
-async function populateDropdown(list) {
-    //let obj = document.querySelector(className)
-    html = ``;
-    for(var i in list) {
-        html += `
-        <option value=${i}>
-            ${list[i]}
-        </option>
-    `;
-    }
-
-    return html;
-}
-  
-// updateRoomList()
-//    - when the building dropdown changes, this updates the room dropdown.
-async function updateRoomList() {
-    let rl = document.querySelector('.program_board .program_guts .rmSelect');
-    let rms = document.createElement("Fieldset");
-    rms.classList.add('rmSelect');
-  
-    let sel_building = await getCFMBuildingSelection();
-    let cfmDirList   = await getCFM_BuildDirs();
-    
-    let new_rl = await getCFM_BuildRooms(cfmDirList[sel_building]);
-  
-    let set_inner_html = `
-        <select id="room_list">
-            ${await populateDropdown(new_rl)}
-        </select>`;
-  
-    rms.innerHTML = `
-        <legend>
-            Rooms(s): 
-        </legend> 
-        ${set_inner_html}
-    `;
-    rl.replaceWith(rms);
 }
 
 
@@ -596,49 +541,6 @@ async function getCFMTree() {
     });
 }
 
-// getCFM_BuildDirs()
-//    "cfm_build"
-async function getCFM_BuildDirs() {
-    return await fetch('cfm_build', {
-        method: 'POST',
-        body: JSON.stringify({
-            message: 'cfm_build'
-        })
-    })
-    .then((response) => response.json())
-    .then((json) => {
-        return json.dir_names.sort();
-    });
-}
-
-// getCFM_BuildRooms(sel_building)
-//    "cfm_build_r"
-async function getCFM_BuildRooms(sel_building) {
-    return await fetch('cfm_build_r', {
-        method: 'POST',
-        body: JSON.stringify({
-            building: sel_building
-        })
-    })
-    .then((response) => response.json())
-    .then((json) => {return json.rooms;})
-}
-
-// getCFM_FileDirectory
-//    "cfm_cDir" Crestron File Manager Current Directory
-async function getCFM_FileDirectory(building, rm) {
-    console.log("Getting CFM File Directory for Building:", building, "Room:", rm);
-    return await fetch('cfm_c_dir', {
-        method: 'POST',
-        body: JSON.stringify({
-            building: building,
-            rm: rm
-        })
-    })
-    .then((response) => response.json())
-    .then((json) => {return json.names;});
-}
-
 // getCFM_File()
 //   "cfm_file"
 async function getCFM_File(filepath, displayName = null) {
@@ -662,18 +564,4 @@ async function getCFM_File(filepath, displayName = null) {
         // Log error but don't throw - file may still be downloading
         console.warn("Download completed (server error ignored):", error);
     });
-}
-
-// getCFM_Dir()
-//   "cfm_dir"
-//    TODO
-async function getCFM_Dir(dirname) {
-    return await fetch('cfm_dir', {
-        method: 'POST',
-        body: JSON.stringify({
-            filename: dirname
-        })
-    })
-    .then((response) => response.json())
-    .then((json) => {return json.names;});
 }

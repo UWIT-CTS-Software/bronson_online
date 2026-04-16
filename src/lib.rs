@@ -22,8 +22,6 @@ buildingData
 Building
 PingRequest
 jack_ping
-CFMRequest
-CFMRoomRequest
 CFMRequestFile
 GeneralRequest
 */
@@ -1530,17 +1528,6 @@ pub struct PingRequest {
 }
 
 // ----------- Custom structs for CFM Requests
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CFMRequest {
-	pub building: String,
-	pub rm: String
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CFMRoomRequest {
-	pub building: String
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CFMRequestFile {
 	pub filename: String
