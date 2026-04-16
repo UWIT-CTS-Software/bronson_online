@@ -208,6 +208,19 @@ async function updateRoomList() {
 }
 
 
+// Buttons for file browser (back, forward, home, etc...)
+function controlButton(button) {
+    if (button === "home")
+        initializeCFM();
+    else if (button === "collapsible") 
+        alert("Collapse Button Not Yet Implemented");
+    else if (button === "back")
+        alert("Back Button Not Yet Implemented");
+    else if (button === "forward")
+        alert("Forward Button Not Yet Implemented");
+}
+
+
 //      setCrestronFile()
 // Change the DOM for Crestron File Manager
 async function setCrestronFile() {
@@ -235,6 +248,15 @@ async function setCrestronFile() {
 
 
     // Page Content
+
+    let cfm_fileController = document.createElement('div');
+    cfm_fileController.classList.add("cfm_fileController");
+    cfm_fileController.innerHTML = `
+        <button class="cfm_fileControllerButtons" onclick="controlButton('back')"> < </button>
+        <button class="cfm_fileControllerButtons" onclick="controlButton('home')"> Home </button>
+        <button class="cfm_fileControllerButtons" onclick="controlButton('collapsible')"> Collapse All </button>
+        <button class="cfm_fileControllerButtons" onclick="controlButton('forward')"> > </button>
+    `;
 
     let cfm_filePathTracker = document.createElement('div');
     cfm_filePathTracker.classList.add("cfm_filePathTracker");
@@ -273,13 +295,11 @@ async function setCrestronFile() {
 
     let cfm_fileTreeInspector = document.createElement('div');
     cfm_fileTreeInspector.classList.add("cfm_fileTreeInspector");
-    cfm_fileTreeInspector.innerHTML = ``;
 
     let cfm_FileContainer = document.createElement('div');
     cfm_FileContainer.classList.add("cfm_FileContainer");
-    cfm_FileContainer.innerHTML = ``;
 
-
+    cfm_container.appendChild(cfm_fileController);
     cfm_container.appendChild(cfm_filePathTracker);
     cfm_container.appendChild(cfm_search);
     cfm_container.appendChild(cfm_fileTreeInspector);

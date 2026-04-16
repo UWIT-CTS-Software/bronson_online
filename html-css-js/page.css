@@ -1254,6 +1254,26 @@ progress::-webkit-progress-bar {
     gap: 3px;
 }
 
+.cfm_fileController {
+    background-color: rgb(65, 65, 60);
+    box-shadow: 5px 10px 10px;
+    grid-column: 2 / 3;
+    grid-row: 1;
+    float: left;
+    display: grid;
+    grid-auto-flow: column;
+    justify-content: center;
+    align-items: center;
+    height: auto;
+}
+
+.cfm_fileControllerButtons {
+    min-width: 30px;
+    width: auto;
+    height: 30px;
+    padding: 0px 6px;
+}
+
 .cfm_filePathTracker {
     background-color: rgb(65, 65, 60);
     box-shadow: 5px 10px 10px;
