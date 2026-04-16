@@ -2118,6 +2118,22 @@ pub struct Space {
 	pub space_id: i64
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename="r25:events")]
+struct Events {
+	#[serde(rename="@pudate")]
+	pubdate: Option<String>,
+	#[serde(rename="@engine")]
+	engine: Option<String>,
+	#[serde(rename="r25:event")]
+	events: Vec<Event>
+}
+
+#[derive(Debug, Deserialize)]
+struct Event {
+	
+}
+
 pub static BUFF_SIZE : usize = 4096;
 pub static BACKUP    : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/backup.json");
 pub static TSCH_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/techSchedule.json");
