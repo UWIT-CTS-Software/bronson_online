@@ -26,6 +26,16 @@ fetch
  - downloadFileFromPath(filePath)   - Download a file
  - getCFM_File(filepath)            - Fetch file from server
 */
+
+// CFM State Management - Global State Controller
+const cfmState = {
+    fullTree: null,
+    currentPath: [],
+    currentNavIndex: 0,
+    currentNode: null,
+    expandedFolders: new Set() // Track which folders are expanded in the tree
+};
+
   
 // cfmFiles()
 //// onclick for "generate files"
@@ -158,11 +168,63 @@ function controlButton(button) {
     if (button === "home")
         initializeCFM();
     else if (button === "collapsible") 
-        alert("Collapse Button Not Yet Implemented");
+        collapseAllFolders();
     else if (button === "back")
-        alert("Back Button Not Yet Implemented");
+        navigateFolderHistory(-1);
     else if (button === "forward")
-        alert("Forward Button Not Yet Implemented");
+        navigateFolderHistory(1);
+}
+
+// Collapse all folders in left inspector panel
+function collapseAllFolders() {
+    cfmState.expandedFolders.clear();
+    updateFileTreeDisplay();
+}
+
+let navStack = ["CamCode"]; // / CamCode / will always be root
+cfmState.currentNavIndex = 0; 
+function navigateFolderHistory(direction=0) {
+    if (direction === -1) { // traverse backwards in stack
+        if (cfmState.currentNavIndex <= 0) return; // at bottom, do nothing
+
+        cfmState.currentNavIndex--;
+
+        const path = navStack[cfmState.currentNavIndex];
+
+        // load previous path
+        cfmState.currentPath = Array.isArray(path) ? [...path] : [path];
+        cfmState.currentNode = getNodeAtPath(cfmState.fullTree, cfmState.currentPath);
+        updateFileContainer();
+        updatePathTracker();
+    }
+    else if (direction === 1) { // traverse forwards in stack
+        if (cfmState.currentNavIndex >= navStack.length - 1) return; // at top, do nothing
+
+        cfmState.currentNavIndex++;
+
+        const path = navStack[cfmState.currentNavIndex];
+
+        // load next path
+        cfmState.currentPath = Array.isArray(path) ? [...path] : [path];
+        cfmState.currentNode = getNodeAtPath(cfmState.fullTree, cfmState.currentPath);
+        updateFileContainer();
+        updatePathTracker();
+    }
+    else if (direction === 0) { // normal navigation
+        // Discard all "forward history"
+        navStack = navStack.slice(0, cfmState.currentNavIndex + 1);
+
+        // push new path
+        const newPath = [...cfmState.currentPath];
+        navStack.push(newPath);
+        cfmState.currentNavIndex = navStack.length - 1;
+    }
+
+    // Failsafe: Never let stack be empty
+    if (navStack.length === 0) {
+        navStack.push("CamCode"); 
+        cfmState.currentNavIndex = 0;
+    }
 }
 
 
@@ -298,7 +360,7 @@ function searchTree(search="") {
                     displayText = prefix + ".../" + (suffix.length > 40 ? "..." + suffix.substring(suffix.length - 20, suffix.length) : suffix);
                     if (prefix.length === 0) displayText = displayPath; 
                 }
-                html += `<p style="cursor: pointer;" onclick="selectFolderFromTree('${targetPath}')">${displayText}</p>`;
+                html += `<p style="cursor: pointer;" title="${displayPath}" onclick="selectFolderFromTree('${targetPath}')">${displayText}</p>`;
             }
         }
         container.innerHTML = html;
@@ -331,13 +393,6 @@ function searchTree(search="") {
 }
 
 
-// CFM State Management
-const cfmState = {
-    fullTree: null,
-    currentPath: [],
-    currentNode: null,
-    expandedFolders: new Set() // Track which folders are expanded in the tree
-};
 
 // Initialize CFM with tree data
 async function initializeCFM() {
@@ -431,6 +486,8 @@ function selectFolderFromTree(pathString) {
     cfmState.currentPath = pathArray;
     cfmState.currentNode = getNodeAtPath(cfmState.fullTree, pathArray);
     
+    navigateFolderHistory(0); // Record this navigation in the history stack
+    
     updateFileContainer();
     updatePathTracker();
 }
@@ -462,9 +519,9 @@ function updateFileContainer() {
     if (cfmState.currentNode.children && cfmState.currentNode.children.length > 0) {
         for (let child of cfmState.currentNode.children) {
             if (child.children) // It's a folder
-                html += `<p style="cursor: pointer;" onclick="selectFolderFromTree('${buildPathToChild(child)}')">📁${child.name}</p>`;
+                html += `<p style="cursor: pointer;" title="${child.name}" onclick="selectFolderFromTree('${buildPathToChild(child)}')">📁${child.name}</p>`;
             else // It's a file
-                html += `<p style="cursor: pointer;" onclick="downloadFileFromPath('${buildPathToChild(child)}')">📄${child.name}</p>`;
+                html += `<p style="cursor: pointer;" title="${child.name}" onclick="downloadFileFromPath('${buildPathToChild(child)}')">📄${child.name}</p>`;
         }
     } else {
         html += `<p>No items in this directory</p>`;
@@ -498,7 +555,7 @@ function updatePathTracker() {
     if (!tracker) return;
     
     // Build breadcrumb with clickable path components
-    let breadcrumb = `. / `;
+    let breadcrumb = ``;
     
     for (let i = 0; i < cfmState.currentPath.length; i++) {
         let pathUpToHere = cfmState.currentPath.slice(0, i + 1).join('/');
