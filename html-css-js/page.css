@@ -1411,6 +1411,39 @@ progress::-webkit-progress-bar {
     text-decoration: none;
 }
 
+.cfm_search_result {
+    cursor: pointer;
+}
+
+.cfm_path_tracker_strong {
+    float: left;
+    padding: 10px;
+}
+
+.cfm_path_tracker_span {
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.cfm_tree_folder_p {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    width: fit-content;
+}
+
+.cfm_tree_arrow_span {
+    margin-right: 5px;
+    min-width: 15px;
+}
+
+.cfm_tree_folder_name_span {
+    max-width: 210px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 ol li::marker {
     color: rgb(170, 170, 170);
     opacity: 40%;

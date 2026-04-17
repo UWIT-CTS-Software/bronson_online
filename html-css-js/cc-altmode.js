@@ -360,7 +360,7 @@ function searchTree(search="") {
                     displayText = prefix + ".../" + (suffix.length > 40 ? "..." + suffix.substring(suffix.length - 20, suffix.length) : suffix);
                     if (prefix.length === 0) displayText = displayPath; 
                 }
-                html += `<p style="cursor: pointer;" title="${displayPath}" onclick="selectFolderFromTree('${targetPath}')">${displayText}</p>`;
+                html += `<p class="cfm_search_result" title="${displayPath}" onclick="selectFolderFromTree('${targetPath}')">${displayText}</p>`;
             }
         }
         container.innerHTML = html;
@@ -429,16 +429,16 @@ function buildTreeHTML(node, depth) {
             let arrow = isExpanded ? '▼' : '▶';
             let hasChildren = child.children && child.children.some(c => c.children);
             
-            html += `<p style="margin-left: ${depth * 15 + 8}px; cursor: pointer; display: flex; align-items: center; width: fit-content;">`;
+            html += `<p class="cfm_tree_folder_p" style="margin-left: ${depth * 15 + 8}px;">`;
             
             // Arrow button (only show if has subfolders)
             if (hasChildren)
-                html += `<span onclick="event.stopPropagation(); toggleExpandFolder('${folderPath}')" style="margin-right: 5px; min-width: 15px;">${arrow}</span>`;
+                html += `<span class="cfm_tree_arrow_span" onclick="event.stopPropagation(); toggleExpandFolder('${folderPath}')">${arrow}</span>`;
             else 
-                html += `<span style="margin-right: 5px; min-width: 15px;"></span>`;
+                html += `<span class="cfm_tree_arrow_span"></span>`;
             
             // Folder icon and name
-            html += `<span onclick="selectFolderFromTree('${folderPath}')">${child.name}</span>`;
+            html += `<span class="cfm_tree_folder_name_span" title="${child.name}" onclick="selectFolderFromTree('${folderPath}')">${child.name}</span>`;
             html += `</p>`;
             
             // Show children only if expanded
@@ -519,9 +519,9 @@ function updateFileContainer() {
     if (cfmState.currentNode.children && cfmState.currentNode.children.length > 0) {
         for (let child of cfmState.currentNode.children) {
             if (child.children) // It's a folder
-                html += `<p style="cursor: pointer;" title="${child.name}" onclick="selectFolderFromTree('${buildPathToChild(child)}')">📁${child.name}</p>`;
+                html += `<p title="${child.name}" onclick="selectFolderFromTree('${buildPathToChild(child)}')">📁${child.name}</p>`;
             else // It's a file
-                html += `<p style="cursor: pointer;" title="${child.name}" onclick="downloadFileFromPath('${buildPathToChild(child)}')">📄${child.name}</p>`;
+                html += `<p title="${child.name}" onclick="downloadFileFromPath('${buildPathToChild(child)}')">📄${child.name}</p>`;
         }
     } else {
         html += `<p>No items in this directory</p>`;
@@ -560,7 +560,7 @@ function updatePathTracker() {
     for (let i = 0; i < cfmState.currentPath.length; i++) {
         let pathUpToHere = cfmState.currentPath.slice(0, i + 1).join('/');
         let folderName = cfmState.currentPath[i];
-        breadcrumb += `<span style="cursor: pointer; text-decoration: underline;" onclick="selectFolderFromTree('${pathUpToHere}')">${folderName}</span>`;
+        breadcrumb += `<span class="cfm_path_tracker_span" onclick="selectFolderFromTree('${pathUpToHere}')">${folderName}</span>`;
         
         if (i < cfmState.currentPath.length - 1)
             breadcrumb += ` / `;
@@ -569,7 +569,7 @@ function updatePathTracker() {
     breadcrumb += ` / `;
     
     tracker.innerHTML = `
-        <strong style="float: left; padding: 10px;">
+        <strong class="cfm_path_tracker_strong">
             ${breadcrumb}
         </strong>
     `;
