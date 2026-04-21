@@ -2618,28 +2618,18 @@ fn get_cfm_file(body: Vec<u8>) -> String {
     //
     let cfmr_f: CFMRequestFile = serde_json::from_str(&tmp)
         .expect("CamCode Err, Failed to grab file");
-    
-    if dir_exists(CFM_DIR) {
-        // Error handling that never got implemented?
-    }
 
-    // build_path
-    // Path within repo
-    let mut path_repo: String = String::from("/CFM_Code");
-    path_repo.push_str(&cfmr_f.filename);
+    // Strip virtual root if present
+    let filename = cfmr_f
+        .filename
+        .strip_prefix("CamCode/")
+        .unwrap_or(&cfmr_f.filename);
 
-    // Full Path
-    let mut path_raw: String = String::from(CFM_DIR);
+    let mut path_raw = String::from(CFM_DIR);
     path_raw.push('/');
-    path_raw.push_str(&cfmr_f.filename);
+    path_raw.push_str(filename);
 
-
-    // Check for file
-    if dir_exists(&path_raw) {
-        // Error handling?
-    }
-
-    return path_raw.to_string();
+    return path_raw;
 }
 
 
