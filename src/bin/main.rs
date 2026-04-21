@@ -25,20 +25,14 @@ CamCode
     - dir_exists(path: &str) -> bool
     - is_this_file(path: &str) -> bool
     - is_this_dir(path: &str) -> bool
-    - find_files(building: String, rm: String) -> Vec<String>
     - get_dir_contents(path: &str) -> Vec<String>
     - get_origin(req: Request) -> String
 -- Handlers -----------------------------
-    - cfm_build_dir() -> Vec<u8>
-    - cfm_build_rm(body: Vec<u8>) -> String
-    - get_cfm(body: Vec<u8>) -> String
     - get_cfm_file(body: Vec<u8>) -> String
-    - get_cfm_dir(body: Vec<u8>) -> String
 
 Tickex
     - fetch_tdx_token(database: &mut Database, req: &Client) -> Result<(), String>
     - run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
-    - 
 
 Wiki
     - w_build_articles() -> String
@@ -50,7 +44,7 @@ use server_lib::{
     BUFF_SIZE, 
     ThreadPool, ThreadSchedule, TaskSchedule, PingRequest, 
     Building, 
-    CFMRequest, CFMRoomRequest, CFMRequestFile, 
+    CFMRequestFile, CFMTreeNode,
     jp::{ ping_this, },
     CFM_DIR, WIKI_DIR, /* LOG, */
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
@@ -342,6 +336,10 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
             duration: 3600,
             timestamp: Utc::now() - Duration::from_secs(3580),
         });
+        ts.tasks.insert("cfmTree".to_string(), TaskSchedule {
+            duration: 86400,
+            timestamp: Utc::now() - Duration::from_secs(86370),
+        });
         ts.tasks.insert("tdxToken".to_string(), TaskSchedule {
             duration: 82800,
             timestamp: Utc::now() - Duration::from_secs(82799),
@@ -455,6 +453,13 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                         execute_ping(&mut database).await;
                     }
                     info!("[Data] - JackNet Complete");
+                },
+                "cfmTree"         => {
+                    info!("[Data] - Building CFM Tree");
+                    let _ = match cfm_build_tree(&mut database) {
+                        Ok(_)     =>  info!("[Data] - CFM Tree Build Complete"),
+                        Err(m)    => error!("[Data] - CFM Tree Build FAILED: {}", m)
+                    };
                 },
                 "tdxToken"        => {
                     info!("[Data] - Pulling New TDX Token");
@@ -1724,29 +1729,21 @@ async fn handle_connection(
         },
         // CamCode
         //  - CamCode - CFM Requests
-        "POST /cfm_build HTTP/1.1" => {
-            let contents = cfm_build_dir();
+        "POST /cfm_get_tree HTTP/1.1" => {
+            let contents = match database.get_data("cfm_tree") {
+                Ok(s)  => s.val,
+                Err(m) => {
+                    error!("DB_ERR: {}", m);
+                    return Response::new()
+                            .status(STATUS_500)
+                            .send_contents(format!("Failed to fetch CFM tree: \n{}", m).into())
+                            .build();
+                }
+            }.into();
+
             Response::new()
-                    .status(STATUS_200)
-                    .send_contents(contents)
-        },
-        "POST /cfm_build_r HTTP/1.1" => {
-            let contents = cfm_build_rm(req.body);
-            Response::new()
-                    .status(STATUS_200)
-                    .send_contents(contents)
-        },
-        "POST /cfm_c_dir HTTP/1.1" => {
-            let contents = get_cfm(req.body);
-            Response::new()
-                    .status(STATUS_200)
-                    .send_contents(contents)
-        },
-        "POST /cfm_dir HTTP/1.1" => {
-            let contents = get_cfm_dir(req.body);
-            Response::new()
-                    .status(STATUS_200)
-                    .send_contents(contents)
+                .status(STATUS_200)
+                .send_contents(contents)
         },
         "POST /cfm_file HTTP/1.1" => {
             let contents = get_cfm_file(req.body);
@@ -1767,7 +1764,9 @@ async fn handle_connection(
                 Err(e) => error!("Unable to read to end of file: {}", e)
             };
 
-            let filename = format!("attachment; filename={}", contents);
+            // Extract just the filename from the full path
+            let filename_only = contents.split('/').last().unwrap_or("file");
+            let filename = format!("attachment; filename={}", filename_only);
 
             Response::new()
                     .status(STATUS_200)
@@ -2506,26 +2505,8 @@ fn dir_exists(path: &str) -> bool {
     return metadata(path).is_ok();
 }
 
-fn is_this_file(path: &str) -> bool {
-    return metadata(path).unwrap().is_file();
-}
-
 fn is_this_dir(path: &str) -> bool {
     return metadata(path).unwrap().is_dir();
-}
-
-fn find_files(building: String, rm: String) -> Vec<String> {
-    let mut strings = Vec::new();
-    let mut path = String::from(CFM_DIR);
-    path.push_str("/");
-    path.push_str(&building);
-    path.push_str(&rm);
-
-    if dir_exists(&path) {
-        strings = get_dir_contents(&path);
-    }
-
-    return strings;
 }
 
 fn get_dir_contents(path: &str) -> Vec<String> {
@@ -2555,100 +2536,76 @@ fn get_dir_contents(path: &str) -> Vec<String> {
 \\ |/  \/\\ \\ \\  \\/  \\ \\,/   \\,  ,-_-  
   _/                
 */
-                                             
-//   cfm_build_dir() - post BUILDING dropdown
-fn cfm_build_dir() -> Vec<u8> {
-    // Vars
-    let mut final_dirs: Vec<String> = Vec::new();
-    // Check for CFM_Code Directory
-    if dir_exists(CFM_DIR) {
 
-    }
+// cfm_build_tree() - build virtual tree of files and directories and store in database as JSON
+fn cfm_build_tree(database: &mut Database) -> Result<(), String> {
+    let mut tree_root: CFMTreeNode = CFMTreeNode::with_name_path("CamCode", CFM_DIR);
+
     let cfm_dirs = get_dir_contents(CFM_DIR);
-    // iterate over cfm_dirs and snip ../CFM_Code/
-    // DO NOT INCLUDE DIRS w/ '_'
-    let cut_index = CFM_DIR.len();
-    for (_, &ref item) in cfm_dirs.iter().enumerate() {
-        if (&item[(cut_index + 1)..]).to_string().starts_with('_') {
-            continue; // ignore directories starting with '_'
-        } else if (&item[(cut_index + 1)..]).to_string().starts_with('.') {
-            continue; // ignore directories starting with '.'
-        } else if is_this_file(&item) {
-            continue; // ignore files
+    for item in cfm_dirs.iter() {
+        // Ignore files with '_' and '.' prefix & other specific files
+        // Skip hidden/system files
+        if let Some(file_name) = Path::new(item).file_name().and_then(|s| s.to_str()) {
+            if file_name.starts_with('_') || file_name.starts_with('.') || 
+               file_name.ends_with(".xlsx") || file_name.starts_with("README") ||
+               file_name.ends_with(".txt") {
+                continue;
+            }
         }
-        else {
-            final_dirs.push((&item[(cut_index + 1)..]).to_string());
-        }
-    };
-    // return file
-    let json_return = json!({
-        "dir_names": final_dirs
-    });
-
-    return json_return.to_string().into();
-}
-
-// cfm_build_rm() - post ROOM dropdown
-fn cfm_build_rm(body: Vec<u8>) -> Vec<u8> {
-    let mut final_dirs: Vec<String> = Vec::new();
-
-    // Check for CFM_Code Directory
-    if dir_exists(CFM_DIR) {
+        tree_root.push(build_cfm_subtree(item));
     }
 
-    // Prep buffer into Room List Request Struct
-    //     - building
-    let tmp = String::from_utf8(body).expect("CamCode Err, invalid UTF-8");
-    let cfm_rms: CFMRoomRequest = serde_json::from_str(&tmp)
-        .expect("Failed to build CamCode Room Request Struct");
+    let json_return = json!({
+        "tree": tree_root
+    });
 
-    // Build Directory
-    let mut path = String::from(CFM_DIR);
-    path.push('/');
-    path.push_str(&cfm_rms.building);
+    match database.update_data(&DB_DataElement {
+        key: String::from("cfm_tree"),
+        val: json_return.to_string(),
+    }) {
+        Ok(_) => {}
+        Err(e) => return Err(format!("Failed to update database: {}", e)),
+    }
 
-    let cfm_room_dirs = get_dir_contents(&path);
-    let cut_index = CFM_DIR.len() + cfm_rms.building.len();
-    for (_, &ref item) in cfm_room_dirs.iter().enumerate() {
-        if (&item[(cut_index + 2)..]).to_string().starts_with('_') {
-            continue; // ignore folders starting with '_'
-        } else if is_this_file(&item) {
-            continue; // ignore files
-        }
-        else {
-            final_dirs.push((&item[(cut_index + 1)..]).to_string());
+    Ok(())
+}
+fn build_cfm_subtree(path: &str) -> CFMTreeNode {
+    use std::path::Path;
+
+    let name = Path::new(path)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_string();
+
+    let mut node = if is_this_dir(path) {
+        // Folder: children starts as empty vec
+        CFMTreeNode::with_name_path(name, path.to_string())
+    } else {
+        // File / leaf: children = None
+        CFMTreeNode {
+            name,
+            file_path: path.to_string(),
+            children: None,
         }
     };
 
-    // return file
-    let json_return = json!({
-        "rooms": final_dirs
-    });
-
-    return json_return.to_string().into();
-}
-
-// get_cfm - generate code (Sends list of files to user)
-fn get_cfm(body: Vec<u8>) -> Vec<u8> {
-    // crestron file manager request (CFMR)
-    //   - building
-    //   - rm
-    let tmp = String::from_utf8(body).expect("CamCode Err, invalid UTF-8");
-    let cfmr: CFMRequest = serde_json::from_str(&tmp)
-        .expect("Failed to build cfm request");
-    // Check CFM_Code Directory
-    if dir_exists(CFM_DIR) {
-
+    if is_this_dir(path) {
+        let path_contents = get_dir_contents(path);
+        for entry in path_contents.iter() {
+            // Skip hidden/system files
+            if let Some(file_name) = Path::new(entry).file_name().and_then(|s| s.to_str()) {
+                if file_name.starts_with('_') || file_name.starts_with('.') || 
+                   file_name.ends_with(".xlsx") || file_name.starts_with("README") ||
+                   file_name.ends_with(".txt") {
+                    continue;
+                }
+            }
+            node.push(build_cfm_subtree(entry));
+        }
     }
-    
-    let cfm_files = find_files(cfmr.building, cfmr.rm);
 
-    // return file
-    let json_return = json!({
-        "names": cfm_files
-    });
-
-    return json_return.to_string().into();
+    node
 }
 
 
@@ -2661,67 +2618,20 @@ fn get_cfm_file(body: Vec<u8>) -> String {
     //
     let cfmr_f: CFMRequestFile = serde_json::from_str(&tmp)
         .expect("CamCode Err, Failed to grab file");
-    
-    if dir_exists(CFM_DIR) {
-        // Error handling that never got implemented?
-    }
 
-    // build_path
-    // Path within repo
-    let mut path_repo: String = String::from("/CFM_Code");
-    path_repo.push_str(&cfmr_f.filename);
+    // Strip virtual root if present
+    let filename = cfmr_f
+        .filename
+        .strip_prefix("CamCode/")
+        .unwrap_or(&cfmr_f.filename);
 
-    // Full Path
-    let mut path_raw: String = String::from(CFM_DIR);
-    path_raw.push_str(&cfmr_f.filename);
+    let mut path_raw = String::from(CFM_DIR);
+    path_raw.push('/');
+    path_raw.push_str(filename);
 
-
-    // Check for file
-    if dir_exists(&path_raw) {
-        // Error handling?
-    }
-
-    return path_raw.to_string();
+    return path_raw;
 }
 
-// get_cfm_dir() - sends the selected file to the client
-// TODO:
-//    [ ] - store selected file as bytes ?
-//    [ ] - send in json as usual ?
-fn get_cfm_dir(body: Vec<u8>) -> Vec<u8> {
-    // RequstFile
-    //    - filename
-    let mut strings = Vec::new();
-    //
-    let tmp = String::from_utf8(body).expect("CamCode Err, invalid UTF-8");
-    //
-    let cfmr_d: CFMRequestFile = serde_json::from_str(&tmp)
-        .expect("CamCode Err, Failed to get dir struct");
-
-    if dir_exists(CFM_DIR) {
-        // Error handling
-    }
-
-    let mut path = String::from(CFM_DIR);
-    path.push_str(&cfmr_d.filename);
-    
-    if dir_exists(&path) {
-        if is_this_dir(&path) {
-            strings = get_dir_contents(&path);
-        } else {
-            strings.push("FAILED, directory is a file".to_string());
-            let json_return = json!({"names": strings});
-            return json_return.to_string().into();
-        }
-    }
-
-    // return file
-    let json_return = json!({
-        "names": strings
-    });
-
-    return json_return.to_string().into();
-}
 
 /*
 $$$$$$$$\ $$\           $$\                           
