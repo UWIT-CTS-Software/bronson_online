@@ -1404,6 +1404,9 @@ ol li::marker {
     height: 100px;
 }
 
+.tx_strong {
+    font-size: 12pt;
+}
 
 .tx_newTicketsPopupActive {
     max-width: 85%;

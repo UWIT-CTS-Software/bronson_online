@@ -304,7 +304,7 @@ async function show(ticket) {
                 repliesRows += `
                 <div class="tx_reply">
                     <p class="tx_reply_person">
-                        <strong>${c.created_by[i]}, ${c.created_date[i]}</strong>
+                        <strong class="tx_strong">${c.created_by[i]}, ${c.created_date[i]}</strong>
                     </p>
                     <p class="tx_reply_body">${reply}</p>
                 </div>
@@ -313,7 +313,7 @@ async function show(ticket) {
 
             let repliesHTML = `
                 <p class="tx_reply_header">
-                    <strong>Replies:</strong>
+                    <strong class="tx_strong">Replies:</strong>
                     ${repliesRows}
                 </p>
             `;
@@ -321,7 +321,7 @@ async function show(ticket) {
             builtComments += `
                 <div class="tx_comment">
                     <p class="tx_comment_header">
-                        <strong>${c.commenter}</strong> - ${formattedDate}
+                        <strong class="tx_strong">${c.commenter}</strong> - ${formattedDate}
                     </p>
                     <p class="tx_comment_body">${commentBody}</p>
                     <div class="tx_replies">${c.replies_count ? repliesHTML : "" }</div>
@@ -335,7 +335,7 @@ async function show(ticket) {
                 <div class="tx_comment">
                     <br>
                         <p class="tx_comment_header">
-                            <strong>No Comments Exist for this Ticket</strong>
+                            <strong class="tx_strong">No Comments Exist for this Ticket</strong>
                         </p>
                     <br>
                 </div>
