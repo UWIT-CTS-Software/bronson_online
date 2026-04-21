@@ -22,8 +22,6 @@ buildingData
 Building
 PingRequest
 jack_ping
-CFMRequest
-CFMRoomRequest
 CFMRequestFile
 GeneralRequest
 */
@@ -1531,19 +1529,43 @@ pub struct PingRequest {
 
 // ----------- Custom structs for CFM Requests
 #[derive(Serialize, Deserialize, Debug)]
-pub struct CFMRequest {
-	pub building: String,
-	pub rm: String
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CFMRoomRequest {
-	pub building: String
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub struct CFMRequestFile {
 	pub filename: String
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CFMTreeNode {
+    pub name: String,
+    pub file_path: String,
+    pub children: Option<Vec<CFMTreeNode>>, // can be null (None)
+}
+
+impl CFMTreeNode {
+    pub fn new() -> Self {
+        Self {
+            name: String::new(),
+            file_path: String::new(),
+            children: Some(Vec::new()),
+        }
+    }
+
+    pub fn with_name_path(node_name: impl Into<String>, file_path: impl Into<String>) -> Self {
+        Self {
+            name: node_name.into(),
+            file_path: file_path.into(),
+            children: Some(Vec::new()),
+        }
+    }
+
+    pub fn push(&mut self, child: CFMTreeNode) {
+        match &mut self.children {
+            Some(children) => children.push(child),
+            None => {
+                // If children is None, we can convert it to Some(vec) and push
+                self.children = Some(vec![child]);
+            }
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -43,6 +43,9 @@ TOC:
     - rawTimeFormat(rawTime)
     - dashSpares()
     - isMobile()
+  Auto Scroller
+    - toggleAutoScroll()
+    - executeScrollable()
 
 This file is set to host functions that are called throughout bronson suite
  that utilize or update session storage for a user.
@@ -1013,6 +1016,15 @@ function isMobile() {
         const terminalButton = document.getElementById("admin_terminalButton");
         if (terminalButton) terminalButton.remove();
 
+        const adminHBFieldset = document.getElementById("admin_hb_fieldset");
+        if (adminHBFieldset) adminHBFieldset.remove();
+
+        const fullScreenButton = document.getElementById("full_screen_button");
+        if (fullScreenButton) fullScreenButton.remove();
+
+        const autoScrollButton = document.getElementById("auto_scroll_button");
+        if (autoScrollButton) autoScrollButton.remove();
+
         // Scale page elements to be larger (done here and where html is dynamically written as well)
         const programHeader = document.getElementById("bronson_header");
         if (programHeader) programHeader.classList.add("mobile");
@@ -1046,6 +1058,163 @@ function isMobile() {
         // console.log("Desktop User Detected");
         return false;
     }
+}
+
+/*
+
+ ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓████████▓▒░▒▓██████▓▒
+░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░  ░▒▓█▓▒░░▒▓█▓▒
+░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░  ░▒▓█▓▒░░▒▓█▓▒
+░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░  ░▒▓█▓▒░░▒▓█▓▒
+░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░  ░▒▓█▓▒░░▒▓█▓▒
+░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░  ░▒▓█▓▒░░▒▓█▓▒
+░▒▓█▓▒░░▒▓█▓▒░░▒▓██████▓▒░   ░▒▓█▓▒░   ░▒▓██████▓▒
+
+                                                                                                                             
+     ░▒▓███████▓▒░░▒▓██████▓▒░░▒▓███████▓▒   ▒▓██████▓▒ ░▒▓█▓▒░      ░▒▓█▓▒░        
+    ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░        
+    ░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░        
+     ░▒▓██████▓▒░░▒▓█▓▒░      ░▒▓███████▓▒░ ▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░        
+           ░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░        
+           ░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░        
+    ░▒▓███████▓▒░ ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░ ▒▓██████▓▒ ░▒▓████████▓▒░▒▓████████▓▒░ 
+                                                                                
+    An automated scoller that will go through Bronson's major tools
+*/
+
+// Toggle Bronson's auto scoller feature
+function toggleAutoScroll() {
+    const SCROLL_TIME = 60; // in seconds
+
+    const scrollOrder = [
+        "DB", "DB_30Days", "DB_90Days", "DB_Spares", 
+        "CB_1", "CB_2", "CB_3", "CB_4", "TX"
+    ];
+
+    const autoScrollButton = document.getElementById("auto_scroll_button");
+    const terminal = document.getElementById("terminal");
+
+    // Prevent orphaned interval by clearing any existing handle
+    if (toggleAutoScroll.intervalId != null) {
+        clearInterval(toggleAutoScroll.intervalId);
+        toggleAutoScroll.intervalId = null;
+    }
+
+    // Turn Off Auto Scroll
+    let scrollIndex = 0;
+    if (autoScrollButton.textContent === "Auto Scroll: On") {
+        autoScrollButton.textContent = "Auto Scroll: Off";
+        console.log(autoScrollButton.textContent);
+
+        // Stop the loop
+        scrollIndex = 0;
+        if (toggleAutoScroll.intervalId != null) {
+            clearInterval(toggleAutoScroll.intervalId);
+            toggleAutoScroll.intervalId = null;
+        }
+
+        // Show Terminal if it was hidden by auto scroll
+        if (terminal && terminal.classList.contains("hidden_by_auto_scroll")) {
+            terminal.style.display = "block";
+            terminal.classList.remove("hidden_by_auto_scroll");
+        }
+    } 
+    // Turn On Auto Scroll
+    else {
+        autoScrollButton.textContent = "Auto Scroll: On";
+        console.log(autoScrollButton.textContent + " | Scroll rate set to " + SCROLL_TIME + " seconds");
+
+        // Hide Terminal if it is open, and add a flag to show that it was hidden by auto scroll
+        if (terminal && terminal.style.display !== "none" && !terminal.classList.contains("hidden_by_auto_scroll")) {
+            terminal.style.display = "none";
+            terminal.classList.add("hidden_by_auto_scroll");
+        }
+
+        // The scroll loop
+        nextScrollable(); // Do the first one instantly (no delay when clicked)
+        toggleAutoScroll.intervalId = setInterval(() => nextScrollable(), SCROLL_TIME * 1000);
+        
+        async function nextScrollable() { // Local function 
+            if (autoScrollButton.textContent === "Auto Scroll: Off") {
+                scrollIndex = 0;
+                clearInterval(toggleAutoScroll.intervalId);
+                toggleAutoScroll.intervalId = null;
+                return;
+            }
+
+            if (scrollIndex >= scrollOrder.length) scrollIndex = 0;
+            await executeScrollable(scrollOrder[scrollIndex]);
+            scrollIndex++;
+        }
+    }
+}
+
+async function executeScrollable(param) {
+    const setZone = async (zoneNum) => {
+        await setChecker();
+
+        const zoneInputs = document.querySelectorAll('input[name="cb_dev"]');
+        zoneInputs.forEach((el) => {
+            el.checked = (el.id === String(zoneNum));
+        });
+
+        // Enable the run button in case it is disabled
+        const runButton = document.getElementById('cb_run');
+        if (runButton) runButton.disabled = false;
+
+        await run();
+    };
+
+    // console.log("Auto Scroll: Running " + param);
+    switch (param) {
+        case "DB":
+            await setDashboard(); // Resets to top of page
+            break;
+        case "DB_7Days":
+            setLeader('7days');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            break;
+        case "DB_30Days":
+            setLeader('30days');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            break;
+        case "DB_90Days":
+            setLeader('90days');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            break;
+        case "DB_Spares":
+            const sparesElement = document.getElementById("db_spare");
+            if (sparesElement) sparesElement.scrollIntoView({ behavior: 'smooth' });
+            break;
+        case "CB_1":
+            await setZone(1); // Resets to top of page
+            break;
+        case "CB_2":
+            await setZone(2); // Resets to top of page
+            break;
+        case "CB_3":
+            await setZone(3); // Resets to top of page
+            break;
+        case "CB_4":
+            await setZone(4); // Resets to top of page
+            break;
+        case "TX":
+            await setTickex(); // Resets to top of page
+            break;
+        default:
+            console.warn("Auto Scroll: executeScrollable(): unknown param: ", param);
+            break;
+    }
+}
+
+
+
+// Fullscreen button
+function toggleFullScreen() {
+    if (!document.fullscreenElement)
+        document.documentElement.requestFullscreen();
+    else 
+        if (document.exitFullscreen) document.exitFullscreen();
 }
 
 // TODO: Temporary Pop-up Notification

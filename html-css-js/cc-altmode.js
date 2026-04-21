@@ -1,35 +1,41 @@
-/*       _                                                
-        | |                            |           o      
-  __,   | |  _|_   _  _  _     __    __|    _          ,  
- /  |   |/    |   / |/ |/ |   /  \_ /  |   |/      |  / \_
- \_/|_/ |__/  |_/   |  |  |_/ \__/  \_/|_/ |__/ o  |/  \/ 
-                                                  /|      
-                                                  \|      
+/*                   _                                                
+                    | |                            |           o      
+  __ __  ___  __,   | |  _|_   _  _  _     __    __|    _          ,  
+ /  /   /__/ /  |   |/    |   / |/ |/ |   /  \_ /  |   |/      |  / \_
+ \__\__      \_/|_/ |__/  |_/   |  |  |_/ \__/  \_/|_/ |__/ o  |/  \/ 
+                                                              /|      
+                                                              \|      
 
-    Crestron File Manger (CFM)
+    Crestron File Manager (CFM)
 
-Originally in camcode.js, accesses a database on the server for crestron room files and allows the user to retreive any they may need.
- 
- - cfmFiles()
- - getCFMF(filename, classtype)
- - downloadFile(s, fn)
+Originally in camcode.js, accesses a database on the server for crestron 
+room files and allows the user to retreive any they may need.
+
+ - setCrestronFile()          - Initialize the CFM interface
+ - initializeCFM()            - Initialize with tree data
+ - searchTree(search)         - Search and filter files by keyword
 
 HMTL-CFM
- - getCFMBuildingSelection()   -- notsure if this should ever be used
- - cfmGetBuildingRoom()
- - setFileBrowser(header, files)
- - populateFileList(list)
- - populateDropdown(list)
- - updateRoomList()
- - setCrestronFile()
+ - selectFolderFromTree(pathString) - Navigate to a folder
+ - updateFileTreeDisplay()          - Update folder tree panel
+ - updateFileContainer()            - Update file list panel
+ - updatePathTracker()              - Update breadcrumb path
+ - controlButton(button)            - Handle navigation buttons
 
 fetch
- - getCFM_BuildDirs()                    - flag: "cfm_build"
- - getCFM_BuildRooms(sel_building)       - flag: "cfm_build_r"
- - getCFM_FileDirectory(building,rm)     - flag: "cfm_c_dir"
- - getCFM_File(filename)                 - flag: "cfm_file"
- - getCFM_Dir()                          - flag: "cfm_dir"
+ - downloadFileFromPath(filePath)   - Download a file
+ - getCFM_File(filepath)            - Fetch file from server
 */
+
+// CFM State Management - Global State Controller
+const cfmState = {
+    fullTree: null,
+    currentPath: [],
+    currentNavIndex: 0,
+    currentNode: null,
+    expandedFolders: new Set() // Track which folders are expanded in the tree
+};
+
   
 // cfmFiles()
 //// onclick for "generate files"
@@ -49,24 +55,19 @@ async function cfmFiles() {
     }
   
     setFileBrowser(header, files);
-
-    return;
 }
 
 // This is a onclick function tied to entries in "File Selection"
 async function getCFMF(filename, classtype) {
     let brs = cfmGetBuildingRoom();
+
     // Get the header value instead
     let current_header = getCurrentHeader();
-    // current_header = current_header + '/';
 
     let cmff = `${current_header}/${filename}`;
 
     // User Selects a Directory
     if (classtype == "cfm_dir") {
-        //updateConsole("ERRORSelected Directory");
-        // It would be sweet to go into room sub-directories
-        // do that
         let files = await getCFM_Dir(cmff);
         //update filebrowser
 
@@ -80,12 +81,10 @@ async function getCFMF(filename, classtype) {
     }
     
     await getCFM_File(cmff);
-
-    return;
 }
 
+// Simulated click for downloading file
 function downloadFile(s, fn) {
-    //const blob = new Blob(s, { });
     const url = URL.createObjectURL(s);
     const a = document.createElement('a');
     
@@ -93,8 +92,6 @@ function downloadFile(s, fn) {
 
     a.download = fn;
     a.click();
-
-    return;
 }
   
 /*
@@ -108,14 +105,9 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 \__|  \__|   \__|   \__|     \__|\________|
 */
 
-async function getCFMBuildingSelection() {
-    let select = document.getElementById('building_list');
-    return select.value;
-}
-  
 function cfmGetBuildingRoom(){
     let bl = document.getElementById('building_list');
-    let rl = document.getElementById('room_list');;
+    let rl = document.getElementById('room_list');
   
     let building = bl.options[bl.selectedIndex].text;
     let room     = rl.options[rl.selectedIndex].text;
@@ -143,10 +135,9 @@ async function setFileBrowser(header, files) {
             <ol class='cfm_list'>
                 ${await populateFileList(files)}
             </ol>
-        </body>`;
+        </body>
+    `;
     fs.replaceWith(new_fs);
-
-    return;
 }
 
 // Need to figure out a mechanism to differntiate file types
@@ -154,63 +145,88 @@ async function populateFileList(list) {
     html = ``;
     let classtype  = "";
     for(var i in list) {
-        if(list[i].includes(".zip")) {
+        if(list[i].includes(".zip")) 
             classtype = "cfm_zip";
-        } else if (list[i].includes(".")) {
+        else if (list[i].includes(".")) 
             classtype = "cfm_file";
-        } else {
+        else 
             classtype = "cfm_dir";
-        }
+        
         html += `
             <li class=${classtype} onclick=\"getCFMF(\'${list[i]}\', \'${classtype}\')\">
                 ${list[i]}
-            </li>`; 
+            </li>
+        `; 
     }
 
     return html;
 }
 
-//   populateDropdown(list)
-// May want to pull directory for dropdown
-async function populateDropdown(list) {
-    //let obj = document.querySelector(className)
-    html = ``;
-    for(var i in list) {
-        html += `
-        <option value=${i}>
-            ${list[i]}
-        </option>`;
+
+// Buttons for file browser (back, forward, home, etc...)
+function controlButton(button) {
+    if (button === "home")
+        initializeCFM();
+    else if (button === "collapsible") 
+        collapseAllFolders();
+    else if (button === "back")
+        navigateFolderHistory(-1);
+    else if (button === "forward")
+        navigateFolderHistory(1);
+}
+
+// Collapse all folders in left inspector panel
+function collapseAllFolders() {
+    cfmState.expandedFolders.clear();
+    updateFileTreeDisplay();
+}
+
+let navStack = ["CamCode"]; // / CamCode / will always be root
+cfmState.currentNavIndex = 0; 
+function navigateFolderHistory(direction=0) {
+    if (direction === -1) { // traverse backwards in stack
+        if (cfmState.currentNavIndex <= 0) return; // at bottom, do nothing
+
+        cfmState.currentNavIndex--;
+
+        const path = navStack[cfmState.currentNavIndex];
+
+        // load previous path
+        cfmState.currentPath = Array.isArray(path) ? [...path] : [path];
+        cfmState.currentNode = getNodeAtPath(cfmState.fullTree, cfmState.currentPath);
+        updateFileContainer();
+        updatePathTracker();
+    }
+    else if (direction === 1) { // traverse forwards in stack
+        if (cfmState.currentNavIndex >= navStack.length - 1) return; // at top, do nothing
+
+        cfmState.currentNavIndex++;
+
+        const path = navStack[cfmState.currentNavIndex];
+
+        // load next path
+        cfmState.currentPath = Array.isArray(path) ? [...path] : [path];
+        cfmState.currentNode = getNodeAtPath(cfmState.fullTree, cfmState.currentPath);
+        updateFileContainer();
+        updatePathTracker();
+    }
+    else if (direction === 0) { // normal navigation
+        // Discard all "forward history"
+        navStack = navStack.slice(0, cfmState.currentNavIndex + 1);
+
+        // push new path
+        const newPath = [...cfmState.currentPath];
+        navStack.push(newPath);
+        cfmState.currentNavIndex = navStack.length - 1;
     }
 
-    return html;
+    // Failsafe: Never let stack be empty
+    if (navStack.length === 0) {
+        navStack.push("CamCode"); 
+        cfmState.currentNavIndex = 0;
+    }
 }
-  
-// updateRoomList()
-//    - when the building dropdown changes, this updates the room dropdown.
-async function updateRoomList() {
-    let rl = document.querySelector('.program_board .program_guts .rmSelect');
-    let rms = document.createElement("Fieldset");
-    rms.classList.add('rmSelect');
-  
-    let sel_building = await getCFMBuildingSelection();
-    let cfmDirList   = await getCFM_BuildDirs();
-    
-    let new_rl = await getCFM_BuildRooms(cfmDirList[sel_building]);
-  
-    let set_inner_html = `
-        <select id="room_list">
-            ${await populateDropdown(new_rl)}
-        </select>`;
-  
-    rms.innerHTML = `
-        <legend>
-            Rooms(s): 
-        </legend> 
-        ${set_inner_html}`;
-    rl.replaceWith(rms);
 
-    return;
-}
 
 //      setCrestronFile()
 // Change the DOM for Crestron File Manager
@@ -218,110 +234,345 @@ async function setCrestronFile() {
     preserveCurrentTool();
     
     document.title = "CamCode - Bronson";
-    // remove currently active status mark tab has active.
-    // let active_tab_header = document.querySelector('.active_tab_header');
-    // active_tab_header.innerHTML = 'CamCode';
+
     let current = document.getElementsByClassName("selected");
-    if (current.length != 0) {
-        // current[0].classList.remove("active");
+    if (current.length != 0) 
         current[0].classList.remove("selected");
-    }
+
     let newCurrent = document.getElementById("CCButton");
-    // newCurrent.classList.add("active");
     newCurrent.classList.add("selected");
 
     history.pushState("test", "CamCode", "/cc-altmode");
 
+
   
-    // Pull List of Directories
-    let cfmDirList = await getCFM_BuildDirs();
-  
+    /* --------------------- CC-AltMode (CamCode) --------------------- */
+
     let progGuts = document.querySelector('.program_board .program_guts');
 
     let cfm_container = document.createElement('div');
     cfm_container.classList.add('cfm_container');
-  
-    // START cfm_paramContainer
-    let cfm_ParamContainer = document.createElement('div');
-    cfm_ParamContainer.classList.add("cfm_ParamContainer");
 
-    // BUILDING Directory Dropdown
-    let buildingSelect = document.createElement("fieldset");
-    buildingSelect.classList.add("bdSelect");
-    let set_inner_html = `
-        <select id="building_list" onchange="updateRoomList()">
-            ${await populateDropdown(cfmDirList)}
-        </select>`;
-    buildingSelect.innerHTML = `
-        <legend>
-            Building(s):
-        </legend> 
-        ${set_inner_html}`;
-  
-    // ROOM Directory Dropdown
-    let roomSelect = document.createElement("fieldset");
-    roomSelect.classList.add('rmSelect');
-    let rl = await getCFM_BuildRooms(cfmDirList[0]);
-    set_inner_html = `
-        <select id="room_list">
-            ${await populateDropdown(rl)}
-        </select>`;
-    roomSelect.innerHTML = `
-        <legend>
-            Room(s): 
-        </legend> 
-        ${set_inner_html}`;
 
-    // option buttons
-    // [ Generate Files ] [ Clear Console ] [ Reset ]
-    let optionMenu = document.createElement("fieldset");
-    optionMenu.classList.add('cfm_optionMenu');
-    optionMenu.innerHTML = `
-        <legend>
-            Options: </legend>
-        <button id="run" onclick="cfmFiles()" class='headButton'> 
-            Generate Files </button>
-        <button id="reset" onclick="setCrestronFile()" class='headButton'> 
-            Reset </button>`;
+    // Page Content
 
-    // End cfm_paramContainer
-    cfm_ParamContainer.appendChild(buildingSelect);
-    cfm_ParamContainer.appendChild(roomSelect);
-    cfm_ParamContainer.appendChild(optionMenu);
+    let cfm_fileController = document.createElement('div');
+    cfm_fileController.classList.add("cfm_fileController");
+    cfm_fileController.innerHTML = `
+        <button class="cfm_fileControllerButtons" onclick="controlButton('back')"> < </button>
+        <button class="cfm_fileControllerButtons" onclick="controlButton('home')"> Home </button>
+        <button class="cfm_fileControllerButtons" onclick="controlButton('collapsible')"> Collapse All </button>
+        <button class="cfm_fileControllerButtons" onclick="controlButton('forward')"> > </button>
+    `;
 
-    // Start cfm_FileContainer
+    let cfm_filePathTracker = document.createElement('div');
+    cfm_filePathTracker.classList.add("cfm_filePathTracker");
+
+    let cfm_search = document.createElement('div');
+    cfm_search.classList.add("cfm_search");
+    cfm_search.innerHTML = `
+        <textarea class="cfm_searchBar searchButton" id="search_input" placeholder="Search keywords..."></textarea>
+        <button class="cfm_searchButtons" onclick="searchTree(document.getElementById('search_input').value)">
+            Search</button>
+        <button class="cfm_searchButtons clearButton" onclick="initializeCFM()">
+            Clear</button>
+    `;
+
+    setTimeout(() => { // Wait for DOM to load
+        document.getElementById("search_input").focus(); // Have text area selected upon loading CamCode
+    }, 10);
+
+    // Pressing enter/escape for search bar
+    cfm_search.addEventListener('keydown', function(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            cfm_search.blur();
+            document.getElementById("search_input").focus(); // keep text area select
+
+            const search = (document.getElementById("search_input").value || '');
+            searchTree(search);
+        
+            setTimeout(() => { // Wait for search
+                document.getElementById("search_input").focus(); // Have text area selected upon loading CamCode
+            }, 10);
+        }
+
+        if (e.key == 'Escape') initializeCFM(); // clear search and return to home page
+    });
+
+    let cfm_fileTreeInspector = document.createElement('div');
+    cfm_fileTreeInspector.classList.add("cfm_fileTreeInspector");
+
     let cfm_FileContainer = document.createElement('div');
     cfm_FileContainer.classList.add("cfm_FileContainer");
 
-    // File Selection Area
-    let fileSelection = document.createElement("fieldset");
-    fileSelection.classList.add('cfm_fileSelection');
-    fileSelection.innerHTML = `
-        <legend>
-            File Selection
-        </legend>
-        <p class='cfm_text'>
-            Please Select Room and Generate Files
-        </p>`;
-
-    cfm_FileContainer.appendChild(fileSelection);
-    
-    cfm_container.appendChild(cfm_ParamContainer);
+    cfm_container.appendChild(cfm_fileController);
+    cfm_container.appendChild(cfm_filePathTracker);
+    cfm_container.appendChild(cfm_search);
+    cfm_container.appendChild(cfm_fileTreeInspector);
     cfm_container.appendChild(cfm_FileContainer);
+
 
     // main_container
     let main_container = document.createElement('div');
     // main_container.innerHTML = `
     //     <button id="cam_code" onclick="setCamCode()">
     //         CamCode (Q-SYS) </button>
-    //     <p>\n</p>`;
+    //     <p>\n</p>
+    // `;
 
     main_container.appendChild(cfm_container);
     main_container.classList.add('program_guts');
     
     progGuts.replaceWith(main_container);
+    
+    // Initialize the CFM interface with tree data
+    initializeCFM();
+}
 
-    return;
+
+// Search tree for file and print path to console
+function searchTree(search="") {
+    getCFMTree().then((tree) => {
+        if (search === "") {
+            initializeCFM();
+            return;
+        }
+
+        // Grab File Container and display search results
+        const container = document.querySelector('.cfm_FileContainer');
+        if (!container) return;
+
+        const searchResults = searchTreeHelper(tree, search);
+
+        let html = `<strong>Search Results for "${search.trim()}":</strong><br>`;
+        if (searchResults.length === 0) {
+            html += `<p>No matches found.</p>`;
+        } else {
+            for (let result of searchResults) {
+                let fullPath = result.path;
+                let displayPath = fullPath.startsWith('/CamCode/') ? fullPath.slice(9) : fullPath;
+                let targetPath = result.isFolder ? fullPath.slice(1) : fullPath.slice(1, fullPath.lastIndexOf('/'));
+                let displayText = displayPath;
+                if (displayPath.length > 30) {
+                    let prefix = displayPath.substring(0, displayPath.indexOf("/", displayPath.indexOf("/") + 1) + 1);
+                    let suffix = displayPath.substring(displayPath.lastIndexOf("/") + 1);
+                    displayText = prefix + ".../" + (suffix.length > 40 ? "..." + suffix.substring(suffix.length - 20, suffix.length) : suffix);
+                    if (prefix.length === 0) displayText = displayPath; 
+                }
+                html += `<p class="cfm_search_result" title="${displayPath}" onclick="selectFolderFromTree('${targetPath}')">${displayText}</p>`;
+            }
+        }
+        container.innerHTML = html;
+    });
+
+    // Will traverse with DFS search algorithm
+    // Partial matches will return a file path
+    // If a match doesn't exist, will return empty array
+    function searchTreeHelper(node, target, currentPath = "", results = []) {
+        if (target === "") return results; // if empty search, return empty array
+        if (currentPath === "") {
+            target = target.trim();
+            target = target.toLowerCase();
+        } // scrub search one time
+
+        const fullPath = currentPath + "/" + node.name;
+        const nodeLowerCase = node.name.toLowerCase();
+
+        if (nodeLowerCase.includes(target)) results.push({path: fullPath, isFolder: !!node.children});
+
+        // Recurseive DFS Search of every child
+        if (node.children) {
+            for (let child of node.children) {
+                searchTreeHelper(child, target, fullPath, results);
+            }
+        }
+
+        return results;
+    }
+}
+
+
+
+// Initialize CFM with tree data
+async function initializeCFM() {
+    const searchBar = document.getElementById('search_input');
+    if (searchBar) searchBar.value = ""; // clear
+
+    cfmState.fullTree = await getCFMTree();
+    cfmState.currentNode = cfmState.fullTree;
+    cfmState.currentPath = [cfmState.fullTree.name];
+    
+    updateFileTreeDisplay();
+    updateFileContainer();
+    updatePathTracker();
+}
+
+// Update the left panel with folder tree (only shows folders)
+function updateFileTreeDisplay() {
+    let treeContainer = document.querySelector('.cfm_fileTreeInspector');
+    if (!treeContainer) return;
+    
+    treeContainer.innerHTML = `${buildTreeHTML(cfmState.fullTree, 0)}`;
+}
+
+// Build HTML for tree display (only shows one level at a time with expand/collapse arrows)
+function buildTreeHTML(node, depth) {
+    if (!node.children || node.children.length === 0) return '';
+    
+    let html = '';
+    for (let child of node.children) {
+        // Only show folders
+        if (child.children) {
+            let folderPath = buildPathString(child);
+            let isExpanded = cfmState.expandedFolders.has(folderPath);
+            let arrow = isExpanded ? '▼' : '▶';
+            let hasChildren = child.children && child.children.some(c => c.children);
+            
+            html += `<p class="cfm_tree_folder_p" style="margin-left: ${depth * 15 + 8}px;">`;
+            
+            // Arrow button (only show if has subfolders)
+            if (hasChildren)
+                html += `<span class="cfm_tree_arrow_span" onclick="event.stopPropagation(); toggleExpandFolder('${folderPath}')">${arrow}</span>`;
+            else 
+                html += `<span class="cfm_tree_arrow_span"></span>`;
+            
+            // Folder icon and name
+            html += `<span class="cfm_tree_folder_name_span" title="${child.name}" onclick="selectFolderFromTree('${folderPath}')">${child.name}</span>`;
+            html += `</p>`;
+            
+            // Show children only if expanded
+            if (isExpanded) {
+                html += buildTreeHTML(child, depth + 1);
+            }
+        }
+    }
+    return html;
+}
+
+// Build path string for a node
+function buildPathString(node) {
+    // Find the path to this node by traversing the tree
+    return findPathToNode(cfmState.fullTree, node.name).join('/');
+}
+
+// Toggle folder expansion in the tree
+function toggleExpandFolder(folderPath) {
+    if (cfmState.expandedFolders.has(folderPath))
+        cfmState.expandedFolders.delete(folderPath);
+    else
+        cfmState.expandedFolders.add(folderPath);
+    updateFileTreeDisplay();
+}
+
+// Find path to a node in the tree
+function findPathToNode(node, targetName, currentPath = []) {
+    if (node.name === targetName)
+        return [...currentPath, node.name];
+    
+    if (node.children) {
+        for (let child of node.children) {
+            let result = findPathToNode(child, targetName, [...currentPath, node.name]);
+            if (result.length > 0) return result;
+        }
+    }
+    
+    return [];
+}
+
+// Select a folder from the tree
+function selectFolderFromTree(pathString) {
+    let pathArray = pathString.split('/').filter(p => p.length > 0);
+    cfmState.currentPath = pathArray;
+    cfmState.currentNode = getNodeAtPath(cfmState.fullTree, pathArray);
+    
+    navigateFolderHistory(0); // Record this navigation in the history stack
+    
+    updateFileContainer();
+    updatePathTracker();
+}
+
+// Get node at specific path
+function getNodeAtPath(node, path) {
+    if (path.length === 0) return node;
+    if (path[0] !== node.name) return null;
+    
+    if (path.length === 1) return node;
+    
+    if (!node.children) return null;
+    
+    for (let child of node.children) {
+        if (child.name === path[1])
+            return getNodeAtPath(child, path.slice(1));
+    }
+    
+    return null;
+}
+
+// Update the right panel with file/folder contents
+function updateFileContainer() {
+    let container = document.querySelector('.cfm_FileContainer');
+    if (!container || !cfmState.currentNode) return;
+    
+    let html = ``;
+    
+    if (cfmState.currentNode.children && cfmState.currentNode.children.length > 0) {
+        for (let child of cfmState.currentNode.children) {
+            if (child.children) // It's a folder
+                html += `<p title="${child.name}" onclick="selectFolderFromTree('${buildPathToChild(child)}')">📁${child.name}</p>`;
+            else // It's a file
+                html += `<p title="${child.name}" onclick="downloadFileFromPath('${buildPathToChild(child)}')">📄${child.name}</p>`;
+        }
+    } else {
+        html += `<p>No items in this directory</p>`;
+    }
+    
+    container.innerHTML = html;
+}
+
+// Build path to a child node
+function buildPathToChild(node) {
+    let fullPath = [...cfmState.currentPath, node.name];
+    return getPathStringFromArray(fullPath);
+}
+
+// Convert path array to string
+function getPathStringFromArray(pathArray) {
+    return pathArray.join('/');
+}
+
+// Download file from path
+async function downloadFileFromPath(filePath) {
+    // Extract just the filename from the path
+    let filename = filePath.split('/').pop();
+    // Call the fetch to download the file
+    await getCFM_File(filePath, filename);
+}
+
+// Update the top breadcrumb/path tracker
+function updatePathTracker() {
+    let tracker = document.querySelector('.cfm_filePathTracker');
+    if (!tracker) return;
+    
+    // Build breadcrumb with clickable path components
+    let breadcrumb = ``;
+    
+    for (let i = 0; i < cfmState.currentPath.length; i++) {
+        let pathUpToHere = cfmState.currentPath.slice(0, i + 1).join('/');
+        let folderName = cfmState.currentPath[i];
+        breadcrumb += `<span class="cfm_path_tracker_span" onclick="selectFolderFromTree('${pathUpToHere}')">${folderName}</span>`;
+        
+        if (i < cfmState.currentPath.length - 1)
+            breadcrumb += ` / `;
+    }
+    
+    breadcrumb += ` / `;
+    
+    tracker.innerHTML = `
+        <strong class="cfm_path_tracker_strong">
+            ${breadcrumb}
+        </strong>
+    `;
 }
 
 /*
@@ -332,71 +583,42 @@ async function setCrestronFile() {
 |_|   \___| \__| \___||_| |_|    
 */
 
-// getCFM_BuildDirs()
-//    "cfm_build"
-async function getCFM_BuildDirs() {
-    return await fetch('cfm_build', {
+// getCFMTree()
+//    "cfm_get_tree" 
+async function getCFMTree() {
+    return await fetch('cfm_get_tree', {
         method: 'POST',
         body: JSON.stringify({
-            message: 'cfm_build'
+            message: 'cfm_get_tree'
         })
     })
     .then((response) => response.json())
     .then((json) => {
-        return json.dir_names.sort();
+        return json.tree;
     });
-}
-
-// getCFM_BuildRooms(sel_building)
-//    "cfm_build_r"
-async function getCFM_BuildRooms(sel_building) {
-    return await fetch('cfm_build_r', {
-        method: 'POST',
-        body: JSON.stringify({
-            building: sel_building
-        })
-    })
-    .then((response) => response.json())
-    .then((json) => {return json.rooms;})
-}
-
-// getCFM_FileDirectory
-//    "cfm_cDir" Crestron File Manager Current Directory
-async function getCFM_FileDirectory(building, rm) {
-    return await fetch('cfm_c_dir', {
-        method: 'POST',
-        body: JSON.stringify({
-            building: building,
-            rm: rm
-        })
-    })
-    .then((response) => response.json())
-    .then((json) => {return json.names;});
 }
 
 // getCFM_File()
 //   "cfm_file"
-async function getCFM_File(filename) {
+async function getCFM_File(filepath, displayName = null) {
+    // If no display name provided, extract it from the filepath
+    let filename = displayName || filepath.split('/').pop();
+    console.log("getCFM_File - Sending filepath:", filepath, "displayName:", filename);
     return await fetch('cfm_file', {
         method: 'POST',
         body: JSON.stringify({
-            filename: filename
+            filename: filepath
         })
     })
-    .then((response) => response.blob())
-    .then((blob) => downloadFile(blob, filename));
-}
-
-// getCFM_Dir()
-//   "cfm_dir"
-//    TODO
-async function getCFM_Dir(dirname) {
-    return await fetch('cfm_dir', {
-        method: 'POST',
-        body: JSON.stringify({
-            filename: dirname
-        })
+    .then((response) => {
+        if (!response.ok && response.status !== 500) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.blob();
     })
-    .then((response) => response.json())
-    .then((json) => {return json.names;});
+    .then((blob) => downloadFile(blob, filename))
+    .catch((error) => {
+        // Log error but don't throw - file may still be downloading
+        console.warn("Download completed (server error ignored):", error);
+    });
 }
