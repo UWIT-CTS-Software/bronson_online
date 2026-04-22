@@ -136,7 +136,6 @@ function hideTerminal() {
         document.getElementById('terminal').style.display = 'block';
         termButton.innerHTML = "Hide Terminal";
     }
-    return;
 }
 
 // Set Admin Tool Page on program guts
@@ -214,7 +213,6 @@ async function setAdminTools() {
     main_container.appendChild(at_container);
     main_container.classList.add('program_guts');
     progGuts.replaceWith(main_container);
-    return;
 }
 
 // MESSAGE EDITOR
@@ -243,7 +241,6 @@ function setMessageEditor() {
     // replace admin_internals
     let admin_internals = document.getElementById('admin_internals');
     admin_internals.replaceWith(dashboard_message_editor);
-    return;
 }
 
 // Grabs the contents of the text
@@ -262,13 +259,11 @@ function setDashboardMessage() {
         method: "POST",
         body: contents
     });
-    return;
 }
 
 function clearEditor() {
     let dme = document.getElementById("dme_editor");
     dme.innerText = ``;
-    return;
 }
 
 // SCHEDULE EDITOR
@@ -332,7 +327,6 @@ async function setScheduleEditor() {
             } 
         });
     });
-    return;
 }
 
 // Remove Mode is intended to mimimize the likelihood that a tech is accidentally removed.
@@ -370,7 +364,6 @@ async function setRemoveMode() {
     } else {
         document.getElementById("techSchdRemoveTech").replaceWith(fireSomeoneMenu);
     }
-    return;
 }
 
 // This function simply adds a class to a techs name to indicate that they have been selected for
@@ -383,13 +376,11 @@ function removeTechSelect(techID) {
     } else {
         element.classList.add("setToRemove");
     }
-    return;
 }
 
 function exitRemoveMode() {
     document.getElementById("techSchdRemoveTech").remove();
     setScheduleEditor();
-    return;
 }
 
 async function removeSelectedTechs() {
@@ -404,7 +395,6 @@ async function removeSelectedTechs() {
     // NOTE: verify this is not broken and correct before updating the localstorage iteration.
     await updateSchedule(scheduleData);
     await setRemoveMode();
-    return;
 }
 
 function addBlankTechSchedule(count) {
@@ -433,7 +423,6 @@ function addBlankTechSchedule(count) {
             console.log("something is wrong");
         } 
     });
-    return;
 }
 
 // TODO: Export Schdule
@@ -475,7 +464,6 @@ async function exportSchd() {
         fri_items.join(",")
     ].join("\n");
     downloadCsv(csv);
-    return;
 }
 
 function filterTechs() {
@@ -493,7 +481,6 @@ function filterTechs() {
             techTables[i].hidden = true;
         }
     }
-    return;
 }
 
 function makeTechEditTable(techObj) {
@@ -594,7 +581,6 @@ function flipTime(techName, tableElementID) {
         element.classList.add("schdtrue");
     }
     updateHours(`tech${techName}`,`${techName.split(" ")[1]}Hours`);
-    return;
 }
 
 function updateHours(tableID, tableHoursID) {
@@ -603,7 +589,6 @@ function updateHours(tableID, tableHoursID) {
     let onCells = table.getElementsByClassName('schdtrue');
     //console.log("updateHours", onCells);
     hoursEntry.innerText = onCells.length * .5;
-    return;
 }
 
 async function updateAllTechSchedules() {
@@ -623,7 +608,6 @@ async function updateAllTechSchedules() {
     console.log("Sorted Schedule, ", scheduleSorted);
     await updateSchedule(scheduleSorted);
     await setScheduleEditor();
-    return;
 }
 
 // grabs the table for a tech on the page and converts it to schedule time
@@ -795,7 +779,6 @@ async function setDiag() {
     // replace admin_internals
     let admin_internals = document.getElementById('admin_internals');
     admin_internals.replaceWith(adminDiagnostics);
-    return;
 }
 
 async function syncLSMData(deviceType) {
@@ -829,7 +812,6 @@ async function syncLSMData(deviceType) {
         updateDTerm(`-- ✅ OK: Local LSM Data found for ${deviceType}, no sync needed.\n`);
         updateDTerm(`Last Sync: ${lsm.timestamp}\n`);
     }
-    return;
 }
 
 // ALIAS_TODO : Need to crosscheck with Alias Table and replace room names with bronson friendly counterpart. Doing that here will cascade through.
@@ -878,13 +860,11 @@ async function getLSMDataByType(build_ab, deviceType) {
 function clearDTerm() {
     let term = document.getElementById("diag_terminal");
     term.value = '';
-    return;
 }
 
 function updateDTerm(string) {
     let term = document.getElementById("diag_terminal");
     term.value += string;
-    return;
 }
 
 // This is supposed to be a general crosscheck function that can be used for any device type.
@@ -939,7 +919,6 @@ async function runLSMCrosscheck(deviceType) {
         dif.concat(findDiff(bronDevs, lsmDevs, "LSM"));
         // Print a summary of the comparison
     }
-    return;
 }
 
 // takes in bronsonData and lsmData for a given building and device type
@@ -977,7 +956,6 @@ function showDataDiagInfo() {
     updateDTerm("any changes before making them.\n\n");
     updateDTerm("Also note, we have special rooms such as auditoriums that have AUD in the room\n");
     updateDTerm("name rather than a standard room number. These rooms may output a false positive.\n");
-    return;
 }
 
 function showDatabaseInfo() {
@@ -1050,7 +1028,6 @@ function showDatabaseInfo() {
         let tpCount = Object.keys(devicesTps).length;
         updateDTerm(`-- ${building}: ${procCount} processors, ${dispCount} displays, ${pjCount} projectors, ${tpCount} touch panels\n`);
     });
-    return;
 }
 
 function checkingLSMData(lsmObj, type) {
@@ -1071,7 +1048,6 @@ function removeLSMData() {
     localStorage.removeItem("lsm_data_PJ");
     localStorage.removeItem("lsm_data_TP");
     updateDTerm("✅ OK: Local LSM Data removed.\n");
-    return;
 }
 
 // Process Diagnostics
@@ -1410,7 +1386,6 @@ async function setDBEditor() {
     );
     // Init Changelog in SessionStorage
     sessionStorage.setItem("DBEChanges", JSON.stringify({log: []}));
-    return;
 }
 
 async function getLastRoomScheduleUpdate() {
@@ -1443,7 +1418,6 @@ function filterDatabase() {
         }
     }
     //console.log(tmp);
-    return;
 }
 
 // Room Schedule Upload Functions
@@ -1451,7 +1425,6 @@ function setDBRoomSchedule() {
     document.getElementById('fileUploadModal').style.display='block';
     document.getElementById('uploadButton').disabled = true;
     document.getElementById('terminal').style.display = 'none';
-    return;
 }
 
 function cancelRSUpload() {
@@ -1461,7 +1434,6 @@ function cancelRSUpload() {
         rsDataTransfer.items.remove(i);
     }
     document.getElementById('terminal').style.display = 'block';
-    return;
 }
 
 // Notes:
@@ -1546,7 +1518,6 @@ async function processRSUpload() {
         arr.push(text);
     }
     parseRSUpload(arr);
-    return;
 }
 
 function readFileAsync(file) {
@@ -1716,16 +1687,20 @@ async function parseRSUpload(arr) {
     // Reset page once changes are done. (TODO: Handle Errors ?)
     cancelRSUpload();
     setDBEditor();
-    return;
 }
 
 // Actually Pushing the Changes to the database out of the DBEChanges array
 // The behaviors for changelog SHOULD make sure no objects pushed here will make
 // problems but be weary when making changes to the DBE.
 async function updateDatabaseFromEditor() {
+    const saveButton = document.getElementById("updateDatabaseButton");
+    saveButton.disabled = true;
+    saveButton.innerText = "Saving...";
+
     let changelogData = JSON.parse(sessionStorage.getItem("DBEChanges"));
     // Iterate through Rooms
     let roomData = changelogData.log.filter(e => e.Type == "ROOM");
+
     // Need to Handle Inserts FIRST (Same with Buildings)
     let insertData = roomData.filter(e => e.Change == "INSERT");
     for(let i = 0; i < insertData.length; i++) {
@@ -1735,6 +1710,7 @@ async function updateDatabaseFromEditor() {
         });
         await postDBChange(endpoint, packet);
     }
+
     let otherData = roomData.filter(e => e.Change != "INSERT");
     for(let i = 0; i < otherData.length; i++) {
         let packet = ``;
@@ -1753,6 +1729,7 @@ async function updateDatabaseFromEditor() {
         }
         await postDBChange(endpoint, packet);
     }
+
     // Iterate through Building related changes
     let buildingData = changelogData.log.filter(e => e.Type == "BUILDING");
     insertData = buildingData.filter(e => e.Change == "INSERT");
@@ -1764,6 +1741,7 @@ async function updateDatabaseFromEditor() {
         });
         await postDBChange(endpoint, packet);
     }
+
     otherData = buildingData.filter(e => e.Change != "INSERT");
     for(let i = 0; i < otherData.length; i++) {
         let packet = ``;
@@ -1783,9 +1761,11 @@ async function updateDatabaseFromEditor() {
         }
         await postDBChange(endpoint, packet);
     }
+
+    resetThreadInterval('checkerboard'); // Rerun Checkerboard to update with new data
+
     // Reset Page with new changes (due to init)
     setDBEditor();
-    return;
 }
 
 async function postDBChange(endpoint, packet) {
@@ -1830,8 +1810,6 @@ function setDBBuildingAddition() {
     `;
     mainMenu.innerHTML = tmp_html;
     // TODO: Disable Enter Key on inputs
-
-    return;
 }
 
 // Send Changelog Object to Log in SessionStorage and reset Main Menu Buttons.
@@ -1957,7 +1935,6 @@ function confirmDBBuildingAddition() {
     topFieldset.after(newFieldset);
     // Reset MainMenu HTML
     cancelDBBuildingAddition();
-    return;
 }
 
 function cancelDBBuildingAddition() {
@@ -1975,7 +1952,6 @@ function cancelDBBuildingAddition() {
                 <textarea id="databaseFilter" placeholder="Building Name/Abbreviation" onkeyup="filterDatabase()"></textarea>
                 </div>`
             }`;
-    return;
 }
 
 // Mark building to be remove, or remove a building that is to be added.
@@ -2023,7 +1999,6 @@ function markBuildingToRemove(fieldsetID) {
         }
     }
     addToDBEChanges(newChange);
-    return;
 }
 // Presents a submenu to the user to fill in Information to load the new room.
 function setRoomAddition(menuID, buildingTableID) {
@@ -2041,7 +2016,6 @@ function setRoomAddition(menuID, buildingTableID) {
             confirmRoomAddition(`${building}-addInput`, `${buildingTableID}`);
         }
     });
-    return;
 }
 
 // Takes the user input and validates the input, this is called from the submenu when the user clicks 'Add Room'.
@@ -2131,7 +2105,6 @@ function confirmRoomAddition(textareaID, buildingTableID) {
     // Revert Building Menu
     let menuID = parent_abbrev +"-roomMenu";
     cancelRoomAddition(menuID);
-    return;
 }
 
 function cancelRoomAddition(menuID) {
@@ -2139,7 +2112,6 @@ function cancelRoomAddition(menuID) {
     let building = menuID.split("-")[0];
     menuElement.innerHTML = `<button onclick="setRoomAddition('${building}-roomMenu', '${building}-tbody')"> Add Room </button>
     <button id="${building}-compareLSMBtn" onclick="compareDBEditLSM('${building}')"> Compare Inventory With LSM </button>`;
-    return;
 }
 
 // This function counteracts a quirk with adding rows to a table with changed inputs.
@@ -2171,7 +2143,6 @@ function syncTablesWithChangelog() {
             console.warn("Changelog Sync Error: Filter did not narrow down correctly");
         }
     }
-    return;
 }
 
 function removeRoomFromBuilding(rowID) {
@@ -2204,7 +2175,6 @@ function removeRoomFromBuilding(rowID) {
     }
     // Send Change to DBEChangelog
     addToDBEChanges(newChange);
-    return;
 }
 
 // Building Changes, Preps changelog object and sends it to addToDBEChanges()
@@ -2303,7 +2273,6 @@ function updateBuilding(menuID) {
         let content = roomsButton.nextElementSibling;
         content.style.display = "none";
     }
-    return;
 }
 
 // Called when any of the fields are changed.
@@ -2409,7 +2378,6 @@ function updateRow(rowElementID) {
     if (defaultBool) {
         rowElement.classList.remove("dbRowChanged");
     }
-    return;
 }
 
 // Prints changes to the textarea, called after the changelog object gets updated.
@@ -2482,7 +2450,6 @@ function updateDBChangelogHTML(changes) {
     for(let i = 0; i < tmp_html.length; i++) {
         changelogElement.value += tmp_html[i] + "\n";
     }
-    return;
 }
 
 // Interfacing with DBEChanges
@@ -2538,7 +2505,6 @@ function addToDBEChanges(chgObj) {
     // Save Updated Changes in SessionStorage and Update HTML Changelog.
     sessionStorage.setItem("DBEChanges", JSON.stringify(changes));
     updateDBChangelogHTML(changes);
-    return;
 }
 
 // TODO: Need to check to see if room has 'toBeAdded' elements and remove if so.
@@ -2556,7 +2522,6 @@ function revertRowChanges(roomName) {
             inputs[i].checked = inputs[i].defaultChecked;
         }
     }
-    return;
 }
 
 // UNUSED: Checks the validatity of User Input when setting a new Room Name
@@ -2740,7 +2705,6 @@ async function compareDBEditLSM(buildingAbbreviation) {
     // Update Menu / LSM button
     button.innerHTML = "Hide LSM Comparison";
     button.disabled = false;
-    return;
 }
 
 function removeCompareDBEditLSM(buildingAbbrev) {
@@ -2755,7 +2719,6 @@ function removeCompareDBEditLSM(buildingAbbrev) {
     let button = document.getElementById(buildingAbbrev + "-compareLSMBtn");
     button.innerHTML = "Compare Inventory With LSM";
     //button.onclick = `compareDBEditLSM(${buildingAbbrev})`;
-    return;
 }
 
 // Alias Editor
@@ -2841,7 +2804,6 @@ async function setAliasEditor() {
     }
     sessionStorage.setItem("aliasReset", JSON.stringify({rooms: []}));
     drawAliasTables();
-    return;
 }
 
 function setAliasUploader() {
@@ -2851,7 +2813,6 @@ function setAliasUploader() {
         <button class="exeButton" id="submitAliasUploadButton" onclick="submitUploadedAliasTable()"> Import to Editor </button>
         <button onclick="resetAliasUploader()"> Cancel </button>`;
     }
-    return;
 }
 
 function submitUploadedAliasTable() {
@@ -2877,7 +2838,6 @@ function submitUploadedAliasTable() {
         }
     };
     fileReader.readAsText(jsonFile);
-    return;
 }
 
 function resetAliasUploader() {
@@ -2888,13 +2848,11 @@ function resetAliasUploader() {
             <button onclick="downloadAliasTable()"> Download Alias Table JSON </button>
         </div>`;
     }
-    return;
 }
 
 async function downloadAliasTable() {
     let aliasData = sessionStorage.getItem("aliasData");
     downloadJSON(aliasData, "alias_table.json");
-    return;
 }
 
 // Current Backend DataElement for AliasData
@@ -2964,7 +2922,6 @@ function drawAliasTables() {
     aliasData.buildings = buildingRows;
     // Update aliasData with removed status field
     sessionStorage.setItem("aliasData", JSON.stringify(aliasData));
-    return;
 }
 
 function addRoomAliasRow() {
@@ -2999,7 +2956,6 @@ function addRoomAliasRow() {
     }
     // Disable Room Alias Button
     document.getElementById("addRoomAliasButton").disabled = true;
-    return;
 }
 
 // Add Building Alias Row, similar to addRoomAliasRow()
@@ -3033,7 +2989,6 @@ function addBuildingAliasRow() {
     }
     //
     document.getElementById("addBuildingAliasButton").disabled = true;
-    return;
 }
 
 // Remove from page
@@ -3053,7 +3008,6 @@ function cancelAliasRow(rowId) {
     if(buildingTable.length == 0) {
         document.getElementById('addBuildingAliasButton').disabled = false;
     }
-    return;
 }
 
 // Add to sessionStorage Object
@@ -3119,7 +3073,6 @@ function confirmAliasRow(rowId) {
     // Remove Tmp-Row from page, redraw from Alias Table.
     row.remove();
     drawAliasTables();
-    return;
 }
 
 // Remove from sessionStorageObject, add toBeRemoved classobj
@@ -3153,7 +3106,6 @@ function removeAliasRow(rowID) {
     optionsButton.innerHTML = "Undo";
     optionsButton.classList.remove("rmvButton");
     optionsButton.classList.add("exeButton");
-    return;
 }
 
 function undoAliasRowRemoval(rowId, stringifiedBackup) {
@@ -3181,7 +3133,6 @@ function undoAliasRowRemoval(rowId, stringifiedBackup) {
     optionsButton.classList.add("rmvButton");
     optionsButton.innerHTML = "Remove Alias";
     optionsButton.setAttribute("onclick", `removeAliasRow('${rowId}')`);
-    return;
 }
 
 // Collect Information from tables and package them into json to send to packend.
@@ -3313,7 +3264,6 @@ async function setThreadEditor() {
     // replace admin_internals
     let admin_internals = document.getElementById('admin_internals');
     admin_internals.replaceWith(thread_editor);
-    return;
 }
 
 async function getThreadSchedule() {
@@ -3381,5 +3331,4 @@ function downloadJSON(data, filename) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    return;
 }
