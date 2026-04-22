@@ -1,0 +1,10 @@
+// TODO: Format the below article so it will store as json/markdown and be read into the wiki
+// TODO: Add screenshots
+
+
+CamCode
+A quick lookup for the Crestron File Manager (CFM).
+Here you can find any relavent files for crestron systems across campus.
+
+Reflects similar to your operating system's file manager system, you can traverse CamCode quickly by building and room,
+or you can use the search bar to find the file you are looking for (note that the search bar only queries file names, not file contents).
