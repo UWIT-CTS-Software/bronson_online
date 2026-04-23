@@ -92,13 +92,13 @@
       await fetch("/dashContents")
         .then((response) => response.json())
         .then((json) => {
+          // replace literal "\n" with real newlines, database doesn't store \n properly, so it's baked into the string
+          const message = json["contents"].replace(/\\n/g, "\n");
           consoleOutput.innerHTML = `
             <fieldset>
                 <legend ${isMobile ? "class='mobile_legend'" : ""}> 
                     Messages: </legend>
-                <textarea readonly rows="14" cols ="65" class="db_messages ${isMobile ? "mobile_font" : ""}" name="consoleOutput" spellcheck="false"> 
-                    ${json["contents"]}
-                </textarea>
+                <textarea readonly rows="14" cols ="65" class="db_messages ${isMobile ? "mobile_font" : ""}" name="consoleOutput" spellcheck="false">${message}</textarea>
             </fieldset>`;
         });
       // Dashboard Leaderboard

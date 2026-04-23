@@ -221,9 +221,8 @@ async function setAdminTools() {
 function setMessageEditor() {
     // remove currently active status, mark tab has active.
     let current = document.getElementsByClassName("at_selected");
-    if (current.length != 0) {
-        current[0].classList.remove("at_selected");
-    }
+    if (current.length != 0) current[0].classList.remove("at_selected");
+
     let newCurrent = document.getElementById("at_message");
     newCurrent.classList.add("at_selected");
 
@@ -238,9 +237,26 @@ function setMessageEditor() {
         <button onclick="setDashboardMessage()" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Set Message </button>
         <button onclick="clearEditor()" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Clear Editor </button> 
     </fieldset>`;
+
     // replace admin_internals
     let admin_internals = document.getElementById('admin_internals');
     admin_internals.replaceWith(dashboard_message_editor);
+
+    // Retrieve current message from Database and populate it in the editor
+    fetchDashboardMessage().then(message => {
+        const editor = document.getElementById("dme_editor");
+        if (editor) editor.value = message;
+    });
+}
+
+function fetchDashboardMessage() {
+    return fetch("/dashContents")
+        .then(response => response.json())
+        .then(data => {
+            // replace literal "\n" with real newlines, database doesn't store \n properly, so it's baked into the string
+            const message = data.contents.replace(/\\n/g, "\n");
+            return message;
+        });
 }
 
 // Grabs the contents of the text
@@ -252,9 +268,10 @@ function setMessageEditor() {
 function setDashboardMessage() {
     let dme = document.getElementById("dme_editor");
     contents = dme.value;
-    // DATABASE_TODO
-    //  - This needs to be a post into the database.
-    //    Once that is done the below line will not be relevant
+
+    // replace real newlines with literal "\n", database removes them
+    contents = contents.replace(/\n/g, "\\n");
+
     fetch("/update/dash", {
         method: "POST",
         body: contents
@@ -263,7 +280,7 @@ function setDashboardMessage() {
 
 function clearEditor() {
     let dme = document.getElementById("dme_editor");
-    dme.innerText = ``;
+    dme.value = ``;
 }
 
 // SCHEDULE EDITOR
