@@ -1082,6 +1082,7 @@ async fn handle_connection(
                 let new_db_room = DB_Room {
                     abbrev: new_room.split(' ').collect::<Vec<&str>>()[0].to_string(),
                     name: new_room,
+                    collegenet_id: Option::None,
                     checked: "2000-01-01T00:00:00Z".to_string(),
                     needs_checked: true,
                     gp: match new_values[6] { 
@@ -3470,6 +3471,7 @@ mod tests {
         let dummy_room = DB_Room {
             abbrev: String::from("TEST"),
             name: String::from("TEST"),
+            25live_id: Option::None,
             checked: "2000-01-01T00:00:00Z".to_string(),
             needs_checked: true,
             gp: false,

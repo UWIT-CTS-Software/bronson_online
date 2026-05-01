@@ -197,6 +197,7 @@ pub struct DB_Building {
 pub struct DB_Room {
     pub abbrev: String,
     pub name: String,
+    pub collegenet_id: Option<i16>,
     pub checked: String,
     pub needs_checked: bool,
     pub gp: bool,

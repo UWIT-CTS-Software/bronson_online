@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS bronson.buildings (
 CREATE TABLE IF NOT EXISTS bronson.rooms (
     abbrev        TEXT         NOT NULL,
     name          TEXT         PRIMARY KEY,
-    25live_id     SMALLINT             ,
+    collegenet_id SMALLINT             ,
     checked       TEXT         NOT NULL,
     needs_checked BOOLEAN      NOT NULL,
     gp            BOOLEAN      NOT NULL,

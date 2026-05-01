@@ -39,6 +39,7 @@ pub mod bronson {
         bronson.rooms (name) {
             abbrev -> Text,
             name -> Text,
+            collegenet_id -> Nullable<Int2>,
             checked -> Text,
             needs_checked -> Bool,
             gp -> Bool,

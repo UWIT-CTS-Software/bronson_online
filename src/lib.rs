@@ -419,7 +419,7 @@ impl Database {
 					let new_room = DB_Room {
 						abbrev: String::from(room_name.split(' ').next().unwrap()),
 						name: String::from(room_name),
-						25live_id: Option::None, 
+						collegenet_id: Option::None, 
 						checked: String::from("2000-01-01T00:00:00Z"),
 						needs_checked: true,
 						gp: is_gp,
