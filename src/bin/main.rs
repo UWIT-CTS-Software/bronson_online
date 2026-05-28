@@ -2113,6 +2113,7 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> 
                         check["LocationName"] = serde_json::Value::String(tuple.0.clone());
                     }
                 }
+                
                 // Replace Abbrevition if exists
                 if alias_abbrev.0 != "NOTSET" {
                     // check["LocationName"]
@@ -2124,10 +2125,24 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> 
                             .replace(&alias_abbrev.0, &alias_abbrev.1)
                     );
                 }
-                check_map.insert(
-                    String::from(check["LocationName"].as_str().unwrap()), 
-                    String::from(check["CompletedOn"].as_str().unwrap())
-                );
+              
+                // Only insert if this is the first entry or if the new timestamp is more recent
+                let location_name = String::from(check["LocationName"].as_str().unwrap());
+                let completed_on = String::from(check["CompletedOn"].as_str().unwrap_or("3000-01-01T00:00:00Z"));
+                if let Some(existing_timestamp) = check_map.get(&location_name) {
+                    match (DateTime::parse_from_rfc3339(existing_timestamp), DateTime::parse_from_rfc3339(&completed_on)) {
+                        (Ok(existing_dt), Ok(new_dt)) => {
+                            if new_dt > existing_dt {
+                                check_map.insert(location_name, completed_on);
+                            }
+                        },
+                        _ => {
+                            // If parsing fails, keep the existing value
+                        }
+                    }
+                } else {
+                    check_map.insert(location_name, completed_on);
+                }
             }
         }
         // Get checked_rooms
