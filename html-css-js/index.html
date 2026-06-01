@@ -93,13 +93,13 @@
       await fetch("/dashContents")
         .then((response) => response.json())
         .then((json) => {
+          // replace literal "\n" with real newlines, database doesn't store \n properly, so it's baked into the string
+          const message = json["contents"].replace(/\\n/g, "\n");
           consoleOutput.innerHTML = `
             <fieldset>
                 <legend ${isMobile ? "class='mobile_legend'" : ""}> 
                     Messages: </legend>
-                <textarea readonly rows="14" cols ="65" class="db_messages ${isMobile ? "mobile_font" : ""}" name="consoleOutput" spellcheck="false"> 
-                    ${json["contents"]}
-                </textarea>
+                <textarea readonly rows="14" cols ="65" class="db_messages ${isMobile ? "mobile_font" : ""}" name="consoleOutput" spellcheck="false">${message}</textarea>
             </fieldset>`;
         });
       // Dashboard Leaderboard
@@ -169,6 +169,7 @@
             <tbody id="schd_tbody">
             </tbody>
           </table>
+          <p>* Need to update your schedule? Contact your student schedule lead *</p>
         </fieldset>`;
       // Once initStorageRuns and grabs the schedule data,
       // we will update this table and append <tbody>
@@ -239,7 +240,9 @@
             <legend>
               Menu:</legend>
             <button class="hb_button" onclick="toggleHBMenu()">Back</button>
-            <button class="hb_button" onclick="setWiki()">Help / Wiki</button>
+            <button class="hb_button" onclick="toggleFullScreen()" id="full_screen_button">Full Screen</button>
+            <button class="hb_button" id="auto_scroll_button" onclick="toggleAutoScroll()">Auto Scroll: Off</button>
+            <button class="hb_button" onclick="setWiki()">Help / Wiki </button>
             <button class="hb_button" onclick="initForm()">Report Bug</button>
             <button class="hb_button" onclick="location.href='login.html'">Sign Out</button>
           </fieldset>

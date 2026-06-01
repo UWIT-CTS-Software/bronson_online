@@ -306,7 +306,7 @@ function toggleHideRooms() {
     if (!bool) {
         currentState = "true";
         let label = document.getElementById("cbToggleLabel");
-        label.innerHTML = "Showing Checked Rooms";
+        label.innerHTML = "Hiding Checked Rooms";
         // When showing checked rooms, remove hideVisTile from all rooms
         let allRooms = document.querySelectorAll(".cbVisRoom");
         allRooms.forEach(room => {
@@ -315,7 +315,7 @@ function toggleHideRooms() {
     } else {
         currentState = "false";
         let label = document.getElementById("cbToggleLabel");
-        label.innerHTML = "Hiding Checked Rooms";
+        label.innerHTML = "Showing Checked Rooms";
         // When hiding checked rooms, add hideVisTile to needs_checked=false OR offline rooms
         let allRooms = document.querySelectorAll(".cbVisRoom");
         allRooms.forEach(room => {

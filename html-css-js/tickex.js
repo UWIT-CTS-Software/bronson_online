@@ -93,8 +93,7 @@ function sendToHelpDesk() {
 
 // Macro for taking Responsibility for a Ticket
 // For Later - When we have write access to TDX API
-function takeResponsibility(event) {
-    if (event) event.stopPropagation();
+function takeResponsibility() {
     alert("This feature is not yet implemented.");
 
 }
@@ -305,7 +304,7 @@ async function show(ticket) {
                 repliesRows += `
                 <div class="tx_reply">
                     <p class="tx_reply_person">
-                        <strong>${c.created_by[i]}, ${c.created_date[i]}</strong>
+                        <strong class="tx_strong">${c.created_by[i]}, ${c.created_date[i]}</strong>
                     </p>
                     <p class="tx_reply_body">${reply}</p>
                 </div>
@@ -314,7 +313,7 @@ async function show(ticket) {
 
             let repliesHTML = `
                 <p class="tx_reply_header">
-                    <strong>Replies:</strong>
+                    <strong class="tx_strong">Replies:</strong>
                     ${repliesRows}
                 </p>
             `;
@@ -322,7 +321,7 @@ async function show(ticket) {
             builtComments += `
                 <div class="tx_comment">
                     <p class="tx_comment_header">
-                        <strong>${c.commenter}</strong> - ${formattedDate}
+                        <strong class="tx_strong">${c.commenter}</strong> - ${formattedDate}
                     </p>
                     <p class="tx_comment_body">${commentBody}</p>
                     <div class="tx_replies">${c.replies_count ? repliesHTML : "" }</div>
@@ -336,7 +335,7 @@ async function show(ticket) {
                 <div class="tx_comment">
                     <br>
                         <p class="tx_comment_header">
-                            <strong>No Comments Exist for this Ticket</strong>
+                            <strong class="tx_strong">No Comments Exist for this Ticket</strong>
                         </p>
                     <br>
                 </div>
@@ -427,7 +426,7 @@ async function show(ticket) {
                     <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
                     <button class="popup_toggleButton ${isMobile ? "mobile_tx_button" : ""}" onClick="toggleDetails(${ticket.ID})">Description</button>
                     <p class="tx_popup_Requestor tx_textwrap">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                    <p class="tx_popup_Responsible tx_textwrap">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED <button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>`}} || ${ticket.ResponsibleGroupName || ""}</p>
+                    <p class="tx_popup_Responsible tx_textwrap">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED <button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>`} || ${ticket.ResponsibleGroupName || ""}</p>
                     <p class="tx_popup_ServiceName tx_textwrap">Service: ${ticket.ServiceName || ""}</p>
                     <p class="tx_popup_AccountName tx_textwrap">Account Department: ${ticket.AccountName || ""}</p>
                     <p class="tx_popup_TypeName tx_textwrap">Type: ${ticket.TypeName || ""}</p>
