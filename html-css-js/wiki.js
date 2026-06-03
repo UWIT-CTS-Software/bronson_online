@@ -51,7 +51,7 @@ async function getTocHTML() {
             <legend class='w_legend'>
                 Table of Contents:
             </legend>
-            ${articles.map(article => `<p>${article}</p>`).join('')}
+            ${Object.keys(articles).map(article => `<p>${article}</p>`).join('')}
         </fieldset>
     `;
     
@@ -75,6 +75,6 @@ async function getW_BuildArticles() {
     })
     .then((response) => response.json())
     .then((json) => {
-        return json.names;
+        return json;
     });
 };

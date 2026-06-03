@@ -4750,11 +4750,8 @@ fn w_build_articles() -> Vec<u8> {
 
     let cut_index = WIKI_DIR.len();
     for (_, &ref item) in wiki_dirs.iter().enumerate() {
-        // Open and read the file in as base64 
-        let raw_contents: Vec<u8> = std::fs::read(item).expect("Failed to read wiki article file");
-        let contents = general_purpose::STANDARD.encode(raw_contents);
-
-        //let contents: String = std::fs::read_to_string(item).expect("Failed to read wiki article file");
+        // Open and read the file
+        let contents = std::fs::read_to_string(item).expect("Failed to read wiki article file");
 
         article_names_vec.push((&item[(cut_index + 1)..]).to_string());
         article_contents_vec.push(contents);
@@ -4768,6 +4765,7 @@ fn w_build_articles() -> Vec<u8> {
     }
 
     let json_return = Value::Object(articles);
+    println!("Built wiki article list: {}", json_return.to_string());
 
     return json_return.to_string().into();
 
