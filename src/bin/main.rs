@@ -3289,7 +3289,6 @@ fn w_build_articles() -> Vec<u8> {
     }
 
     let json_return = Value::Object(articles);
-    println!("Built wiki article list: {}", json_return.to_string());
 
     return json_return.to_string().into();
 }
