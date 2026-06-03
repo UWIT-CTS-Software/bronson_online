@@ -3262,24 +3262,34 @@ $$  /   \$$ |$$ |$$ | \$$\ $$ |
 */
 
 fn w_build_articles() -> Vec<u8> {
-    // Vars
-    let mut article_vec: Vec<String> = Vec::new();
+    let mut article_names_vec: Vec<String> = Vec::new();
+    let mut article_contents_vec: Vec<String> = Vec::new();
 
     // Check for CFM_Code Directory
     if dir_exists(WIKI_DIR) {
         // Error handling
     }
-    let cfm_dirs = get_dir_contents(WIKI_DIR);
-    // iterate over cfm_dirs and snip ../CFM_Code/
-    // DO NOT INCLUDE DIRS w/ '_'
+
+    let wiki_dirs = get_dir_contents(WIKI_DIR);
+
     let cut_index = WIKI_DIR.len();
-    for (_, &ref item) in cfm_dirs.iter().enumerate() {
-        article_vec.push((&item[(cut_index + 1)..]).to_string());
+    for (_, &ref item) in wiki_dirs.iter().enumerate() {
+        // Open and read the file
+        let contents = std::fs::read_to_string(item).expect("Failed to read wiki article file");
+
+        article_names_vec.push((&item[(cut_index + 1)..]).to_string());
+        article_contents_vec.push(contents);
     };
     
-    let json_return = json!({
-        "names": article_vec
-    });
+    // Build JSON
+    use serde_json::{Value, Map};
+    let mut articles = Map::new();
+    for (name, content) in article_names_vec.iter().zip(article_contents_vec.iter()) {
+        articles.insert(name.clone(), Value::String(content.clone()));
+    }
+
+    let json_return = Value::Object(articles);
+    println!("Built wiki article list: {}", json_return.to_string());
 
     return json_return.to_string().into();
 }
