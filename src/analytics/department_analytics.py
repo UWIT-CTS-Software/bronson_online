@@ -86,19 +86,21 @@ def fillCells(date_string, period_string, tdxToken, lsm_period_url_postfix_this,
     tickets_closed_last_period     = fetchTDXReport(report_ids[3], tdxToken)
     tickets_false_this_period      = fetchTDXReport(report_ids[4], tdxToken)
     tickets_roomchecks_this_period = fetchTDXReport(report_ids[5], tdxToken)
+    tickets_wyocast_this_period    = fetchTDXReport(report_ids[6], tdxToken)
+    tickets_pc_this_period         = fetchTDXReport(report_ids[7], tdxToken)
     tickets_open_last_period       = tickets_currently_open - tickets_created_this_period + tickets_closed_this_period
     roomchecks_this_period         = fetchLSMReport(lsm_period_url_postfix_this)
     roomchecks_last_period         = fetchLSMReport(lsm_period_url_postfix_last)
 
     latex = latex_template % (
         date_string,
-        # Tickets Created                             # Tickets Closed                             # Current Open Tickets  
-        tickets_created_this_period,                  tickets_closed_this_period,                  tickets_currently_open, 
+        # Tickets Created                             # Tickets Closed                             # Current Open Tickets                       # False Tickets
+        tickets_created_this_period,                  tickets_closed_this_period,                  tickets_currently_open,                      tickets_false_this_period,
         period_string, tickets_created_last_period,   period_string, tickets_closed_last_period,   period_string, tickets_open_last_period, 
         # ---------------------------------------------------------------------------------------------------------------------------------
-        # Room Checks Performed                       # Tickets from Room Checks                   # False Tickets
-        roomchecks_this_period,                       tickets_roomchecks_this_period,              tickets_false_this_period,
-        period_string, roomchecks_last_period
+        # Room Checks Performed                       # Tickets from Room Checks                   # WyoCast / Event Tickets                    # PC Tickets
+        roomchecks_this_period,                       tickets_roomchecks_this_period,              tickets_wyocast_this_period,                 tickets_pc_this_period,
+        period_string, roomchecks_last_period,
     )
 
     return latex
@@ -142,20 +144,24 @@ def fillCellsCustom(date_string, period_string, tdxToken, lsm_period_url_postfix
         "CreatedDateTo": formatUTC(end_date, end_of_day=True),
         "MaxResults": 100000,
     }, tdxToken))
-    tickets_roomchecks_this_period = fetchTDXReport(report_ids[0], tdxToken)
+    
+    # This data can't be queried with custom date, so we round to the nearest week/month/year depending on the length of the custom date range
+    tickets_wyocast_this_period    = fetchTDXReport(report_ids[0], tdxToken) 
+    tickets_pc_this_period         = fetchTDXReport(report_ids[1], tdxToken)
+    tickets_roomchecks_this_period = fetchTDXReport(report_ids[2], tdxToken)
     tickets_open_last_period       = tickets_currently_open - tickets_created_this_period + tickets_closed_this_period
     roomchecks_this_period         = fetchLSMReport(lsm_period_url_postfix_this)
     roomchecks_last_period         = fetchLSMReport(lsm_period_url_postfix_last)
 
     latex = latex_template % (
         date_string,
-        # Tickets Created                             # Tickets Closed                             # Current Open Tickets  
-        tickets_created_this_period,                  tickets_closed_this_period,                  tickets_currently_open, 
+        # Tickets Created                             # Tickets Closed                             # Current Open Tickets                       # False Tickets
+        tickets_created_this_period,                  tickets_closed_this_period,                  tickets_currently_open,                      tickets_false_this_period,
         period_string, tickets_created_last_period,   period_string, tickets_closed_last_period,   period_string, tickets_open_last_period, 
         # ---------------------------------------------------------------------------------------------------------------------------------
-        # Room Checks Performed                       # Tickets from Room Checks                   # False Tickets
-        roomchecks_this_period,                       tickets_roomchecks_this_period,              tickets_false_this_period,
-        period_string, roomchecks_last_period
+        # Room Checks Performed                       # Tickets from Room Checks                   # WyoCast / Event Tickets                    # PC Tickets
+        roomchecks_this_period,                       tickets_roomchecks_this_period,              tickets_wyocast_this_period,                 tickets_pc_this_period,
+        period_string, roomchecks_last_period,
     )
 
     return latex
@@ -171,7 +177,13 @@ def fetchTDXReport(report_id, tdxToken):
     with urllib.request.urlopen(req) as response:
         data = json.loads(response.read().decode('utf-8'))
 
-    return len(data.get("DataRows", []))
+    if isinstance(data, dict):
+        return len(data.get("DataRows", []))
+
+    if isinstance(data, list):
+        return len(data)
+
+    return 0
 
 
 # Helper function to fetch LSM room check numbers
@@ -568,13 +580,13 @@ latex_template += r"""
 \vspace{-2.25cm}
 \begin{center}
  \begin{tabular}{ c|c|c|c } 
-  {\small Tickets Created}        &  {\small Tickets Closed}            &  {\small Current Open Tickets}  &  {\small False Tickets} \\ 
-  {\LARGE \textbf{%d}}            &  {\LARGE \textbf{%d}}               &  {\LARGE \textbf{%d}}           &  {\LARGE \textbf{%d}} \\ 
-  {\small Last %s: %d}            &  {\small Last %s: %d}               &  {\small Last %s: %d}           &  {} \\
+  {\small Tickets Created}       & {\small Tickets Closed}           & {\small Current Open Tickets}    & {\small False Tickets}      \\ 
+  {\LARGE \textbf{%d}}           & {\LARGE \textbf{%d}}              & {\LARGE \textbf{%d}}             & {\LARGE \textbf{%d}}        \\ 
+  {\small Last %s: %d}           & {\small Last %s: %d}              & {\small Last %s: %d}             & {}                          \\
  \hline
-  {\small Room Checks Performed}  &  {\small Tickets from Room Checks}  &  {}         &  {\small WyoCast / Event Tickets} \\ 
-  {\LARGE \textbf{%d}}            &  {\LARGE \textbf{%d}}               &  {}           &  {\Large \textbr{-1}} \\ 
-  {\small Last %s: %d}            &  {}                                 &  {}                             &  {\small Last Period: -1} \\ 
+  {\small Room Checks Performed} & {\small Tickets from Room Checks} & {\small WyoCast / Event Tickets} & {\small PC Related Tickets} \\ 
+  {\LARGE \textbf{%d}}           & {\LARGE \textbf{%d}}              & {\Large \textbf{%d}}             & {\Large \textbf{%d}}        \\ 
+  {\small Last %s: %d}           & {}                                & {}                               & {}                          \\ 
  \end{tabular}
 \end{center}
 """
@@ -588,7 +600,7 @@ latex_template += r"""
 latex_template += generateLatexBarGraph(building_counts, "Ticket Count by Building (Top 10)", 10)
 latex_template += r"""
     \end{minipage}
-    \hspace{0.3\textwidth}
+    \hspace{0.33\textwidth}
     \begin{minipage}{0.48\textwidth}
         \centering
 """
@@ -604,8 +616,8 @@ if len(ticketNotes) > 0:
     latex_template += notesToLatex(ticketNotes, r"\large Notes:", "small")
 
 # New page header
-currentProjects = [] # Placeholder for future use
-upcomingProjects = [] # Placeholder for future use
+currentProjects = [] # TODO: Placeholder for future, use projects API
+upcomingProjects = [] # TODO: Placeholder for future, use projects API
 if len(currentProjects) > 0 or len(upcomingProjects) > 0:
     latex_template += r"""
     \newpage
@@ -641,7 +653,7 @@ match report_period:
         latex_content = fillCells(
             date_string, "Week", tdxToken, 
             lsm_url_postfix_this_week, lsm_url_postfix_last_week,
-            ["260292", "260293", "260284", "260285", "260300", "260305"]
+            ["260292", "260293", "260284", "260285", "260300", "260305", "260358", "260368"]
         )
     case 2: # 1 Month Period
         past = today_date - timedelta(days=30)
@@ -652,7 +664,7 @@ match report_period:
         latex_content = fillCells(
             date_string, "Month", tdxToken, 
             lsm_url_postfix_this_month, lsm_url_postfix_last_month,
-            ["260295", "260293", "260287", "260286", "260301", "260306"]
+            ["260295", "260293", "260287", "260286", "260301", "260306", "260359", "260369"]
         )
     case 3: # 1 Year Period
         past = today_date - timedelta(days=365)
@@ -663,7 +675,7 @@ match report_period:
         latex_content = fillCells(
             date_string, "Year", tdxToken, 
             lsm_url_postfix_this_year, lsm_url_postfix_last_year,
-            ["260297", "260296", "260290", "260291", "260302", "260307"]
+            ["260297", "260296", "260290", "260291", "260302", "260307", "260360", "260370"]
         )
     case 4: # Custom Date Period 
         date_string = (date_string + ": ") if len(date_string) > 0 else ""
@@ -675,19 +687,19 @@ match report_period:
             latex_content = fillCellsCustom(
                 date_string, "Period", tdxToken,
                 lsm_url_postfix_this_week, lsm_url_postfix_last_week, 
-                start_date, end_date, ["260305"]
+                start_date, end_date, ["260358", "260368", "260305"]
             )
         elif delta_days <= 45:
             latex_content = fillCellsCustom(
                 date_string, "Period", tdxToken,
                 lsm_url_postfix_this_month, lsm_url_postfix_last_month, 
-                start_date, end_date, ["260306"]
+                start_date, end_date, ["260359", "260369", "260306"]
             )
         else:
             latex_content = fillCellsCustom(
                 date_string, "Period", tdxToken,
                 lsm_url_postfix_this_year, lsm_url_postfix_last_year, 
-                start_date, end_date, ["260307"]
+                start_date, end_date, ["260360", "260370", "260307"]
             )
     case _: # Default case (should not happen due to input validation)
         latex_content = latex_template % (
