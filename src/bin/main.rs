@@ -52,6 +52,7 @@ use server_lib::{
     Building, 
     CFMRequest, CFMRoomRequest, CFMRequestFile, 
     jp::{ ping_this, },
+    API, APIClient::{ MultiThread, SingleThread, },
     CFM_DIR, WIKI_DIR, /* LOG, */
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
     SCHD_ERR, DASH_ERR, LDRB_ERR, SPRS_ERR, 
@@ -359,7 +360,7 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
 
     match collegenet_login(&mut database).await {
         Err(m) => { error!("25L_ERR: {}", m); }
-        Ok(_)  => { }
+        Ok(v)  => { println!("{:?}", v); } 
     };
 
     // Init Datapool
@@ -1876,7 +1877,6 @@ async fn handle_connection(
     
     return res.build();
 }
-
 
 async fn update_room_check_leaderboard(database: &mut Database, req: Arc<RwLock<Client>>) {
     let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
@@ -3401,7 +3401,7 @@ $$$$$$$$\                    $$\
    \__| \_______|\_______/    \____/ \_______/ 
 */
 
-async fn collegenet_login(database: &mut Database) -> Result<LoginSuccess, String> {
+async fn collegenet_login(database: &mut Database) -> Result<Value, String> {
     let url = "https://webservices.collegenet.com/r25ws/wrd/uwyo/run/login.xml";
     let req = reqwest::Client::builder()
         .cookie_store(true)
@@ -3414,21 +3414,20 @@ async fn collegenet_login(database: &mut Database) -> Result<LoginSuccess, Strin
         .unwrap()
     ;
 
-    let text = match req.get(url)
+    let text = match API::new(MultiThread(req))
+        .build()
+        .endpoint(url)
+        .method("GET")
         .timeout(Duration::from_secs(15))
+        .body::<LoginSuccess>()
         .send()
         .await {
-            Ok(r) => {
-                match r.text().await {
-                    Ok(t) => t,
-                    Err(m) => { return Err(m.to_string()); }
-                }
-            },
-            Err(m) => { return Err(m.to_string()); }
-        };
+            Ok(t) => t,
+            Err(m) => {return Err(m)}
+        }
+        .body;
 
-
-    let doc: LoginSuccess = match serde_xml_rs::from_str(&text) {
+    let doc: Value = match serde_xml_rs::from_str(&text) {
         Ok(d) => d,
         Err(m) => { return Err(m.to_string()); }
     };

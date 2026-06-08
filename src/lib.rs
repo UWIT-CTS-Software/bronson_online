@@ -48,6 +48,12 @@ use std::{
 	fs::{ read, read_to_string, File, },
 	io::{ Write, },
 	error::Error,
+	time::Duration,
+	clone::Clone,
+};
+use reqwest::{
+    Client,
+    header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
 use cookie::{ CookieJar, Key, };
 use csv::Reader;
@@ -1327,6 +1333,163 @@ impl Response {
 	}
 }
 
+#[derive(Debug, Clone)]
+pub enum APIClient {
+	SingleThread(Arc<std::sync::RwLock<reqwest::Client>>),
+	MultiThread(reqwest::Client)
+}
+
+#[derive(Debug, Clone)]
+pub struct API {
+	pub client: APIClient,
+	pub headers: HeaderMap
+}
+
+impl API {
+	pub fn new(c: APIClient) -> API {
+		return API {
+			client: c,
+			headers: HeaderMap::new()
+		};
+	}
+
+	pub fn headers(mut self, h: HeaderMap) -> API {
+		self.headers = h;
+
+		self
+	}
+
+	pub fn build(self) -> APIEndpoint<Value> {
+		return APIEndpoint::<Value> {
+			api: self,
+			method: None,
+			endpoint: None,
+			args: HashMap::new(),
+			timeout: Duration::from_secs(15),
+			body: None
+		}
+	}
+}
+
+#[derive(Clone)]
+pub struct APIEndpoint<B> {
+	pub api: API,
+	pub method: Option<Arc<dyn Fn(reqwest::Client, String) -> reqwest::RequestBuilder>>,
+	pub endpoint: Option<String>,
+	pub args: HashMap<String, String>,
+	pub timeout: Duration,
+	pub body: Option<B>
+}
+
+impl<B: std::fmt::Debug> std::fmt::Debug for APIEndpoint<B> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("APIEndpoint")
+			.field("api", &self.api)
+			.field("method", &"dyn Fn")
+			.field("endpoint", &self.endpoint)
+			.field("args", &self.args)
+			.field("timeout", &self.timeout)
+			.field("body", &self.body)
+			.finish()
+	}
+}
+
+impl<B> APIEndpoint<B>  {
+	pub fn method(mut self, m: &str) -> APIEndpoint<B> {
+
+		self.method = match m.to_uppercase().as_str() {
+			"GET"    => Some(Arc::new(|c, u| { reqwest::Client::get(&c, u) })),
+			"POST"   => Some(Arc::new(|c, u| { reqwest::Client::post(&c, u) })),
+			"PUT"    => Some(Arc::new(|c, u| { reqwest::Client::put(&c, u) })),
+			"PATCH"  => Some(Arc::new(|c, u| { reqwest::Client::patch(&c, u)})),
+			"DELETE" => Some(Arc::new(|c, u| { reqwest:: Client::delete(&c, u)})),
+			"HEAD"   => Some(Arc::new(|c, u| { reqwest::Client::head(&c, u)})),
+			_        => {
+				warn!("Unknown method call");
+				None
+			}
+		};
+
+		self
+	}
+
+	pub fn endpoint(mut self, e: &str) ->APIEndpoint<B> {
+		self.endpoint = Some(String::from(e));
+
+		self
+	}
+
+	pub fn args(mut self, h: HashMap<String, String>) -> APIEndpoint<B>  {
+		self.args = h;
+
+		self
+	}
+
+	pub fn timeout(mut self, d: Duration) -> APIEndpoint<B> {
+		self.timeout = d;
+
+		self
+	}
+
+	pub fn body<B2>(&self) -> APIEndpoint<B2> {
+		return APIEndpoint::<B2> {
+			api: self.api.clone(),
+			method: self.method.clone(),
+			endpoint: self.endpoint.clone(),
+			args: self.args.clone(),
+			timeout: self.timeout,
+			body: None
+		};
+	}
+
+	pub async fn send(&self) -> Result<APIResponse, String> {
+		let url = match &self.endpoint {
+			Some(u) => u,
+			None    => {
+				return Err(String::from("Cannot send without URL"));
+			}
+		};
+
+		let method = match &self.method {
+			Some(m) => m,
+			None    => {
+				return Err(String::from("No method to call with"))
+			}
+		};
+
+		let client = match &self.api.client {
+			APIClient::SingleThread(c) => method(c.write().unwrap().clone(), url.to_string()),
+			APIClient::MultiThread(c)  => method(c.clone(),                  url.to_string())
+		};
+
+		let send = client.timeout(self.timeout)
+						.send()
+						.await;
+
+		let resp = match send {
+			Ok(r) => r,
+			Err(m) => { return Err(format!("{:?}", m)); }
+		};
+
+		Ok(APIResponse {
+			status: format!("{:?}", resp.status()),
+			version: format!("{:?}", resp.version()),
+			headers: resp.headers().clone(),
+			body: resp.text().await.unwrap()
+		})
+	}
+}
+
+#[derive(Debug)]
+pub struct APIResponse {
+	pub status: String,
+	pub version: String,
+	pub headers: HeaderMap,
+	pub body: String
+}
+
+
+
 #[derive(Debug)]
 pub enum TerminalError {
 	Unauthorized,
@@ -1576,35 +1739,35 @@ pub struct GeneralRequest {
 #[serde(rename="r25:login_response")]
 pub struct LoginSuccess {
 	#[serde(rename="@pubdate")]
-	pubdate: Option<String>,
+	pub pubdate: Option<String>,
 	#[serde(rename="@engine")]
-	engine: Option<String>,
+	pub engine: Option<String>,
 	#[serde(rename="r25:login")]
-	login: Login
+	pub login: Login
 }
 
 #[derive(Debug, Deserialize)]
 struct Login {
 	#[serde(rename="r25:message")]
-	message: String,
+	pub message: String,
 	#[serde(rename="r25:success")]
-	success: String,
+	pub success: String,
 	#[serde(rename="r25:user_type")]
-	user_type: String,
+	pub user_type: String,
 	#[serde(rename="r25:user_id")]
-	user_id: u16,
+	pub user_id: u16,
 	#[serde(rename="r25:username")]
-	username: String,
+	pub username: String,
 	#[serde(rename="r25:contact_name")]
-	contact_name: String,
+	pub contact_name: String,
 	#[serde(rename="r25:security_group_id")]
-	security_group_id: u16,
+	pub security_group_id: u16,
 	#[serde(rename="r25:security_group_name")]
-	security_group_name: String,
+	pub security_group_name: String,
 	#[serde(rename="r25:login_url")]
-	login_url: String,
+	pub login_url: String,
 	#[serde(rename="r25:logout_url")]
-	logout_url: String
+	pub logout_url: String
 }
 
 #[derive(Debug, Deserialize)]
