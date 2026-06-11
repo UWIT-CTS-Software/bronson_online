@@ -1534,13 +1534,13 @@ pub struct CFMRequestFile {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct CFMTreeNode {
+pub struct TreeNode {
     pub name: String,
     pub file_path: String,
-    pub children: Option<Vec<CFMTreeNode>>, // can be null (None)
+    pub children: Option<Vec<TreeNode>>, // can be null (None)
 }
 
-impl CFMTreeNode {
+impl TreeNode {
     pub fn new() -> Self {
         Self {
             name: String::new(),
@@ -1557,7 +1557,7 @@ impl CFMTreeNode {
         }
     }
 
-    pub fn push(&mut self, child: CFMTreeNode) {
+    pub fn push(&mut self, child: TreeNode) {
         match &mut self.children {
             Some(children) => children.push(child),
             None => {

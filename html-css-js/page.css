@@ -3171,3 +3171,110 @@ span.psw {
         width: 100%;
     }
 }
+
+/*
+            _ _    _  _  
+            (_) |  (_)
+    __      ___| | ___   _
+    \ \ /\ / / | |/ / | |
+     \ V  V /| |   <| |_|
+      \_/\_/ |_|_|\_\_(_) 
+
+    Wiki Definitions
+*/ 
+.w_container {
+    display: flex; 
+    flex-direction: row;
+}
+
+.w_toc {
+    width: 500px;
+    height: fit-content
+}
+.w_viwer {
+    width: calc(100% -500px);
+} 
+
+.w_fieldset {
+    border:5px dashed rgb(144, 118, 26);
+    width: 200px; 
+    margin-left: 200px;
+    margin-right: 0px;
+}
+.scrollToc {
+    overflow-y: scroll;
+    max-height: 1000px;
+    max-width: fit-content;
+}
+.scrollArt {
+    overflow-y: scroll;
+    max-height: fit-content;
+    width: 1000px;
+    text-wrap: wrap;
+    text-align: left;
+    
+
+   h1 {
+    color:rgb(236, 200, 101);
+    text-align: center;
+   }
+   
+   h2 {
+    color:rgb(236, 200, 101);
+   }
+   
+   h3 {
+    color:rgb(236, 200, 101);
+   }
+   ul {
+    list-style-type: square;
+   }
+   p {
+    text-align: left;
+   }
+
+   strong {
+    font-weight: bold;
+    font-size: medium;
+   }
+
+   code {
+    background-color: black;
+    color: white;
+   }
+
+   blockquote {
+    padding-left: 1rem;
+    border-left: 3px solid
+
+   }
+   
+}
+
+.wA_fieldset {
+    border:4px solid rgb(144, 118, 26);
+    margin-left: 10px;
+    margin-right: 200px;
+}
+.toc-item {
+    cursor: pointer;
+    padding: 4px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.toc-item:hover {
+    background-color: rgb(144, 118, 26);
+    color:rgb(236, 200, 101)
+}
+
+pre {
+     white-space: pre-wrap;
+     color:rgb(236, 200, 101)
+}
+a {
+    color: rgb(49, 125, 64);
+}
+a.visited {
+  color: rgb(135,62,9)
+}
+

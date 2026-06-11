@@ -28,7 +28,7 @@ CamCode
     - get_dir_contents(path: &str) -> Vec<String>
     - get_origin(req: Request) -> String
 -- Handlers -----------------------------
-    - get_cfm_file(body: Vec<u8>) -> String
+    - get_file(body: Vec<u8>, root: &str) -> String
 
 Tickex
     - fetch_tdx_token(database: &mut Database, req: &Client) -> Result<(), String>
@@ -44,7 +44,7 @@ use server_lib::{
     BUFF_SIZE, 
     ThreadPool, ThreadSchedule, TaskSchedule, PingRequest, 
     Building, 
-    CFMRequestFile, CFMTreeNode,
+    CFMRequestFile, TreeNode,
     jp::{ ping_this, },
     CFM_DIR, WIKI_DIR, /* LOG, */
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
@@ -88,6 +88,7 @@ use urlencoding::decode;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
+use base64::{Engine as _, engine::general_purpose};
 // ----------------------------------------------------------------------------
 static JN_THREAD: AtomicBool = AtomicBool::new(false);
 pub const MIGRATIONS : EmbeddedMigrations = embed_migrations!();
@@ -456,10 +457,19 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                 },
                 "cfmTree"         => {
                     info!("[Data] - Building CFM Tree");
-                    let _ = match cfm_build_tree(&mut database) {
-                        Ok(_)     =>  info!("[Data] - CFM Tree Build Complete"),
-                        Err(m)    => error!("[Data] - CFM Tree Build FAILED: {}", m)
+                    let json_return = match build_tree(CFM_DIR, false) {
+                        Ok(j)     =>  j,
+                        Err(m)    => {error!("[Data] - Tree Build FAILED: {}", m); json!([]).to_string() }
                     };
+
+                    match database.update_data(&DB_DataElement {
+                        key: String::from("cfm_tree"),
+                        val: json_return,
+                    }) {
+                        Ok(_) => {}
+                        Err(e) => error!("Failed to update database: {}", e),
+                    }
+                    
                 },
                 "tdxToken"        => {
                     info!("[Data] - Pulling New TDX Token");
@@ -1746,7 +1756,7 @@ async fn handle_connection(
                 .send_contents(contents)
         },
         "POST /cfm_file HTTP/1.1" => {
-            let contents = get_cfm_file(req.body);
+            let contents = get_file(req.body, CFM_DIR);
             let mut f = match File::open(&contents) {
                 Ok(file) => file,
                 Err(e) => {
@@ -1781,6 +1791,45 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_contents(contents)
         },
+
+        "POST /w_build_tree HTTP/1.1" => {
+            let contents = w_tree();
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
+        },
+
+        "POST /w_file HTTP/1.1" => {
+               let contents = get_file(req.body, WIKI_DIR);
+            let mut f = match File::open(&contents) {
+                Ok(file) => file,
+                Err(e) => {
+                    error!("Unable to open file {}: {}", &contents, e);
+                    return Response::new()
+                            .status(STATUS_500)
+                            .send_contents(format!("File not found: {}", &contents).into())
+                            .build();
+                }
+            };
+            
+            let mut file_buffer = Vec::new();
+            match f.read_to_end(&mut file_buffer) {
+                Ok(_) => (),
+                Err(e) => error!("Unable to read to end of file: {}", e)
+            };
+
+            // Extract just the filename from the full path
+            let filename_only = contents.split('/').last().unwrap_or("file");
+            let filename = format!("attachment; filename={}", filename_only);
+
+            Response::new()
+                    .status(STATUS_200)
+                    .insert_header("Content-Type", "application/zip")
+                    .insert_header("Content-Disposition", &filename)
+                    .send_contents(file_buffer)
+            
+        },
+
         // Ticket Description
         start_line if start_line.starts_with("GET /ticket/description/") && start_line.ends_with(" HTTP/1.1") => {
             let ticket_id_str = start_line
@@ -2552,12 +2601,12 @@ fn get_dir_contents(path: &str) -> Vec<String> {
   _/                
 */
 
-// cfm_build_tree() - build virtual tree of files and directories and store in database as JSON
-fn cfm_build_tree(database: &mut Database) -> Result<(), String> {
-    let mut tree_root: CFMTreeNode = CFMTreeNode::with_name_path("CamCode", CFM_DIR);
+// build_tree() - build virtual tree of files and directories and store in database as JSON
+fn build_tree(root: &str, needs_content: bool) -> Result<String, String> {
+    let mut tree_root: TreeNode = TreeNode::with_name_path("Root", root);
 
-    let cfm_dirs = get_dir_contents(CFM_DIR);
-    for item in cfm_dirs.iter() {
+    let dirs = get_dir_contents(root);
+    for item in dirs.iter() {
         // Ignore files with '_' and '.' prefix & other specific files
         // Skip hidden/system files
         if let Some(file_name) = Path::new(item).file_name().and_then(|s| s.to_str()) {
@@ -2567,24 +2616,25 @@ fn cfm_build_tree(database: &mut Database) -> Result<(), String> {
                 continue;
             }
         }
-        tree_root.push(build_cfm_subtree(item));
+        tree_root.push(build_subtree(item));
     }
 
     let json_return = json!({
         "tree": tree_root
     });
 
-    match database.update_data(&DB_DataElement {
-        key: String::from("cfm_tree"),
-        val: json_return.to_string(),
-    }) {
-        Ok(_) => {}
-        Err(e) => return Err(format!("Failed to update database: {}", e)),
-    }
+    // match database.update_data(&DB_DataElement {
+    //     key: String::from("cfm_tree"),
+    //     val: json_return.to_string(),
+    // }) {
+    //     Ok(_) => {}
+    //     Err(e) => return Err(format!("Failed to update database: {}", e)),
+    // }
+    info!("[Data] - CFM Tree Build Complete");
 
-    Ok(())
+    Ok(json_return.to_string())
 }
-fn build_cfm_subtree(path: &str) -> CFMTreeNode {
+fn build_subtree(path: &str) -> TreeNode {
     use std::path::Path;
 
     let name = Path::new(path)
@@ -2595,10 +2645,10 @@ fn build_cfm_subtree(path: &str) -> CFMTreeNode {
 
     let mut node = if is_this_dir(path) {
         // Folder: children starts as empty vec
-        CFMTreeNode::with_name_path(name, path.to_string())
+        TreeNode::with_name_path(name, path.to_string())
     } else {
         // File / leaf: children = None
-        CFMTreeNode {
+        TreeNode {
             name,
             file_path: path.to_string(),
             children: None,
@@ -2616,7 +2666,7 @@ fn build_cfm_subtree(path: &str) -> CFMTreeNode {
                     continue;
                 }
             }
-            node.push(build_cfm_subtree(entry));
+            node.push(build_subtree(entry));
         }
     }
 
@@ -2624,23 +2674,23 @@ fn build_cfm_subtree(path: &str) -> CFMTreeNode {
 }
 
 
-// get_cfm_file() - sends the selected file to the client
+// get_file() - sends the selected file to the client
 // TODO:
 //    [ ] - store selected file as bytes ?
 //    [ ] - send in json as usual ?
-fn get_cfm_file(body: Vec<u8>) -> String {
-    let tmp = String::from_utf8(body).expect("CamCode Err, invalid UTF-8");
+fn get_file(body: Vec<u8>, root: &str) -> String {
+    let tmp = String::from_utf8(body).expect("Err, invalid UTF-8");
     //
     let cfmr_f: CFMRequestFile = serde_json::from_str(&tmp)
-        .expect("CamCode Err, Failed to grab file");
+        .expect("Err, Failed to grab file");
 
     // Strip virtual root if present
     let filename = cfmr_f
         .filename
-        .strip_prefix("CamCode/")
+        .strip_prefix("Root/")
         .unwrap_or(&cfmr_f.filename);
 
-    let mut path_raw = String::from(CFM_DIR);
+    let mut path_raw = String::from(root);
     path_raw.push('/');
     path_raw.push_str(filename);
 
@@ -3261,6 +3311,7 @@ $$  /   \$$ |$$ |$$ | \$$\ $$ |
 \__/     \__|\__|\__|  \__|\__|
 */
 
+
 fn w_build_articles() -> Vec<u8> {
     let mut article_names_vec: Vec<String> = Vec::new();
     let mut article_contents_vec: Vec<String> = Vec::new();
@@ -3274,8 +3325,13 @@ fn w_build_articles() -> Vec<u8> {
 
     let cut_index = WIKI_DIR.len();
     for (_, &ref item) in wiki_dirs.iter().enumerate() {
-        // Open and read the file
-        let contents = std::fs::read_to_string(item).expect("Failed to read wiki article file");
+        // Open and read the file 
+        // SWAP to read all files in as base64 
+        let raw_contents: Vec<u8> = std::fs::read(item).expect("Failed to read wiki article file");
+
+        let contents = general_purpose::STANDARD.encode(raw_contents);
+
+        //let contents: String = std::fs::read_to_string(item).expect("Failed to read wiki article file");
 
         article_names_vec.push((&item[(cut_index + 1)..]).to_string());
         article_contents_vec.push(contents);
@@ -3291,7 +3347,20 @@ fn w_build_articles() -> Vec<u8> {
     let json_return = Value::Object(articles);
 
     return json_return.to_string().into();
+
+    
 }
+
+fn w_tree() -> Vec<u8>  {
+   let json_return = match build_tree(WIKI_DIR, false) {
+       Ok(j)     =>  j,
+       Err(m)    => {error!("[Data] - Tree Build FAILED: {}", m); json!([]).to_string() }
+     };
+
+    return json_return.to_string().into();
+}
+
+
 
 /*
 $$$$$$$$\                                $$\                     $$\ 
