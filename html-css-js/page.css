@@ -3706,205 +3706,83 @@ span.psw {
     Wiki Definitions
 */ 
 .w_container {
-    /* display: flex;  */
-    /* flex-direction: row; */
-    display: grid;
-    position: relative;
-    height: 100%;
-    width: 100%;    
+    display: flex; 
+    flex-direction: row;
 }
+
 .w_toc {
-    width: fit-content;
-    /* grid-column: 1/2; */
+    width: 500px;
+    height: fit-content
 }
-
-  
-
 .w_viwer {
-    width: 750px;
-    grid-column: 2/2;
-    /* margin-left: 10px; */
-    /* margin-right: 200px; */
-}
-
-
-
-
+    width: calc(100% -500px);
+} 
 
 .w_fieldset {
     border:5px dashed rgb(144, 118, 26);
+    width: 200px; 
     margin-left: 200px;
     margin-right: 0px;
-    grid-column:1/2;
+}
+.scrollToc {
     overflow-y: scroll;
-    overflow-x: scroll;
     max-height: 1000px;
     max-width: fit-content;
-    background-color: rgb(65, 65, 60);
-    box-shadow: 5px 10px 15px;
-    border-radius: 12px;
-    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif
 }
-
-
-.w_fieldset_mobile {
-    border:5px dashed rgb(144, 118, 26);
-    grid-column:1/2;
+.scrollArt {
     overflow-y: scroll;
-    overflow-x: scroll;
-    max-height: 1000px;
-    max-width: fit-content;
-    background-color: rgb(65, 65, 60);
-    box-shadow: 5px 10px 15px;
-    border-radius: 12px;
-    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif
-}
-
-p.toc-item{
-     border-radius: 12px;
-     text-align: left;
-     margin-left: 10px;
-     width: fit-content;
-     margin-right: 4px;
-    
-}
-
-.toc-folder{
-    width: fit-content;
-}
-
-.toc-children {
-    width: fit-content;
-}
-
-.scrollDir {
-    overflow-y: scroll;
-    overflow-x: scroll;
-    display: inline-block;
-    margin-top: 5px;
-    margin-bottom: 5px;
-    margin-left: 25px;
-    margin-right: 25px;
-    overflow-y: scroll;
-    max-height: 500px;
-    max-width: fit-content;
+    max-height: fit-content;
+    width: 1000px;
+    text-wrap: wrap;
     text-align: left;
-    border-left: 3px dashed rgb(144, 118, 26); 
+    
+
+   h1 {
+    color:rgb(236, 200, 101);
+    text-align: center;
+   }
+   
+   h2 {
+    color:rgb(236, 200, 101);
+   }
+   
+   h3 {
+    color:rgb(236, 200, 101);
+   }
+   ul {
+    list-style-type: square;
+   }
+   p {
+    text-align: left;
+   }
+
+   strong {
+    font-weight: bold;
+    font-size: medium;
+   }
+
+   code {
+    background-color: black;
+    color: white;
+   }
+
+   blockquote {
+    padding-left: 1rem;
+    border-left: 3px solid
+
+   }
+   
 }
 
 .wA_fieldset {
-    overflow-y: scroll;
-    max-height:  75%;
-    width: 100%;
-    text-wrap: wrap;
-    border-radius: 12px;
-    background-color: rgb(65, 65, 60);
-    box-shadow: 5px 10px 15px;
+    border:4px solid rgb(144, 118, 26);
+    margin-left: 10px;
     margin-right: 200px;
-    margin-left: 0px;
-    margin-right: 200px;
-    
-/* markdown styling  */
-   h1 {
-    color:rgb(236, 200, 101);
-    text-align: center;
-   }
-   
-   h2 {
-    color:rgb(236, 200, 101);
-    margin-left: 10px;
-   }
-   
-   h3 {
-    color:rgb(236, 200, 101);
-    margin-left: 10px;
-   }
-   ul {
-    list-style-type: square;
-   }
-   p {
-    text-align: left;
-    margin-left: 5px;
-   }
-
-   strong {
-    font-weight: bold;
-    font-size: medium;
-   }
-
-   code {
-    background-color: black;
-    color: white;
-   }
-
-   blockquote {
-    padding-left: 1rem;
-    border-left: 3px solid
-
-   }
-   
 }
-
-.wA_fieldset_mobile {
-    overflow-y: scroll;
-    max-height:  100%;
-    width: 90%;
-    text-wrap: wrap;
-    border-radius: 12px;
-    background-color: rgb(65, 65, 60);
-    box-shadow: 5px 10px 15px;
-    
-/* markdown styling  */
-   h1 {
-    color:rgb(236, 200, 101);
-    text-align: center;
-   }
-   
-   h2 {
-    color:rgb(236, 200, 101);
-    margin-left: 10px;
-   }
-   
-   h3 {
-    color:rgb(236, 200, 101);
-    margin-left: 10px;
-   }
-   ul {
-    list-style-type: square;
-   }
-   p {
-    text-align: left;
-    margin-left: 5px;
-   }
-
-   strong {
-    font-weight: bold;
-    font-size: medium;
-   }
-
-   code {
-    background-color: black;
-    color: white;
-   }
-
-   blockquote {
-    padding-left: 1rem;
-    border-left: 3px solid
-
-   }
-   
-}
-
-
 .toc-item {
-    pointer-events: auto;
     cursor: pointer;
     padding: 4px;
     transition: background-color 0.15s ease, color 0.15s ease;
-    width: fit-content;
-}
-.toc-item[data-isOpen="true"] {
-     background-color: rgb(144, 118, 26);
 }
 
 .toc-item:hover {
@@ -3923,72 +3801,3 @@ a.visited {
   color: rgb(135,62,9)
 }
 
-.wFile_fieldset{
-    margin-top: 1px;
-    margin-bottom: 1px;
-    margin-left: 8px;
-    text-align: left;
-    white-space: pre-wrap;
-    overflow: scroll;
-    text-overflow: ellipsis;
-    font-size: larger;
-    cursor: pointer;
-    width: fit-content;
-    background-color: rgb(65, 65, 60);
-    box-shadow: 5px 10px 10px;
-    
-}
-
-.pop_fieldset{
-    z-index: 1; /* Sit on top */
-    position:absolute;
-    width:50%; /* Full width */
-    height: 30%; /* Full height */
-    overflow: auto; /* Enable scroll if needed */
-    background-color: rgb(0,0,0); /* Fallback color */
-    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-    margin-top: 60px;
-    margin-left: 25%;
-    margin-right: 25%;
-    border: 2px outset rgb(144,118,26);
-    border-radius: 15px;
-}
-.pop_fieldset_sm{
-    z-index: 1; /* Sit on top */
-    position:absolute;
-    width:30%; /* Full width */
-    height: 20%; /* Full height */
-    overflow: auto; /* Enable scroll if needed */
-    background-color: rgb(0,0,0); /* Fallback color */
-    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-    margin-top: 60px;
-    margin-left: 25%;
-    margin-right: 25%;
-    border: 2px outset rgb(144,118,26);
-    border-radius: 15px;
-}
-.wikiInput {
-    margin-left: 10%;
-    margin-right: 10%;
-    margin-top: 10%;
-    margin-bottom: 10%;
-    color:rgb(144,118,26);
-}
-
-.addFileButton{
-    z-index: 1;
-
-}
-
-.file-btn {
-    background-color: transparent;
-
-}
-
-.folder-btn {
-    background-color: transparent;
-}
-
-.delete-btn {
-    background-color: transparent;
-}
