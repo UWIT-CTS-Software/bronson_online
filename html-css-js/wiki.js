@@ -392,6 +392,96 @@ function deleteButton(node){
     
 }
 
+ function setListeners() {
+     document.addEventListener('click', (e) => {
+        let target = e.target.closest('.toc-item'); 
+        if (!target) return;
+        
+        const filename = target.dataset.name;
+
+        new_read = getArticleHTML(filename);
+
+        let w_viwer = document.getElementById("w_viwer");
+
+        w_viwer.innerHTML = new_read;
+
+        console.log("Clicked", filename);
+        console.log("Content:", new_read);
+    });
+}
+
+
+
+ function getArticleHTML(filename) {
+    let articles = JSON.parse(sessionStorage.getItem("wikiArticles"));
+
+    if (filename.endsWith('.md')){
+        let encoded = (articles[filename]);
+        const u8arr = Uint8Array.fromBase64(encoded);
+        const textdecoder = new TextDecoder('utf-8');
+        let decodedtext = textdecoder.decode(u8arr);
+    
+        
+        let md = decodedtext;
+        var parsed_md = marked.parse(md);
+        let html = `
+            <fieldset class="wA_fieldset">
+                <legend class='w_legend'> 
+                    ${filename}
+                </legend> 
+                <div class = "scrollArt"> 
+                <pre>${parsed_md} </pre>
+                </div>
+
+            </fieldset>
+            
+        `;
+        return html; 
+        
+    } else if (filename.endsWith('.pdf')){
+        let pdf_file = articles[filename];
+        console.log("This should be base64",pdf_file)
+        let html = `
+            <fieldset class="wA_fieldset">
+                <legend class='w_legend'> 
+                    ${filename}
+                </legend> 
+                <div class = "scrollArt"> 
+                <iframe width="1000px" height="1200px" src="data:application/pdf;base64, ${pdf_file}"></iframe>
+                </div>
+
+            </fieldset>
+            
+        `;
+         return html; 
+    } else {
+        let encoded = (articles[filename]);
+        const u8arr = Uint8Array.fromBase64(encoded);
+        const textdecoder = new TextDecoder('utf-8');
+        let decodedtext = textdecoder.decode(u8arr);
+        let html = `
+            <fieldset class="wA_fieldset">
+                <legend class='w_legend'> 
+                    ${filename}
+                </legend> 
+                <div class = "scrollArt"> 
+                <pre>${decodedtext}</pre>
+                </div>
+
+            </fieldset>
+            
+        `;
+        return html; 
+
+    }
+
+    
+}
+
+
+
+
+
 /*
  __        _          _     
 / _|  ___ | |_   ___ | |__  
