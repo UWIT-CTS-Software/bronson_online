@@ -30,20 +30,6 @@
     const hb_modal = document.getElementById('hb_menu');
     const br_modal = document.getElementById('bug_report_modal');
     const hb_button = document.getElementById('hb_button');
-    window.onclick = function(event) {
-      if (document.querySelector('.hb_menu').classList.contains("showMenu") && event.target != hb_modal && event.target != hb_button) {
-        toggleHBMenu();
-      }
-      /* if (document.querySelector(".hb_menu").classList.contains("showMenu") && event.target != hb_modal) {
-        toggleHBMenu();
-      }
-      if (event.target == hb_button) {
-        toggleHBMenu();
-      } */
-      if (event.target == br_modal) {
-        terminateForm();
-      }
-    }
 
     // setInterval timers for ticket fetching
     localStorage.setItem("isDBTicketIntervalSet", false);
