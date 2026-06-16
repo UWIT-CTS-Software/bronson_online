@@ -3728,6 +3728,19 @@ span.psw {
     overflow-y: scroll;
     max-height: 1000px;
     max-width: fit-content;
+    
+}
+.scrollDir {
+    display: inline-block;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    margin-left: 25px;
+    margin-right: 25px;
+    overflow-y: scroll;
+    max-height: 500px;
+    max-width: fit-content;
+    text-align: right;
+    /* border: 3px dotted rgb(144, 118, 26);  */
 }
 .scrollArt {
     overflow-y: scroll;
@@ -3736,7 +3749,7 @@ span.psw {
     text-wrap: wrap;
     text-align: left;
     
-
+/* markdown styling  */
    h1 {
     color:rgb(236, 200, 101);
     text-align: center;
@@ -3780,9 +3793,13 @@ span.psw {
     margin-right: 200px;
 }
 .toc-item {
+    pointer-events: auto;
     cursor: pointer;
     padding: 4px;
     transition: background-color 0.15s ease, color 0.15s ease;
+}
+.toc-item[data-isOpen="true"] {
+     background-color: rgb(144, 118, 26);
 }
 
 .toc-item:hover {
@@ -3800,4 +3817,3 @@ a {
 a.visited {
   color: rgb(135,62,9)
 }
-

@@ -35,14 +35,9 @@ async function setWiki() {
 
     /* -------------------- Wiki Page -------------------- */
 
-    setListeners();
-    //hideTerminal();
-    // await getW_tree();
-    // var tree = JSON.parse(sessionStorage.getItem("wikiTree"));
-    // console.log(tree);
-    // var filepaths = getFilepaths(tree);
-    // console.log("Should show filepaths", filepaths);
-
+     await getW_tree();
+    let defult_wiki = "/home/rkilduff/Desktop/bronson_online/data/wiki_articles/BronsonWiki.pdf"
+    getWiki_File(defult_wiki);
 
     let w_container = document.createElement('div');
     w_container.classList.add('w_container');
@@ -58,7 +53,7 @@ async function setWiki() {
 
     w_viwer.id = "w_viwer";
 
-    w_viwer.innerHTML =  getArticleHTML("Admin Users.txt");
+    //w_viwer.innerHTML =  getArticleHTML("Admin Users.txt");
 
     w_container.appendChild(w_toc);
     w_container.appendChild(w_viwer); 
@@ -66,25 +61,12 @@ async function setWiki() {
     progGuts.replaceWith(main_container); 
 }
 
-// function getFilepaths(node, currentPath = "", results = []) {
-//     const newPath = currentPath ? `${currentPath}/${node.name}`: node.name;
-//     // If leaf save path 
-//     if (!node.children || node.children.length === 0) {
-//         results.push(newPath);
-//         return results;
-//     }
-
-//     for (const child of node.children){
-//         getFilepaths(child, newPath, results);
-//     }
-
-//     return results;
-// }
-
 async function getTocHTML() { // toC Tabel of Contents
-    let articles = await getW_BuildArticles();
+    //let filenames = filepaths;
    // let articles = await getW_file();
-   console.log(articles);
+   //console.log(articles);
+   let treeJSON =  JSON.parse(sessionStorage.getItem('wikiTree'));
+   
 
     let html = `
        
@@ -93,48 +75,97 @@ async function getTocHTML() { // toC Tabel of Contents
                 Table of Contents:
             </legend>
              <div class ="scrollToc"> 
-             ${Object.keys(articles).map(article => `<p class="toc-item" data-name="${article}">${article}</p>`).join('')} 
-
+             ${treeJSON.tree.children.map(child => `<p class="toc-item" onClick="clickable(this)" data-path="${child.file_path}" data-isOpen="false">${child.name}</p>`).join('')}
              </div>
         </fieldset>
     `;
 
-
     return html;
 }
 
- function setListeners() {
-     document.addEventListener('click', (e) => {
-        let target = e.target.closest('.toc-item'); 
-        if (!target) return;
+function clickable(target){
+    let treeJSON =  JSON.parse(sessionStorage.getItem('wikiTree'));
         
-        const filename = target.dataset.name;
+     if (!target) {
+        console.log("Target not found returning");
+        return;
+     }
+  
+        const path = target.dataset.path;
+        console.log("Path:", path)
 
-        new_read = getArticleHTML(filename);
+        const node = findPath(treeJSON.tree, path);
+        console.log("Node",node);
+
+        if(!node) {
+            console.log("No node found at given path", path);
+            return;
+        }
+
+        if(Array.isArray(node.children)) {
+            console.log("Clicked Dir", node.name);
+            showDir(node, target);
+        } else if (node.children === null){
+            console.log("Clicked file", node.name);
+            // Load content when I figure out how to do that
+            getWiki_File(path);
+            return;
+       } else {
+        console.log("Something went wrong");
+        return;
+       }
 
         let w_viwer = document.getElementById("w_viwer");
-
-        w_viwer.innerHTML = new_read;
-
-        console.log("Clicked", filename);
-        console.log("Content:", new_read);
-    });
 }
 
+function findPath(node, path){
+    if(node.file_path === path) return node;
 
+    if(Array.isArray(node.children)){
+        for (const child of node.children) {
+            const found = findPath(child, path);
+            if (found) return found;
+        }
+    }
 
- function getArticleHTML(filename) {
-    let articles = JSON.parse(sessionStorage.getItem("wikiArticles"));
+    //Else 
+    return null;
+ }
 
+function showDir(node, targetElement){
+    console.log("showDir Reached");
+
+    if(targetElement.getAttribute("data-isOpen") === "true") {
+        targetElement.setAttribute("data-isOpen", "false");
+        closeDir(targetElement);
+        return;
+    }
+
+    let html = `
+     <div id="scrollDir" class ="scrollDir"> 
+     ${node.children.map(child => `<p class="toc-item", onClick="clickable(this)" data-path="${child.file_path}" data-isOpen="false">${child.name}</p>`).join('')} </div>
+    `;
+    targetElement.setAttribute("data-isOpen", "true");
+    return targetElement.insertAdjacentHTML('afterend', html, true);
+}
+
+function closeDir(targetElement){
+    const scrollDir = targetElement.nextElementSibling;
+
+    if (scrollDir && scrollDir.id === "scrollDir"){
+        scrollDir.remove();
+    }
+}
+
+ async function getArticleHTML(blob, filename) {
+    // let articles = JSON.parse(sessionStorage.getItem("wikiArticles"));
+    console.log("BLOB:", blob, "FILENAME:", filename);
+   
     if (filename.endsWith('.md')){
-        let encoded = (articles[filename]);
-        const u8arr = Uint8Array.fromBase64(encoded);
-        const textdecoder = new TextDecoder('utf-8');
-        let decodedtext = textdecoder.decode(u8arr);
-    
         
-        let md = decodedtext;
-        var parsed_md = marked.parse(md);
+        let parsed_md = "";
+        let md = await blob.text();
+        parsed_md = marked.parse(md);
         let html = `
             <fieldset class="wA_fieldset">
                 <legend class='w_legend'> 
@@ -147,42 +178,49 @@ async function getTocHTML() { // toC Tabel of Contents
             </fieldset>
             
         `;
-        return html; 
+        w_viwer.innerHTML = html;
+        return;
         
     } else if (filename.endsWith('.pdf')){
-        let pdf_file = articles[filename];
-        console.log("This should be base64",pdf_file)
+        // let pdf_file = articles[filename];
+        // console.log("This should be base64",pdf_file)
+        let raw_blob = await blob;
+        let pdf_blob = new Blob([raw_blob], {type: "application/pdf"});
+        const blobUrl = URL.createObjectURL(pdf_blob); 
+
         let html = `
             <fieldset class="wA_fieldset">
                 <legend class='w_legend'> 
                     ${filename}
                 </legend> 
                 <div class = "scrollArt"> 
-                <iframe width="1000px" height="1200px" src="data:application/pdf;base64, ${pdf_file}"></iframe>
+                <iframe width="1000px" height="1200px" src="${blobUrl}"></iframe>
                 </div>
 
             </fieldset>
             
         `;
-         return html; 
+        w_viwer.innerHTML = html;
+         return; 
     } else {
-        let encoded = (articles[filename]);
-        const u8arr = Uint8Array.fromBase64(encoded);
-        const textdecoder = new TextDecoder('utf-8');
-        let decodedtext = textdecoder.decode(u8arr);
+        let text = await blob.text();
+        // let text_blob = new Blob([raw_blob], {type: "text/plain"});
+        // const blobUrl = URL.createObjectURL(text_blob); 
+       
         let html = `
             <fieldset class="wA_fieldset">
                 <legend class='w_legend'> 
                     ${filename}
                 </legend> 
                 <div class = "scrollArt"> 
-                <pre>${decodedtext}</pre>
+                <pre class="plain-text">${text}<pre>
                 </div>
 
             </fieldset>
             
         `;
-        return html; 
+         w_viwer.innerHTML = html;
+        return; 
 
     }
 
@@ -216,60 +254,47 @@ async function getW_BuildArticles() {
 };
 
 
-// async function getW_tree(){
-//     return await fetch('w_build_tree', {
-//         method: 'POST',
-//         body: JSON.stringify({
-//             message: 'w_build_tree'
-//         })
-//     })
+async function getW_tree(){
+    return await fetch('w_build_tree', {
+        method: 'POST',
+        body: JSON.stringify({
+            message: 'w_build_tree'
+        })
+    })
 
-//     .then((response) => response.json())
-//     .then((json) => {
-//         sessionStorage.setItem("wikiTree", JSON.stringify(json));
-//         return json;
-//     });
+    .then((response) => response.json())
+    .then((json) => {
+        sessionStorage.setItem("wikiTree", JSON.stringify(json));
+        return json;
+    });
 
-// };
+};
+
+async function getWiki_File(filepath) {
+    console.log("First instance of filepath:", filepath);
+    // If no display name provided, extract it from the filepath
+    let filename = filepath.split('/').pop();
+    let relativePath = filepath.split('wiki_articles').pop();
+    console.log("Relative Path is:", relativePath);
+    console.log("getWiki_File - Sending filepath:", filepath, "filename", filename);
+    return await fetch('w_file', {
+        method: 'POST',
+        body: JSON.stringify({
+            filename: relativePath
+        })
+    })
+    .then((response) => {
+        if (!response.ok && response.status !== 500) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.blob();
+    })
+    .then((blob) => getArticleHTML(blob, filename))
+    .catch((error) => {
+        // Log error but don't throw - file may still be downloading
+        console.warn("Download completed (server error ignored):", error);
+    });
+}
 
 
-// async function getW_file(){
-//     return await fetch('w_file', {
-//         method: 'POST',
-//         body: JSON.stringify({
-//             message: 'w_file'
-//         })
-//     })
 
-//     .then((response) => response.json())
-//     .then((json) => {
-//         sessionStorage.setItem("wikiFile", JSON.stringify(json));
-//         return json;
-//     });
-
-
-
-// async function getW_file(filepath, displayName = null) {
-//     // If no display name provided, extract it from the filepath
-//     let filename = displayName || filepath.split('/').pop();
-//     console.log("getW_File - Sending filepath:", filepath, "displayName:", filename);
-//     return await fetch('w_file', {
-//         method: 'POST',
-//         body: JSON.stringify({
-//             filename: filepath,
-//             message: 'w_file'
-//         })
-//     })
-//     .then((response) => {
-//         if (!response.ok && response.status !== 500) {
-//             throw new Error(`HTTP error! status: ${response.status}`);
-//         }
-//         return response.blob();
-//     })
-//     .then((response) => response.json())
-//      .then((json) => {
-//         sessionStorage.setItem("wikiFile", JSON.stringify(json));
-//        return json;
-//     });
-
-//  }
