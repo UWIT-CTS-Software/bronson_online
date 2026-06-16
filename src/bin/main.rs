@@ -2831,9 +2831,9 @@ fn build_tree(root: &str, needs_content: bool, blacklist: HashSet<&str>) -> Resu
             }
             
         }
-        let relative_path = item.replace(WIKI_DIR, "./");
+        let relative_path = item.replace(root, "./");
         println!("path looks like this{}",relative_path);
-        tree_root.push(build_subtree(&relative_path, blacklist.clone()));
+        tree_root.push(build_subtree(&relative_path, root, blacklist.clone()));
          
     }
     
@@ -2847,17 +2847,17 @@ fn build_tree(root: &str, needs_content: bool, blacklist: HashSet<&str>) -> Resu
 }
 
 
-fn build_subtree(path: &str, blacklist: HashSet<&str>) -> TreeNode {
+fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
     use std::path::Path;
 
-    let name = Path::new(&(WIKI_DIR.to_string() + path))
+    let name = Path::new(&(root.to_string() + path))
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or("")
         .to_string();
         
-    println!("Path is{}", &(WIKI_DIR.to_string() + path));
-    let mut node = if is_this_dir(&(WIKI_DIR.to_string() + path)) {
+    //println!("Path is{}", &(root.to_string() + path));
+    let mut node = if is_this_dir(&(root.to_string() + path)) {
         // Folder: children starts as empty vec
         TreeNode::with_name_path(name, path.to_string())
     } else {
@@ -2870,8 +2870,8 @@ fn build_subtree(path: &str, blacklist: HashSet<&str>) -> TreeNode {
 
    };
 
-    if is_this_dir(&(WIKI_DIR.to_string() + path)) {
-        let path_contents = get_dir_contents(&(WIKI_DIR.to_string() + path));
+    if is_this_dir(&(root.to_string() + path)) {
+        let path_contents = get_dir_contents(&(root.to_string() + path));
         for entry in path_contents.iter() {
             // Skip hidden/system files
             if let Some(file_name) = Path::new(entry).file_name().and_then(|s| s.to_str()) {
@@ -2883,8 +2883,8 @@ fn build_subtree(path: &str, blacklist: HashSet<&str>) -> TreeNode {
                
             }
 
-            let relative_path = entry.replace(WIKI_DIR, "./");
-            node.push(build_subtree(&relative_path, blacklist.clone()));
+            let relative_path = entry.replace(root, "./");
+            node.push(build_subtree(&relative_path, root, blacklist.clone()));
         }
     }
 
