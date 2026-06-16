@@ -3842,6 +3842,9 @@ p.toc-item{
 .toc-item[data-isOpen="true"] {
      background-color: rgb(144, 118, 26);
 }
+.toc-item[data-isOpen="true"] {
+     background-color: rgb(144, 118, 26);
+}
 
 .toc-item:hover {
     background-color: rgb(144, 118, 26);

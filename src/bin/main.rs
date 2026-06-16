@@ -81,8 +81,7 @@ use std::{
         atomic::{AtomicBool, Ordering}},
     clone::{ Clone, },
     option::{ Option, },
-    collections::{ HashMap, },
-    process::Command,
+    collections::{ HashMap, HashSet },
 };
 use reqwest::{
     header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
@@ -3116,13 +3115,14 @@ fn build_tree(root: &str, blacklist: HashSet<&str>) -> Result<String, String> {
 fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
     use std::path::Path;
 
-    let name = Path::new(&(root.to_string() + path))
+    let name = Path::new(&(WIKI_DIR.to_string() + path))
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or("")
         .to_string();
         
-    let mut node = if is_this_dir(&(root.to_string() + path)) {
+    println!("Path is{}", &(WIKI_DIR.to_string() + path));
+    let mut node = if is_this_dir(&(WIKI_DIR.to_string() + path)) {
         // Folder: children starts as empty vec
         TreeNode::with_name_path(name, path.to_string())
     } else {
@@ -3135,8 +3135,8 @@ fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
 
    };
 
-    if is_this_dir(&(root.to_string() + path)) {
-        let path_contents = get_dir_contents(&(root.to_string() + path));
+    if is_this_dir(&(WIKI_DIR.to_string() + path)) {
+        let path_contents = get_dir_contents(&(WIKI_DIR.to_string() + path));
         for entry in path_contents.iter() {
             // Skip hidden/system files
             if let Some(file_name) = Path::new(entry).file_name().and_then(|s| s.to_str()) {
