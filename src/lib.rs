@@ -51,7 +51,7 @@ use std::{
 };
 use reqwest::{
     Client,
-    header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
+    header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, IntoHeaderName }
 };
 use cookie::{ CookieJar, Key, };
 use csv::Reader;
@@ -1339,42 +1339,38 @@ pub enum APIClient {
 
 #[derive(Debug, Clone)]
 pub struct API {
-	pub client: APIClient,
-	pub headers: HeaderMap
+	pub client: APIClient
 }
 
 impl API {
 	pub fn new(c: APIClient) -> API {
 		return API {
-			client: c,
-			headers: HeaderMap::new()
+			client: c
 		};
 	}
 
-	pub fn headers(mut self, h: HeaderMap) -> API {
-		self.headers = h;
-
-		self
-	}
-
-	pub fn build(self) -> APIEndpoint<Value> {
+	pub fn build(&self) -> APIEndpoint<Value> {
 		return APIEndpoint::<Value> {
-			api: self,
+			client: self.client.clone(),
 			method: None,
+			data: None,
 			endpoint: None,
-			args: HashMap::new(),
+			headers: HeaderMap::new(),
+			args: json!([]),
 			timeout: Duration::from_secs(15),
 			body: None
-		}
+		};
 	}
 }
 
 #[derive(Clone)]
 pub struct APIEndpoint<B> {
-	pub api: API,
+	pub client: APIClient,
 	pub method: Option<Arc<dyn Fn(reqwest::Client, String) -> reqwest::RequestBuilder>>,
+	pub data: Option<Arc<dyn Fn(reqwest::RequestBuilder, Value) -> reqwest::RequestBuilder>>,
 	pub endpoint: Option<String>,
-	pub args: HashMap<String, String>,
+	pub headers: HeaderMap,
+	pub args: Value,
 	pub timeout: Duration,
 	pub body: Option<B>
 }
@@ -1382,9 +1378,10 @@ pub struct APIEndpoint<B> {
 impl<B: std::fmt::Debug> std::fmt::Debug for APIEndpoint<B> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("APIEndpoint")
-			.field("api", &self.api)
+			.field("client", &self.client)
 			.field("method", &"dyn Fn")
 			.field("endpoint", &self.endpoint)
+			.field("headers", &self.headers)
 			.field("args", &self.args)
 			.field("timeout", &self.timeout)
 			.field("body", &self.body)
@@ -1392,33 +1389,61 @@ impl<B: std::fmt::Debug> std::fmt::Debug for APIEndpoint<B> {
 	}
 }
 
-impl<B> APIEndpoint<B>  {
+impl<B: std::clone::Clone> APIEndpoint<B>  {
 	pub fn method(mut self, m: &str) -> APIEndpoint<B> {
 
-		self.method = match m.to_uppercase().as_str() {
-			"GET"    => Some(Arc::new(|c, u| { reqwest::Client::get(&c, u) })),
-			"POST"   => Some(Arc::new(|c, u| { reqwest::Client::post(&c, u) })),
-			"PUT"    => Some(Arc::new(|c, u| { reqwest::Client::put(&c, u) })),
-			"PATCH"  => Some(Arc::new(|c, u| { reqwest::Client::patch(&c, u)})),
-			"DELETE" => Some(Arc::new(|c, u| { reqwest:: Client::delete(&c, u)})),
-			"HEAD"   => Some(Arc::new(|c, u| { reqwest::Client::head(&c, u)})),
+		match m.to_uppercase().as_str() {
+			"GET"    => {
+				self.method = Some(Arc::new(|c, u| { reqwest::Client::get(&c, u) }));
+			},
+			"POST"   => {
+				self.method = Some(Arc::new(|c, u| { reqwest::Client::post(&c, u) }));
+			},
+			"PUT"    => {
+				self.method = Some(Arc::new(|c, u| { reqwest::Client::put(&c, u) }));
+			},
+			"PATCH"  => {
+				self.method = Some(Arc::new(|c, u| { reqwest::Client::patch(&c, u)}));
+			},
+			"DELETE" => {
+				self.method = Some(Arc::new(|c, u| { reqwest::Client::delete(&c, u)}));
+			},
+			"HEAD"   => {
+				self.method = Some(Arc::new(|c, u| { reqwest::Client::head(&c, u)}));
+			},
 			_        => {
 				warn!("Unknown method call");
-				None
+				self.method = None;
+				self.data   = None;
 			}
-		};
+		}
 
 		self
 	}
 
-	pub fn endpoint(mut self, e: &str) ->APIEndpoint<B> {
+	pub fn body(mut self, v: Value) -> APIEndpoint<B> {
+		self.args = v;
+		self.data = Some(Arc::new(|c, b| { reqwest::RequestBuilder::body(c, b.to_string()) }));
+
+		self
+	}
+
+	pub fn json(mut self, v: Value) -> APIEndpoint<B> {
+		self.args = v;
+		self.data = Some(Arc::new(|c, b| { reqwest::RequestBuilder::json(c, &b) }));
+
+		self
+	}
+
+	pub fn endpoint(mut self, e: &str) -> APIEndpoint<B> {
 		self.endpoint = Some(String::from(e));
 
 		self
 	}
 
-	pub fn args(mut self, h: HashMap<String, String>) -> APIEndpoint<B>  {
-		self.args = h;
+	pub fn header<K>(mut self, k: K, v: &str) -> APIEndpoint<B>
+	where K: IntoHeaderName {
+		self.headers.insert(k, v.parse().unwrap());
 
 		self
 	}
@@ -1429,18 +1454,20 @@ impl<B> APIEndpoint<B>  {
 		self
 	}
 
-	pub fn body<B2>(&self) -> APIEndpoint<B2> {
+	pub fn return_type<B2>(&self) -> APIEndpoint<B2> {
 		return APIEndpoint::<B2> {
-			api: self.api.clone(),
+			client: self.client.clone(),
 			method: self.method.clone(),
+			data: self.data.clone(),
 			endpoint: self.endpoint.clone(),
+			headers: self.headers.clone(),
 			args: self.args.clone(),
 			timeout: self.timeout,
 			body: None
 		};
 	}
 
-	pub async fn send(&self) -> Result<APIResponse, String> {
+	pub async fn send(&mut self) -> Result<APIResponse, String> {
 		let url = match &self.endpoint {
 			Some(u) => u,
 			None    => {
@@ -1451,36 +1478,63 @@ impl<B> APIEndpoint<B>  {
 		let method = match &self.method {
 			Some(m) => m,
 			None    => {
-				return Err(String::from("No method to call with"))
+				return Err(String::from("No method to call with"));
 			}
 		};
 
-		let client = match &self.api.client {
+		if !self.data.clone().is_some() {
+			let args = self.args.clone();
+			self.data = Some(Arc::new(|c, b| { reqwest::RequestBuilder::json(c, &b) }));
+			
+			assert_eq!(self.data.clone().is_some(), true);
+		}
+
+		let data_endpoint = self.data.clone().unwrap();
+
+		let client = match &self.client {
 			APIClient::SingleThread(c) => method(c.write().unwrap().clone(), url.to_string()),
 			APIClient::MultiThread(c)  => method(c.clone(),                  url.to_string())
 		};
 
-		let send = client.timeout(self.timeout)
+		let send = data_endpoint(client.timeout(self.timeout)
+						.headers(self.headers.clone())
+						, self.args.clone())
 						.send()
 						.await;
 
-		let resp = match send {
+		let mut resp = match send {
 			Ok(r) => r,
 			Err(m) => { return Err(format!("{:?}", m)); }
 		};
 
+		let raw_status = resp.status().clone();
+		let raw_version = format!("{:?}", resp.version());
+		let raw_headers = resp.headers().clone();
+
+		let mut raw_body: Vec<u8> = Vec::new();
+
+		while let Some(chunk) = match resp.chunk().await {
+			Ok(c) => c,
+			Err(m) => { return Err(m.to_string() + &String::from_utf8(raw_body.clone()).expect("Cannot parse")); }
+		} {
+			raw_body.extend_from_slice(&chunk);
+		}
+
 		Ok(APIResponse {
-			status: format!("{:?}", resp.status()),
-			version: format!("{:?}", resp.version()),
-			headers: resp.headers().clone(),
-			body: resp.text().await.unwrap()
+			status: raw_status,
+			version: raw_version,
+			headers: raw_headers,
+			body: match String::from_utf8(raw_body) {
+				Ok(b) => b,
+				Err(m) => { return Err(m.to_string()); }
+			}
 		})
 	}
 }
 
 #[derive(Debug)]
 pub struct APIResponse {
-	pub status: String,
+	pub status: reqwest::StatusCode,
 	pub version: String,
 	pub headers: HeaderMap,
 	pub body: String
@@ -1757,7 +1811,7 @@ pub struct GeneralRequest {
 	pub buffer: String
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename="r25:login_response")]
 pub struct LoginSuccess {
 	#[serde(rename="@pubdate")]
@@ -1768,7 +1822,7 @@ pub struct LoginSuccess {
 	pub login: Login
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 struct Login {
 	#[serde(rename="r25:message")]
 	pub message: String,

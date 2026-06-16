@@ -193,24 +193,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if matches.opt_present("j") {
         set_jn_thread_true();
     }
+
+    let tdx_client = Arc::new(API::new(
+        MultiThread(
+            reqwest::Client::builder()
+                .cookie_store(true)
+                .user_agent("server_lib/1.10.1")
+                .default_headers(construct_headers("tdx", &mut request_database))
+                .timeout(Duration::from_secs(120))
+                .build()
+                .ok()
+                .expect("Unable to build TDX Request Client")
+        )
+    ));
+
+    let lsm_client = Arc::new(API::new(
+        SingleThread(
+            Arc::new(RwLock::new(reqwest::Client::builder()
+                .cookie_store(true)
+                .user_agent("server_lib/1.10.1")
+                .default_headers(construct_headers("lsm", &mut request_database))
+                .timeout(Duration::from_secs(15))
+                .build()
+                .ok()
+                .expect("Unable to build LSM Request Client")
+            ))
+        )
+    ));
+
     let thread_schedule = Arc::new(RwLock::new(ThreadSchedule::new()));
     let data_ts = Arc::clone(&thread_schedule);
+    let tc_clone = Arc::clone(&tdx_client);
+    let lc_clone = Arc::clone(&lsm_client);
     data_pool.execute(move || {
-        data_sync(data_ts);
+        data_sync(data_ts, tc_clone, lc_clone);
     });
-
-    // Create TDX Request Client
-    let tdx_request: Client = reqwest::Client::builder()
-        .cookie_store(true)
-        .user_agent("server_lib/1.10.1")
-        .default_headers(construct_headers("tdx", &mut request_database))
-        .timeout(Duration::from_secs(60))
-        .build()
-        .ok()
-        .expect("Unable to build TDX Request Client");
-    let tdx_request = Arc::new(tdx_request);
-
-    // User Requests / User Thread Pool
+    
     let _ = request_database.backup();
 
     for stream in listener.incoming() {
@@ -229,9 +247,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let req = Request::from(buffer.clone());
         let clone_db = request_database.clone();
         let req_ts = Arc::clone(&thread_schedule);
-        let req_client = Arc::clone(&tdx_request);
+        let tc_clone = Arc::clone(&tdx_client);
+        let lc_clone = Arc::clone(&lsm_client);
         pool.execute(move || {
-            let res = match handle_connection(req, clone_db, req_ts, req_client) {
+            let res = match handle_connection(req, clone_db, req_ts, tc_clone, lc_clone) {
                 Some(r) => r,
                 None    => {
                     Response::new()
@@ -305,7 +324,7 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
 #[tokio::main]
 #[allow(unused_assignments)]
 #[allow(unreachable_code)]
-async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
+async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<API>, lsm_api: Arc<API>) {
     // Init Everyting
     // ThreadSchedule Init
     //let mut thread_schedule = ThreadSchedule::new();
@@ -357,8 +376,8 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
     let mut database = Database::new();
 
     match collegenet_login(&mut database).await {
+        Ok(v)  => { println!("{:?}", v); },
         Err(m) => { error!("25L_ERR: {}", m); }
-        Ok(v)  => { println!("{:?}", v); } 
     };
 
     // Init Datapool
@@ -368,30 +387,12 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
     //       ^ The above line will prevent concurent access with LSM.
     //       Normal Reqwests, Other API's that can handle concurent requests
     //       will not need to be locked.
-    let lsm_request: Arc<RwLock<Client>> = Arc::new(RwLock::new(
-        reqwest::Client::builder()
-                .cookie_store(true)
-                .user_agent("server_lib/1.10.1")
-                .default_headers(construct_headers("lsm", &mut database))
-                .timeout(Duration::from_secs(15))
-                .build()
-                .ok()
-                .expect("Unable to build LSM Request Client")
-            ));
+
     // TODO: jn_st
     //    WSL has problems... I need to add a flag that sets an atomicboolean to jn_st. If true, execute_ping will be single threaded.
     // Not sure if this is even giving performance improvements.
     let jn_st = check_jn_thread();
     let jn_thread = ThreadPool::new(1);
-
-    let tdx_request: Client = reqwest::Client::builder()
-        .cookie_store(true)
-        .user_agent("server_lib/1.10.1")
-        .default_headers(construct_headers("tdx", &mut database))
-        .timeout(Duration::from_secs(60))
-        .build()
-        .ok()
-        .expect("Unable to build TDX Request Client");
 
     // Loop
     //let l_ts = Arc::clone(&thread_schedule);
@@ -420,12 +421,12 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                 },
                 "leaderboard"     => {
                     info!("[Data] - Pulling New LSM Leaderboard");
-                    update_room_check_leaderboard(&mut database, Arc::clone(&lsm_request)).await;
+                    update_room_check_leaderboard(&mut database, &lsm_api).await;
                     info!("[Data] - New LSM Leaderboard Pulled")
                 },
                 "spares"          => {
                     info!("[Data] - Pulling New LSM Spare Information");
-                    update_lsm_spares(&mut database, Arc::clone(&lsm_request)).await;
+                    update_lsm_spares(&mut database, &lsm_api).await;
                     info!("[Data] - New LSM Spare Information Pulled")
                 },
                 "backup"          => {
@@ -447,7 +448,7 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                 },
                 "checkerboard"    => {
                     info!("[Data] - Running Checkerboard");
-                    let _ = match run_checkerboard(&mut database, Arc::clone(&lsm_request)).await {
+                    let _ = match run_checkerboard(&mut database, &lsm_api).await {
                         Ok(_)  =>  info!("[Data] - Checkerboard Run Complete"),
                         Err(m) => error!("[Data] - Checkerboard Run FAILED: {}", m)
                     };
@@ -473,14 +474,14 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                 },
                 "tdxToken"        => {
                     info!("[Data] - Pulling New TDX Token");
-                    let _ = match fetch_tdx_token(&mut database, &tdx_request).await {
+                    let _ = match fetch_tdx_token(&mut database, &tdx_api).await {
                         Ok(_)     =>  info!("[Data] - New TDX Token Pulled"),
                         Err(s)    => error!("[Data] - FAILED to fetch new TDX Token: {}", s)
                     };
                 },
                 "tickex"          => {
                     info!("[Data] - Running Tickex");
-                    let _ = match run_tickex(&mut database, &tdx_request).await {
+                    let _ = match run_tickex(&mut database, &tdx_api).await {
                         Ok(_)     =>  info!("[Data] - Tickex Run Complete"),
                         Err(m)    => error!("[Data] - Tickex Run FAILED: {}", m)
                     };
@@ -508,7 +509,8 @@ async fn handle_connection(
     mut req: Request,
     mut database: Database,
     thread_schedule: Arc<RwLock<ThreadSchedule>>,
-    client: Arc<Client>,
+    tdx_client: Arc<API>,
+    lsm_client: Arc<API>
 ) -> Option<Vec<u8>> {
     let mut user_homepage: &str = "html-css-js/login.html";
     if req.headers.contains_key("Cookie") {
@@ -938,23 +940,23 @@ async fn handle_connection(
                 &lsm_building.lsm_name.as_str()
             );
             // Build and Send Request
-            let req = reqwest::Client::builder()
+            let req = Arc::new(RwLock::new(reqwest::Client::builder()
                 .cookie_store(true)
-                .user_agent("server_lib/1.10.1")
                 .default_headers(construct_headers("lsm", &mut database))
-                .timeout(Duration::from_secs(15))
+                .user_agent("server_lib/1.10.1")
                 .build()
                 .ok()?
-            ;
+            ));
 
-            let devs = req.get(url_devs)
-                              .timeout(Duration::from_secs(15))
-                              .send()
-                              .await
-                              .expect("[-] RESPONSE ERROR")
-                              .text()
-                              .await
-                              .expect("[-] PAYLOAD ERROR");
+            let devs = API::new(SingleThread(req))
+                .build()
+                .method("GET")
+                .endpoint(&url_devs)
+                .timeout(Duration::from_secs(15))
+                .send()
+                .await
+                .unwrap()
+                .body;
 
             let v_devs: Value = serde_json::from_str(&devs).expect("Empty");
             let data_devs: Vec<Value> = match v_devs["data"].as_array() {
@@ -1653,30 +1655,31 @@ async fn handle_connection(
             decoded_desc = decoded_desc.replace("+", " ").into();
             decoded_desc = decoded_desc.replace("\0", "").into();
 
-            let mut arg_map = HashMap::new();
-            arg_map.insert("title", decoded_title);
-            arg_map.insert("body", decoded_desc);
-
             let url = "https://api.github.com/repos/UWIT-CTS-Software/bronson_online/issues";
             let req = reqwest::Client::builder()
                 .cookie_store(true)
-                // .cookie_provider(Arc::clone(&cookie_jar))
-                .user_agent("server_lib/1.10.1")
                 .default_headers(construct_headers("gh", &mut database))
-                .timeout(Duration::from_secs(15))
+                .user_agent("server_lib/1.10.1")
                 .build()
                 .ok()?
             ;
 
-            let _ = req.post(url)
+            let _ = match API::new(MultiThread(req))
+                .build()
+                .method("POST")
+                .endpoint(url)
+                .json(
+                    json!({
+                        "title": decoded_title,
+                        "body": decoded_desc
+                    })
+                )
                 .timeout(Duration::from_secs(15))
-                .json(&arg_map)
                 .send()
-                .await
-                .expect("[-] RESPONSE ERROR")
-                .text()
-                .await
-                .expect("[-] PAYLOAD ERROR");
+                .await {
+                    Ok(_) => {},
+                    Err(m) => { error!("{}", m); }
+                };
 
             Response::new()
                     .status(STATUS_200)
@@ -1816,7 +1819,7 @@ async fn handle_connection(
 
             let result = tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(
-                    fetch_tdx_ticket_description(&mut database, &client, ticket_id)
+                    fetch_tdx_ticket_description(&mut database, &tdx_client, ticket_id)
                 )
             });
 
@@ -1851,7 +1854,7 @@ async fn handle_connection(
 
             let result = tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(
-                    fetch_tdx_ticket_feed(&mut database, &client, ticket_id)
+                    fetch_tdx_ticket_feed(&mut database, &tdx_client, ticket_id)
                 )
             });
 
@@ -1877,72 +1880,60 @@ async fn handle_connection(
     return res.build();
 }
 
-async fn update_room_check_leaderboard(database: &mut Database, req: Arc<RwLock<Client>>) {
+async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
     let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
     let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
     let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
 
-    let body_7_days: String;
-    let body_30_days: String;
-    let body_90_days: String;
-
-    body_7_days = req.write().unwrap().get(url_7_days)
+    let v_7_days: Value = match serde_json::from_str(req
+        .build()
+        .method("GET")
+        .endpoint(url_7_days)
         .timeout(Duration::from_secs(15))
         .send()
         .await
-        .expect("[-] RESPONSE ERROR")
-        .text()
-        .await
-        .expect("[-] PAYLOAD ERROR");
+        .expect("Unable to make lsm_7_days API call")
+        .body
+        .as_str()) {
+            Ok(v)  => v,
+            Err(_) => json!({"data": []})
+        };
 
-    let v_7_days: Value = match serde_json::from_str(&body_7_days) {
-        Ok(v)  => v,
-        Err(m) => {
-            warn!("7 days field not found: {}", m);
-            json!({"data": []})
-        }
-    };
+    let v_30_days: Value = match serde_json::from_str(req
+        .build()
+        .method("GET")
+        .endpoint(url_30_days)
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .expect("Unable to make lsm_30_days API call")
+        .body
+        .as_str()) {
+            Ok(v)  => v,
+            Err(_) => json!({"data": []})
+        };
+
+    let v_90_days: Value = match serde_json::from_str(req
+        .build()
+        .method("GET")
+        .endpoint(url_90_days)
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .expect("Unable to make lsm_90_days API call")
+        .body
+        .as_str()) {
+                Ok(v)  => v,
+                Err(_) => json!({"data": []})
+        };
+
     let data_7_days: Vec<Value> = match v_7_days["data"].as_array() {
         Some(data) => data.clone(),
         None => Vec::<Value>::new()
     };
-
-    body_30_days = req.write().unwrap().get(url_30_days)
-        .timeout(Duration::from_secs(15))
-        .send()
-        .await
-        .expect("[-] RESPONSE ERROR")
-        .text()
-        .await
-        .expect("[-] PAYLOAD ERROR");
-
-    let v_30_days: Value = match serde_json::from_str(&body_30_days) {
-        Ok(v)  => v,
-        Err(m) => {
-            warn!("30 days field not found: {}", m);
-            json!({"data": []})
-        }
-    };
     let data_30_days: Vec<Value> = match v_30_days["data"].as_array() {
         Some(data) => data.clone(),
         None => Vec::<Value>::new()
-    };
-
-    body_90_days = req.write().unwrap().get(url_90_days)
-        .timeout(Duration::from_secs(15))
-        .send()
-        .await
-        .expect("[-] RESPONSE ERROR")
-        .text()
-        .await
-        .expect("[-] PAYLOAD ERROR");
-
-    let v_90_days: Value = match serde_json::from_str(&body_90_days) {
-        Ok(v)  => v,
-        Err(m) => {
-            warn!("90 days field not found: {}", m);
-            json!({"data": []})
-        }
     };
     let data_90_days: Vec<Value> = match v_90_days["data"].as_array() {
         Some(data) => data.clone(),
@@ -1962,20 +1953,19 @@ async fn update_room_check_leaderboard(database: &mut Database, req: Arc<RwLock<
     return;
 }
 
-async fn update_lsm_spares(database: &mut Database, req: Arc<RwLock<Client>>) {
+async fn update_lsm_spares(database: &mut Database, req: &API) {
     let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
 
-    let body_spares: String;
-    {
-        body_spares = req.write().unwrap().get(url_spares)
-                        .timeout(Duration::from_secs(15))
-                        .send()
-                        .await
-                        .expect("[-] RESPONSE ERROR")
-                        .text()
-                        .await
-                        .expect("[-] PAYLOAD ERROR");
-    }
+    let body_spares = match req
+        .build()
+        .method("GET")
+        .endpoint(url_spares)
+        .send()
+        .await {
+            Ok(b) => b.body,
+            Err(m) => { error!("Unable to make update_lsm_spares API call: {}", m); String::new() }
+        };
+
     let v_spares: Value = serde_json::from_str(&body_spares).expect("Empty");
     let data_spares: Vec<Value> = match v_spares["data"].as_array() {
         Some(data) => data.clone(),
@@ -1995,7 +1985,7 @@ async fn update_lsm_spares(database: &mut Database, req: Arc<RwLock<Client>>) {
 
 // Unsure if this is worth implementing...
 #[allow(dead_code)]
-async fn update_lsm_data(_database: &mut Database, _req: Arc<RwLock<Client>>) {
+async fn update_lsm_data(_database: &mut Database, _req: &API) {
     // let buildings = database.get_buildings();
     // let api_endpoints = ["BuildingProcs","BuildingDisplays","BuildingProjectors","BuildingTouchPanels"];
     // for api_endpoint in api_endpoints {
@@ -2027,7 +2017,7 @@ async fn update_lsm_data(_database: &mut Database, _req: Arc<RwLock<Client>>) {
     return;
 }
 
-async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> Result<(), String> {
+async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), String> {
     // Get an array of all buildings.
     let buildings = match database.get_buildings() {
         Ok(bs) => bs,
@@ -2036,6 +2026,7 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> 
             HashMap::new()
         }
     };
+
     // Iterate over each.
     for building in buildings {
         debug!("[Checkerboard] - Processing Building: {:?}", building.1.abbrev);
@@ -2083,17 +2074,18 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> 
             }
         }
         // Process Request to LSM
-        let body: String;
-        {
-            body = req.write().unwrap().get(url)
-                .timeout(Duration::from_secs(15))
-                .send()
-                .await
-                .expect("[-] RESPONSE ERROR")
-                .text()
-                .await
-                .expect("[-] PAYLOAD ERROR");
-        }
+        let body = match req
+            .build()
+            .method("GET")
+            .endpoint(&url)
+            .timeout(Duration::from_secs(15))
+            .send()
+            .await {
+                Ok(b) => b,
+                Err(m) => { return Err(format!("Unable to make run_checkerboard API call: {}", m)); }
+            }
+            .body;
+        
         let v: Value = match serde_json::from_str(&body) {
             Ok(val) => val,
             Err(_)      => {
@@ -2104,6 +2096,7 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> 
                 })
             }
         };
+
         let mut check_map: HashMap<String, String> = HashMap::new();
         if v["count"].as_i64() > Some(0) {
             let num_entries = match v["count"].as_i64() {
@@ -2117,7 +2110,7 @@ async fn run_checkerboard(database: &mut Database, req: Arc<RwLock<Client>>) -> 
                     Vec::<Value>::new()
                 }
             };
-            //checks.reverse();
+            
             for i in 0..num_entries {
                 let mut check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
                 // Look to see if check["LocationName"] is in the alias_obj, replace it if so.
@@ -2678,7 +2671,7 @@ $$$$$$$$\ $$\           $$\
    \__|   \__| \_______|\__|  \__| \_______|\__/  \__|
 */
 
-async fn fetch_tdx_token(database: &mut Database, req: &Client) -> Result<(), String> {
+async fn fetch_tdx_token(database: &mut Database, req: &API) -> Result<(), String> {
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/auth/login";
 
     // Get TDX login credentials from database
@@ -2698,24 +2691,29 @@ async fn fetch_tdx_token(database: &mut Database, req: &Client) -> Result<(), St
     let password: &str = parsed["password"].as_str().unwrap_or("");
     
     // Send the request
-    let resp = req
-        .post(url)
+    let resp = match req
+        .build()
+        .method("POST")
+        .endpoint(&url)
         .header("Accept", "application/json")
-        .form(&[("username", username), ("password", password)])
+        .json(
+            json!({
+                "username": username,
+                "password": password
+            })
+        )
         .send()
-        .await;
-    let resp = match resp { // Handle network errors
-        Ok(r) => r,
-        Err(e) => return Err(e.to_string()),
-    };
+        .await {
+            Ok(r)  => r,
+            Err(e) => return Err(e.to_string())
+        };
 
-    let status = resp.status();
-    if !status.is_success() {
-        return Err(status.to_string());
+    if !resp.status.is_success() {
+        return Err(resp.status.to_string());
     }
 
     // Store token in database
-    let token = resp.text().await.unwrap_or("Failed to read token response".to_string());
+    let token = resp.body;
     let token = "Bearer ".to_owned() + &token;
     let _ = database.update_key(&DB_Key {
         key_id: String::from("tdx_api"),
@@ -2727,7 +2725,7 @@ async fn fetch_tdx_token(database: &mut Database, req: &Client) -> Result<(), St
     return Ok(());
 }
 
-async fn fetch_tdx_ticket_description(database: &mut Database, req: &Client, ticket_id: i32) -> Result<String, String> {
+async fn fetch_tdx_ticket_description(database: &mut Database, req: &API, ticket_id: i32) -> Result<String, String> {
     // Construct the API URL to fetch ticket details
     let url = format!(
         "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/{}",
@@ -2741,20 +2739,20 @@ async fn fetch_tdx_ticket_description(database: &mut Database, req: &Client, tic
     };
 
     // Make the request to TDX API
-    let resp = req
-        .get(&url)
+    let mut resp = match req
+        .build()
+        .method("GET")
+        .endpoint(&url)
         .header("Authorization", &tdx_token.val)
         .header("Accept", "application/json")
         .send()
-        .await;
-
-    let mut resp = match resp {
-        Ok(r) => r,
-        Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
-    };
+        .await {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
+        };
 
     // Try fetching a new tdx token and try again if Unauthorized
-    if !resp.status().is_success() && resp.status() == reqwest::StatusCode::UNAUTHORIZED {
+    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
         warn!("Ticket description fetch failure was due to an unauthorized response, fetching new token and trying again...");
 
         // Grab new TDX Token
@@ -2767,28 +2765,28 @@ async fn fetch_tdx_ticket_description(database: &mut Database, req: &Client, tic
         };
 
         // Make the request to TDX API
-        let retry_resp = req
-            .get(&url)
+        let retry_resp = match req
+            .build()
+            .method("GET")
+            .endpoint(&url)
             .header("Authorization", &tdx_token.val)
             .header("Accept", "application/json")
             .send()
-            .await;
+            .await {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
+            };
 
-        resp = match retry_resp {
-            Ok(r) => r,
-            Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
-        };
-
-        if !resp.status().is_success() {
-            return Err(format!("TDX API error: {} - {}", resp.status(), resp.status().canonical_reason().unwrap_or("Unknown")));
+        if !retry_resp.status.is_success() {
+            return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
         } else {
             warn!("Successfully recovered new TDX Token & fetched new description data");
+            resp = retry_resp;
         }
     }
 
     // Parse the response body
-    let body = resp.text().await.map_err(|e| format!("Failed to read response: {}", e))?;
-    let ticket_json: Value = serde_json::from_str(&body)
+    let ticket_json: Value = serde_json::from_str(&resp.body)
         .map_err(|e| format!("Failed to parse ticket JSON: {}", e))?;
 
     // Extract the description field
@@ -2800,7 +2798,7 @@ async fn fetch_tdx_ticket_description(database: &mut Database, req: &Client, tic
     Ok(description)
 }
 
-async fn fetch_tdx_ticket_feed(database: &mut Database, req: &Client, ticket_id: i32) -> Result<String, String> {
+async fn fetch_tdx_ticket_feed(database: &mut Database, req: &API, ticket_id: i32) -> Result<String, String> {
     // Construct the API URL to fetch ticket details
     let url = format!(
         "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/{}/feed",
@@ -2814,20 +2812,20 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &Client, ticket_id:
     };
 
     // Make the request to TDX API
-    let resp = req
-        .get(&url)
+    let mut resp = match req
+        .build()
+        .method("GET")
+        .endpoint(&url)
         .header("Authorization", &tdx_token.val)
         .header("Accept", "application/json")
         .send()
-        .await;
-
-    let mut resp = match resp {
-        Ok(r) => r,
-        Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
-    };
+        .await {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
+        };
 
     // Try fetching a new tdx token and try again if Unauthorized
-    if !resp.status().is_success() && resp.status() == reqwest::StatusCode::UNAUTHORIZED {
+    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
         warn!("Ticket feed fetch failed due to an unauthorized response, fetching new token and trying again...");
 
         // Grab new TDX Token
@@ -2840,28 +2838,28 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &Client, ticket_id:
         };
 
         // Make the request to TDX API
-        let retry_resp = req
-            .get(&url)
+        let retry_resp = match req
+            .build()
+            .method("GET")
+            .endpoint(&url)
             .header("Authorization", &tdx_token.val)
             .header("Accept", "application/json")
             .send()
-            .await;
+            .await {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)) 
+            };
 
-        resp = match retry_resp {
-            Ok(r) => r,
-            Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
-        };
-
-        if !resp.status().is_success() {
-            return Err(format!("TDX API error: {} - {}", resp.status(), resp.status().canonical_reason().unwrap_or("Unknown")));
+        if !retry_resp.status.is_success() {
+            return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
         } else {
             warn!("Successfully recovered new TDX Token & fetched new feed data");
+            resp = retry_resp;
         }
     }
 
     // Parse the response body
-    let body = resp.text().await.map_err(|e| format!("Failed to read response: {}", e))?;
-    let ticket_json: Value = serde_json::from_str(&body)
+    let ticket_json: Value = serde_json::from_str(&resp.body)
         .map_err(|e| format!("Failed to parse ticket JSON: {}", e))?;
     let entries = ticket_json.as_array().ok_or("Expected JSON array for ticket feed")?;
 
@@ -2918,7 +2916,7 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &Client, ticket_id:
 }
 
 
-async fn fetch_tdx_feed_replies(database: &mut Database, req: &Client, feed_id: i64) -> Result<(Vec<String>, Vec<String>, Vec<String>), String> {
+async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64) -> Result<(Vec<String>, Vec<String>, Vec<String>), String> {
     // Construct the API URL to fetch feed replies
     let url = format!(
         "https://uwyo.teamdynamix.com/TDWebApi/api/feed/{}",
@@ -2932,20 +2930,20 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &Client, feed_id: 
     };
 
     // Make the request to TDX API
-    let resp = req
-        .get(&url)
+    let mut resp = match req
+        .build()
+        .method("GET")
+        .endpoint(&url)
         .header("Authorization", &tdx_token.val)
         .header("Accept", "application/json")
         .send()
-        .await;
-
-    let mut resp = match resp {
-        Ok(r) => r,
-        Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
-    };
+        .await {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
+        };
 
     // Try fetching a new tdx token and try again if Unauthorized
-    if !resp.status().is_success() && resp.status() == reqwest::StatusCode::UNAUTHORIZED {
+    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
         warn!("Ticket replies fetch failed due to an unauthorized response, fetching new token and trying again...");
 
         // Grab new TDX Token
@@ -2958,28 +2956,28 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &Client, feed_id: 
         };
 
         // Make the request to TDX API
-        let retry_resp = req
-            .get(&url)
+        let retry_resp = match req
+            .build()
+            .method("GET")
+            .endpoint(&url)
             .header("Authorization", &tdx_token.val)
             .header("Accept", "application/json")
             .send()
-            .await;
+            .await {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
+            };
 
-        resp = match retry_resp {
-            Ok(r) => r,
-            Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
-        };
-
-        if !resp.status().is_success() {
-            return Err(format!("TDX API error: {} - {}", resp.status(), resp.status().canonical_reason().unwrap_or("Unknown")));
+        if !retry_resp.status.is_success() {
+            return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
         } else {
             warn!("Successfully recovered new TDX Token & fetched new feed data");
+            resp = retry_resp;
         }
     }
 
     // Parse the response body
-    let body = resp.text().await.map_err(|e| format!("Failed to read response: {}", e))?;
-    let replies_json: Value = serde_json::from_str(&body)
+    let replies_json: Value = serde_json::from_str(&resp.body)
         .map_err(|e| format!("Failed to parse ticket replies JSON: {}", e))?;
 
     let replies_array = replies_json.get("Replies")
@@ -3013,7 +3011,7 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &Client, feed_id: 
 }
 
 
-async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String> {
+async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/search";
 
     // Grab token from database
@@ -3030,10 +3028,36 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
         let search_body = serde_json::json!({
             "ModifiedDateFrom": "2020-01-01T00:00:00Z",
             "ResponsibilityGroupIDs": [2742], // CTS Group ID
-            "MaxResults": 100000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
+            "MaxResults": 5000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
         });
         // Make the request
-        let resp = req
+        let resp_raw = req
+            .build()
+            .method("POST")
+            .endpoint(url)
+            .header("Authorization", &tdx_token.val)
+            .header("Content-Type", "application/json")
+            .body(search_body)
+            .send()
+            .await;
+        
+        let resp = match resp_raw {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch tickets: {}", e))
+        };
+
+        if !resp.status.is_success() {
+            return Err(format!("TDX API error: {}", resp.status));
+        }
+
+        // Parse the response as JSON
+        let tickets_json: Vec<serde_json::Value> = 
+            serde_json::from_str(&resp.body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
+/* 
+        let resp = match &req.client {
+            SingleThread(_) => { return Err("Please dear God".to_string()); },
+            MultiThread(c) => c
+        }
             .post(url)
             .header("Authorization", &tdx_token.val)
             .header("Content-Type", "application/json")
@@ -3055,8 +3079,8 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
 
         // Parse the response as JSON
         let tickets_json: Vec<serde_json::Value> = 
-            serde_json::from_str(&body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, body))?;
-
+            serde_json::from_str(&body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, body))?; */
+        
         // Map to DB_Ticket and insert
         for ticket_val in &tickets_json {
             let ticket = DB_Ticket {
@@ -3126,21 +3150,21 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
         });
 
         // Make the request to TDX API
-        let resp = req
-            .post(url)
+        let mut resp = match req
+            .build()
+            .method("POST")
+            .endpoint(url)
             .header("Authorization", &tdx_token.val)
             .header("Content-Type", "application/json")
-            .body(search_body.to_string())
+            .body(search_body.clone())
             .send()
-            .await;
-
-        let mut resp = match resp {
-            Ok(r) => r,
-            Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
-        };
+            .await {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
+            };
 
         // Try fetching a new tdx token and try again if Unauthorized
-        if !resp.status().is_success() && resp.status() == reqwest::StatusCode::UNAUTHORIZED {
+        if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
             warn!("Ticket data fetch failure was due to an unauthorized response, fetching new token and trying again...");
 
             // Grab new TDX Token
@@ -3153,29 +3177,31 @@ async fn run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
             };
 
             // Make the request to TDX API
-            let retry_resp = req
-                .post(url)
+            let retry_resp_raw = req
+                .build()
+                .method("POST")
+                .endpoint(url)
                 .header("Authorization", &tdx_token.val)
                 .header("Content-Type", "application/json")
-                .body(search_body.to_string())
+                .body(search_body)
                 .send()
                 .await;
-
-            resp = match retry_resp {
+                
+            let retry_resp = match retry_resp_raw {
                 Ok(r) => r,
-                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)),
+                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
             };
 
-            if !resp.status().is_success() {
-                return Err(format!("TDX API error: {} - {}", resp.status(), resp.status().canonical_reason().unwrap_or("Unknown")));
+            if !retry_resp.status.is_success() {
+                return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
             } else {
                 warn!("Successfully recovered new TDX Token & fetched new ticket data");
+                resp = retry_resp;
             }
         }
 
         // Get the response body as text and convert to JSON
-        let body = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
-        let tickets_json: Vec<serde_json::Value> = serde_json::from_str(&body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, body))?;
+        let tickets_json: Vec<serde_json::Value> = serde_json::from_str(&resp.body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
 
 
         // Map to DB_Ticket and update
@@ -3326,14 +3352,13 @@ $$$$$$$$\                    $$\
    \__| \_______|\_______/    \____/ \_______/ 
 */
 
-async fn collegenet_login(database: &mut Database) -> Result<Value, String> {
+async fn collegenet_login(database: &mut Database) -> Result<LoginSuccess, String> {
     let url = "https://webservices.collegenet.com/r25ws/wrd/uwyo/run/login.xml";
     let req = reqwest::Client::builder()
         .cookie_store(true)
         // .cookie_provider(Arc::clone(&cookie_jar))
         .user_agent("server_lib/1.10.1")
         .default_headers(construct_headers("25l", database))
-        .timeout(Duration::from_secs(15))
         .build()
         .ok()
         .unwrap()
@@ -3341,10 +3366,10 @@ async fn collegenet_login(database: &mut Database) -> Result<Value, String> {
 
     let text = match API::new(MultiThread(req))
         .build()
-        .endpoint(url)
         .method("GET")
+        .endpoint(url)
         .timeout(Duration::from_secs(15))
-        .body::<LoginSuccess>()
+        .return_type::<LoginSuccess>()
         .send()
         .await {
             Ok(t) => t,
@@ -3352,7 +3377,7 @@ async fn collegenet_login(database: &mut Database) -> Result<Value, String> {
         }
         .body;
 
-    let doc: Value = match serde_xml_rs::from_str(&text) {
+    let doc: LoginSuccess = match serde_xml_rs::from_str(&text) {
         Ok(d) => d,
         Err(m) => { return Err(m.to_string()); }
     };
