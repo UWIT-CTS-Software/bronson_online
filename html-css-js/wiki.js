@@ -392,38 +392,89 @@ function deleteButton(node){
     
 }
 
- function setListeners() {
-     document.addEventListener('click', (e) => {
-        let target = e.target.closest('.toc-item'); 
-        if (!target) return;
+function clickable(target){
+    let treeJSON =  JSON.parse(sessionStorage.getItem('wikiTree'));
         
-        const filename = target.dataset.name;
+     if (!target) {
+        console.log("Target not found returning");
+        return;
+     }
+  
+        const path = target.dataset.path;
+        console.log("Path:", path)
 
-        new_read = getArticleHTML(filename);
+        const node = findPath(treeJSON.tree, path);
+        console.log("Node",node);
+
+        if(!node) {
+            console.log("No node found at given path", path);
+            return;
+        }
+
+        if(Array.isArray(node.children)) {
+            console.log("Clicked Dir", node.name);
+            showDir(node, target);
+        } else if (node.children === null){
+            console.log("Clicked file", node.name);
+            // Load content when I figure out how to do that
+            getWiki_File(path);
+            return;
+       } else {
+        console.log("Something went wrong");
+        return;
+       }
 
         let w_viwer = document.getElementById("w_viwer");
-
-        w_viwer.innerHTML = new_read;
-
-        console.log("Clicked", filename);
-        console.log("Content:", new_read);
-    });
 }
 
+function findPath(node, path){
+    if(node.file_path === path) return node;
 
+    if(Array.isArray(node.children)){
+        for (const child of node.children) {
+            const found = findPath(child, path);
+            if (found) return found;
+        }
+    }
 
- function getArticleHTML(filename) {
-    let articles = JSON.parse(sessionStorage.getItem("wikiArticles"));
+    //Else 
+    return null;
+ }
 
+function showDir(node, targetElement){
+    console.log("showDir Reached");
+
+    if(targetElement.getAttribute("data-isOpen") === "true") {
+        targetElement.setAttribute("data-isOpen", "false");
+        closeDir(targetElement);
+        return;
+    }
+
+    let html = `
+     <div id="scrollDir" class ="scrollDir"> 
+     ${node.children.map(child => `<p class="toc-item", onClick="clickable(this)" data-path="${child.file_path}" data-isOpen="false">${child.name}</p>`).join('')} </div>
+    `;
+    targetElement.setAttribute("data-isOpen", "true");
+    return targetElement.insertAdjacentHTML('afterend', html, true);
+}
+
+function closeDir(targetElement){
+    const scrollDir = targetElement.nextElementSibling;
+
+    if (scrollDir && scrollDir.id === "scrollDir"){
+        scrollDir.remove();
+    }
+}
+
+ async function getArticleHTML(blob, filename) {
+    // let articles = JSON.parse(sessionStorage.getItem("wikiArticles"));
+    console.log("BLOB:", blob, "FILENAME:", filename);
+   
     if (filename.endsWith('.md')){
-        let encoded = (articles[filename]);
-        const u8arr = Uint8Array.fromBase64(encoded);
-        const textdecoder = new TextDecoder('utf-8');
-        let decodedtext = textdecoder.decode(u8arr);
-    
         
-        let md = decodedtext;
-        var parsed_md = marked.parse(md);
+        let parsed_md = "";
+        let md = await blob.text();
+        parsed_md = marked.parse(md);
         let html = `
             <fieldset class="wA_fieldset">
                 <legend class='w_legend'> 
@@ -436,42 +487,49 @@ function deleteButton(node){
             </fieldset>
             
         `;
-        return html; 
+        w_viwer.innerHTML = html;
+        return;
         
     } else if (filename.endsWith('.pdf')){
-        let pdf_file = articles[filename];
-        console.log("This should be base64",pdf_file)
+        // let pdf_file = articles[filename];
+        // console.log("This should be base64",pdf_file)
+        let raw_blob = await blob;
+        let pdf_blob = new Blob([raw_blob], {type: "application/pdf"});
+        const blobUrl = URL.createObjectURL(pdf_blob); 
+
         let html = `
             <fieldset class="wA_fieldset">
                 <legend class='w_legend'> 
                     ${filename}
                 </legend> 
                 <div class = "scrollArt"> 
-                <iframe width="1000px" height="1200px" src="data:application/pdf;base64, ${pdf_file}"></iframe>
+                <iframe width="1000px" height="1200px" src="${blobUrl}"></iframe>
                 </div>
 
             </fieldset>
             
         `;
-         return html; 
+        w_viwer.innerHTML = html;
+         return; 
     } else {
-        let encoded = (articles[filename]);
-        const u8arr = Uint8Array.fromBase64(encoded);
-        const textdecoder = new TextDecoder('utf-8');
-        let decodedtext = textdecoder.decode(u8arr);
+        let text = await blob.text();
+        // let text_blob = new Blob([raw_blob], {type: "text/plain"});
+        // const blobUrl = URL.createObjectURL(text_blob); 
+       
         let html = `
             <fieldset class="wA_fieldset">
                 <legend class='w_legend'> 
                     ${filename}
                 </legend> 
                 <div class = "scrollArt"> 
-                <pre>${decodedtext}</pre>
+                <pre class="plain-text">${text}<pre>
                 </div>
 
             </fieldset>
             
         `;
-        return html; 
+         w_viwer.innerHTML = html;
+        return; 
 
     }
 
