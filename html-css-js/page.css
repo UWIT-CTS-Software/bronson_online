@@ -3185,11 +3185,12 @@ span.psw {
 .w_container {
     display: flex; 
     flex-direction: row;
+    
 }
 
 .w_toc {
     width: 500px;
-    height: fit-content
+    height: fit-content;
 }
 .w_viwer {
     width: calc(100% -500px);
@@ -3203,11 +3204,23 @@ span.psw {
 }
 .scrollToc {
     overflow-y: scroll;
+    overflow-x: scroll;
     max-height: 1000px;
     max-width: fit-content;
-    
+    background-color: rgb(65, 65, 60);
+    box-shadow: 5px 10px 15px;
+    border-radius: 12px;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
 }
+p.toc-item{
+     border-radius: 12px;
+     text-align: left;
+     margin-left: 10px;
+}
+
 .scrollDir {
+    overflow-y: scroll;
+    overflow-x: scroll
     display: inline-block;
     margin-top: 5px;
     margin-bottom: 5px;
@@ -3216,8 +3229,8 @@ span.psw {
     overflow-y: scroll;
     max-height: 500px;
     max-width: fit-content;
-    text-align: right;
-    /* border: 3px dotted rgb(144, 118, 26);  */
+    text-align: left;
+    border-left: 3px dashed rgb(144, 118, 26); 
 }
 .scrollArt {
     overflow-y: scroll;
@@ -3225,6 +3238,9 @@ span.psw {
     width: 1000px;
     text-wrap: wrap;
     text-align: left;
+    border-radius: 12px;
+    background-color: rgb(65, 65, 60);
+    box-shadow: 5px 10px 15px;
     
 /* markdown styling  */
    h1 {
