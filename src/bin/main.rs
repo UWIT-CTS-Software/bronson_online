@@ -425,7 +425,6 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
     let jn_st = check_jn_thread();
     let jn_thread = ThreadPool::new(1);
 
-
     // Loop
     //let l_ts = Arc::clone(&thread_schedule);
     loop {
@@ -4093,7 +4092,7 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
         let search_body = serde_json::json!({
             "ModifiedDateFrom": "2020-01-01T00:00:00Z",
             "ResponsibilityGroupIDs": [2742], // CTS Group ID
-            "MaxResults": 100000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
+            "MaxResults": 5000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
         });
         // Make the request
         let resp_raw = req
