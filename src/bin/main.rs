@@ -72,7 +72,7 @@ use std::{
         atomic::{AtomicBool, Ordering}},
     clone::{ Clone, },
     option::{ Option, },
-    collections::{ HashMap, },
+    collections::{ HashMap, HashSet },
 };
 use reqwest::{
     Client,
@@ -457,7 +457,11 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>) {
                 },
                 "cfmTree"         => {
                     info!("[Data] - Building CFM Tree");
-                    let json_return = match build_tree(CFM_DIR, false) {
+                    let mut cfm_blacklist = HashSet::new(); 
+                    cfm_blacklist.insert("txt");
+                    cfm_blacklist.insert("xlsx");
+
+                    let json_return = match build_tree(CFM_DIR, false, cfm_blacklist) {
                         Ok(j)     =>  j,
                         Err(m)    => {error!("[Data] - Tree Build FAILED: {}", m); json!([]).to_string() }
                     };
@@ -1801,6 +1805,7 @@ async fn handle_connection(
 
         "POST /w_file HTTP/1.1" => {
                let contents = get_file(req.body, WIKI_DIR);
+               println!("{}", contents);
             let mut f = match File::open(&contents) {
                 Ok(file) => file,
                 Err(e) => {
@@ -2602,48 +2607,47 @@ fn get_dir_contents(path: &str) -> Vec<String> {
 */
 
 // build_tree() - build virtual tree of files and directories and store in database as JSON
-fn build_tree(root: &str, needs_content: bool) -> Result<String, String> {
-    let mut tree_root: TreeNode = TreeNode::with_name_path("Root", root);
+fn build_tree(root: &str, needs_content: bool, blacklist: HashSet<&str>) -> Result<String, String> {
+    let mut tree_root: TreeNode = TreeNode::with_name_path("Root", "./");
 
     let dirs = get_dir_contents(root);
     for item in dirs.iter() {
         // Ignore files with '_' and '.' prefix & other specific files
         // Skip hidden/system files
         if let Some(file_name) = Path::new(item).file_name().and_then(|s| s.to_str()) {
-            if file_name.starts_with('_') || file_name.starts_with('.') || 
-               file_name.ends_with(".xlsx") || file_name.starts_with("README") ||
-               file_name.ends_with(".txt") {
+             let extension = file_name.rsplit('.').next().unwrap_or("");
+            if file_name.starts_with('_') || file_name.starts_with('.') || blacklist.contains(extension) {
                 continue;
             }
+            
         }
-        tree_root.push(build_subtree(item));
+        let relative_path = item.replace(WIKI_DIR, "./");
+        println!("path looks like this{}",relative_path);
+        tree_root.push(build_subtree(&relative_path, blacklist.clone()));
+         
     }
-
+    
     let json_return = json!({
         "tree": tree_root
     });
 
-    // match database.update_data(&DB_DataElement {
-    //     key: String::from("cfm_tree"),
-    //     val: json_return.to_string(),
-    // }) {
-    //     Ok(_) => {}
-    //     Err(e) => return Err(format!("Failed to update database: {}", e)),
-    // }
     info!("[Data] - CFM Tree Build Complete");
 
     Ok(json_return.to_string())
 }
-fn build_subtree(path: &str) -> TreeNode {
+
+
+fn build_subtree(path: &str, blacklist: HashSet<&str>) -> TreeNode {
     use std::path::Path;
 
-    let name = Path::new(path)
+    let name = Path::new(&(WIKI_DIR.to_string() + path))
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or("")
         .to_string();
-
-    let mut node = if is_this_dir(path) {
+        
+    println!("Path is{}", &(WIKI_DIR.to_string() + path));
+    let mut node = if is_this_dir(&(WIKI_DIR.to_string() + path)) {
         // Folder: children starts as empty vec
         TreeNode::with_name_path(name, path.to_string())
     } else {
@@ -2653,20 +2657,24 @@ fn build_subtree(path: &str) -> TreeNode {
             file_path: path.to_string(),
             children: None,
         }
-    };
 
-    if is_this_dir(path) {
-        let path_contents = get_dir_contents(path);
+   };
+
+    if is_this_dir(&(WIKI_DIR.to_string() + path)) {
+        let path_contents = get_dir_contents(&(WIKI_DIR.to_string() + path));
         for entry in path_contents.iter() {
             // Skip hidden/system files
             if let Some(file_name) = Path::new(entry).file_name().and_then(|s| s.to_str()) {
-                if file_name.starts_with('_') || file_name.starts_with('.') || 
-                   file_name.ends_with(".xlsx") || file_name.starts_with("README") ||
-                   file_name.ends_with(".txt") {
+
+                let extension = file_name.rsplit('.').next().unwrap_or("");
+                if file_name.starts_with('_') || file_name.starts_with('.') || blacklist.contains(extension) {
                     continue;
                 }
+               
             }
-            node.push(build_subtree(entry));
+
+            let relative_path = entry.replace(WIKI_DIR, "./");
+            node.push(build_subtree(&relative_path, blacklist.clone()));
         }
     }
 
@@ -2683,8 +2691,7 @@ fn get_file(body: Vec<u8>, root: &str) -> String {
     //
     let cfmr_f: CFMRequestFile = serde_json::from_str(&tmp)
         .expect("Err, Failed to grab file");
-
-    // Strip virtual root if present
+    println!("Is there still a root here?{:?}", cfmr_f);
     let filename = cfmr_f
         .filename
         .strip_prefix("Root/")
@@ -3325,10 +3332,8 @@ fn w_build_articles() -> Vec<u8> {
 
     let cut_index = WIKI_DIR.len();
     for (_, &ref item) in wiki_dirs.iter().enumerate() {
-        // Open and read the file 
-        // SWAP to read all files in as base64 
+        // Open and read the file in as base64 
         let raw_contents: Vec<u8> = std::fs::read(item).expect("Failed to read wiki article file");
-
         let contents = general_purpose::STANDARD.encode(raw_contents);
 
         //let contents: String = std::fs::read_to_string(item).expect("Failed to read wiki article file");
@@ -3352,13 +3357,15 @@ fn w_build_articles() -> Vec<u8> {
 }
 
 fn w_tree() -> Vec<u8>  {
-   let json_return = match build_tree(WIKI_DIR, false) {
+    let mut wiki_blacklist = HashSet::new();
+    let json_return = match build_tree(WIKI_DIR, false, wiki_blacklist) {
        Ok(j)     =>  j,
        Err(m)    => {error!("[Data] - Tree Build FAILED: {}", m); json!([]).to_string() }
      };
-
+     //println!("JSON TREE {}", json_return.to_string());
     return json_return.to_string().into();
 }
+
 
 
 

@@ -400,9 +400,10 @@ async function initializeCFM() {
     if (searchBar) searchBar.value = ""; // clear
 
     cfmState.fullTree = await getCFMTree();
+   
     cfmState.currentNode = cfmState.fullTree;
     cfmState.currentPath = [cfmState.fullTree.name];
-    
+    console.log(cfmState.fullTree);
     updateFileTreeDisplay();
     updateFileContainer();
     updatePathTracker();
