@@ -46,6 +46,12 @@ use std::{
 	fs::{ read, read_to_string, File, },
 	io::{ Write, },
 	error::Error,
+	time::Duration,
+	clone::Clone,
+};
+use reqwest::{
+    Client,
+    header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, IntoHeaderName }
 };
 use cookie::{ CookieJar, Key, };
 use csv::Reader;
@@ -417,6 +423,7 @@ impl Database {
 					let new_room = DB_Room {
 						abbrev: String::from(room_name.split(' ').next().unwrap()),
 						name: String::from(room_name),
+						collegenet_id: Option::None, 
 						checked: String::from("2000-01-01T00:00:00Z"),
 						needs_checked: true,
 						gp: is_gp,
@@ -683,7 +690,10 @@ impl Database {
 				for (id, value) in json_keys.iter() {
 					let new_key = DB_Key {
 						key_id: id.clone(),
-						val: value.to_string()
+						val: match value {
+							Value::String(s) => s.to_owned(),
+							_ => value.to_string()
+						}
 					};
 
 					let _ = self.update_key(&new_key);
@@ -1185,7 +1195,7 @@ impl Request {
         };
         let user = match database.get_user(&uname["username"]) {
             Ok(u)  => u,
-            Err(_) => DB_User{ username: String::new(), permissions: 0 },
+            Err(_) => DB_User{ username: String::new(), permissions: 5 },
         };
 
         let mut jar = CookieJar::new();
@@ -1320,6 +1330,217 @@ impl Response {
 		return Some(content);
 	}
 }
+
+#[derive(Debug, Clone)]
+pub enum APIClient {
+	SingleThread(Arc<std::sync::RwLock<reqwest::Client>>),
+	MultiThread(reqwest::Client)
+}
+
+#[derive(Debug, Clone)]
+pub struct API {
+	pub client: APIClient
+}
+
+impl API {
+	pub fn new(c: APIClient) -> API {
+		return API {
+			client: c
+		};
+	}
+
+	pub fn build(&self) -> APIEndpoint<Value> {
+		return APIEndpoint::<Value> {
+			client: self.client.clone(),
+			method: None,
+			data: None,
+			endpoint: None,
+			headers: HeaderMap::new(),
+			args: json!([]),
+			timeout: Duration::from_secs(15),
+			body: None
+		};
+	}
+}
+
+#[derive(Clone)]
+pub struct APIEndpoint<B> {
+	pub client: APIClient,
+	pub method: Option<Arc<dyn Fn(reqwest::Client, String) -> reqwest::RequestBuilder>>,
+	pub data: Option<Arc<dyn Fn(reqwest::RequestBuilder, Value) -> reqwest::RequestBuilder>>,
+	pub endpoint: Option<String>,
+	pub headers: HeaderMap,
+	pub args: Value,
+	pub timeout: Duration,
+	pub body: Option<B>
+}
+
+impl<B: std::fmt::Debug> std::fmt::Debug for APIEndpoint<B> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("APIEndpoint")
+			.field("client", &self.client)
+			.field("method", &"dyn Fn")
+			.field("endpoint", &self.endpoint)
+			.field("headers", &self.headers)
+			.field("args", &self.args)
+			.field("timeout", &self.timeout)
+			.field("body", &self.body)
+			.finish()
+	}
+}
+
+impl<B: std::clone::Clone> APIEndpoint<B>  {
+	pub fn method(mut self, m: &str) -> APIEndpoint<B> {
+
+		match m.to_uppercase().as_str() {
+			"GET"    => {
+				self.method = Some(Arc::new(|c, u| { reqwest::Client::get(&c, u) }));
+			},
+			"POST"   => {
+				self.method = Some(Arc::new(|c, u| { reqwest::Client::post(&c, u) }));
+			},
+			"PUT"    => {
+				self.method = Some(Arc::new(|c, u| { reqwest::Client::put(&c, u) }));
+			},
+			"PATCH"  => {
+				self.method = Some(Arc::new(|c, u| { reqwest::Client::patch(&c, u)}));
+			},
+			"DELETE" => {
+				self.method = Some(Arc::new(|c, u| { reqwest::Client::delete(&c, u)}));
+			},
+			"HEAD"   => {
+				self.method = Some(Arc::new(|c, u| { reqwest::Client::head(&c, u)}));
+			},
+			_        => {
+				warn!("Unknown method call");
+				self.method = None;
+				self.data   = None;
+			}
+		}
+
+		self
+	}
+
+	pub fn body(mut self, v: Value) -> APIEndpoint<B> {
+		self.args = v;
+		self.data = Some(Arc::new(|c, b| { reqwest::RequestBuilder::body(c, b.to_string()) }));
+
+		self
+	}
+
+	pub fn json(mut self, v: Value) -> APIEndpoint<B> {
+		self.args = v;
+		self.data = Some(Arc::new(|c, b| { reqwest::RequestBuilder::json(c, &b) }));
+
+		self
+	}
+
+	pub fn endpoint(mut self, e: &str) -> APIEndpoint<B> {
+		self.endpoint = Some(String::from(e));
+
+		self
+	}
+
+	pub fn header<K>(mut self, k: K, v: &str) -> APIEndpoint<B>
+	where K: IntoHeaderName {
+		self.headers.insert(k, v.parse().unwrap());
+
+		self
+	}
+
+	pub fn timeout(mut self, d: Duration) -> APIEndpoint<B> {
+		self.timeout = d;
+
+		self
+	}
+
+	pub fn return_type<B2>(&self) -> APIEndpoint<B2> {
+		return APIEndpoint::<B2> {
+			client: self.client.clone(),
+			method: self.method.clone(),
+			data: self.data.clone(),
+			endpoint: self.endpoint.clone(),
+			headers: self.headers.clone(),
+			args: self.args.clone(),
+			timeout: self.timeout,
+			body: None
+		};
+	}
+
+	pub async fn send(&mut self) -> Result<APIResponse, String> {
+		let url = match &self.endpoint {
+			Some(u) => u,
+			None    => {
+				return Err(String::from("Cannot send without URL"));
+			}
+		};
+
+		let method = match &self.method {
+			Some(m) => m,
+			None    => {
+				return Err(String::from("No method to call with"));
+			}
+		};
+
+		if !self.data.clone().is_some() {
+			let args = self.args.clone();
+			self.data = Some(Arc::new(|c, b| { reqwest::RequestBuilder::json(c, &b) }));
+			
+			assert_eq!(self.data.clone().is_some(), true);
+		}
+
+		let data_endpoint = self.data.clone().unwrap();
+
+		let client = match &self.client {
+			APIClient::SingleThread(c) => method(c.write().unwrap().clone(), url.to_string()),
+			APIClient::MultiThread(c)  => method(c.clone(),                  url.to_string())
+		};
+
+		let send = data_endpoint(client.timeout(self.timeout)
+						.headers(self.headers.clone())
+						, self.args.clone())
+						.send()
+						.await;
+
+		let mut resp = match send {
+			Ok(r) => r,
+			Err(m) => { return Err(format!("{:?}", m)); }
+		};
+
+		let raw_status = resp.status().clone();
+		let raw_version = format!("{:?}", resp.version());
+		let raw_headers = resp.headers().clone();
+
+		let mut raw_body: Vec<u8> = Vec::new();
+
+		while let Some(chunk) = match resp.chunk().await {
+			Ok(c) => c,
+			Err(m) => { return Err(m.to_string() + &String::from_utf8(raw_body.clone()).expect("Cannot parse")); }
+		} {
+			raw_body.extend_from_slice(&chunk);
+		}
+
+		Ok(APIResponse {
+			status: raw_status,
+			version: raw_version,
+			headers: raw_headers,
+			body: match String::from_utf8(raw_body) {
+				Ok(b) => b,
+				Err(m) => { return Err(m.to_string()); }
+			}
+		})
+	}
+}
+
+#[derive(Debug)]
+pub struct APIResponse {
+	pub status: reqwest::StatusCode,
+	pub version: String,
+	pub headers: HeaderMap,
+	pub body: String
+}
+
+
 
 #[derive(Debug)]
 pub enum TerminalError {
@@ -1590,6 +1811,57 @@ pub struct GeneralRequest {
 	pub buffer: String
 }
 
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename="r25:login_response")]
+pub struct LoginSuccess {
+	#[serde(rename="@pubdate")]
+	pub pubdate: Option<String>,
+	#[serde(rename="@engine")]
+	pub engine: Option<String>,
+	#[serde(rename="r25:login")]
+	pub login: Login
+}
+
+#[derive(Debug, Deserialize, Clone)]
+struct Login {
+	#[serde(rename="r25:message")]
+	pub message: String,
+	#[serde(rename="r25:success")]
+	pub success: String,
+	#[serde(rename="r25:user_type")]
+	pub user_type: String,
+	#[serde(rename="r25:user_id")]
+	pub user_id: u16,
+	#[serde(rename="r25:username")]
+	pub username: String,
+	#[serde(rename="r25:contact_name")]
+	pub contact_name: String,
+	#[serde(rename="r25:security_group_id")]
+	pub security_group_id: u16,
+	#[serde(rename="r25:security_group_name")]
+	pub security_group_name: String,
+	#[serde(rename="r25:login_url")]
+	pub login_url: String,
+	#[serde(rename="r25:logout_url")]
+	pub logout_url: String
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename="r25:events")]
+struct Events {
+	#[serde(rename="@pudate")]
+	pubdate: Option<String>,
+	#[serde(rename="@engine")]
+	engine: Option<String>,
+	#[serde(rename="r25:event")]
+	events: Vec<Event>
+}
+
+#[derive(Debug, Deserialize)]
+struct Event {
+	
+}
+
 pub static BUFF_SIZE : usize = 4096;
 pub static BACKUP    : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/backup.json");
 pub static TSCH_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/techSchedule.json");
@@ -1601,6 +1873,7 @@ pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/wiki_ar
 pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/roomConfig_agg.csv");
 pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.csv");
 pub static LOG       : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/output.log");
+pub static LOGIN_XML : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/dummy_login.xml");
 pub static STATUS_200: &str = "HTTP/1.1 200 OK";
 pub static STATUS_303: &str = "HTTP/1.1 303 See Other";
 pub static STATUS_401: &str = "HTTP/1.1 401 Unauthorized";
