@@ -500,7 +500,6 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
         // Sleep for a short duration to prevent busy-waiting
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
-    return;
 }
 
 #[tokio::main]
@@ -590,6 +589,11 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_file("html-css-js/tickex.js")
         },
+        "GET /analytics.js HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("html-css-js/analytics.js")
+        },
         "GET /jacknet.js HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
@@ -635,6 +639,12 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_file(user_homepage)
                     .insert_onload("setTickex()")
+        },
+        "GET /analytics HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file(user_homepage)
+                    .insert_onload("setAnalytics()")
         },
         "GET /jacknet HTTP/1.1" => {
             Response::new()
@@ -829,6 +839,7 @@ async fn handle_connection(
             let tickets: Vec<Value> = db_tickets.into_iter().map(|t| {
                 json!({
                     "ID": t.ticket_id,
+                    "ParentID": t.parent_id,
                     "has_been_viewed": t.has_been_viewed,
                     "Title": t.title,
                     "StatusName": t.status_name,
@@ -1884,6 +1895,7 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
     let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
     let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
     let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
+    let url_365_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last365days%22%7D";
 
     let v_7_days: Value = match serde_json::from_str(req
         .build()
@@ -1927,6 +1939,20 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
                 Err(_) => json!({"data": []})
         };
 
+    let v_365_days: Value = match serde_json::from_str(req
+        .build()
+        .method("GET")
+        .endpoint(url_365_days)
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .expect("Unable to make lsm_365_days API call")
+        .body
+        .as_str()) {
+                Ok(v)  => v,
+                Err(_) => json!({"data": []})
+        };
+
     let data_7_days: Vec<Value> = match v_7_days["data"].as_array() {
         Some(data) => data.clone(),
         None => Vec::<Value>::new()
@@ -1939,18 +1965,22 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
         Some(data) => data.clone(),
         None => Vec::<Value>::new()
     };
+    let data_365_days: Vec<Value> = match v_365_days["data"].as_array() {
+        Some(data) => data.clone(),
+        None => Vec::<Value>::new()
+    };
 
     let contents = json!({
         "7days": data_7_days,
         "30days": data_30_days,
-        "90days": data_90_days
+        "90days": data_90_days,
+        "365days": data_365_days
     }).to_string().into();
 
     let _ = database.update_data(&DB_DataElement {
         key: String::from("lsm_leaderboard"),
         val: String::from_utf8(contents).expect("Unable to parse LSM Return"),
     });
-    return;
 }
 
 async fn update_lsm_spares(database: &mut Database, req: &API) {
@@ -1980,7 +2010,6 @@ async fn update_lsm_spares(database: &mut Database, req: &API) {
         key: String::from("lsm_spares"),
         val: String::from_utf8(contents).expect("Unable to parse LSM Return"),
     });
-    return;
 }
 
 // Unsure if this is worth implementing...
@@ -2014,7 +2043,6 @@ async fn update_lsm_data(_database: &mut Database, _req: &API) {
     //         };
     //     }
     // }
-    return;
 }
 
 async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), String> {
@@ -2349,7 +2377,6 @@ async fn execute_ping(database: &mut Database) {
             });
         }
     }
-    return;
 }
 
 fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
@@ -3085,6 +3112,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
         for ticket_val in &tickets_json {
             let ticket = DB_Ticket {
                 ticket_id: ticket_val["ID"].as_i64().unwrap_or(0) as i32,
+                parent_id: ticket_val["ParentID"].as_i64().unwrap_or(0) as i32,
                 has_been_viewed: true,
                 type_name: ticket_val["TypeName"].as_str().unwrap_or("").to_string(),
                 type_category_name: ticket_val["TypeCategoryName"].as_str().unwrap_or("").to_string(),
@@ -3250,6 +3278,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
 
             let ticket = DB_Ticket {
                 ticket_id: ticket_val["ID"].as_i64().unwrap_or(0) as i32,
+                parent_id: ticket_val["ParentID"].as_i64().unwrap_or(0) as i32,
                 has_been_viewed: orig_viewed,
                 type_name: ticket_val["TypeName"].as_str().unwrap_or("").to_string(),
                 type_category_name: ticket_val["TypeCategoryName"].as_str().unwrap_or("").to_string(),
@@ -3293,6 +3322,22 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
 
     return Ok(());
 }
+
+/*
+ $$$$$$\                      $$\             $$\     $$\                     
+$$  __$$\                     $$ |            $$ |    \__|                    
+$$ /  $$ |$$$$$$$\   $$$$$$\  $$ |$$\   $$\ $$$$$$\   $$\  $$$$$$$\  $$$$$$$\ 
+$$$$$$$$ |$$  __$$\  \____$$\ $$ |$$ |  $$ |\_$$  _|  $$ |$$  _____|$$  _____|
+$$  __$$ |$$ |  $$ | $$$$$$$ |$$ |$$ |  $$ |  $$ |    $$ |$$ /      \$$$$$$\  
+$$ |  $$ |$$ |  $$ |$$  __$$ |$$ |$$ |  $$ |  $$ |$$\ $$ |$$ |       \____$$\ 
+$$ |  $$ |$$ |  $$ |\$$$$$$$ |$$ |\$$$$$$$ |  \$$$$  |$$ |\$$$$$$$\ $$$$$$$  |
+\__|  \__|\__|  \__| \_______|\__| \____$$ |   \____/ \__| \_______|\_______/ 
+                                  $$\   $$ |                                  
+                                  \$$$$$$  |                                  
+                                   \______/                                   
+*/
+
+
 
 
 /*

@@ -1881,5 +1881,5 @@ pub static STATUS_404: &str = "HTTP/1.1 404 Not Found";
 pub static STATUS_500: &str = "HTTP/1.1 500 Internal Server Error";
 pub static SCHD_ERR  : &str = "{\n\t\"No Tech Found\":{\"Name\":\"None\",\"Assignment\":\"N/A\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}}}";
 pub static DASH_ERR  : &str = "No dashboard found. Please contact an administrator.";
-pub static LDRB_ERR  : &str = "{\"7days\":[{\"Count\":0, \"Name\":\"N/A\"}],\"30days\":[{\"Count\":0, \"Name\":\"N/A\"}],\"90days\":[{\"Count\":0, \"Name\":\"N/A\"}]}";
+pub static LDRB_ERR  : &str = "{\"7days\":[{\"Count\":0, \"Name\":\"N/A\"}],\"30days\":[{\"Count\":0, \"Name\":\"N/A\"}],\"90days\":[{\"Count\":0, \"Name\":\"N/A\"}],\"365days\":[{\"Count\":0, \"Name\":\"N/A\"}]}";
 pub static SPRS_ERR  : &str = "{\"spares\":[{\"Asset Tag\":\"NOTFOUND\",\"Catalog Item\":{\"fullTitle\":\"N/A\",\"id\":0},\"Last Updated\":\"0000-00-00T00:00:00Z\",\"Location\":{\"id\":0,\"name\":\"NOT FOUND\"},\"Serial Number\":\"N/A\",\"User\":{\"displayName\":\"N/A\",\"id\":0}}}";

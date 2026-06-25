@@ -13,6 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Contrail+One&family=Racing+Sans+One&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head><!-- Javascript  -->
   <script src="bronson-manager.js" type="text/javascript" charset="utf-8"></script>
   <script src="checkerboard.js" type="text/javascript" charset="utf-8"></script>
@@ -20,6 +21,7 @@
   <script src="cc-altmode.js" type="text/javascript" charset="utf-8"></script>
   <script src="jacknet.js" type="text/javascript" charset="utf-8"></script>
   <script src="tickex.js" type="text/javascript" charset="utf-8"></script>
+  <script src="analytics.js" type="text/javascript" charset="utf-8"></script>
   <!-- <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> -->
   <script>
 
@@ -102,6 +104,8 @@
               30 days </span></button>
             <button id="SemesterButton" onclick="setLeader('90days')" type="button" class="leaderTab semesterTab"><img class="leader_tab_img" src="button2.png"/><span> 
               90 days </span></button>
+            <button id="YearButton" onclick="setLeader('365days')" type="button" class="leaderTab yearTab"><img class="leader_tab_img" src="button2.png"/><span> 
+              365 days </span></button>
           </div>
           <textarea readonly rows="12" cols="1" class="innerConsole ${isMobile ? "mobile_font_leaderboard" : ""}" id="leaderboard" spellcheck="false">
           </textarea>
@@ -275,6 +279,9 @@
               <img class="tab_img" src="button2.png"/>
               <span> CamCode </span>
             </button>
+            <button id="ANButton" onclick="setAnalytics()" type="button" class="toolTab anTab">
+              <img class="tab_img" src="button2.png"/>
+              <span> Analytics </span>
             <button id="Notif" onclick="sendNotification(defaultNotification, 2000)" type="button" class="toolTab notifTab" style="display: none;">
               <img class="tab_img" src="button2.png"/>
               <span> Notify me! </span>
