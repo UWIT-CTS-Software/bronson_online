@@ -129,13 +129,13 @@ CREATE TABLE IF NOT EXISTS bronson.tickets (
     CHECK (length(service_name) <= 64),
     CHECK (length(priority_name) <= 64),
     CHECK (length(created_date) <= 32),
-    CHECK (length(created_full_name) <= 128),
+    CHECK (length(created_full_name) <= 256),
     CHECK (length(modified_date) <= 32),
     CHECK (length(modified_full_name) <= 128),
     CHECK (length(requestor_name) <= 128),
     CHECK (length(requestor_email) <= 64),
     CHECK (length(requestor_phone) <= 32),
-    CHECK (length(responsible_full_name) <= 128),
+    CHECK (length(responsible_full_name) <= 256),
     CHECK (length(responsible_group_name) <= 128),
 
     CHECK (length(old_type_name) <= 51),
@@ -146,8 +146,8 @@ CREATE TABLE IF NOT EXISTS bronson.tickets (
     CHECK (length(old_service_name) <= 64),
     CHECK (length(old_priority_name) <= 16),
     CHECK (length(old_modified_date) <= 32),
-    CHECK (length(old_modified_full_name) <= 128),
-    CHECK (length(old_responsible_full_name) <= 128),
+    CHECK (length(old_modified_full_name) <= 256),
+    CHECK (length(old_responsible_full_name) <= 256),
     CHECK (length(old_responsible_group_name) <= 128)
 );
 
