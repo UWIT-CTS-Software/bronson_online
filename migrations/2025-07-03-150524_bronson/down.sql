@@ -12,6 +12,8 @@ DROP TABLE IF EXISTS bronson.tickets;
 
 DROP TABLE IF EXISTS bronson.reservations;
 
+DROP TABLE IF EXISTS bronson.projects;
+
 /* DROP TABLE IF EXISTS bronson.api_schedule; */
 
 DROP TYPE IF EXISTS bronson.hostname CASCADE;

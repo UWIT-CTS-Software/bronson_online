@@ -599,6 +599,17 @@ async function setDepartmentBoard(timePeriod) {
     ticketsEventSupport.textContent = depAnalytics.ticketsEventSupport || 0;
 }
 
+async function fetchProjects() {
+    try {
+        const response = await fetch('/projects');
+        if (!response.ok) throw new Error('Network response was not ok');
+        return await response.json();
+    } catch (error) {
+        console.error('Failed to fetch projects:', error);
+        return [];
+    }
+}
+
 // Updates the current active projects
 async function setProjectsBoard() {
     const projects = await fetchProjects();
