@@ -3096,7 +3096,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
         let search_body = serde_json::json!({
             "ModifiedDateFrom": "2020-01-01T00:00:00Z",
             "ResponsibilityGroupIDs": [2742], // CTS Group ID
-            "MaxResults": 5000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
+            "MaxResults": 100000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
         });
         // Make the request
         let resp_raw = req
@@ -3395,8 +3395,7 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
         // Define search
         let search_body = serde_json::json!({
             "ModifiedDateFrom": "2020-01-01T00:00:00Z",
-            // "ResponsibilityGroupIDs": [2742], // TODO: Figure out how to filter for CTS
-            "MaxResults": 5000
+            "TypeID": 42460
         });
         // Make the request
         let resp_raw = req

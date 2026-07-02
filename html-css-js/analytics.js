@@ -61,7 +61,7 @@ function getTimePeriodRadioHTML(timePeriod) {
             </div>
             <div class="an_radioOption">
                 <input type="radio" id="all-time" name="time-period" value="all-time" ${selectedPeriod === 4 ? "checked" : ""}>
-                <label for="all-time">*All Time</label>
+                <label for="all-time">*All Time - Jan 1, 2020</label>
             </div>
             <div class="an_radioOption">
                 <input type="radio" id="custom" name="time-period" value="custom" ${selectedPeriod === 5 ? "checked" : ""}>
@@ -291,7 +291,7 @@ async function buildGraphs() {
 
     // Individual Room Check Donut Chart
     const indRoomCheckDonutX = ["You", "CTS"];
-    const indRoomCheckDonutY = [-1, -1];
+    const indRoomCheckDonutY = new Array(2).fill(-1);
     new Chart("indRoomCheckDonut", {
         type: "doughnut",
         data: {
@@ -313,7 +313,7 @@ async function buildGraphs() {
 
     // Individual Room Check Donut Chart
     const indTicketsDonutX = ["You", "CTS"];
-    const indTicketsDonutY = [-1, -1];
+    const indTicketsDonutY = new Array(2).fill(-1);
     new Chart("indTicketsDonut", {
         type: "doughnut",
         data: {
@@ -335,7 +335,7 @@ async function buildGraphs() {
 
     // Ticket Count by Building Bar Graph
     const buildingCountGraphX = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
-    const buildingCountGraphY = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
+    const buildingCountGraphY = new Array(10).fill(-1);
     new Chart("buildingCountGraph", {
         type: "bar",
         data: {
@@ -361,7 +361,7 @@ async function buildGraphs() {
 
     // Total Tickets per Hour Bar Graph
     const ticketsPerHourGraphX = ["7am", "8am", "9am", "10am", "11am", "12pm", "1pm", "2pm", "3pm", "4pm", "5pm", "6pm", "7pm", "Other"];
-    const ticketsPerHourGraphY = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
+    const ticketsPerHourGraphY = new Array(14).fill(-1);
     new Chart("ticketsPerHourGraph", {
         type: "bar",
         data: {
@@ -508,10 +508,16 @@ async function setProjectsBoard(timePeriod) {
     for (let i = 0; i < filteredProjects.length; i++) {
         const project = filteredProjects[i];
         if (!project) continue;
-
-        const projectTypeId = project.TypeID;        
-        if (projectTypeId === typeIdToFilter) matchingProjects.push(project);
+ 
+        const now = new Date();
+        const startDate = new Date(project.StartDate);
+        if (project.TypeID === typeIdToFilter && startDate < now 
+            && project.IsActive && project.PercentComplete != 100) 
+            matchingProjects.push(project);
     }
+
+    // TODO: Sort matchingProjects according to custom criteria
+
 
     // Clear the fieldset content except for the legend
     const legend = projectsFieldset.querySelector('legend');
@@ -530,10 +536,7 @@ async function setProjectsBoard(timePeriod) {
         
         const projectName = project.Name;
         const projectPercent = project.PercentComplete;
-        const projectId = project.ID;
-        
-        console.log("Adding project:", projectName, "percent:", projectPercent);
-        
+        const projectId = project.ID;        
         const projectHTML = document.createElement('div');
         projectHTML.innerHTML = `
             <strong>${projectName}:</strong>
@@ -901,26 +904,26 @@ async function setAnalytics() {
             <div id="an_individualRoomcheckStats">
                 <div class="an_statsBox">
                     <strong id='ind_roomcheck_note'></strong>
-                    <h1 id="ind_roomcheck_timeperiod">-1</h1>
+                    <h1 id="ind_roomcheck_timeperiod">ERROR</h1>
                 </div>
                 <div class="an_statsBox">
                     <strong>All Time</strong>
-                    <h1 id="ind_roomcheck_alltime">-1</h1>
+                    <h1 id="ind_roomcheck_alltime">ERROR</h1>
                 </div>
             </div>
             <strong><u>Tickets:</u></strong>
             <div id="an_individualTicketStats">
                 <div class="an_statsBox">
                     <strong>Created</strong>
-                    <h1 id="ind_tickets_created">-1</h1>
+                    <h1 id="ind_tickets_created">ERROR</h1>
                 </div>
                 <div class="an_statsBox">
                     <strong>Responded To</strong>
-                    <h1 id="ind_tickets_responded">-1</h1>
+                    <h1 id="ind_tickets_responded">ERROR</h1>
                 </div>
                 <div class="an_statsBox">
                     <strong>Closed</strong>
-                    <h1 id="ind_tickets_closed">-1</h1>
+                    <h1 id="ind_tickets_closed">ERROR</h1>
                 </div>
             </div>
 
@@ -945,16 +948,16 @@ async function setAnalytics() {
             <div id="an_departmentRoomcheckStats">
                 <div class="an_statsBox" id="dep_roomcheck_leaders">
                     <strong>Room Check Leaders (<strong id='dep_roomcheck_note' style='margin: 0;'></strong>)</strong>
-                    <p>1. Person A - -1</p>
-                    <p>2. Person B - -1</p>
-                    <p>3. Person C - -1</p>
+                    <p>1. Person A - ERROR</p>
+                    <p>2. Person B - ERROR</p>
+                    <p>3. Person C - ERROR</p>
                 </div>
                 <div class="an_statsBox" id="dep_roomcheck_overall">
-                    <strong>Total Room Checks (All Time):</strong>
-                    <p>Last 7 Days: -1</p>
-                    <p>Last 30 Days: -1</p>
-                    <p>Last 90 Days: -1</p>
-                    <p>Last 365 Days: -1</p>
+                    <strong>Total Room Checks:</strong>
+                    <p>Last 7 Days: ERROR</p>
+                    <p>Last 30 Days: ERROR</p>
+                    <p>Last 90 Days: ERROR</p>
+                    <p>Last 365 Days: ERROR</p>
                 </div>
             </div>
 
@@ -962,15 +965,15 @@ async function setAnalytics() {
             <div id="an_departmentTicketStats">
                 <div class="an_statsBox">
                     <strong>Created</strong>
-                    <h1 id="dep_tickets_created">-1</h1>
+                    <h1 id="dep_tickets_created">ERROR</h1>
                 </div>
                 <div class="an_statsBox">
                     <strong>Closed</strong>
-                    <h1 id="dep_tickets_closed">-1</h1>
+                    <h1 id="dep_tickets_closed">ERROR</h1>
                 </div>
                 <div class="an_statsBox">
                     <strong>Open Tickets (All Time)</strong>
-                    <h1 id="dep_tickets_open">-1</h1>
+                    <h1 id="dep_tickets_open">ERROR</h1>
                 </div>
             </div>
 
@@ -978,19 +981,19 @@ async function setAnalytics() {
             <div id="an_departmentGeneralStats">
                 <div class="an_statsBox">
                     <strong>Room Check Tickets</strong>
-                    <h1 id="dep_tickets_roomcheck">-1</h1>
+                    <h1 id="dep_tickets_roomcheck">ERROR</h1>
                 </div>
                 <div class="an_statsBox">
                     <strong>False Tickets</strong>
-                    <h1 id="dep_tickets_false">-1</h1>
+                    <h1 id="dep_tickets_false">ERROR</h1>
                 </div>
                 <div class="an_statsBox">
                     <strong>PC Tickets</strong>
-                    <h1 id="dep_tickets_pc">-1</h1>
+                    <h1 id="dep_tickets_pc">ERROR</h1>
                 </div>
                 <div class="an_statsBox">
                     <strong>Event Support Tickets</strong>
-                    <h1 id="dep_tickets_eventsupport">-1</h1>
+                    <h1 id="dep_tickets_eventsupport">ERROR</h1>
                 </div>
             </div>
 
