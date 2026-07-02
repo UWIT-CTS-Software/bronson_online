@@ -53,7 +53,7 @@ use server_lib::{
     Database, Terminal, 
     models::{
         DB_Room, DB_Building, DB_User, DB_DataElement,
-        DB_IpAddress, DB_Key, DB_Ticket
+        DB_IpAddress, DB_Key, DB_Ticket, DB_Project
     },
     LoginSuccess, 
 };
@@ -910,6 +910,47 @@ async fn handle_connection(
                         .send_contents("Error".into())
                 }
             }
+        },
+        "GET /projects HTTP/1.1" => {
+            if database.check_if_projects_empty() {
+                match fetch_projects(&mut database, &tdx_client).await {
+                    Ok(()) => (),
+                    Err(e) => error!("Failed to populate projects: {}", e),
+                }
+            }
+
+            let db_projects = match database.get_all_projects() {
+                Ok(p) => p,
+                Err(e) => {
+                    error!("Failed to get projects: {}", e);
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("[]".into())
+                        .build();
+                }
+            };
+            let projects: Vec<Value> = db_projects.into_iter().map(|t| {
+                json!({
+                    "ID": t.project_id,
+                    "CreatedDate": t.created_date,
+                    "ModifiedDate": t.modified_date,
+                    "Name": t.name,
+                    "Description": t.description,
+                    "IsActive": t.is_active,
+                    "TypeID": t.type_id,
+                    "PercentComplete": t.percent_complete,
+                    "StatusName": t.status_name,
+                    "StatusComments": t.status_comments,
+                    "StartDate": t.start_date,
+                    "EndDate": t.end_date,
+                    "HealthDescription": t.health,
+                })
+            }).collect();
+
+            let contents = serde_json::to_string(&projects).unwrap().into();
+            Response::new()
+                .status(STATUS_200)
+                .send_contents(contents)
         },
         "POST /lsmData HTTP/1.1" => { // OUTGOING
             let body_str = String::from_utf8(req.body).expect("AT: LSM Data Err, invalid UTF-8");
@@ -3065,6 +3106,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
             .header("Authorization", &tdx_token.val)
             .header("Content-Type", "application/json")
             .body(search_body)
+            .timeout(Duration::from_secs(120))
             .send()
             .await;
         
@@ -3337,7 +3379,192 @@ $$ |  $$ |$$ |  $$ |\$$$$$$$ |$$ |\$$$$$$$ |  \$$$$  |$$ |\$$$$$$$\ $$$$$$$  |
                                    \______/                                   
 */
 
+async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String> {
+    let url = "https://uwyo.teamdynamix.com/TDWebApi/api/3444/projects/search";
 
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e)),
+    };
+
+    // If no projects exist, perform a projects fetch from Jan 1st, 2020 to now
+    if database.check_if_projects_empty() {
+        warn!("[Data] - No projects exist in Database. Pulling all projects from Jan 1st, 2020...");
+
+        // Define search
+        let search_body = serde_json::json!({
+            "ModifiedDateFrom": "2020-01-01T00:00:00Z",
+            // "ResponsibilityGroupIDs": [2742], // TODO: Figure out how to filter for CTS
+            "MaxResults": 5000
+        });
+        // Make the request
+        let resp_raw = req
+            .build()
+            .method("POST")
+            .endpoint(url)
+            .header("Authorization", &tdx_token.val)
+            .header("Content-Type", "application/json")
+            .body(search_body)
+            .timeout(Duration::from_secs(120))
+            .send()
+            .await;
+        
+        let resp = match resp_raw {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch projects: {}", e))
+        };
+
+        if !resp.status.is_success() {
+            return Err(format!("TDX API error: {}", resp.status));
+        }
+
+        // Parse the response as JSON
+        let parsed_projects: serde_json::Value = serde_json::from_str(&resp.body)
+            .map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
+        let projects_json: Vec<serde_json::Value> = match parsed_projects.as_array() {
+            Some(items) => items.clone(),
+            None => parsed_projects
+                .get("Items")
+                .and_then(serde_json::Value::as_array)
+                .cloned()
+                .ok_or_else(|| format!("Expected project array in response body: {}", resp.body))?,
+        };
+
+        // Map to DB_Project and insert
+        for project_val in &projects_json {
+            let project = DB_Project {
+                project_id: project_val["ID"].as_i64().unwrap_or(0) as i32,
+                created_date: project_val["CreatedDate"].as_str().unwrap_or("").to_string(),
+                modified_date: project_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
+                name: project_val["Name"].as_str().unwrap_or("").to_string(),
+                description: project_val["Description"].as_str().unwrap_or("").to_string(),
+                is_active: project_val["IsActive"].as_bool().unwrap_or(true),
+                type_id: project_val["TypeID"].as_i64().unwrap_or(0) as i32,
+                percent_complete: project_val["PercentComplete"].as_i64().unwrap_or(-1) as i16,
+                status_name: project_val["StatusName"].as_str().unwrap_or("").to_string(),
+                status_comments: project_val["StatusComments"].as_str().unwrap_or("").to_string(),
+                start_date: project_val["StartDate"].as_str().unwrap_or("").to_string(),
+                end_date: project_val["EndDate"].as_str().unwrap_or("").to_string(),
+                health: project_val["HealthDescription"].as_str().unwrap_or("").to_string(),
+            };
+
+            // Insert or update
+            if let Err(e) = database.update_project(&project) {
+                warn!("Failed to insert project {}: {}", project.project_id, e);
+            }
+        }
+
+        // Double check projects exist in database, but this should not be necessary
+        if database.check_if_projects_empty() {
+            return Err("Failed to insert projects into database".to_string());
+        }
+    } else { // Projects table not empty, only update more recent projects
+        // Look in database for most recent Project and look at its date
+        let latest_project = match database.get_latest_project() {
+            Ok(p) => p,
+            Err(e) => return Err(format!("Failed to get latest project: {}", e)),
+        };
+
+        // Define search
+        let search_body = serde_json::json!({
+            "MaxResults": 10000,
+            // "ResponsibilityGroupIDs": [2742], // TODO: Figure out how to filter for CTS
+        });
+
+        // Make the request to TDX API
+        let mut resp = match req
+            .build()
+            .method("POST")
+            .endpoint(url)
+            .header("Authorization", &tdx_token.val)
+            .header("Content-Type", "application/json")
+            .body(search_body.clone())
+            .send()
+            .await {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch project from TDX: {}", e))
+            };
+
+        // Try fetching a new tdx token and try again if Unauthorized
+        if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+            warn!("Project data fetch failure was due to an unauthorized response, fetching new token and trying again...");
+
+            // Grab new TDX Token
+            let _ = fetch_tdx_token(database, req).await;
+
+            // Get the TDX API token from database
+            let tdx_token = match database.get_key("tdx_api") {
+                Ok(t) => t,
+                Err(e) => return Err(format!("Failed to get TDX API token while fetching project data: {}", e)),
+            };
+
+            // Make the request to TDX API
+            let retry_resp_raw = req
+                .build()
+                .method("POST")
+                .endpoint(url)
+                .header("Authorization", &tdx_token.val)
+                .header("Content-Type", "application/json")
+                .body(search_body)
+                .send()
+                .await;
+                
+            let retry_resp = match retry_resp_raw {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch project from TDX: {}", e))
+            };
+
+            if !retry_resp.status.is_success() {
+                return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
+            } else {
+                warn!("Successfully recovered new TDX Token & fetched new project data");
+                resp = retry_resp;
+            }
+        }
+
+        // Get the response body as text and convert to JSON
+        let parsed_projects: serde_json::Value = serde_json::from_str(&resp.body)
+            .map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
+        let projects_json: Vec<serde_json::Value> = match parsed_projects.as_array() {
+            Some(items) => items.clone(),
+            None => parsed_projects
+                .get("Items")
+                .and_then(serde_json::Value::as_array)
+                .cloned()
+                .ok_or_else(|| format!("Expected project array in response body: {}", resp.body))?,
+        };
+
+        // Map to DB_Project and update
+        for project_val in &projects_json {
+            // If it exists, get original project from database
+            let id = project_val["ID"].as_i64().unwrap_or(0) as i32;
+
+            let project = DB_Project {
+                project_id: id,
+                created_date: project_val["CreatedDate"].as_str().unwrap_or("").to_string(),
+                modified_date: project_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
+                name: project_val["Name"].as_str().unwrap_or("").to_string(),
+                description: project_val["Description"].as_str().unwrap_or("").to_string(),
+                is_active: project_val["IsActive"].as_bool().unwrap_or(true),
+                type_id: project_val["TypeID"].as_i64().unwrap_or(0) as i32,
+                percent_complete: project_val["PercentComplete"].as_i64().unwrap_or(-1) as i16,
+                status_name: project_val["StatusName"].as_str().unwrap_or("").to_string(),
+                status_comments: project_val["StatusComments"].as_str().unwrap_or("").to_string(),
+                start_date: project_val["StartDate"].as_str().unwrap_or("").to_string(),
+                end_date: project_val["EndDate"].as_str().unwrap_or("").to_string(),
+                health: project_val["HealthDescription"].as_str().unwrap_or("").to_string(),
+            };
+
+            // Insert or update
+            if let Err(e) = database.update_project(&project) {
+                error!("Failed to insert project {}: {}", project.project_id, e);
+            }
+        }
+    }
+
+    return Ok(());
+}
 
 
 /*

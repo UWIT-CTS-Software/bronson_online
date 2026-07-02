@@ -484,8 +484,75 @@ async function setDepartmentBoard(timePeriod) {
     ticketsEventSupport.textContent = depAnalytics.ticketsEventSupport || 0;
 }
 
+async function fetchProjects() {
+    try {
+        const response = await fetch('/projects');
+        if (!response.ok) throw new Error('Network response was not ok');
+        return await response.json();
+    } catch (error) {
+        console.error('Failed to fetch projects:', error);
+        return [];
+    }
+}
+
 async function setProjectsBoard(timePeriod) {
-    // TODO: Sets data to the projects board
+    const projects = await fetchProjects();
+    const projectsFieldset = document.querySelector('.an_projectsFieldset');
+    if (!projectsFieldset) return;
+
+    // Filter projects by TypeID == 42460
+    const filteredProjects = Array.isArray(projects) ? projects : [];
+    const typeIdToFilter = 42460; // The CTS Projects Management Board ID
+    const matchingProjects = [];
+    
+    for (let i = 0; i < filteredProjects.length; i++) {
+        const project = filteredProjects[i];
+        if (!project) continue;
+
+        const projectTypeId = project.TypeID;        
+        if (projectTypeId === typeIdToFilter) matchingProjects.push(project);
+    }
+
+    // Clear the fieldset content except for the legend
+    const legend = projectsFieldset.querySelector('legend');
+    projectsFieldset.innerHTML = '';
+    projectsFieldset.appendChild(legend);
+
+    // If no matching projects, show message
+    if (matchingProjects.length === 0) {
+        projectsFieldset.innerHTML += '<p>No active projects.</p>';
+        return;
+    }
+
+    // Dynamically create HTML for all matching projects
+    for (let i = 0; i < matchingProjects.length; i++) {
+        const project = matchingProjects[i];
+        
+        const projectName = project.Name;
+        const projectPercent = project.PercentComplete;
+        const projectId = project.ID;
+        
+        console.log("Adding project:", projectName, "percent:", projectPercent);
+        
+        const projectHTML = document.createElement('div');
+        projectHTML.innerHTML = `
+            <strong>${projectName}:</strong>
+            <label for="an_project_${i}">${projectPercent}.00%</label>
+            <progress id="an_project_${i}" value="${projectPercent}" max="100"></progress>
+            <ul>
+                <li>Item 1</li>
+                <li>Item 2</li>
+                <li>Item 3</li>
+            </ul>
+        `;
+        
+        if (i < matchingProjects.length - 1) {
+            const hr = document.createElement('hr');
+            projectHTML.appendChild(hr);
+        }
+        
+        projectsFieldset.appendChild(projectHTML);
+    }
 }
 
 // Updates all analytics boards based on current time period selection

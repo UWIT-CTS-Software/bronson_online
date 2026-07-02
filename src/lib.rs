@@ -76,11 +76,12 @@ use crate::schema::bronson::{
 	keys::dsl::*,
 	data::dsl::*,
 	tickets::dsl::*,
+	projects::dsl::*,
 };
 use crate::models::{
 	DB_Hostname, DB_IpAddress,
 	DB_Room, DB_Building, DB_User, DB_Key, DB_DataElement,
-	DeviceType, DB_Ticket,
+	DeviceType, DB_Ticket, DB_Project
 };
 
 trait FnBox {
@@ -988,7 +989,7 @@ impl Database {
 
 		tickets
 			.select(DB_Ticket::as_select())
-			.order(created_date.desc())
+			.order(crate::schema::bronson::tickets::dsl::created_date.desc())
 			.first(&mut conn)
 	}
 
@@ -1080,6 +1081,63 @@ impl Database {
 		diesel::delete(tickets)
 			.filter(ticket_id.eq(id_value))
 			.returning(DB_Ticket::as_returning())
+			.get_result(&mut conn)
+	}
+
+	pub fn get_project(&mut self, id_value: i32) -> Result<Option<DB_Project>, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		projects
+			.select(DB_Project::as_select())
+			.filter(project_id.eq(id_value))
+			.first(&mut conn)
+			.optional()
+	}
+
+	pub fn get_latest_project(&mut self) -> Result<DB_Project, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		projects
+			.select(DB_Project::as_select())
+			.order(crate::schema::bronson::projects::dsl::created_date.desc())
+			.first(&mut conn)
+	}
+
+	pub fn get_all_projects(&mut self) -> Result<Vec<DB_Project>, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		projects
+			.select(DB_Project::as_select())
+			.load::<DB_Project>(&mut conn)
+	}
+	
+	pub fn check_if_projects_empty(&mut self) -> bool {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		projects
+			.count()
+			.get_result::<i64>(&mut conn)
+			.unwrap() == 0
+	}
+
+	pub fn update_project(&mut self, element: &DB_Project) -> Result<DB_Project, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		diesel::insert_into(projects)
+			.values(element)
+			.on_conflict(project_id)
+			.do_update()
+			.set(element)
+			.returning(DB_Project::as_returning())
+			.get_result(&mut conn)
+	}
+
+	pub fn delete_project(&mut self, id_value: i32) -> Result<DB_Project, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		diesel::delete(projects)
+			.filter(project_id.eq(id_value))
+			.returning(DB_Project::as_returning())
 			.get_result(&mut conn)
 	}
 }
