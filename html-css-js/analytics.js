@@ -516,7 +516,38 @@ async function setProjectsBoard(timePeriod) {
             matchingProjects.push(project);
     }
 
-    // TODO: Sort matchingProjects according to custom criteria
+    // Sort matchingProjects according to custom criteria
+    matchingProjects.sort((a, b) => {
+        // Group 0: Active projects (>0% and not On Hold)
+        // Group 1: On Hold projects (>0% and On Hold)
+        // Group 2: 0% complete projects (Sorted by Completion Date)
+
+        function getGroup(project) {
+            if (project.PercentComplete === 0) return 2;
+            if (project.Status === "On Hold") return 1;
+            return 0;
+        }
+
+        const groupA = getGroup(a);
+        const groupB = getGroup(b);
+
+        if (groupA !== groupB) {
+            return groupA - groupB;
+        }
+
+        // Group 0: Sort by EndDate (earliest deadline first)
+        if (groupA === 0) {
+            return new Date(a.EndDate) - new Date(b.EndDate);
+        }
+
+        // Group 1: Sort by PercentComplete (highest first)
+        if (groupA === 1) {
+            return b.PercentComplete - a.PercentComplete;
+        }
+
+        // Group 2: Sort by EndDate (earliest deadline first)
+        return new Date(a.EndDate) - new Date(b.EndDate);
+    });
 
 
     // Clear the fieldset content except for the legend
@@ -531,22 +562,38 @@ async function setProjectsBoard(timePeriod) {
     }
 
     // Dynamically create HTML for all matching projects
+    const isAdmin = await fetchCurrentUserPermissions() >= 6;
     for (let i = 0; i < matchingProjects.length; i++) {
         const project = matchingProjects[i];
-        
-        const projectName = project.Name;
-        const projectPercent = project.PercentComplete;
-        const projectId = project.ID;        
         const projectHTML = document.createElement('div');
+        const completionDate = new Date(project.EndDate).toLocaleDateString();
+
+        const adminButtons = isAdmin ? `
+            <div class='an_adminProjectButtons'>
+                <button onclick="hideProject(${project.ID}, true)">Hide from Techs</button>
+                <button onclick="markAsInProgress(${project.ID}, true)">Mark Project as In Progress</button>
+            </div>
+        ` : "";
+
         projectHTML.innerHTML = `
-            <strong>${projectName}:</strong>
-            <label for="an_project_${i}">${projectPercent}.00%</label>
-            <progress id="an_project_${i}" value="${projectPercent}" max="100"></progress>
+            <strong>${project.Name}: (${project.ID})</strong>
+            <label for="an_project_${i}">${project.PercentComplete}%</label>
+            <strong class="an_projectStatus">${project.StatusName}</strong>
+            <progress id="an_project_${i}" value="${project.PercentComplete}" max="100"></progress>
+            <p class="an_projectEndDate">Projected Completion: ${completionDate}</p>
             <ul>
                 <li>Item 1</li>
                 <li>Item 2</li>
                 <li>Item 3</li>
             </ul>
+            <div class="an_projectButtons">
+                <a href="https://uwyo.teamdynamix.com/TDWorkManagement/WorkManagement/Home/DynamicApp/${project.ID}?type=TDProject" target="_blank" rel="noopener noreferrer">
+                    <button class="popup_linkToTicket">Link to TDX</button>
+                </a>
+                ${adminButtons}
+            </div>
+
+            <br>
         `;
         
         if (i < matchingProjects.length - 1) {
@@ -568,6 +615,17 @@ async function setBoard() {
 }
 
 
+async function hideProject(projectId, isHidden) {
+    const timePeriod = parseInt(sessionStorage.getItem("an_timePeriod"), 10);
+    await updateProjectIsHidden(projectId, isHidden);
+    await setProjectsBoard(timePeriod);
+}
+
+async function markAsInProgress(projectId, isInProgress) {
+    const timePeriod = parseInt(sessionStorage.getItem("an_timePeriod"), 10);
+    await updateProjectInProgress(projectId, isInProgress);
+    await setProjectsBoard(timePeriod);
+}
 
     /* -------------------- Backend Calls -------------------- */
 
@@ -783,6 +841,34 @@ function getDepartmentAnalytics(timePeriod) {
     return stats;
 }
 
+async function updateProjectIsHidden(projectId, isHidden) {
+    try {
+        const response = await fetch('/update/projects/hidden', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', },
+            body: JSON.stringify({ id: projectId, is_hidden: isHidden }),
+        });
+
+        if (!response.ok) console.error('Failed to update project hidden status');
+    } catch (error) {
+        console.error('Error updating project hidden status:', error);
+    }
+}
+
+async function updateProjectInProgress(projectId, isInProgress) {
+    try {
+        const response = await fetch('/update/projects/in_progress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', },
+            body: JSON.stringify({ id: projectId, is_in_progress: isInProgress }),
+        });
+
+        if (!response.ok) console.error('Failed to update project in progress status');
+    } catch (error) {
+        console.error('Error updating project in progress status:', error);
+    }
+}
+
 
 
     /* -------------------- "Main" Function -------------------- */
@@ -881,13 +967,13 @@ async function setAnalytics() {
 
     const individuals = document.createElement('div');
     individuals.classList.add('an_individuals');
-    const isAuthorized = await fetchCurrentUserPermissions() >= 6;
-    const adminOnlyHTML = isAuthorized ? `
+    const isAdmin = await fetchCurrentUserPermissions() >= 6;
+    const adminOnlyHTML = isAdmin ? `
         <div id="an_techSelector">
             <strong>Choose a tech:</strong>
             <select name="techs" id="techs">
                 <option value="lfermeli" selected>Lexus Fermelia</option>
-                <option value="abryan9">Alex Bryan</option>
+                <option value="todo">TODO: Add Users via Shibboleth</option>
             </select>
             <hr>
         </div>
@@ -1012,22 +1098,11 @@ async function setAnalytics() {
     projects.innerHTML = `
         <fieldset class="an_projectsFieldset">
             <legend>Current Projects</legend>
-            <strong>Project 1:</strong>
-            <label for="an_project_0">50.00%</label>
-            <progress id="an_project_0" value="50" max="100"></progress>
+            <strong>ERROR:</strong>
+            <label for="an_project_0">0%</label>
+            <progress id="an_project_0" value="0" max="100"></progress>
             <ul>
-                <li>Item 1</li>
-                <li>Item 2</li>
-                <li>Item 3</li>
-            </ul>
-            <hr>
-            <strong>Project 2:</strong>
-            <label for="an_project_1">25.00%</label>
-            <progress id="an_project_1" value="25" max="100"></progress>
-            <ul>
-                <li>Item 1</li>
-                <li>Item 2</li>
-                <li>Item 3</li>
+                <li>ERROR</li>
             </ul>
         </fieldset>
     `;

@@ -47,6 +47,8 @@ pub mod bronson {
             start_date -> Text,
             end_date -> Text,
             health -> Text,
+            is_hidden -> Bool,
+            is_in_progress -> Bool,
         }
     }
 

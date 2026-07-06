@@ -49,6 +49,7 @@ h1 {
 hr {
     border: none;
     border-bottom: 1px inset rgb(106 86 18);
+    width: 100%;
 }
 
 p {
@@ -2423,6 +2424,11 @@ p.tx_Description::-webkit-scrollbar-track {
     overflow-x: hidden;
 }
 
+.an_adminProjectButtons {
+    float: right;
+    margin-bottom: 5px;
+}
+
 .an_projectsFieldset {
     min-width: 0;
     min-height: 0;
@@ -2441,7 +2447,7 @@ p.tx_Description::-webkit-scrollbar-track {
 
 .an_projects progress {
     /* -webket-appearance: none; */
-    width: 92%;
+    width: 97%;
     height: 20px;
     padding: 0px 0px 0px 0px;
     margin: 8px 0px 0px 4px;
@@ -2475,6 +2481,17 @@ p.tx_Description::-webkit-scrollbar-track {
 .an_settings strong {
     font-size: 21px;
     margin: 0px 20px;
+}
+
+.an_projectStatus {
+    margin: 0 20px 0 0 !important;
+    font-size: 18px;
+    float: right;
+}
+
+.an_projectEndDate {
+    margin: 5px 20px 0 0;
+    float: right;
 }
 
 .an_donutGraphContainer {

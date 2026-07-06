@@ -159,6 +159,9 @@ CREATE TABLE IF NOT EXISTS bronson.projects (
     start_date          TEXT        NOT NULL,
     end_date            TEXT        NOT NULL,
     health              TEXT        NOT NULL,
+
+    is_hidden           BOOLEAN     NOT NULL,
+    is_in_progress BOOLEAN     NOT NULL,
     
     CHECK (length(created_date) <= 32),
     CHECK (length(modified_date) <= 32),

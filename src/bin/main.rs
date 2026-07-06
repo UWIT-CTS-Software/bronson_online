@@ -944,6 +944,9 @@ async fn handle_connection(
                     "StartDate": t.start_date,
                     "EndDate": t.end_date,
                     "HealthDescription": t.health,
+
+                    "is_hidden": t.is_hidden,
+                    "is_in_progress": t.is_in_progress,
                 })
             }).collect();
 
@@ -951,6 +954,64 @@ async fn handle_connection(
             Response::new()
                 .status(STATUS_200)
                 .send_contents(contents)
+        },
+        "POST /update/projects/hidden HTTP/1.1" => {
+            // Parse JSON body
+            let body_json: Value = match serde_json::from_slice(&req.body) {
+                Ok(v) => v,
+                Err(_) => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Invalid JSON".into())
+                        .build();
+                }
+            };
+
+            let id = body_json["id"].as_i64().unwrap_or(-1) as i32;
+            let is_hidden = body_json["is_hidden"].as_bool().unwrap_or(false);
+
+            // Update DB
+            match database.update_project_hidden(id, is_hidden) {
+                Ok(_) => Response::new()
+                    .status(STATUS_200)
+                    .send_contents("Updated".into()),
+
+                Err(e) => {
+                    error!("Failed to update project hidden: {}", e);
+                    Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Error".into())
+                }
+            }
+        },
+        "POST /update/projects/in_progress HTTP/1.1" => {
+            // Parse JSON body
+            let body_json: Value = match serde_json::from_slice(&req.body) {
+                Ok(v) => v,
+                Err(_) => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Invalid JSON".into())
+                        .build();
+                }
+            };
+
+            let id = body_json["id"].as_i64().unwrap_or(-1) as i32;
+            let in_progress = body_json["is_in_progress"].as_bool().unwrap_or(false);
+
+            // Update DB
+            match database.update_project_in_progress(id, in_progress) {
+                Ok(_) => Response::new()
+                    .status(STATUS_200)
+                    .send_contents("Updated".into()),
+
+                Err(e) => {
+                    error!("Failed to update project in progress: {}", e);
+                    Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Error".into())
+                }
+            }
         },
         "POST /lsmData HTTP/1.1" => { // OUTGOING
             let body_str = String::from_utf8(req.body).expect("AT: LSM Data Err, invalid UTF-8");
@@ -3390,8 +3451,6 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
 
     // If no projects exist, perform a projects fetch from Jan 1st, 2020 to now
     if database.check_if_projects_empty() {
-        warn!("[Data] - No projects exist in Database. Pulling all projects from Jan 1st, 2020...");
-
         // Define search
         let search_body = serde_json::json!({
             "ModifiedDateFrom": "2020-01-01T00:00:00Z",
@@ -3446,6 +3505,9 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
                 start_date: project_val["StartDate"].as_str().unwrap_or("").to_string(),
                 end_date: project_val["EndDate"].as_str().unwrap_or("").to_string(),
                 health: project_val["HealthDescription"].as_str().unwrap_or("").to_string(),
+
+                is_hidden: project_val["is_hidden"].as_bool().unwrap_or(false),
+                is_in_progress: project_val["is_in_progress"].as_bool().unwrap_or(false),
             };
 
             // Insert or update
@@ -3458,6 +3520,8 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
         if database.check_if_projects_empty() {
             return Err("Failed to insert projects into database".to_string());
         }
+
+        info!("[Data] - Pulled all TDX projects from Jan 1st, 2020");
     } else { // Projects table not empty, only update more recent projects
         // Look in database for most recent Project and look at its date
         let latest_project = match database.get_latest_project() {
@@ -3468,7 +3532,7 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
         // Define search
         let search_body = serde_json::json!({
             "MaxResults": 10000,
-            // "ResponsibilityGroupIDs": [2742], // TODO: Figure out how to filter for CTS
+            "TypeID": 42460
         });
 
         // Make the request to TDX API
@@ -3553,6 +3617,9 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
                 start_date: project_val["StartDate"].as_str().unwrap_or("").to_string(),
                 end_date: project_val["EndDate"].as_str().unwrap_or("").to_string(),
                 health: project_val["HealthDescription"].as_str().unwrap_or("").to_string(),
+                
+                is_hidden: project_val["is_hidden"].as_bool().unwrap_or(false),
+                is_in_progress: project_val["is_in_progress"].as_bool().unwrap_or(false),
             };
 
             // Insert or update
