@@ -161,7 +161,6 @@ CREATE TABLE IF NOT EXISTS bronson.projects (
     health              TEXT        NOT NULL,
 
     is_hidden           BOOLEAN     NOT NULL,
-    is_in_progress BOOLEAN     NOT NULL,
     
     CHECK (length(created_date) <= 32),
     CHECK (length(modified_date) <= 32),

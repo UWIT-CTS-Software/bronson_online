@@ -47,7 +47,7 @@ use server_lib::{
     CFMRequestFile, CFMTreeNode,
     jp::{ ping_this, },
     API, APIClient::{ MultiThread, SingleThread, },
-    CFM_DIR, WIKI_DIR, /* LOG, */
+    CFM_DIR, WIKI_DIR, TEMP_DIR, /* LOG, */
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
     SCHD_ERR, DASH_ERR, LDRB_ERR, SPRS_ERR, 
     Database, Terminal, 
@@ -61,7 +61,7 @@ use futures_util::future::FutureExt;
 use getopts::Options;
 use std::{
     str, env,
-    io::{ prelude::*, Read, stdout, },
+    io::{ prelude::*, Read, Write, stdout, },
     net::{ TcpListener, IpAddr, Ipv4Addr, },
     fs::{
         read_dir, metadata,
@@ -75,6 +75,7 @@ use std::{
     clone::{ Clone, },
     option::{ Option, },
     collections::{ HashMap, },
+    process::Command,
 };
 use reqwest::{
     Client,
@@ -90,6 +91,7 @@ use urlencoding::decode;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
+use tera::{Tera, Context, Delimiters};
 
 extern crate serde;
 extern crate serde_xml_rs;
@@ -946,7 +948,6 @@ async fn handle_connection(
                     "HealthDescription": t.health,
 
                     "is_hidden": t.is_hidden,
-                    "is_in_progress": t.is_in_progress,
                 })
             }).collect();
 
@@ -954,6 +955,46 @@ async fn handle_connection(
             Response::new()
                 .status(STATUS_200)
                 .send_contents(contents)
+        },
+        "POST /analytics/export HTTP/1.1" => {
+            // Parse JSON body
+            let body_json: Value = match serde_json::from_slice(&req.body) {
+                Ok(v) => v,
+                Err(_) => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Invalid JSON".into())
+                        .build();
+                }
+            };
+
+            let time_period = body_json["timePeriod"].as_i64().unwrap_or(0) as i16;
+            let optional_data = body_json["optionalData"].clone();
+
+            match export_to_pdf(&mut database, time_period, optional_data).await {
+                Ok(()) => (),
+                Err(e) => {
+                    error!("Failed to export PDF: {}", e);
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Failed to generate PDF".into())
+                        .build();
+                }
+            }
+
+            let report_path = format!("{}/report.pdf", TEMP_DIR);
+            if !dir_exists(report_path.as_str()) {
+                return Response::new()
+                    .status(STATUS_500)
+                    .send_contents("Report PDF file not found".into())
+                    .build();
+            }
+
+            let _ = cleanup_temp_dir().await;
+
+            Response::new()
+                .status(STATUS_200)
+                .send_file(report_path.as_str())
         },
         "POST /update/projects/hidden HTTP/1.1" => {
             // Parse JSON body
@@ -978,35 +1019,6 @@ async fn handle_connection(
 
                 Err(e) => {
                     error!("Failed to update project hidden: {}", e);
-                    Response::new()
-                        .status(STATUS_500)
-                        .send_contents("Error".into())
-                }
-            }
-        },
-        "POST /update/projects/in_progress HTTP/1.1" => {
-            // Parse JSON body
-            let body_json: Value = match serde_json::from_slice(&req.body) {
-                Ok(v) => v,
-                Err(_) => {
-                    return Response::new()
-                        .status(STATUS_500)
-                        .send_contents("Invalid JSON".into())
-                        .build();
-                }
-            };
-
-            let id = body_json["id"].as_i64().unwrap_or(-1) as i32;
-            let in_progress = body_json["is_in_progress"].as_bool().unwrap_or(false);
-
-            // Update DB
-            match database.update_project_in_progress(id, in_progress) {
-                Ok(_) => Response::new()
-                    .status(STATUS_200)
-                    .send_contents("Updated".into()),
-
-                Err(e) => {
-                    error!("Failed to update project in progress: {}", e);
                     Response::new()
                         .status(STATUS_500)
                         .send_contents("Error".into())
@@ -3507,7 +3519,6 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
                 health: project_val["HealthDescription"].as_str().unwrap_or("").to_string(),
 
                 is_hidden: project_val["is_hidden"].as_bool().unwrap_or(false),
-                is_in_progress: project_val["is_in_progress"].as_bool().unwrap_or(false),
             };
 
             // Insert or update
@@ -3619,7 +3630,6 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
                 health: project_val["HealthDescription"].as_str().unwrap_or("").to_string(),
                 
                 is_hidden: project_val["is_hidden"].as_bool().unwrap_or(false),
-                is_in_progress: project_val["is_in_progress"].as_bool().unwrap_or(false),
             };
 
             // Insert or update
@@ -3632,6 +3642,117 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
     return Ok(());
 }
 
+async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data: serde_json::Value) -> Result<(), String> {
+    // Create new Tera and reset delims that won't conflict with LaTeX syntax
+    let mut tera = Tera::default();
+    tera.set_delimiters(Delimiters {
+        block_start: "[%".into(),
+        block_end: "%]".into(),
+        variable_start: "[[".into(),
+        variable_end: "]]".into(),
+        comment_start: "[#".into(),
+        comment_end: "#]".into(),
+    }).map_err(|e| format!("Failed to set Tera Delimiters: {}", e))?;
+
+    // Build the latex
+    let latex_template = r#"
+        \documentclass{article}
+        \begin{document}
+        \title{[[ title ]]}
+        \author{[[ author ]]}
+        \date{\today}
+        \maketitle
+
+        \section{Introduction}
+        Hello [[ name ]], this document was generated using Rust, Tera, and LaTeX.
+        \end{document}
+    "#;
+    match tera.add_raw_template("report.tex", latex_template) {
+        Ok(r) => r,
+        Err(e) => return Err(format!("Failed to add LaTeX template: {}", e))
+    }
+
+    // Sub in values
+    let mut context = Context::new();
+    context.insert("title", "Automated Report");
+    context.insert("author", "Rust Application");
+    context.insert("name", "Ferris");
+
+    // Render to string
+    let temp_dir = Path::new(TEMP_DIR);
+    let tex_path = temp_dir.join("report.tex");
+
+    // Register template
+    match tera.add_raw_template("report.tex", latex_template) {
+        Ok(_) => (),
+        Err(e) => return Err(format!("Failed to add LaTeX template: {}", e)),
+    }
+
+    // Render template
+    let rendered_tex = match tera.render("report.tex", &context) {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to render LaTeX template: {}", e)),
+    };
+
+    // Write report.tex
+    match std::fs::write(&tex_path, rendered_tex) {
+        Ok(_) => (),
+        Err(e) => return Err(format!("Failed to write report.tex: {}", e)),
+    }
+
+    // Run pdflatex in the temp directory
+    let status = match Command::new("pdflatex")
+        .current_dir(temp_dir)
+        .arg("-interaction=nonstopmode")
+        .arg("report.tex")
+        .status()
+    {
+        Ok(s) => s,
+        Err(e) => return Err(format!("Failed to execute pdflatex: {}", e)),
+    };
+
+    if !status.success() {
+        return Err("pdflatex failed to compile report.tex".to_string());
+    }
+
+    info!("[Data] - Analytics PDF successfully generated!");
+    return Ok(());
+}
+
+async fn cleanup_temp_dir() -> Result<(), String> {
+    if !dir_exists(TEMP_DIR) {
+        return Err(format!("Missing Temp Directory: ./generated_files/temp does not exist"));
+    }
+
+    let entries = match std::fs::read_dir(TEMP_DIR) {
+        Ok(entries) => entries,
+        Err(e) => return Err(format!("Failed to read temp directory '{}': {}", TEMP_DIR, e))
+    };
+
+    for entry in entries {
+        // Skip the generated .pdf
+        if let Ok(entry) = &entry {
+            if entry.path().ends_with("report.pdf") {
+                continue;
+            }
+        }
+
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(e) => return Err(format!("Failed to access temp directory entry: {}", e))
+        };
+
+        let path = entry.path();
+
+        if path.is_file() {
+            if let Err(e) = std::fs::remove_file(&path) {
+                return Err(format!("Failed to delete temporary file '{}': {}", path.display(), e))
+            }
+        }
+    }
+
+    return Ok(());
+}
 
 /*
 $$\      $$\ $$\ $$\       $$\ 

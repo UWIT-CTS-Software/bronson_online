@@ -2429,6 +2429,17 @@ p.tx_Description::-webkit-scrollbar-track {
     margin-bottom: 5px;
 }
 
+.an_hiddenRoomItem {
+    display: flex;
+    margin-left: 30px;
+}
+
+.an_hiddenRoomItem button {
+    margin: 12px 4px 0 4px;
+    width: fit-content;
+    height: fit-content;    
+}
+
 .an_projectsFieldset {
     min-width: 0;
     min-height: 0;

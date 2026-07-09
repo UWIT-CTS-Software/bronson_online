@@ -20,24 +20,173 @@ Summary:
         python script, so any features there should be here
         
 TOC:
+    Helpers
+    - validateDateRange()
+    - getCustomDateRange()
+    - getClosestRoomCheckFrame()
+    - getCustomRoomCheckFrame()
+    - getRoomCheckNoteText()
+    - setRoomCheckNotes()
+
     Exporting
     - exportButton()
-    - setExportPopup()
+    - getTimePeriodRadioHTML()
+    - showExport()
+    - showSettings()
     - addNote()
+    - removeNote()
+
+    Board Setup
+    - initializeRadioListener()
+    - populateHiddenProjectList()
+    - setHideProject()
+    - buildGraphs()
+    - updateGraphs()
+    - setIndividualsBoard()
+    - setDepartmentBoard()
+    - setProjectsBoard()
+    - setBoard()
+
+    Backend Calls
+    - fetchCurrentUserPermissions()
+    - fetchProjects()
+    - updateProjectIsHidden()
+    - fetchTickets()
+    - fetchTicketsByTimePeriod()
+    - fetchIndividualAnalytics()
+    - fetchDepartmentAnalytics()
 
     "Main" Function:
-    - setAnalytics()        : Sets up the Analytics tool page
+    - setAnalytics()                
 
 */
 
 
+
+
+    /* -------------------- Helpers -------------------- */
+
+// Validates if the two date ranges in the time period selector are valid
+function validateDateRange() {
+    const startDateInput = document.getElementById("custom-start-date");
+    const endDateInput = document.getElementById("custom-end-date");
+
+    const startValue = startDateInput.value;
+    const endValue = endDateInput.value;
+
+    // Wait until both fields are populated
+    if (!startValue || !endValue) return;
+
+    const startDate = new Date(startValue);
+    const endDate = new Date(endValue);
+
+    if (startDate > endDate) {
+        alert("Start date must be before end date.");
+
+        // Clear both fields
+        startDateInput.value = "";
+        endDateInput.value = "";
+        setBoard();
+        return;
+    }
+
+    setBoard();
+}
+
+// Grabs the custom date range from the time period selector, if valid
+function getCustomDateRange() {
+    const startDateInput = document.getElementById("custom-start-date");
+    const endDateInput = document.getElementById("custom-end-date");
+    const startValue = startDateInput?.value;
+    const endValue = endDateInput?.value;
+
+    if (!startValue || !endValue) return null;
+
+    const startDate = new Date(startValue);
+    const endDate = new Date(endValue);
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || startDate > endDate) return null;
+
+    endDate.setHours(23, 59, 59, 999);
+    return { startDate, endDate };
+}
+
+// Returns the closest room check frame (7, 30, 90, 365) to the given number of days
+function getClosestRoomCheckFrame(days) {
+    const frames = [7, 30, 90, 365];
+    let closest = frames[0];
+    for (const frame of frames) {
+        if (Math.abs(frame - days) < Math.abs(closest - days)) {
+            closest = frame;
+        }
+    }
+    return closest;
+}
+
+// Calculates the closest room check frame for the custom date range
+function getCustomRoomCheckFrame() {
+    const range = getCustomDateRange();
+    if (!range) return 365;
+
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const diffDays = Math.max(1, Math.round((range.endDate.getTime() - range.startDate.getTime()) / msPerDay) + 1);
+    return getClosestRoomCheckFrame(diffDays);
+}
+
+// Helps with on-screen text formatting
+function getRoomCheckNoteText(timePeriod, frame) {
+    return `Last ${frame} Days`;
+}
+
+// Sets the room check notes for both individual and department boards
+function setRoomCheckNotes(noteText) {
+    ["ind_roomcheck_note", "dep_roomcheck_note"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = noteText;
+    });
+}
+
+
+
     /* -------------------- Exporting -------------------- */
 
-function exportButton() {
-    alert("PDF Export Functionality not yet implemented"); // TODO
+// Button that Triggers export and Downloads the PDF file from backend
+async function exportButton() {
+    // Gather Data to send to Backend
+    const timePeriod = parseInt(sessionStorage.getItem("an_timePeriod"), 10);
+    const optionalData = {};
+    const sectionIds = ["an_accomplishments", "an_notesForFuture", "an_ticketAndRoomCheckNotes"];
+    const textAreaDivs = document.querySelectorAll(".an_textAreaDiv");
+    textAreaDivs.forEach((div, index) => {
+        const sectionId = sectionIds[index];
+        const notes = Array.from(div.getElementsByTagName("textarea")).map(textarea => textarea.value.trim()).filter(note => note.length > 0);
+        optionalData[sectionId] = notes;
+    });
+
+    const pdfBlob = await fetchExportedPDF(timePeriod, optionalData);
+    if (!pdfBlob) return;
+
+    let reportPeriod = "ERROR";
+    if (timePeriod === 0) reportPeriod = "Week";
+    if (timePeriod === 1) reportPeriod = "Month";
+    if (timePeriod === 2) reportPeriod = "3-Months";
+    if (timePeriod === 3) reportPeriod = "Year";
+    if (timePeriod === 4) reportPeriod = "All-Time";
+    if (timePeriod === 5) reportPeriod = "Custom-Date-Range";
+
+    // Download the PDF file with a timestamped filename
+    const filename = `CTS-${reportPeriod}-Report_${new Date().toISOString().split('T')[0]}.pdf`;
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+
+    URL.revokeObjectURL(url);
+    
     hidePopup();
 }
 
+// Generates the HTML for the time period radio buttons
 function getTimePeriodRadioHTML(timePeriod) {
     const selectedPeriod = parseInt(timePeriod, 10);
     return `
@@ -75,6 +224,7 @@ function getTimePeriodRadioHTML(timePeriod) {
     `;
 }
 
+// Displays the export settings in the settings widget
 function showExport() {
     const timePeriod = sessionStorage.getItem("an_timePeriod");
     const exportSettings = document.getElementsByClassName('an_settings')[0];
@@ -118,6 +268,7 @@ function showExport() {
     initializeRadioListener();
 }
 
+// Displays the standard settings for the page
 function showSettings() {
     const timePeriod = sessionStorage.getItem("an_timePeriod");
     const exportSettings = document.getElementsByClassName('an_settings')[0];
@@ -134,6 +285,7 @@ function showSettings() {
     initializeRadioListener();
 }
 
+// Adds a new note text area to the specified section (export settings)
 function addNote(section) {
     const sectionDiv = document.getElementById(section);
     const textAreaDiv = sectionDiv.getElementsByClassName("an_textAreaDiv")[0];
@@ -164,6 +316,7 @@ function addNote(section) {
     textAreaDiv.appendChild(newNote);
 }
 
+// Removes the last note text area from the specified section (export settings)
 function removeNote(section) {
     const sectionDiv = document.getElementById(section);
     const buttonsDiv = sectionDiv.getElementsByClassName("an_noteButtons")[0];
@@ -193,6 +346,7 @@ function removeNote(section) {
 
     /* -------------------- Board Setup -------------------- */
 
+// Initializes the radio button listener
 function initializeRadioListener() {
     // Listens to radio buttons, for time period selection
     document.querySelector(".an_timePeriodSelector").addEventListener("change", (e) => {
@@ -211,80 +365,38 @@ function initializeRadioListener() {
     document.getElementById("custom-end-date").addEventListener("change", validateDateRange);
 }
 
-// Validates if the two date ranges in the time period selector are valid
-function validateDateRange() {
-    const startDateInput = document.getElementById("custom-start-date");
-    const endDateInput = document.getElementById("custom-end-date");
+// Admin only: Populates the hidden project list for admins to manage
+async function populateHiddenProjectList(hiddenProjects) {
+    const isAdmin = await fetchCurrentUserPermissions() >= 6;
+    if (!isAdmin) return "";
 
-    const startValue = startDateInput.value;
-    const endValue = endDateInput.value;
+    const hiddenList = (hiddenProjects || []).map((project) => `
+        <div class="an_hiddenRoomItem">
+            <button onclick="setHideProject(${project.ID}, false)">Unhide from Techs</button>
+            <a href="https://uwyo.teamdynamix.com/TDWorkManagement/WorkManagement/Home/DynamicApp/${project.ID}?type=TDProject" target="_blank" rel="noopener noreferrer">
+                <button>Link to TDX</button>
+            </a>
+            <p>${project.Name || `Project ${project.ID}`}</p>
+        </div>
+    `).join("");
 
-    // Wait until both fields are populated
-    if (!startValue || !endValue) return;
-
-    const startDate = new Date(startValue);
-    const endDate = new Date(endValue);
-
-    if (startDate > endDate) {
-        alert("Start date must be before end date.");
-
-        // Clear both fields
-        startDateInput.value = "";
-        endDateInput.value = "";
-        setBoard();
-        return;
-    }
-
-    setBoard();
+    return `
+        <div id="an_hiddenRoomsList">
+            <strong>Hidden Room Manager (Admin Only):</strong>
+            ${hiddenList || "<p>No hidden rooms.</p>"}
+        </div>
+        <hr>
+    `;
 }
 
-function getCustomDateRange() {
-    const startDateInput = document.getElementById("custom-start-date");
-    const endDateInput = document.getElementById("custom-end-date");
-    const startValue = startDateInput?.value;
-    const endValue = endDateInput?.value;
-
-    if (!startValue || !endValue) return null;
-
-    const startDate = new Date(startValue);
-    const endDate = new Date(endValue);
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || startDate > endDate) return null;
-
-    endDate.setHours(23, 59, 59, 999);
-    return { startDate, endDate };
+// Admin only: Sets the hidden status of a project
+async function setHideProject(projectId, isHidden) {
+    const timePeriod = parseInt(sessionStorage.getItem("an_timePeriod"), 10);
+    await updateProjectIsHidden(projectId, isHidden);
+    await setProjectsBoard();
 }
 
-function getClosestRoomCheckFrame(days) {
-    const frames = [7, 30, 90, 365];
-    let closest = frames[0];
-    for (const frame of frames) {
-        if (Math.abs(frame - days) < Math.abs(closest - days)) {
-            closest = frame;
-        }
-    }
-    return closest;
-}
-
-function getCustomRoomCheckFrame() {
-    const range = getCustomDateRange();
-    if (!range) return 365;
-
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const diffDays = Math.max(1, Math.round((range.endDate.getTime() - range.startDate.getTime()) / msPerDay) + 1);
-    return getClosestRoomCheckFrame(diffDays);
-}
-
-function getRoomCheckNoteText(timePeriod, frame) {
-    return `Last ${frame} Days`;
-}
-
-function setRoomCheckNotes(noteText) {
-    ["ind_roomcheck_note", "dep_roomcheck_note"].forEach((id) => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = noteText;
-    });
-}
-
+// Only called once, builds the graphs with placeholder data
 async function buildGraphs() {
     const donutGraphColor = ["rgb(236, 200, 101)", "rgb(195, 161, 68)"];
     const barGraphColor = ["rgb(236, 200, 101)"]
@@ -385,9 +497,10 @@ async function buildGraphs() {
     });
 }
 
+// Updates the graphs with actual data based on the selected time period
 async function updateGraphs(timePeriod) {
     // Get analytics data
-    const depAnalytics = getDepartmentAnalytics(timePeriod);
+    const depAnalytics = fetchDepartmentAnalytics(timePeriod);
     
     // Room Check Donut
     const leaderboard = JSON.parse(localStorage.getItem("leaderboard"));
@@ -423,6 +536,7 @@ async function updateGraphs(timePeriod) {
     ticketsPerHourGraph.update();
 }
 
+// Updates all individual board based on current time period selection and current user's data
 async function setIndividualsBoard(timePeriod) {
     // Individual Room Checks Data
     const roomCheckTimePeriod = document.getElementById("ind_roomcheck_timeperiod");
@@ -442,8 +556,9 @@ async function setIndividualsBoard(timePeriod) {
     ticketsClosed.textContent = -2;
 }
 
+// Updates all department board based on current time period selection
 async function setDepartmentBoard(timePeriod) {
-    const depAnalytics = getDepartmentAnalytics(timePeriod);
+    const depAnalytics = fetchDepartmentAnalytics(timePeriod);
 
     const roomcheckLeadersDiv = document.getElementById('dep_roomcheck_leaders').children;
     for (let i = 1; i < roomcheckLeadersDiv.length; i++) { // start at i=1 to skip <strong> element
@@ -484,18 +599,8 @@ async function setDepartmentBoard(timePeriod) {
     ticketsEventSupport.textContent = depAnalytics.ticketsEventSupport || 0;
 }
 
-async function fetchProjects() {
-    try {
-        const response = await fetch('/projects');
-        if (!response.ok) throw new Error('Network response was not ok');
-        return await response.json();
-    } catch (error) {
-        console.error('Failed to fetch projects:', error);
-        return [];
-    }
-}
-
-async function setProjectsBoard(timePeriod) {
+// Updates the current active projects
+async function setProjectsBoard() {
     const projects = await fetchProjects();
     const projectsFieldset = document.querySelector('.an_projectsFieldset');
     if (!projectsFieldset) return;
@@ -504,6 +609,7 @@ async function setProjectsBoard(timePeriod) {
     const filteredProjects = Array.isArray(projects) ? projects : [];
     const typeIdToFilter = 42460; // The CTS Projects Management Board ID
     const matchingProjects = [];
+    const hiddenProjects = [];
     
     for (let i = 0; i < filteredProjects.length; i++) {
         const project = filteredProjects[i];
@@ -511,17 +617,19 @@ async function setProjectsBoard(timePeriod) {
  
         const now = new Date();
         const startDate = new Date(project.StartDate);
+        const isHidden = project.is_hidden === true;
         if (project.TypeID === typeIdToFilter && startDate < now 
-            && project.IsActive && project.PercentComplete != 100) 
-            matchingProjects.push(project);
+            && project.IsActive && project.PercentComplete != 100) {
+            if (isHidden) {
+                hiddenProjects.push(project);
+            } else {
+                matchingProjects.push(project);
+            }
+        }
     }
 
     // Sort matchingProjects according to custom criteria
     matchingProjects.sort((a, b) => {
-        // Group 0: Active projects (>0% and not On Hold)
-        // Group 1: On Hold projects (>0% and On Hold)
-        // Group 2: 0% complete projects (Sorted by Completion Date)
-
         function getGroup(project) {
             if (project.PercentComplete === 0) return 2;
             if (project.Status === "On Hold") return 1;
@@ -531,19 +639,13 @@ async function setProjectsBoard(timePeriod) {
         const groupA = getGroup(a);
         const groupB = getGroup(b);
 
-        if (groupA !== groupB) {
-            return groupA - groupB;
-        }
+        if (groupA !== groupB) return groupA - groupB;
 
         // Group 0: Sort by EndDate (earliest deadline first)
-        if (groupA === 0) {
-            return new Date(a.EndDate) - new Date(b.EndDate);
-        }
+        if (groupA === 0) return new Date(a.EndDate) - new Date(b.EndDate);
 
         // Group 1: Sort by PercentComplete (highest first)
-        if (groupA === 1) {
-            return b.PercentComplete - a.PercentComplete;
-        }
+        if (groupA === 1) return b.PercentComplete - a.PercentComplete;
 
         // Group 2: Sort by EndDate (earliest deadline first)
         return new Date(a.EndDate) - new Date(b.EndDate);
@@ -553,7 +655,17 @@ async function setProjectsBoard(timePeriod) {
     // Clear the fieldset content except for the legend
     const legend = projectsFieldset.querySelector('legend');
     projectsFieldset.innerHTML = '';
-    projectsFieldset.appendChild(legend);
+    if (legend) {
+        projectsFieldset.appendChild(legend);
+    } else {
+        const fallbackLegend = document.createElement('legend');
+        fallbackLegend.textContent = 'Projects';
+        projectsFieldset.appendChild(fallbackLegend);
+    }
+
+    const isAdmin = await fetchCurrentUserPermissions() >= 6;
+    if (isAdmin) 
+        projectsFieldset.insertAdjacentHTML('beforeend', await populateHiddenProjectList(hiddenProjects));
 
     // If no matching projects, show message
     if (matchingProjects.length === 0) {
@@ -562,24 +674,20 @@ async function setProjectsBoard(timePeriod) {
     }
 
     // Dynamically create HTML for all matching projects
-    const isAdmin = await fetchCurrentUserPermissions() >= 6;
     for (let i = 0; i < matchingProjects.length; i++) {
         const project = matchingProjects[i];
         const projectHTML = document.createElement('div');
         const completionDate = new Date(project.EndDate).toLocaleDateString();
 
         const adminButtons = isAdmin ? `
-            <div class='an_adminProjectButtons'>
-                <button onclick="hideProject(${project.ID}, true)">Hide from Techs</button>
-                <button onclick="markAsInProgress(${project.ID}, true)">Mark Project as In Progress</button>
-            </div>
+            <button class='an_adminProjectButtons' onclick="setHideProject(${project.ID}, true)">Hide from Techs</button>
         ` : "";
 
         projectHTML.innerHTML = `
-            <strong>${project.Name}: (${project.ID})</strong>
-            <label for="an_project_${i}">${project.PercentComplete}%</label>
+            <strong>${project.Name}:</strong>
+            <label for="an_project_${project.ID}">${project.PercentComplete}%</label>
             <strong class="an_projectStatus">${project.StatusName}</strong>
-            <progress id="an_project_${i}" value="${project.PercentComplete}" max="100"></progress>
+            <progress id="an_project_${project.ID}" value="${project.PercentComplete}" max="100"></progress>
             <p class="an_projectEndDate">Projected Completion: ${completionDate}</p>
             <ul>
                 <li>Item 1</li>
@@ -610,22 +718,10 @@ async function setBoard() {
     const timePeriod = parseInt(sessionStorage.getItem("an_timePeriod"), 10);
     await setIndividualsBoard(timePeriod);
     await setDepartmentBoard(timePeriod);
-    await setProjectsBoard(timePeriod);
     await updateGraphs(timePeriod);
 }
 
 
-async function hideProject(projectId, isHidden) {
-    const timePeriod = parseInt(sessionStorage.getItem("an_timePeriod"), 10);
-    await updateProjectIsHidden(projectId, isHidden);
-    await setProjectsBoard(timePeriod);
-}
-
-async function markAsInProgress(projectId, isInProgress) {
-    const timePeriod = parseInt(sessionStorage.getItem("an_timePeriod"), 10);
-    await updateProjectInProgress(projectId, isInProgress);
-    await setProjectsBoard(timePeriod);
-}
 
     /* -------------------- Backend Calls -------------------- */
 
@@ -646,6 +742,33 @@ async function fetchCurrentUserPermissions() {
     }
 }
 
+// Fetches all projects from backend/api
+async function fetchProjects() {
+    try {
+        const response = await fetch('/projects');
+        if (!response.ok) throw new Error('Network response was not ok');
+        return await response.json();
+    } catch (error) {
+        console.error('Failed to fetch projects:', error);
+        return [];
+    }
+}
+
+// Updates the hidden status of a project in the backend
+async function updateProjectIsHidden(projectId, isHidden) {
+    try {
+        const response = await fetch('/update/projects/hidden', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', },
+            body: JSON.stringify({ id: projectId, is_hidden: isHidden }),
+        });
+
+        if (!response.ok) console.error('Failed to update project hidden status');
+    } catch (error) {
+        console.error('Error updating project hidden status:', error);
+    }
+}
+
 // Fetches all tickets from backend/api
 async function fetchTickets() {
     try {
@@ -658,27 +781,8 @@ async function fetchTickets() {
     }
 }
 
-// Initialize ticket data structures for analytics
-async function initializeTicketData() {
-    // Fetch all tickets
-    let tickets = [];
-    while (!tickets.length) {
-        let response = await fetchTickets();
-        tickets = Array.isArray(response) ? response : [];
-    }
-    
-    // Store all tickets
-    window.allTickets = tickets;
-    
-    // Build fast lookup map by ticket ID
-    window.allTicketsById = new Map();
-    for (const t of window.allTickets || []) {
-        window.allTicketsById.set(t.ID, t);
-    }    
-}
-
 // Filter tickets by time period (0=week, 1=month, 2=3months, 3=year, 4=alltime, 5=custom)
-function getTicketsByTimePeriod(timePeriod) {
+function fetchTicketsByTimePeriod(timePeriod) {
     const now = new Date();
     let startDate = new Date();
     
@@ -715,8 +819,8 @@ function getTicketsByTimePeriod(timePeriod) {
 }
 
 // Get analytics data for current user
-function getIndividualAnalytics(timePeriod) {
-    const ticketsInPeriod = getTicketsByTimePeriod(timePeriod);
+function fetchIndividualAnalytics(timePeriod) {
+    const ticketsInPeriod = fetchTicketsByTimePeriod(timePeriod);
     
     const stats = {
         created: 0,
@@ -730,9 +834,9 @@ function getIndividualAnalytics(timePeriod) {
 }
 
 // Get department-wide analytics
-function getDepartmentAnalytics(timePeriod) {
-    const ticketsInPeriod = getTicketsByTimePeriod(timePeriod);
-    const allTickets = getTicketsByTimePeriod(-1); // -1 forces to get all tickets
+function fetchDepartmentAnalytics(timePeriod) {
+    const ticketsInPeriod = fetchTicketsByTimePeriod(timePeriod);
+    const allTickets = fetchTicketsByTimePeriod(-1); // -1 forces to get all tickets
 
     const stats = {
         total: ticketsInPeriod.length,
@@ -806,6 +910,7 @@ function getDepartmentAnalytics(timePeriod) {
             "SIB": "SI",
             "COE": "CL",
             "CIC": "CI",
+            "BE": "BH",
         };
 
         // Count Ticket Stats
@@ -841,34 +946,23 @@ function getDepartmentAnalytics(timePeriod) {
     return stats;
 }
 
-async function updateProjectIsHidden(projectId, isHidden) {
+// Executes a analytics export and fetches it
+async function fetchExportedPDF(timePeriod, optionalData) {
     try {
-        const response = await fetch('/update/projects/hidden', {
+        const response = await fetch('/analytics/export', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', },
-            body: JSON.stringify({ id: projectId, is_hidden: isHidden }),
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ timePeriod, optionalData })
         });
-
-        if (!response.ok) console.error('Failed to update project hidden status');
+        if (!response.ok) throw new Error('Network response was not ok');
+        return await response.blob();
     } catch (error) {
-        console.error('Error updating project hidden status:', error);
+        console.error('Failed to fetch exported PDF:', error);
+        return null;
     }
 }
-
-async function updateProjectInProgress(projectId, isInProgress) {
-    try {
-        const response = await fetch('/update/projects/in_progress', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', },
-            body: JSON.stringify({ id: projectId, is_in_progress: isInProgress }),
-        });
-
-        if (!response.ok) console.error('Failed to update project in progress status');
-    } catch (error) {
-        console.error('Error updating project in progress status:', error);
-    }
-}
-
 
 
     /* -------------------- "Main" Function -------------------- */
@@ -942,7 +1036,20 @@ async function setAnalytics() {
         `;
     }, 1000); // Update every 1 second
 
-    await initializeTicketData(); // Takes a second to complete
+    // Fetch all tickets
+    let tickets = [];
+    while (!tickets.length) {
+        let response = await fetchTickets();
+        tickets = Array.isArray(response) ? response : [];
+    }
+    window.allTickets = tickets;
+
+    // Build fast lookup map by ticket ID
+    window.allTicketsById = new Map();
+    for (const t of window.allTickets || []) {
+        window.allTicketsById.set(t.ID, t);
+    }    
+
 
     // Clear Loading Screen
     clearInterval(ellipsisInterval);
@@ -968,7 +1075,7 @@ async function setAnalytics() {
     const individuals = document.createElement('div');
     individuals.classList.add('an_individuals');
     const isAdmin = await fetchCurrentUserPermissions() >= 6;
-    const adminOnlyHTML = isAdmin ? `
+    const adminTechSelectorHTML = isAdmin ? `
         <div id="an_techSelector">
             <strong>Choose a tech:</strong>
             <select name="techs" id="techs">
@@ -982,7 +1089,7 @@ async function setAnalytics() {
         <fieldset class="an_individualsFieldset">
             <legend id="an_individualsLegend">My Analytics</legend>
 
-            ${adminOnlyHTML}
+            ${adminTechSelectorHTML}
 
             <p>Note: "My Analytics" Widget is unavailable for development until we have shibboleth</p>
 
@@ -990,26 +1097,26 @@ async function setAnalytics() {
             <div id="an_individualRoomcheckStats">
                 <div class="an_statsBox">
                     <strong id='ind_roomcheck_note'></strong>
-                    <h1 id="ind_roomcheck_timeperiod">ERROR</h1>
+                    <h1 id="ind_roomcheck_timeperiod"></h1>
                 </div>
                 <div class="an_statsBox">
                     <strong>All Time</strong>
-                    <h1 id="ind_roomcheck_alltime">ERROR</h1>
+                    <h1 id="ind_roomcheck_alltime"></h1>
                 </div>
             </div>
             <strong><u>Tickets:</u></strong>
             <div id="an_individualTicketStats">
                 <div class="an_statsBox">
                     <strong>Created</strong>
-                    <h1 id="ind_tickets_created">ERROR</h1>
+                    <h1 id="ind_tickets_created"></h1>
                 </div>
                 <div class="an_statsBox">
                     <strong>Responded To</strong>
-                    <h1 id="ind_tickets_responded">ERROR</h1>
+                    <h1 id="ind_tickets_responded"></h1>
                 </div>
                 <div class="an_statsBox">
                     <strong>Closed</strong>
-                    <h1 id="ind_tickets_closed">ERROR</h1>
+                    <h1 id="ind_tickets_closed"></h1>
                 </div>
             </div>
 
@@ -1034,16 +1141,16 @@ async function setAnalytics() {
             <div id="an_departmentRoomcheckStats">
                 <div class="an_statsBox" id="dep_roomcheck_leaders">
                     <strong>Room Check Leaders (<strong id='dep_roomcheck_note' style='margin: 0;'></strong>)</strong>
-                    <p>1. Person A - ERROR</p>
-                    <p>2. Person B - ERROR</p>
-                    <p>3. Person C - ERROR</p>
+                    <p>1. Person A - </p>
+                    <p>2. Person B - </p>
+                    <p>3. Person C - </p>
                 </div>
                 <div class="an_statsBox" id="dep_roomcheck_overall">
                     <strong>Total Room Checks:</strong>
-                    <p>Last 7 Days: ERROR</p>
-                    <p>Last 30 Days: ERROR</p>
-                    <p>Last 90 Days: ERROR</p>
-                    <p>Last 365 Days: ERROR</p>
+                    <p>Last 7 Days: </p>
+                    <p>Last 30 Days: </p>
+                    <p>Last 90 Days: </p>
+                    <p>Last 365 Days: </p>
                 </div>
             </div>
 
@@ -1051,15 +1158,15 @@ async function setAnalytics() {
             <div id="an_departmentTicketStats">
                 <div class="an_statsBox">
                     <strong>Created</strong>
-                    <h1 id="dep_tickets_created">ERROR</h1>
+                    <h1 id="dep_tickets_created"></h1>
                 </div>
                 <div class="an_statsBox">
                     <strong>Closed</strong>
-                    <h1 id="dep_tickets_closed">ERROR</h1>
+                    <h1 id="dep_tickets_closed"></h1>
                 </div>
                 <div class="an_statsBox">
                     <strong>Open Tickets (All Time)</strong>
-                    <h1 id="dep_tickets_open">ERROR</h1>
+                    <h1 id="dep_tickets_open"></h1>
                 </div>
             </div>
 
@@ -1067,19 +1174,19 @@ async function setAnalytics() {
             <div id="an_departmentGeneralStats">
                 <div class="an_statsBox">
                     <strong>Room Check Tickets</strong>
-                    <h1 id="dep_tickets_roomcheck">ERROR</h1>
+                    <h1 id="dep_tickets_roomcheck"></h1>
                 </div>
                 <div class="an_statsBox">
                     <strong>False Tickets</strong>
-                    <h1 id="dep_tickets_false">ERROR</h1>
+                    <h1 id="dep_tickets_false"></h1>
                 </div>
                 <div class="an_statsBox">
                     <strong>PC Tickets</strong>
-                    <h1 id="dep_tickets_pc">ERROR</h1>
+                    <h1 id="dep_tickets_pc"></h1>
                 </div>
                 <div class="an_statsBox">
                     <strong>Event Support Tickets</strong>
-                    <h1 id="dep_tickets_eventsupport">ERROR</h1>
+                    <h1 id="dep_tickets_eventsupport"></h1>
                 </div>
             </div>
 
@@ -1095,14 +1202,15 @@ async function setAnalytics() {
 
     const projects = document.createElement('div');
     projects.classList.add('an_projects');
+    const adminHiddenProjectsHTML = await populateHiddenProjectList();
     projects.innerHTML = `
         <fieldset class="an_projectsFieldset">
-            <legend>Current Projects</legend>
-            <strong>ERROR:</strong>
+            ${adminHiddenProjectsHTML}
+            <strong></strong>
             <label for="an_project_0">0%</label>
             <progress id="an_project_0" value="0" max="100"></progress>
             <ul>
-                <li>ERROR</li>
+                <li></li>
             </ul>
         </fieldset>
     `;
@@ -1111,4 +1219,5 @@ async function setAnalytics() {
 
     await buildGraphs(); // Only ever call once
     await setBoard();
+    await setProjectsBoard();
 }
