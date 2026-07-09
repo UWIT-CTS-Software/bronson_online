@@ -317,6 +317,8 @@ pub struct DB_Project {
     pub start_date: String,
     pub end_date: String,
     pub health: String,
+
+    pub is_hidden: bool,
 }
 
 /* #[allow(non_camel_case_types)]

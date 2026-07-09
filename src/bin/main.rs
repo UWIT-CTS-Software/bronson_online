@@ -53,8 +53,8 @@ use server_lib::{
     CFMRequestFile, TreeNode,
     jp::{ ping_this, },
     API, APIClient::{ MultiThread, SingleThread, },
-    CFM_DIR, WIKI_DIR, /* LOG, */
-    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_400, STATUS_401, STATUS_404, STATUS_500, 
+    CFM_DIR, WIKI_DIR, TEMP_DIR, /* LOG, */
+    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
     SCHD_ERR, DASH_ERR, LDRB_ERR, SPRS_ERR, 
     Database, Terminal, 
     models::{
@@ -67,7 +67,7 @@ use futures_util::future::FutureExt;
 use getopts::Options;
 use std::{
     str, env,
-    io::{ prelude::*, Read, stdout, Write },
+    io::{ prelude::*, Read, Write, stdout, },
     net::{ TcpListener, IpAddr, Ipv4Addr, },
     fs::{
         read_dir, metadata, write, remove_file, remove_dir, create_dir,
@@ -81,8 +81,8 @@ use std::{
         atomic::{AtomicBool, Ordering}},
     clone::{ Clone, },
     option::{ Option, },
-    collections::{ HashMap, HashSet },
-
+    collections::{ HashMap, },
+    process::Command,
 };
 use reqwest::{
     header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
@@ -98,8 +98,7 @@ use urlencoding::decode;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
-use base64::{Engine as _, engine::general_purpose};
-use base64::decode as b64decode;
+use tera::{Tera, Context, Delimiters};
 
 extern crate serde;
 extern crate serde_xml_rs;
@@ -4117,8 +4116,307 @@ $$ |  $$ |$$ |  $$ |\$$$$$$$ |$$ |\$$$$$$$ |  \$$$$  |$$ |\$$$$$$$\ $$$$$$$  |
                                    \______/                                   
 */
 
+async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String> {
+    let url = "https://uwyo.teamdynamix.com/TDWebApi/api/3444/projects/search";
 
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e)),
+    };
 
+    // If no projects exist, perform a projects fetch from Jan 1st, 2020 to now
+    if database.check_if_projects_empty() {
+        // Define search
+        let search_body = serde_json::json!({
+            "ModifiedDateFrom": "2020-01-01T00:00:00Z",
+            "TypeID": 42460
+        });
+        // Make the request
+        let resp_raw = req
+            .build()
+            .method("POST")
+            .endpoint(url)
+            .header("Authorization", &tdx_token.val)
+            .header("Content-Type", "application/json")
+            .body(search_body)
+            .timeout(Duration::from_secs(120))
+            .send()
+            .await;
+        
+        let resp = match resp_raw {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch projects: {}", e))
+        };
+
+        if !resp.status.is_success() {
+            return Err(format!("TDX API error: {}", resp.status));
+        }
+
+        // Parse the response as JSON
+        let parsed_projects: serde_json::Value = serde_json::from_str(&resp.body)
+            .map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
+        let projects_json: Vec<serde_json::Value> = match parsed_projects.as_array() {
+            Some(items) => items.clone(),
+            None => parsed_projects
+                .get("Items")
+                .and_then(serde_json::Value::as_array)
+                .cloned()
+                .ok_or_else(|| format!("Expected project array in response body: {}", resp.body))?,
+        };
+
+        // Map to DB_Project and insert
+        for project_val in &projects_json {
+            let project = DB_Project {
+                project_id: project_val["ID"].as_i64().unwrap_or(0) as i32,
+                created_date: project_val["CreatedDate"].as_str().unwrap_or("").to_string(),
+                modified_date: project_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
+                name: project_val["Name"].as_str().unwrap_or("").to_string(),
+                description: project_val["Description"].as_str().unwrap_or("").to_string(),
+                is_active: project_val["IsActive"].as_bool().unwrap_or(true),
+                type_id: project_val["TypeID"].as_i64().unwrap_or(0) as i32,
+                percent_complete: project_val["PercentComplete"].as_i64().unwrap_or(-1) as i16,
+                status_name: project_val["StatusName"].as_str().unwrap_or("").to_string(),
+                status_comments: project_val["StatusComments"].as_str().unwrap_or("").to_string(),
+                start_date: project_val["StartDate"].as_str().unwrap_or("").to_string(),
+                end_date: project_val["EndDate"].as_str().unwrap_or("").to_string(),
+                health: project_val["HealthDescription"].as_str().unwrap_or("").to_string(),
+
+                is_hidden: project_val["is_hidden"].as_bool().unwrap_or(false),
+            };
+
+            // Insert or update
+            if let Err(e) = database.update_project(&project) {
+                warn!("Failed to insert project {}: {}", project.project_id, e);
+            }
+        }
+
+        // Double check projects exist in database, but this should not be necessary
+        if database.check_if_projects_empty() {
+            return Err("Failed to insert projects into database".to_string());
+        }
+
+        info!("[Data] - Pulled all TDX projects from Jan 1st, 2020");
+    } else { // Projects table not empty, only update more recent projects
+        // Look in database for most recent Project and look at its date
+        let latest_project = match database.get_latest_project() {
+            Ok(p) => p,
+            Err(e) => return Err(format!("Failed to get latest project: {}", e)),
+        };
+
+        // Define search
+        let search_body = serde_json::json!({
+            "MaxResults": 10000,
+            "TypeID": 42460
+        });
+
+        // Make the request to TDX API
+        let mut resp = match req
+            .build()
+            .method("POST")
+            .endpoint(url)
+            .header("Authorization", &tdx_token.val)
+            .header("Content-Type", "application/json")
+            .body(search_body.clone())
+            .send()
+            .await {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch project from TDX: {}", e))
+            };
+
+        // Try fetching a new tdx token and try again if Unauthorized
+        if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+            warn!("Project data fetch failure was due to an unauthorized response, fetching new token and trying again...");
+
+            // Grab new TDX Token
+            let _ = fetch_tdx_token(database, req).await;
+
+            // Get the TDX API token from database
+            let tdx_token = match database.get_key("tdx_api") {
+                Ok(t) => t,
+                Err(e) => return Err(format!("Failed to get TDX API token while fetching project data: {}", e)),
+            };
+
+            // Make the request to TDX API
+            let retry_resp_raw = req
+                .build()
+                .method("POST")
+                .endpoint(url)
+                .header("Authorization", &tdx_token.val)
+                .header("Content-Type", "application/json")
+                .body(search_body)
+                .send()
+                .await;
+                
+            let retry_resp = match retry_resp_raw {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch project from TDX: {}", e))
+            };
+
+            if !retry_resp.status.is_success() {
+                return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
+            } else {
+                warn!("Successfully recovered new TDX Token & fetched new project data");
+                resp = retry_resp;
+            }
+        }
+
+        // Get the response body as text and convert to JSON
+        let parsed_projects: serde_json::Value = serde_json::from_str(&resp.body)
+            .map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
+        let projects_json: Vec<serde_json::Value> = match parsed_projects.as_array() {
+            Some(items) => items.clone(),
+            None => parsed_projects
+                .get("Items")
+                .and_then(serde_json::Value::as_array)
+                .cloned()
+                .ok_or_else(|| format!("Expected project array in response body: {}", resp.body))?,
+        };
+
+        // Map to DB_Project and update
+        for project_val in &projects_json {
+            // If it exists, get original project from database
+            let id = project_val["ID"].as_i64().unwrap_or(0) as i32;
+
+            let project = DB_Project {
+                project_id: id,
+                created_date: project_val["CreatedDate"].as_str().unwrap_or("").to_string(),
+                modified_date: project_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
+                name: project_val["Name"].as_str().unwrap_or("").to_string(),
+                description: project_val["Description"].as_str().unwrap_or("").to_string(),
+                is_active: project_val["IsActive"].as_bool().unwrap_or(true),
+                type_id: project_val["TypeID"].as_i64().unwrap_or(0) as i32,
+                percent_complete: project_val["PercentComplete"].as_i64().unwrap_or(-1) as i16,
+                status_name: project_val["StatusName"].as_str().unwrap_or("").to_string(),
+                status_comments: project_val["StatusComments"].as_str().unwrap_or("").to_string(),
+                start_date: project_val["StartDate"].as_str().unwrap_or("").to_string(),
+                end_date: project_val["EndDate"].as_str().unwrap_or("").to_string(),
+                health: project_val["HealthDescription"].as_str().unwrap_or("").to_string(),
+                
+                is_hidden: project_val["is_hidden"].as_bool().unwrap_or(false),
+            };
+
+            // Insert or update
+            if let Err(e) = database.update_project(&project) {
+                error!("Failed to insert project {}: {}", project.project_id, e);
+            }
+        }
+    }
+
+    return Ok(());
+}
+
+async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data: serde_json::Value) -> Result<(), String> {
+    // Create new Tera and reset delims that won't conflict with LaTeX syntax
+    let mut tera = Tera::default();
+    tera.set_delimiters(Delimiters {
+        block_start: "[%".into(),
+        block_end: "%]".into(),
+        variable_start: "[[".into(),
+        variable_end: "]]".into(),
+        comment_start: "[#".into(),
+        comment_end: "#]".into(),
+    }).map_err(|e| format!("Failed to set Tera Delimiters: {}", e))?;
+
+    // Build the latex
+    let latex_template = r#"
+        \documentclass{article}
+        \begin{document}
+        \title{[[ title ]]}
+        \author{[[ author ]]}
+        \date{\today}
+        \maketitle
+
+        \section{Introduction}
+        Hello [[ name ]], this document was generated using Rust, Tera, and LaTeX.
+        \end{document}
+    "#;
+    match tera.add_raw_template("report.tex", latex_template) {
+        Ok(r) => r,
+        Err(e) => return Err(format!("Failed to add LaTeX template: {}", e))
+    }
+
+    // Sub in values
+    let mut context = Context::new();
+    context.insert("title", "Automated Report");
+    context.insert("author", "Rust Application");
+    context.insert("name", "Ferris");
+
+    // Render to string
+    let temp_dir = Path::new(TEMP_DIR);
+    let tex_path = temp_dir.join("report.tex");
+
+    // Register template
+    match tera.add_raw_template("report.tex", latex_template) {
+        Ok(_) => (),
+        Err(e) => return Err(format!("Failed to add LaTeX template: {}", e)),
+    }
+
+    // Render template
+    let rendered_tex = match tera.render("report.tex", &context) {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to render LaTeX template: {}", e)),
+    };
+
+    // Write report.tex
+    match std::fs::write(&tex_path, rendered_tex) {
+        Ok(_) => (),
+        Err(e) => return Err(format!("Failed to write report.tex: {}", e)),
+    }
+
+    // Run pdflatex in the temp directory
+    let status = match Command::new("pdflatex")
+        .current_dir(temp_dir)
+        .arg("-interaction=nonstopmode")
+        .arg("report.tex")
+        .status()
+    {
+        Ok(s) => s,
+        Err(e) => return Err(format!("Failed to execute pdflatex: {}", e)),
+    };
+
+    if !status.success() {
+        return Err("pdflatex failed to compile report.tex".to_string());
+    }
+
+    info!("[Data] - Analytics PDF successfully generated!");
+    return Ok(());
+}
+
+async fn cleanup_temp_dir() -> Result<(), String> {
+    if !dir_exists(TEMP_DIR) {
+        return Err(format!("Missing Temp Directory: ./generated_files/temp does not exist"));
+    }
+
+    let entries = match std::fs::read_dir(TEMP_DIR) {
+        Ok(entries) => entries,
+        Err(e) => return Err(format!("Failed to read temp directory '{}': {}", TEMP_DIR, e))
+    };
+
+    for entry in entries {
+        // Skip the generated .pdf
+        if let Ok(entry) = &entry {
+            if entry.path().ends_with("report.pdf") {
+                continue;
+            }
+        }
+
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(e) => return Err(format!("Failed to access temp directory entry: {}", e))
+        };
+
+        let path = entry.path();
+
+        if path.is_file() {
+            if let Err(e) = std::fs::remove_file(&path) {
+                return Err(format!("Failed to delete temporary file '{}': {}", path.display(), e))
+            }
+        }
+    }
+
+    return Ok(());
+}
 
 /*
 $$\      $$\ $$\ $$\       $$\ 

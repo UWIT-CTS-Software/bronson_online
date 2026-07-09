@@ -1378,6 +1378,27 @@ impl Database {
 			.get_result(&mut conn)
 	}
 
+	pub fn update_project_hidden(&mut self, id: i32, new_bool: bool) -> Result<Option<DB_Project>, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		// Try to fetch the project first
+		let project_opt = projects
+			.filter(project_id.eq(id))
+			.first::<DB_Project>(&mut conn)
+			.optional()?;
+
+		// If not found, quietly return
+		let Some(_) = project_opt else { return Ok(None); };
+
+		// Update the flag
+		let updated = diesel::update(projects.filter(project_id.eq(id)))
+			.set(is_hidden.eq(new_bool))
+			.returning(DB_Project::as_returning())
+			.get_result::<DB_Project>(&mut conn)?;
+
+		Ok(Some(updated))
+	}
+	
 	pub fn delete_project(&mut self, id_value: i32) -> Result<DB_Project, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
@@ -2198,8 +2219,9 @@ pub static TSCH_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/techSch
 pub static BLDG_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/buildings.json");
 pub static CAMPUS_STR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.json");
 pub static ALIAS_JSON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/alias_table.json");
-pub static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code/");
-pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/wiki_articles/");
+pub static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
+pub static TEMP_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/generated_files/temp");
+pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
 pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/roomConfig_agg.csv");
 pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.csv");
 pub static LOG       : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/output.log");
