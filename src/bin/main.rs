@@ -377,6 +377,15 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
     // Database Init
     let mut database = Database::new();
 
+    // ------------ DELETE LATER ------------
+    // let example_json = json!({
+    //     "an_accomplishments": [],
+    //     "an_notesForFuture": [],
+    //     "an_ticketAndRoomCheckNotes": []
+    // });
+    // export_to_pdf(&mut database, 0, example_json).await.unwrap();
+    // --------------------------------------
+
     match collegenet_login(&mut database).await {
         Ok(v)  => { println!("{:?}", v); },
         Err(m) => { error!("25L_ERR: {}", m); }
@@ -3643,6 +3652,66 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
 }
 
 async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data: serde_json::Value) -> Result<(), String> {
+    // Helper: get date range based on time_period
+    let get_date_range = |period: i16| -> (DateTime<Utc>, DateTime<Utc>) {
+        let now = Utc::now();
+        let start = match period {
+            0 => now - TimeDelta::days(7),
+            1 => now - TimeDelta::days(30),
+            2 => now - TimeDelta::days(90),
+            3 => now - TimeDelta::days(365),
+            4 => {
+                // all-time: use Jan 1, 2020
+                DateTime::parse_from_rfc3339("2020-01-01T00:00:00+00:00")
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .unwrap_or_else(|_| now - TimeDelta::days(365 * 100))
+            }
+            _ => now - TimeDelta::days(7), // default to 7 days
+        };
+        return (start, now);
+    };
+
+    // Helper: check if date string is within range
+    let is_date_in_range = |date_str: &str, start: DateTime<Utc>, end: DateTime<Utc>| -> bool {
+        if let Ok(date) = DateTime::parse_from_rfc3339(date_str) {
+            let date_utc = date.with_timezone(&Utc);
+            return date_utc >= start && date_utc <= end;
+        } else {
+            return false;
+        }
+    };
+
+    // Helper: extract building code from ticket title
+    let extract_building = |title: &str| -> Option<String> {
+        let re = Regex::new(r"^\s*([A-Za-z]{2,4}(?:\s+[A-Za-z]{2,4})?)\s+(\d{1,4})").unwrap();
+        re.captures(title).map(|caps| {
+            let mut building = caps[1].to_uppercase().trim().to_string();
+            
+            // Normalize building codes (old_code -> new_code)
+            let normalizations: std::collections::HashMap<&str, &str> = [
+                ("ST", "STEM"), ("ENZI", "STEM"), ("ENZI STEM", "STEM"),
+                ("ENG", "EN"), ("ESB", "ES"), ("SIB", "SI"), ("COE", "CL"), 
+                ("CIC", "CI"), ("BCPA", "PA"), ("BE", "BH"),
+            ].iter().cloned().collect();
+            
+            if let Some(&normalized) = normalizations.get(building.as_str()) {
+                building = normalized.to_string();
+            }
+            return building;
+        })
+    };
+
+    // Helper: extract hour from date string
+    let extract_hour = |date_str: &str| -> Option<i32> {
+        if let Ok(date) = DateTime::parse_from_rfc3339(date_str) {
+            let date_local = date.with_timezone(&Local);
+            let hour = date_local.format("%H").to_string().parse::<i32>().ok()?;
+            return Some(hour);
+        } else {
+            return None;
+        }
+    };
+
     // Create new Tera and reset delims that won't conflict with LaTeX syntax
     let mut tera = Tera::default();
     tera.set_delimiters(Delimiters {
@@ -3654,17 +3723,291 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
         comment_end: "#]".into(),
     }).map_err(|e| format!("Failed to set Tera Delimiters: {}", e))?;
 
-    // Build the latex
+    // Gather the data for the report
+    let (start_date, end_date) = get_date_range(time_period);
+    let all_tickets = database.get_all_tickets().map_err(|e| format!("Failed to fetch tickets: {}", e))?;
+
+    let mut tickets_created = 0;
+    let mut tickets_closed = 0;
+    let mut current_open_tickets = 0;
+    let mut false_tickets = 0;
+    let mut tickets_from_room_checks = 0;
+    let mut wycast_event_tickets = 0;
+    let mut pc_related_tickets = 0;
+    let mut building_counts: std::collections::HashMap<String, i32> = std::collections::HashMap::new();
+    let mut hour_counts: Vec<i32> = vec![0; 14]; // 7am-7pm (13 slots) + "Other"
+
+    // Process tickets
+    for ticket in &all_tickets {
+        // Count open tickets (all-time, not time period-specific)
+        let is_open = matches!(
+            ticket.status_name.as_str(),
+            "New" | "In Process" | "On Hold"
+        );
+        if is_open {
+            current_open_tickets += 1;
+        }
+
+        // These represent tickets created within the time period and are currently closed/false tickets
+        if is_date_in_range(&ticket.created_date, start_date, end_date) {
+            tickets_created += 1;
+
+            // Closed status
+            let is_closed = matches!(
+                ticket.status_name.as_str(),
+                "Closed" | "Completed" | "Resolved" | "Cancelled" | "Closed using Remote Support Tool"
+            );
+            if is_closed {
+                tickets_closed += 1;
+            }
+            // Room check tickets
+            if Regex::new(r"(?i)room check$").unwrap().is_match(&ticket.title) {
+                tickets_from_room_checks += 1;
+            }
+            // WyoCast/Event tickets
+            if Regex::new(r"(?i)\b(wyocast|event|zoom|tutorial)\b").unwrap().is_match(&ticket.title) {
+                wycast_event_tickets += 1;
+            }
+            // PC-related tickets
+            if Regex::new(r"(?i)\b(pc|computer|laptop|lptp)\b").unwrap().is_match(&ticket.title) {
+                pc_related_tickets += 1;
+            }
+            // False tickets
+            if ticket.parent_id == 22873142 {
+                false_tickets += 1;
+            }
+
+            let title = ticket.title.trim();
+            if let Some(building) = extract_building(title) {
+                *building_counts.entry(building).or_insert(0) += 1;
+            }
+
+            if let Some(hour) = extract_hour(&ticket.created_date) {
+                if hour >= 7 && hour <= 19 {
+                    hour_counts[(hour - 7) as usize] += 1;
+                } else {
+                    hour_counts[13] += 1; // "Other"
+                }
+            }
+        }
+    }
+
+    // Get leaderboard data for room checks performed
+    let room_checks_performed = match database.get_data("lsm_leaderboard") {
+        Ok(leaderboard_data) => {
+            // Parse JSON and sum up room checks for the appropriate time period
+            if let Ok(leaderboard_json) = serde_json::from_str::<Value>(&leaderboard_data.val) {
+                let period_key = match time_period {
+                    0 => "7days",
+                    1 => "30days",
+                    2 => "90days",
+                    3 | 4 => "365days",
+                    _ => "7days",
+                };
+                
+                if let Some(period_data) = leaderboard_json.get(period_key).and_then(|v| v.as_array()) {
+                    period_data.iter()
+                        .filter_map(|item| item.get("Count").and_then(|c| c.as_i64()))
+                        .sum::<i64>() as i32
+                } else {
+                    0
+                }
+            } else {
+                0
+            }
+        }
+        Err(_) => 0,
+    };
+
+    // Sort buildings by count and get top 10
+    let mut sorted_buildings: Vec<_> = building_counts.into_iter().collect();
+    sorted_buildings.sort_by(|a, b| b.1.cmp(&a.1));
+    let top_10_buildings: Vec<String> = sorted_buildings.iter().take(10).map(|(k, _)| k.clone()).collect();
+    let top_10_counts: Vec<i32> = sorted_buildings.iter().take(10).map(|(_, v)| *v).collect();
+
+        // Build the latex
+    // Helper: escape common LaTeX special characters to avoid compilation errors
+    let escape_latex = |s: &str| -> String {
+        let mut out = s.replace("\\", "\\textbackslash{}");
+        let reps = [
+            ("%", "\\%"), ("&", "\\&"), ("$", "\\$"), ("#", "\\#"),
+            ("_", "\\_"), ("{", "\\{"), ("}", "\\}"), ("~", "\\textasciitilde{}"),
+            ("^", "\\textasciicircum{}"),
+        ];
+        for (f, t) in reps.iter() {
+            out = out.replace(f, t);
+        }
+        return out;
+    };
+
+    // Helper: create a simple section with an itemize list from a JSON array value
+    let make_list = |v: &serde_json::Value, title: &str| -> String {
+        if !v.is_array() {
+            return String::new();
+        }
+        let arr = v.as_array().unwrap();
+        if arr.is_empty() {
+            return String::new();
+        }
+
+        let esc_title = "\\huge\n".to_owned() + &escape_latex(title);
+        
+        let mut s = format!("\\begin{{quote}}\n\\section*{{{}}}\n\\begin{{itemize}}\n\\large", esc_title);
+        for item in arr.iter() {
+            let item_str = match item.as_str() {
+                Some(st) => st.to_string(),
+                None => item.to_string(),
+            };
+            s.push_str(&format!("  \\item {}\n", escape_latex(&item_str)));
+        }
+
+        s.push_str("\\end{itemize}\n\\end{quote}\n");
+        return s;
+    };
+
+    // Convert hour counts to LaTeX coordinates format
+    let hour_labels = vec!["7am", "8am", "9am", "10am", "11am", "12pm", "1pm", "2pm", "3pm", "4pm", "5pm", "6pm", "7pm", "Other"];
+    let mut building_latex_coords = String::new();
+    let mut hour_latex_coords = String::new();
+
+    for (i, building) in top_10_buildings.iter().enumerate() {
+        if i > 0 {
+            building_latex_coords.push(' ');
+        }
+        building_latex_coords.push_str(&format!("({},{}) ", building.to_string(), top_10_counts[i]));
+    }
+
+    for (i, (label, count)) in hour_labels.iter().zip(hour_counts.iter()).enumerate() {
+        if i > 0 {
+            hour_latex_coords.push(' ');
+        }
+        hour_latex_coords.push_str(&format!("({},{}) ", label, count));
+    }
+
+
+    // Build Notes
+    let accomplishments_val = optional_data.get("an_accomplishments").unwrap_or(&serde_json::Value::Null);
+    let future_notes_val = optional_data.get("an_notesForFuture").unwrap_or(&serde_json::Value::Null);
+    let roomcheck_notes_val = optional_data.get("an_ticketAndRoomCheckNotes").unwrap_or(&serde_json::Value::Null);
+
+    let mut latex_accomplishments = make_list(accomplishments_val, "Accomplishments");
+    let mut latex_future_notes = make_list(future_notes_val, "Notes for the Future");
+    let mut latex_roomcheck_tickets_notes = make_list(roomcheck_notes_val, "Notes");
+
+    if latex_future_notes != "" {
+        latex_future_notes += r#"
+            \newpage
+            \maketitle
+            \thispagestyle{empty} % Remove page number from page
+        "#;
+    }
+
+    // Master LaTeX
     let latex_template = r#"
         \documentclass{article}
-        \begin{document}
-        \title{[[ title ]]}
-        \author{[[ author ]]}
-        \date{\today}
-        \maketitle
 
-        \section{Introduction}
-        Hello [[ name ]], this document was generated using Rust, Tera, and LaTeX.
+        % Required LaTeX packages
+        \usepackage{pdflscape}
+        \usepackage{pgfplots}
+        \usepackage{tikz}
+        \usepackage{titling}
+        \usepackage[T1]{fontenc}
+        \usepackage{helvet}
+        \renewcommand{\familydefault}{\sfdefault}
+
+        \begin{document}
+         \begin{landscape} % Orient the page in landscape mode
+ 
+         \title{\textbf{\huge CTS Analytics - [[ time_frame ]]}}
+         \author{} % Leave blank
+         \date{} % Leave blank
+ 
+         \Large
+         \setlength{\droptitle}{-5.5cm}
+ 
+         \maketitle
+         \thispagestyle{empty} % Remove page number from page
+ 
+          \begin{flushleft}
+  
+  
+                % First Page
+    
+            [[ accomplishments ]] % Accomplishment Notes
+            [[ future_notes ]] % Notes for the Future
+    
+    
+                % Second Page
+
+            % Overview Table
+            \vspace{-2.25cm}
+            \begin{center}
+            \begin{tabular}{ c|c|c|c } 
+                {\small Tickets Created}                 & {\small Tickets Closed}                 & {\small Current Open Tickets}                 & {\small False Tickets}                \\ 
+                {\LARGE \textbf{[[ tickets_created ]]}}  & {\LARGE \textbf{[[ tickets_closed ]]}}  & {\LARGE \textbf{[[ current_open_tickets ]]}}  & {\LARGE \textbf{[[ false_tickets ]]}} \\ 
+                {\small Last sss: ddd}                     & {\small Last sss: ddd}                    & {\small Last sss: ddd}                          & {}                                    \\
+            \hline
+                {\small Room Checks Performed}                 & {\small Tickets from Room Checks}                 & {\small WyoCast / Event Tickets}              & {\small PC Related Tickets}                \\ 
+                {\LARGE \textbf{[[ room_checks_performed ]]}}  & {\LARGE \textbf{[[ tickets_from_room_checks ]]}}  & {\Large \textbf{[[ wycast_event_tickets ]]}}  & {\Large \textbf{[[ pc_related_tickets ]]}} \\ 
+                {\small Last sss: ddd}                           & {}                                                & {}                                            & {}                                         \\ 
+            \end{tabular}
+            \end{center}
+    
+            % Bar Graphs
+            \begin{figure}[htbp]
+                \begin{minipage}{0.48\textwidth}
+                    \centering
+                    \pgfplotsset{width=8.5cm,compat=1.18}
+                    \begin{tikzpicture}[scale=1.0]
+                    \begin{axis}[
+                        title={Ticket Count by Building (Top 10)},
+                        ybar,
+                        enlargelimits=0.15,
+                        legend style={at={(0.5,-0.2)},
+                        anchor=north,legend columns=-1},
+                        symbolic x coords={[[ building_x_coords ]]},
+                        xtick={[[ building_x_coords ]]},
+                        nodes near coords,
+                        nodes near coords align={vertical},
+                        x tick label style={rotate=90,anchor=east},
+                        x post scale=1.3,
+                        y post scale=0.65,
+                    ]
+                    \addplot[fill=yellow!50!white, draw=yellow!80!black] coordinates {[[ building_coords ]]};
+                    \end{axis}
+                    \end{tikzpicture}
+                \end{minipage}
+                \hspace{0.33\textwidth}
+                \begin{minipage}{0.48\textwidth}
+                    \centering
+                    \pgfplotsset{width=8.5cm,compat=1.18}
+                    \begin{tikzpicture}[scale=1.0]
+                    \begin{axis}[
+                        title={Ticket Count by Hour},
+                        ybar,
+                        enlargelimits=0.15,
+                        legend style={at={(0.5,-0.2)},
+                        anchor=north,legend columns=-1},
+                        symbolic x coords={7am,8am,9am,10am,11am,12pm,1pm,2pm,3pm,4pm,5pm,6pm,7pm,Other},
+                        xtick={7am,8am,9am,10am,11am,12pm,1pm,2pm,3pm,4pm,5pm,6pm,7pm,Other},
+                        nodes near coords,
+                        nodes near coords align={vertical},
+                        x tick label style={rotate=90,anchor=east},
+                        x post scale=1.3,
+                        y post scale=0.65,
+                    ]
+                    \addplot[fill=yellow!50!white, draw=yellow!80!black] coordinates {[[ hour_coords ]]};
+                    \end{axis}
+                    \end{tikzpicture}
+                \end{minipage}
+            \end{figure}
+
+            \vspace{-1.0cm}
+            [[ notes ]] % Ticket & Room Check Notes
+  
+  
+          \end{flushleft}
+         \end{landscape}
         \end{document}
     "#;
     match tera.add_raw_template("report.tex", latex_template) {
@@ -3673,38 +4016,64 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
     }
 
     // Sub in values
+    let time_frame_label = match time_period {
+        0 => "Last 7 Days",
+        1 => "Last 30 Days",
+        2 => "Last 90 Days",
+        3 => "Last 365 Days",
+        4 => "All Time",
+        _ => "Last 7 Days",
+    };
+
+    // Format building x coordinates for LaTeX
+    let building_x_coords = top_10_buildings.join(",");
+
     let mut context = Context::new();
-    context.insert("title", "Automated Report");
-    context.insert("author", "Rust Application");
-    context.insert("name", "Ferris");
+    context.insert("time_frame", time_frame_label);
+    context.insert("accomplishments", &latex_accomplishments);
+    context.insert("future_notes", &latex_future_notes);
+    context.insert("tickets_created", &tickets_created);
+    context.insert("tickets_closed", &tickets_closed);
+    context.insert("current_open_tickets", &current_open_tickets);
+    context.insert("false_tickets", &false_tickets);
+    context.insert("room_checks_performed", &room_checks_performed);
+    context.insert("tickets_from_room_checks", &tickets_from_room_checks);
+    context.insert("wycast_event_tickets", &wycast_event_tickets);
+    context.insert("pc_related_tickets", &pc_related_tickets);
+    context.insert("notes", &latex_roomcheck_tickets_notes);
+    context.insert("building_coords", &building_latex_coords);
+    context.insert("building_x_coords", &building_x_coords);
+    context.insert("hour_coords", &hour_latex_coords);
 
-    // Render to string
-    let temp_dir = Path::new(TEMP_DIR);
-    let tex_path = temp_dir.join("report.tex");
 
-    // Register template
+        // Render
+    // Register the template
     match tera.add_raw_template("report.tex", latex_template) {
         Ok(_) => (),
         Err(e) => return Err(format!("Failed to add LaTeX template: {}", e)),
     }
-
-    // Render template
+    // Render the template
     let rendered_tex = match tera.render("report.tex", &context) {
         Ok(t) => t,
         Err(e) => return Err(format!("Failed to render LaTeX template: {}", e)),
     };
 
     // Write report.tex
+    let temp_dir = Path::new(TEMP_DIR);
+    let tex_path = temp_dir.join("report.tex");
     match std::fs::write(&tex_path, rendered_tex) {
         Ok(_) => (),
         Err(e) => return Err(format!("Failed to write report.tex: {}", e)),
     }
 
-    // Run pdflatex in the temp directory
+    // Run pdflatex (silently, unless error) in the temp directory
     let status = match Command::new("pdflatex")
         .current_dir(temp_dir)
         .arg("-interaction=nonstopmode")
+        .arg("-halt-on-error")
         .arg("report.tex")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .status()
     {
         Ok(s) => s,
