@@ -3670,17 +3670,29 @@ async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_j
         Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e)),
     };
 
-    // Make the request
-    let mut resp = match req
-        .build()
-        .method("POST")
-        .endpoint(&url)
-        .header("Authorization", &tdx_token.val)
-        .header("Content-Type", "application/json")
-        .body([id].into())
-        .timeout(Duration::from_secs(15))
-        .send()
-        .await {
+    // If no tickets exist, perform a tickets fetch from Jan 1st, 2020 to now
+    if database.check_if_tickets_empty() {
+        warn!("[Data] - No tickets exist in Database. Pulling all tickets from Jan 1st, 2020...");
+
+        // Define search
+        let search_body = serde_json::json!({
+            "ModifiedDateFrom": "2020-01-01T00:00:00Z",
+            "ResponsibilityGroupIDs": [2742], // CTS Group ID
+            "MaxResults": 5000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
+        });
+        // Make the request
+        let resp_raw = req
+            .build()
+            .method("POST")
+            .endpoint(url)
+            .header("Authorization", &tdx_token.val)
+            .header("Content-Type", "application/json")
+            .body(search_body)
+            .timeout(Duration::from_secs(120))
+            .send()
+            .await;
+        
+        let resp = match resp_raw {
             Ok(r) => r,
             Err(e) => return Err(format!("Failed to update Ticket in TDX: {}", e))
         };
@@ -3922,9 +3934,20 @@ async fn post_comment(database: &mut Database, req: &API, body_json: Value) -> R
         return Err(format!("TDX API error: {}", ticket_resp.status));
     }
 
-    info!("[Data] - Commenting Request was Successful (Ticket ID: {})", id);
-    Ok(())
-}
+        // Make the request to TDX API
+        let mut resp = match req
+            .build()
+            .method("POST")
+            .endpoint(url)
+            .header("Authorization", &tdx_token.val)
+            .header("Content-Type", "application/json")
+            .body(search_body.clone())
+            .timeout(Duration::from_secs(120))
+            .send()
+            .await {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
+            };
 
 async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) -> Result<i32, String> {
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/statuses/search";
