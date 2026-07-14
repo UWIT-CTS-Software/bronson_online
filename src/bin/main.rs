@@ -3304,6 +3304,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
             .header("Authorization", &tdx_token.val)
             .header("Content-Type", "application/json")
             .body(search_body)
+            .timeout(Duration::from_secs(120))
             .send()
             .await;
         
@@ -3423,6 +3424,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
             .header("Authorization", &tdx_token.val)
             .header("Content-Type", "application/json")
             .body(search_body.clone())
+            .timeout(Duration::from_secs(120))
             .send()
             .await {
                 Ok(r) => r,
