@@ -4159,6 +4159,7 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
             .header("Authorization", &tdx_token.val)
             .header("Content-Type", "application/json")
             .body(search_body.clone())
+            .timeout(Duration::from_secs(120))
             .send()
             .await {
                 Ok(r) => r,
