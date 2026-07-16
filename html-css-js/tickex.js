@@ -25,13 +25,13 @@ TOC:
     - takeIncident()
     
     Popups:
-    - dismissAll()       : Clear all ticket rows of unread notifications
-    - dismissAllPopup()  : Shows the "Dismiss All" confirmation popup
-    - dismissChanges()   : Dismisses the "What Changed" box in the popup
-    - showPopup()/show() : Shows the popup with relavent ticket info
-    - toggleDetails()    : Toggles the details page in the popup
-    - toggleComments()   : Toggles the comments box in the popup
-    - hidePopup()        : Hides the popup
+    - dismissAll()                   : Clear all ticket rows of unread notifications
+    - dismissAllPopup()              : Shows the "Dismiss All" confirmation popup
+    - dismissChanges()               : Dismisses the "What Changed" box in the popup
+    - showTicketPopup()/showTicket() : Shows the popup with relavent ticket info
+    - toggleDetails()                : Toggles the details page in the popup
+    - toggleComments()               : Toggles the comments box in the popup
+    - hideCurrentPopup()             : Hides the provided popup
 
     Board Setup:
     - initializeListeners() : Initializes all listeners for Tickex
@@ -92,14 +92,68 @@ function sendToHelpDesk() {
 }
 
 // Macro for taking Responsibility for a Ticket
-// For Later - When we have write access to TDX API
+// For Later - When we have shibboleth
 function takeResponsibility() {
     alert("This feature is not yet implemented.");
 
+    // Projected workflow w/ shibboleth:
+    //  - We will have some type of user name from shibboleth (example: "Lex Fermelia")
+    //  - Query TDX for a Uid from that user name ("Lex Fermelia" -> "6f873055-ca...")
+    //  - If we get an ID, update ticket using /api/216/tickets/{id} endpoint
+    //  - If not, display error and bail on action? 
 }
 
 
     /* -------------------- Popups -------------------- */
+
+// Opens the popup for the new ticket portal
+function newTicketPopup() {
+    const newTicketPopupContainer = document.querySelector('.tx_newTicketPopupContainer');
+    if (!newTicketPopupContainer) {
+        console.error("New Ticket Popup Container not found");
+        return;
+    }
+
+    newTicketPopupContainer.classList.add('active');
+    newTicketPopupContainer.innerHTML = `
+        <div class="tx_popupBox">
+            <span>Create New Ticket</span>
+            <div style="display: flex;">
+                <p>Status: </p>
+                
+            </div>
+            <button class="" onClick="createTicket()">Create Ticket</button>
+            <button class="cancelPopupButton" onClick="hideCurrentPopup(this.closest('.tx_newTicketPopupContainer'))">Cancel</button>
+        </div>
+    `;
+}
+// Looks at new ticket popup, enforces required fields are not empty, and sends request to create ticket
+async function createTicket() {
+    console.log("Clicked");
+}
+
+// Opens the popup for the edit ticket portal
+function editTicketPopup() {
+    const editTicketPopupContainer = document.querySelector('.tx_editTicketPopupContainer');
+    if (!editTicketPopupContainer) {
+        console.error("Edit Ticket Popup Container not found");
+        return;
+    }
+
+    editTicketPopupContainer.classList.add('active');
+    editTicketPopupContainer.innerHTML = `
+        <div class="tx_popupBox">
+            <span>Edit Ticket</span>
+            <p>Lorem Ipsum</p>
+            <button class="" onClick="applyChanges()">Apply Changes</button>
+            <button class="cancelPopupButton" onClick="hideCurrentPopup(this.closest('.tx_editTicketPopupContainer'))">Cancel</button>
+        </div>
+    `;
+}
+// Looks at edit ticket popup, enforces required fields are not empty, and sends request to edit ticket
+async function applyChanges() {
+    console.log("Clicked")
+}
 
 // Clear all ticket rows of unread notifications
 async function dismissAll(confirmed) {
@@ -109,7 +163,7 @@ async function dismissAll(confirmed) {
         console.error("Dismiss All Popup container not found");
         return;
     }
-    dismissAllPopupContainer.classList.remove('popupActive');
+    dismissAllPopupContainer.classList.remove('active');
 
     // If confirmed, proceed to dismiss all notifications
     if (confirmed) {
@@ -140,7 +194,6 @@ async function dismissAll(confirmed) {
         button.disabled = false;
     }
 }
-
 // Shows the "Dismiss All" confirmation popup
 function dismissAllPopup() {
     const dismissAllPopupContainer = document.querySelector('.tx_dismissAllPopupContainer');
@@ -148,15 +201,16 @@ function dismissAllPopup() {
         console.error("Dismiss All Popup container not found");
         return;
     }
-    dismissAllPopupContainer.classList.add('popupActive');
+    dismissAllPopupContainer.classList.add('active');
 
     dismissAllPopupContainer.innerHTML = `
         <div class="tx_popupBox">
-        <span>Are You Sure?</span>
-        <p>This action will apply to all users.</p>
-        <p>Are you sure you wish to Dismiss All Notifications?</p>
-        <button class="dismissAllButtonConfirm" onClick="dismissAll(true)">Yes, Dismiss All</button>
-        <button class="cancelPopupButton" onClick="dismissAll(false)">Cancel</button>
+            <span>Are You Sure?</span>
+            <p>This action will apply to all users.</p>
+            <p>Are you sure you wish to Dismiss All Notifications?</p>
+            <button class="dismissAllButtonConfirm" onClick="dismissAll(true)">Yes, Dismiss All</button>
+            <button class="cancelPopupButton" onClick="dismissAll(false)">Cancel</button>
+        </div>
     `;
 }
 
@@ -164,18 +218,18 @@ function dismissAllPopup() {
 function dismissChanges(ticketID, event) {
     if (event) event.stopPropagation();
     
-    const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
-    if (!popupContainer) return;
+    const ticketPopupContainer = document.querySelector('.tx_ticketPopupContainer.active');
+    if (!ticketPopupContainer) return;
 
     // Remove the "What Changed" box
-    const whatChangedBox = popupContainer.querySelector('.tx_whatChangedBox');
+    const whatChangedBox = ticketPopupContainer.querySelector('.tx_whatChangedBox');
     if (whatChangedBox) whatChangedBox.remove();
 
     updateTicketViewed(ticketID, true);
 }
 
 // Shows the popup with relavent ticket info
-function showPopup(ticket, element) {
+function showTicketPopup(ticket, element) {
     // Change cursor to loading
     if (!document.body.classList.contains('tx_waiting-cursor')) 
         document.body.classList.add('tx_waiting-cursor');
@@ -184,7 +238,7 @@ function showPopup(ticket, element) {
 
     // Force cursor wheel to show
     requestAnimationFrame(() => {
-        show(ticket).finally(() => {
+        showTicket(ticket).finally(() => {
             // Remove loading cursor
             if (document.body.classList.contains('tx_waiting-cursor'))
                 document.body.classList.remove('tx_waiting-cursor');
@@ -193,9 +247,8 @@ function showPopup(ticket, element) {
         });
     });
 }
-
 // Shows popup from dashboard - opens Tickex first, then shows the popup
-async function showPopupFromDashboard(ticket, element) {
+async function showTicketPopupFromDashboard(ticket, element) {
     // Set up Tickex first
     await setTickex();
     
@@ -207,7 +260,7 @@ async function showPopupFromDashboard(ticket, element) {
 
     // Force cursor wheel to show
     requestAnimationFrame(() => {
-        show(ticket).finally(() => {
+        showTicket(ticket).finally(() => {
             // Remove loading cursor
             if (document.body.classList.contains('tx_waiting-cursor'))
                 document.body.classList.remove('tx_waiting-cursor');
@@ -216,9 +269,8 @@ async function showPopupFromDashboard(ticket, element) {
         });
     });
 }
-
-// Child function to showPopup() - shows the popup
-async function show(ticket) {
+// Child function to showTicketPopup() - shows the popup
+async function showTicket(ticket) {
     if (!ticket) {
         console.error("Ticket data not found");
         return;
@@ -226,15 +278,15 @@ async function show(ticket) {
 
     const isMobile = localStorage.getItem("isMobile") === "true";
 
-    let popupContainer = document.querySelector('.tx_popupContainer');
-    if (!popupContainer) {
+    let ticketPopupContainer = document.querySelector('.tx_ticketPopupContainer');
+    if (!ticketPopupContainer) {
         // Wait for popup to load (timeout of 3 seconds)
         let waited = 0;
         while (waited < 3000) {
             await new Promise(resolve => setTimeout(resolve, 100));
-            const pc = document.querySelector('.tx_popupContainer');
+            const pc = document.querySelector('.tx_ticketPopupContainer');
             if (pc) {
-                popupContainer = pc;
+                ticketPopupContainer = pc;
                 break;
             }
             waited += 100;
@@ -412,12 +464,12 @@ async function show(ticket) {
         sideContent += whatChangedHTML;
     
 
-    if (popupContainer.classList.contains('detailsShown')) { // Details Shown
-        popupContainer.innerHTML = `
+    if (ticketPopupContainer.classList.contains('detailsShown')) { // Details Shown
+        ticketPopupContainer.innerHTML = `
             <div class="tx_popupWrapper ${isMobile ? "mobile mobile_tx_font" : ""}">
                 <div class="tx_popupBox ${isMobile ? "mobile" : ""}">
                 <span>${ticket.Title || "No Title"}</span>
-                <button class="popup_closeButton" onClick="hidePopup()">X</button>
+                <button class="popup_closeButton" onClick="hideCurrentPopup(this.closest('.tx_ticketPopupContainer'))">X</button>
                 <div class="tx_adjacent">
                 <p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
                     <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
@@ -448,11 +500,11 @@ async function show(ticket) {
         // Scrub HTML tags out
         description = description.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n+/g, '\n').trim(); 
 
-        popupContainer.innerHTML = `
+        ticketPopupContainer.innerHTML = `
             <div class="tx_popupWrapper ${isMobile ? "mobile mobile_tx_font" : ""}">
                 <div class="tx_popupBox ${isMobile ? "mobile" : ""}">
                 <span>${ticket.Title || "No Title"}</span>
-                ${isMobile ? "" : `<button class="popup_closeButton" onClick="hidePopup()">X</button>`}
+                ${isMobile ? "" : `<button class="popup_closeButton" onClick="hideCurrentPopup(this.closest('.tx_ticketPopupContainer'))">X</button>`}
                 <div class="tx_adjacent">
                     <p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
                     <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
@@ -475,9 +527,8 @@ async function show(ticket) {
             </div>
         `;
     }
-
     // Show popup
-    if (!popupContainer.classList.contains('popupActive')) {
+    if (!ticketPopupContainer.classList.contains('active')) {
         // Save terminal state and hide terminal if open
         const terminal = document.getElementById('terminal');
         if (terminal) {
@@ -485,7 +536,7 @@ async function show(ticket) {
             terminal.style.display = 'none';
         }
 
-        popupContainer.classList.add('popupActive');
+        ticketPopupContainer.classList.add('active');
 
         // Disable scrolling the main body when popup is active
         document.body.classList.add('tx_no-scroll');
@@ -497,20 +548,19 @@ async function show(ticket) {
 
 // Toggles the details page in the popup
 function toggleDetails(ticketID) {
-    const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
-    if (!popupContainer) return;
+    const ticketPopupContainer = document.querySelector('.tx_ticketPopupContainer.active');
+    if (!ticketPopupContainer) return;
 
-    const isDetailsShown = popupContainer.classList.contains('detailsShown');
+    const isDetailsShown = ticketPopupContainer.classList.contains('detailsShown');
     if (isDetailsShown) 
-        popupContainer.classList.remove('detailsShown');
+        ticketPopupContainer.classList.remove('detailsShown');
     else 
-        popupContainer.classList.add('detailsShown');
+        ticketPopupContainer.classList.add('detailsShown');
     
     // O(1) lookup via ticketById map
     const ticket = window.ticketById?.get(ticketID);
-    if (ticket) showPopup(ticket);
+    if (ticket) showTicketPopup(ticket);
 }
-
 // Toggles the comments box in the popup
 function toggleComments(ticketID) {
     const container = document.querySelector('.tx_container');
@@ -524,21 +574,45 @@ function toggleComments(ticketID) {
     
     // O(1) lookup via ticketById map
     const ticket = window.ticketById?.get(ticketID);
-    if (ticket) showPopup(ticket);
+    if (ticket) showTicketPopup(ticket);
 }
 
-// Hides the popup
-function hidePopup() {
-    const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
-    if (popupContainer) {
-        if (popupContainer.classList.contains('detailsShown')) 
-            popupContainer.classList.remove('detailsShown');
+// Hides the ticket popup
+function hideCurrentPopup(container, forceClose=false) {
+    console.trace("hideCurrentPopup");
 
-        if (popupContainer.classList.contains('commentsShown')) 
-            popupContainer.classList.remove('commentsShown');
+    if (!container) {
+        console.error("hideCurrentPopup(): Couldn't resolve popupContainer");
+        return;
+    }
 
-        popupContainer.classList.remove('popupActive');
+    if (container.classList.contains("tx_ticketPopupContainer")) {
+        container.classList.remove('detailsShown');
+        container.classList.remove('active');
+    }
+    if (container.classList.contains("tx_newTicketPopupContainer")) {
+        if (forceClose) {
+            container.classList.remove('active');
+            revert();
+            return;
+        }
+        if (confirm("Are you sure you want to continue? Unsaved changes will be lost.")) {
+            container.classList.remove('active');
+        } else return;
+    }
+    if (container.classList.contains("tx_editTicketPopupContainer")) {
+        if (forceClose) {
+            container.classList.remove('active');
+            revert();
+            return;
+        }
+        if (confirm("Are you sure you want to continue? Unsaved changes will be lost.")) {
+            container.classList.remove('active');
+        } else return;
+    }
 
+    revert();
+    function revert() {
         // Enable scrolling the main body when popup is inactive
         document.body.classList.remove('tx_no-scroll');
 
@@ -556,25 +630,29 @@ function hidePopup() {
 
 // Initializes all listeners for Tickex
 function initializeListeners() {
-    // Escape Key
-    document.addEventListener('keydown', (e) => {
-        const pressedKey = e.key;
-        if (pressedKey == 'Escape') 
-            if (document.querySelector('.tx_popupContainer.popupActive')) hidePopup();
-            if (document.querySelector('.tx_dismissAllPopupContainer.popupActive')) dismissAll(false);
-    });
-
     // Left Click Outside of Popup
     document.addEventListener('click', (e) => {
         if (e.button !== 0) return; // Ensure only left clicking
 
-        const popup = document.querySelector('.tx_popupContainer.popupActive');
-        if (popup) {
+        const ticketPopupContainer = document.querySelector('.tx_ticketPopupContainer.active');
+        if (ticketPopupContainer) {
             // Check if clicked element is within popupBox, comments, or whatChangedBox
             const clickedInPopupBox = e.target.closest('.tx_popupBox');
             const clickedInSideContent = e.target.closest('.tx_sideContent');
             
-            if (!clickedInPopupBox && !clickedInSideContent) hidePopup();
+            if (!clickedInPopupBox && !clickedInSideContent) hideCurrentPopup(ticketPopupContainer);
+        }
+
+        const newTicketPopupContainer = document.querySelector('.tx_newTicketPopupContainer.active');
+        if (newTicketPopupContainer) {
+            const clickedInPopupBox = e.target.closest('.tx_popupBox');
+            if (!clickedInPopupBox) hideCurrentPopup(newTicketPopupContainer); // This line is 671
+        }
+
+        const editTicketPopupContainer = document.querySelector('.tx_editTicketPopupContainer.active');
+        if (editTicketPopupContainer) {
+            const clickedInPopupBox = e.target.closest('.tx_popupBox');
+            if (!clickedInPopupBox) hideCurrentPopup(editTicketPopupContainer);
         }
     });
 
@@ -782,7 +860,7 @@ function initBoard() {
 
         let highlightClass = ticket.has_been_viewed ? '' : 'tx_highlight_row';
         let ticketRow = `
-            <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
+            <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showTicketPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
                 <td>${ticket.Title}</td>
                 ${isMobile ? "" : `<td>${ticket.ID}</td>`}
                 <td>${ticket.StatusName}</td>
@@ -815,7 +893,7 @@ function initBoard() {
         }
         if (isClosed) {
             let closedRow = `
-                <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
+                <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showTicketPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
                     <td>${ticket.Title}</td>
                     ${isMobile ? "" : `<td>${ticket.ID}</td>`}
                 </tr>
@@ -1103,6 +1181,23 @@ async function setTickex() {
     loadingMessage.remove();
 
 
+    // Add Ticket Button
+    let addTicketButton = document.createElement("div");
+    addTicketButton.classList.add("tx_addTicketButton");
+    addTicketButton.innerHTML = `
+        <button onclick="event.stopPropagation(); newTicketPopup()">+</button>
+    `;
+    tx_container.append(addTicketButton);
+
+    // New Ticket Popup Container
+    let newTicketPopupContainer = document.createElement("div");
+    newTicketPopupContainer.classList.add("tx_newTicketPopupContainer");
+    tx_container.append(newTicketPopupContainer);
+
+    let editTicketPopupContainer = document.createElement("div");
+    editTicketPopupContainer.classList.add("tx_editTicketPopupContainer");
+    tx_container.append(editTicketPopupContainer);
+
     // Sort By Box - by date and status
     let sortByBox = document.createElement("div");
     sortByBox.classList.add("tx_sortByBox");
@@ -1165,15 +1260,6 @@ async function setTickex() {
         dismissAllPopupContainer.classList.add("tx_dismissAllPopupContainer");
         tx_container.append(dismissAllPopupContainer);
     }
-
-    // New Tickets Popup
-    let newTicketsPopup = document.createElement("div");
-    newTicketsPopup.classList.add("tx_newTicketsPopup");
-    if (isMobile) newTicketsPopup.classList.add("mobile");
-    newTicketsPopup.innerHTML = `
-        <legend ${isMobile ? "class='mobile_font'" : ""}>New Tickets Available!</legend>
-    `;
-    tx_container.append(newTicketsPopup);
 
     // The 3 Tickex boards - New, Catch All, Closed
     let newTickets = document.createElement("div");
@@ -1299,9 +1385,9 @@ async function setTickex() {
     `;
 
     // Popup Container - click on ticket for popup to appear
-    let popupContainer = document.createElement("div");
-    popupContainer.classList.add("tx_popupContainer");
-    tx_container.append(popupContainer);
+    let ticketPopupContainer = document.createElement("div");
+    ticketPopupContainer.classList.add("tx_ticketPopupContainer");
+    tx_container.append(ticketPopupContainer);
     
 
     // Initialize board on loadup
@@ -1345,24 +1431,9 @@ async function setTickex() {
 
                         // Check if user is currently on Tickex page
                         const txButton = document.getElementById("TXButton");
-                        if (txButton && txButton.classList.contains("selected")) {
-                            // User is on Tickex, show the popup
-                            newTicketsPopup.classList.add("tx_newTicketsPopupActive");
-                            newTicketsPopup.classList.remove("tx_newTicketsPopup");
-                            setTimeout(() => {
-                                newTicketsPopup.classList.add("tx_newTicketsPopup");
-                                newTicketsPopup.classList.remove("tx_newTicketsPopupActive");
-                            }, 60000);
-                        } else {
-                            // User is NOT on Tickex, stash the response and strobe the tab
-                            stashTickexResponse(actuallyNew);
-                        }
-                    }
+                        if (!(txButton && txButton.classList.contains("selected"))) 
+                            stashTickexResponse(actuallyNew); // User is NOT on Tickex, stash the response and strobe the tab
 
-                    // Update New Tickets Popup if needed
-                    if (newTicketsPopup.classList.contains("tx_newTicketsPopupActive") && actuallyNew.length == 0) {
-                        newTicketsPopup.classList.remove("tx_newTicketsPopupActive");
-                        newTicketsPopup.classList.add("tx_newTicketsPopup");
                     }
 
                     // Prevent Search Task Disruption

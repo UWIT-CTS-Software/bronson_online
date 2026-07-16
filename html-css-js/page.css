@@ -1492,6 +1492,20 @@ ol li::marker {
     grid-auto-rows: minmax(20px, auto);
 }
 
+.tx_addTicketButton {
+    grid-column: 2 / 3;
+    grid-row: 1 / 3;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.tx_addTicketButton button {
+    width: 35px;
+    height: 35px;
+    font-size: 18pt;
+}
+
 .tx_container.mobile {
     display: grid;
     grid-template-columns: repeat(100, 1fr);
@@ -1528,70 +1542,6 @@ ol li::marker {
 
 .tx_strong {
     font-size: 12pt;
-}
-
-.tx_newTicketsPopupActive {
-    max-width: 85%;
-    grid-column: 2 / 3;
-    grid-row: 1 / 3;
-    place-self: center;
-    font-size: small;
-    opacity: 100%;
-    transition: .2s ease;
-    pointer-events: none;
-    animation: flash 1.5s ease-in-out infinite;
-}
-.tx_newTicketsPopupActive.mobile {
-    grid-column: 76 / 101;
-    grid-row: 1;
-    width: 100%;
-    height: auto;
-    opacity: 100%;
-    transition: .2s ease;
-    pointer-events: none;
-    animation: flash 1.5s ease-in-out infinite;
-}
-@keyframes flash {
-    0% {
-        background-color: rgb(50, 50, 50);
-        border-radius: 15px;
-    }
-    50% {
-        background-color: rgb(80, 80, 80);
-        border-radius: 15px;
-    }
-    100% {
-        background-color: rgb(50, 50, 50);
-        border-radius: 15px;
-    }
-}
-
-.tx_newTicketsPopup {
-    max-width: 85%;
-    font-size: small;
-    grid-column: 2 / 3;
-    grid-row: 1 / 3;
-    place-self: center;
-    opacity: 0%;
-    transition: .2s ease;
-    pointer-events: none;
-}
-.tx_newTicketsPopup.mobile {
-    grid-column: 76 / 101;
-    grid-row: 1;
-    width: 100%;
-    height: auto;
-    opacity: 0%;
-    transition: .2s ease;
-    pointer-events: none;
-}
-
-.tx_newTicketsPopupActive legend {
-    font-size: 16px;
-}
-
-.tx_newTicketsPopup legend {
-    font-size: 16px;
 }
 
 .tx_dismissAllButton {
@@ -1854,7 +1804,7 @@ td.mobile_th {
     transition: .2s ease;
 }
 
-.tx_dismissAllPopupContainer.popupActive {
+.tx_dismissAllPopupContainer.active {
     opacity: 1;
     pointer-events: auto;
     transition: .3s ease;
@@ -1880,7 +1830,7 @@ td.mobile_th {
     margin: 0px 5px 3px 0px;
 }
 
-.tx_popupContainer {
+.tx_ticketPopupContainer {
     position: fixed;
     width: 100%;
     height: auto;
@@ -1898,7 +1848,7 @@ td.mobile_th {
     overflow-y: scroll;
 }
 
-.tx_popupContainer.popupActive {
+.tx_ticketPopupContainer.active {
     opacity: 1;
     pointer-events: auto;
     transition: .3s ease;
@@ -1908,7 +1858,7 @@ td.mobile_th {
     overflow: hidden;
 }
 
-.tx_popupContainer .tx_popupBox {
+.tx_ticketPopupContainer .tx_popupBox {
     width: 40%;
     height: fit-content;
     border: 3px solid rgb(224, 193, 108);
@@ -1917,6 +1867,73 @@ td.mobile_th {
     margin-top: 90px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
+
+.tx_newTicketPopupContainer {
+    position: fixed;
+    width: 100%;
+    height: auto;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    opacity: 0;
+    background-color: rgba(0,0,0,0.4);
+    pointer-events: none;
+    transition: .2s ease;
+}
+
+.tx_newTicketPopupContainer.active {
+    opacity: 1;
+    pointer-events: auto;
+    transition: .3s ease;
+}
+
+.tx_newTicketPopupContainer .tx_popupBox {
+    width: 420px;
+    height: fit-content;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 250px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.tx_editTicketPopupContainer {
+    position: fixed;
+    width: 100%;
+    height: auto;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    opacity: 0;
+    background-color: rgba(0,0,0,0.4);
+    pointer-events: none;
+    transition: .2s ease;
+}
+
+.tx_editTicketPopupContainer.active {
+    opacity: 1;
+    pointer-events: auto;
+    transition: .3s ease;
+}
+
+.tx_editTicketPopupContainer .tx_popupBox {
+    width: 420px;
+    height: fit-content;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 250px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
 .tx_popupBox.mobile {
     width: 551px;
     height: fit-content;
@@ -1974,7 +1991,7 @@ td.mobile_th {
     margin-left: 5px;
 }
 
-.tx_popupContainer .tx_popupComments {
+.tx_ticketPopupContainer .tx_popupComments {
     max-width: 401px;
     min-width: 301px;
     width: fit-content;
@@ -2034,7 +2051,7 @@ td.mobile_th {
     padding: 0px 8px;
 }
 
-.tx_popupContainer .tx_whatChangedBox {
+.tx_ticketPopupContainer .tx_whatChangedBox {
     max-width: 401px;
     min-width: 301px;
     width: fit-content;
