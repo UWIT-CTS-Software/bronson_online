@@ -119,21 +119,53 @@ function newTicketPopup() {
         <div class="tx_popupBox">
             <span>Create New Ticket</span>
             <div style="display: flex;">
-                <p>Status: </p>
-                
+                <p>Title: </p>
+                <textarea id="tx_newTicketTitle" style="margin: 5px;" maxlength="80" placeholder="Ex: IT 173 - My Issue"></textarea>
             </div>
-            <button class="" onClick="createTicket()">Create Ticket</button>
+            <p>Description:</p>
+            <textarea id="tx_newTicketDesc" rows="10" style="margin: 5px; width: 98%;" placeholder="Explain your Ticket..."></textarea>
+            <div>
+                <label for="requestor">Requestor:</label>
+                <select name="requestor" id="tx_createTicket_Requestor">
+                    <option value="lfermeli">Lex Fermelia</option>
+                    <option value="todo">Shibboleth Needed</option>
+                </select>
+            </div>
+            <div>
+                <label for="created-by">Created By:</label>
+                <select name="created-by" id="tx_createTicket_CreatedBy">
+                    <option value="lfermeli">Lex Fermelia</option>
+                    <option value="todo">Shibboleth Needed</option>
+                </select>
+            </div>
+            <div>
+                <label for="responsibility">Responsibility:</label>
+                <select name="responsibility" id="tx_createTicket_CreatedBy">
+                    <option value="cts">CTS</option>
+                    <option value="help-desk">Help Desk</option>
+                    <option value="asu">ASU</option>
+                </select>
+            </div>
+            <button id="tx_createTicketButton" onClick="createTicket(this.closest('.tx_newTicketPopupContainer'))">Create Ticket</button>
             <button class="cancelPopupButton" onClick="hideCurrentPopup(this.closest('.tx_newTicketPopupContainer'))">Cancel</button>
         </div>
     `;
+
+    // Hide terminal if open
+    const terminal = document.getElementById('terminal');
+    terminal.style.display = 'none';
 }
 // Looks at new ticket popup, enforces required fields are not empty, and sends request to create ticket
-async function createTicket() {
-    console.log("Clicked");
+async function createTicket(container) {
+    // TODO: Ensure required fields are filled out
+
+    hideCurrentPopup(container, true);
 }
 
 // Opens the popup for the edit ticket portal
-function editTicketPopup() {
+function editTicketPopup(ticket, ticketPopupContainer) {
+    hideCurrentPopup(ticketPopupContainer);
+
     const editTicketPopupContainer = document.querySelector('.tx_editTicketPopupContainer');
     if (!editTicketPopupContainer) {
         console.error("Edit Ticket Popup Container not found");
@@ -144,15 +176,48 @@ function editTicketPopup() {
     editTicketPopupContainer.innerHTML = `
         <div class="tx_popupBox">
             <span>Edit Ticket</span>
-            <p>Lorem Ipsum</p>
-            <button class="" onClick="applyChanges()">Apply Changes</button>
+            <div style="display: flex;">
+                <p>Title: </p>
+                <textarea id="tx_newTicketTitle" style="margin: 5px;" maxlength="80" placeholder="Ex: IT 173 - My Issue"></textarea>
+            </div>
+            <p>Description:</p>
+            <textarea id="tx_newTicketDesc" rows="10" style="margin: 5px; width: 98%;" placeholder="Explain your Ticket..."></textarea>
+            <div>
+                <label for="requestor">Requestor:</label>
+                <select name="requestor" id="tx_createTicket_Requestor">
+                    <option value="lfermeli">Lex Fermelia</option>
+                    <option value="todo">Shibboleth Needed</option>
+                </select>
+            </div>
+            <div>
+                <label for="created-by">Created By:</label>
+                <select name="created-by" id="tx_createTicket_CreatedBy">
+                    <option value="lfermeli">Lex Fermelia</option>
+                    <option value="todo">Shibboleth Needed</option>
+                </select>
+            </div>
+            <div>
+                <label for="responsibility">Responsibility:</label>
+                <select name="responsibility" id="tx_createTicket_CreatedBy">
+                    <option value="cts">CTS</option>
+                    <option value="help-desk">Help Desk</option>
+                    <option value="asu">ASU</option>
+                </select>
+            </div>
+            <button class="" onClick="applyChanges(this.closest('.tx_editTicketPopupContainer'))">Apply Changes</button>
             <button class="cancelPopupButton" onClick="hideCurrentPopup(this.closest('.tx_editTicketPopupContainer'))">Cancel</button>
         </div>
     `;
+
+    // Hide terminal if open
+    const terminal = document.getElementById('terminal');
+    terminal.style.display = 'none';
 }
 // Looks at edit ticket popup, enforces required fields are not empty, and sends request to edit ticket
-async function applyChanges() {
-    console.log("Clicked")
+async function applyChanges(container) {
+
+
+    hideCurrentPopup(container, true);
 }
 
 // Clear all ticket rows of unread notifications
@@ -202,6 +267,7 @@ function dismissAllPopup() {
         return;
     }
     dismissAllPopupContainer.classList.add('active');
+    event.stopPropagation();
 
     dismissAllPopupContainer.innerHTML = `
         <div class="tx_popupBox">
@@ -212,6 +278,10 @@ function dismissAllPopup() {
             <button class="cancelPopupButton" onClick="dismissAll(false)">Cancel</button>
         </div>
     `;
+
+    // Hide terminal if open
+    const terminal = document.getElementById('terminal');
+    terminal.style.display = 'none';
 }
 
 // Dismisses the "What Changed" box in the popup
@@ -489,6 +559,7 @@ async function showTicket(ticket) {
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                         <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
                     </a>
+                    <button class="popup_editTicket" onClick="editTicketPopup(${ticket}, ${ticketPopupContainer})">Edit Ticket</button>
                     <button disabled class="popup_sendToASU ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToASU()">Send to ASU</button>
                     <button disabled class="popup_sendToHelpDesk ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToHelpDesk()">Send to Help Desk</button>
                 </div>
@@ -520,6 +591,7 @@ async function showTicket(ticket) {
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                         <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
                     </a>
+                    <button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID}, this.closest('.tx_ticketPopupContainer'))">Edit Ticket</button>
                     <button disabled class="popup_sendToASU ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToASU()">Send to ASU</button>
                     <button disabled class="popup_sendToHelpDesk ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToHelpDesk()">Send to Help Desk</button>
                 </div>
@@ -529,12 +601,9 @@ async function showTicket(ticket) {
     }
     // Show popup
     if (!ticketPopupContainer.classList.contains('active')) {
-        // Save terminal state and hide terminal if open
+        // Hide terminal if open
         const terminal = document.getElementById('terminal');
-        if (terminal) {
-            window.terminalStateBeforePopup = terminal.style.display || 'block';
-            terminal.style.display = 'none';
-        }
+        terminal.style.display = 'none';
 
         ticketPopupContainer.classList.add('active');
 
@@ -579,8 +648,6 @@ function toggleComments(ticketID) {
 
 // Hides the ticket popup
 function hideCurrentPopup(container, forceClose=false) {
-    console.trace("hideCurrentPopup");
-
     if (!container) {
         console.error("hideCurrentPopup(): Couldn't resolve popupContainer");
         return;
@@ -593,7 +660,7 @@ function hideCurrentPopup(container, forceClose=false) {
     if (container.classList.contains("tx_newTicketPopupContainer")) {
         if (forceClose) {
             container.classList.remove('active');
-            revert();
+            document.body.classList.remove('tx_no-scroll');
             return;
         }
         if (confirm("Are you sure you want to continue? Unsaved changes will be lost.")) {
@@ -603,7 +670,7 @@ function hideCurrentPopup(container, forceClose=false) {
     if (container.classList.contains("tx_editTicketPopupContainer")) {
         if (forceClose) {
             container.classList.remove('active');
-            revert();
+            document.body.classList.remove('tx_no-scroll');
             return;
         }
         if (confirm("Are you sure you want to continue? Unsaved changes will be lost.")) {
@@ -611,18 +678,7 @@ function hideCurrentPopup(container, forceClose=false) {
         } else return;
     }
 
-    revert();
-    function revert() {
-        // Enable scrolling the main body when popup is inactive
-        document.body.classList.remove('tx_no-scroll');
-
-        // Restore terminal to its previous state
-        const terminal = document.getElementById('terminal');
-        if (terminal && window.terminalStateBeforePopup !== null) {
-            terminal.style.display = window.terminalStateBeforePopup;
-            window.terminalStateBeforePopup = null;
-        }
-    }
+    document.body.classList.remove('tx_no-scroll');
 }
 
 
@@ -653,6 +709,14 @@ function initializeListeners() {
         if (editTicketPopupContainer) {
             const clickedInPopupBox = e.target.closest('.tx_popupBox');
             if (!clickedInPopupBox) hideCurrentPopup(editTicketPopupContainer);
+        }
+
+        const dismissAllPopupContainer = document.querySelector('.tx_dismissAllPopupContainer.active');
+        if (dismissAllPopupContainer) {
+            const clickedInPopupBox = e.target.closest('.tx_popupBox');
+            if (!clickedInPopupBox) {    
+                dismissAll(false);
+            }
         }
     });
 
@@ -1087,9 +1151,6 @@ async function setTickex() {
     // Clear stash and remove strobing indicator
     sessionStorage.removeItem("Tickex_stash");
 
-    // Track terminal state when popup is shown
-    window.terminalStateBeforePopup = null;
-
     const isMobile = (localStorage.getItem("isMobile") === "true") ? true : false;
 
     let current = document.getElementsByClassName("selected");
@@ -1194,6 +1255,7 @@ async function setTickex() {
     newTicketPopupContainer.classList.add("tx_newTicketPopupContainer");
     tx_container.append(newTicketPopupContainer);
 
+    // Edit Ticket Popup Container
     let editTicketPopupContainer = document.createElement("div");
     editTicketPopupContainer.classList.add("tx_editTicketPopupContainer");
     tx_container.append(editTicketPopupContainer);

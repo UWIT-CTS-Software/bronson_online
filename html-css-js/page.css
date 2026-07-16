@@ -1892,12 +1892,12 @@ td.mobile_th {
 }
 
 .tx_newTicketPopupContainer .tx_popupBox {
-    width: 420px;
+    width: 500px;
     height: fit-content;
     border: 3px solid rgb(224, 193, 108);
     background: rgb(60, 60, 60);
     border-radius: 6px;
-    margin-top: 250px;
+    margin-top: 125px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
@@ -1930,7 +1930,7 @@ td.mobile_th {
     border: 3px solid rgb(224, 193, 108);
     background: rgb(60, 60, 60);
     border-radius: 6px;
-    margin-top: 250px;
+    margin-top: 125px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
@@ -1966,9 +1966,18 @@ td.mobile_th {
 .tx_popupBox p {
     text-align: left;
     padding: 0px 8px;
-    white-space: nowrap;
+    /* white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
+    text-overflow: ellipsis; */
+}
+
+.tx_popupBox label {
+    margin: 5px;
+}
+
+.tx_popupBox select {
+    margin: 5px;
+    width: 98%;
 }
 
 .tx_popupWrapper {
@@ -2156,6 +2165,11 @@ td.mobile_th {
 .popup_closeCommentsButton {
     float: right;
     margin: 3px;
+}
+
+.popup_editTicket {
+    display: block;
+    margin: 5px auto;
 }
 
 .popup_sendToASU {
