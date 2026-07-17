@@ -1804,7 +1804,7 @@ td.mobile_th {
     transition: .2s ease;
 }
 
-.tx_dismissAllPopupContainer.active {
+.tx_dismissAllPopupContainer.tx_popupActive {
     opacity: 1;
     pointer-events: auto;
     transition: .3s ease;
@@ -1848,7 +1848,7 @@ td.mobile_th {
     overflow-y: scroll;
 }
 
-.tx_ticketPopupContainer.active {
+.tx_ticketPopupContainer.tx_popupActive {
     opacity: 1;
     pointer-events: auto;
     transition: .3s ease;
@@ -1868,6 +1868,28 @@ td.mobile_th {
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
+.tx_createTicketText {
+    margin: 3px 0;
+}
+
+.tx_createTicketTextarea {
+    width: 98%;
+    margin: 5px;
+}
+
+.tx_textareaRequired {
+    border: 2px inset rgb(209, 23, 23);
+}
+
+.tx_textareaRequired::placeholder {
+    color: rgb(209, 23, 23);
+    opacity: 1;
+}
+
+.tx_createTicketBr {
+    margin: 4px 0;
+}
+
 .tx_newTicketPopupContainer {
     position: fixed;
     width: 100%;
@@ -1885,7 +1907,7 @@ td.mobile_th {
     transition: .2s ease;
 }
 
-.tx_newTicketPopupContainer.active {
+.tx_newTicketPopupContainer.tx_popupActive {
     opacity: 1;
     pointer-events: auto;
     transition: .3s ease;
@@ -1918,7 +1940,7 @@ td.mobile_th {
     transition: .2s ease;
 }
 
-.tx_editTicketPopupContainer.active {
+.tx_editTicketPopupContainer.tx_popupActive {
     opacity: 1;
     pointer-events: auto;
     transition: .3s ease;
