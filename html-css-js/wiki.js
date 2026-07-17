@@ -128,6 +128,7 @@ async function setWiki() {
     progGuts.replaceWith(main_container); 
 
      renderToC(treeJSON); 
+<<<<<<< HEAD
 
 
     // const isAuthorized = await fetchCurrentUserPermissions() >= 6; // Is a boolean
@@ -139,6 +140,8 @@ async function setWiki() {
 
     // console.log(isAuthorized)
    
+=======
+>>>>>>> 6b303a5 (Wiki page can now be edited.)
 }
 
 // Table of Contents (ToC)
@@ -147,6 +150,7 @@ async function setWiki() {
 
 function renderToC(treeJSON) {
     let tocFieldset = document.getElementById("toc_fieldset"); 
+<<<<<<< HEAD
     let buttonHTML = "";
     tocFieldset.innerHTML = `
         <legend> Table of Contents </legend>
@@ -155,11 +159,21 @@ function renderToC(treeJSON) {
        ` <button class="file-btn" id=${"Root"} data-path="${""}" onClick="uploadNewFile(this)">📄</button>
         <button class="folder-btn" id=${"Root"} data-path="${""}" onClick="uploadNewFolder(this)">📁</button>`
         :"" } 
+=======
+    tocFieldset.innerHTML = `
+        <legend> Table of Contents </legend>
+        ${parseTreeToC(treeJSON.tree)}
+>>>>>>> 6b303a5 (Wiki page can now be edited.)
     `;
     return;
 }
 
+<<<<<<< HEAD
  function parseTreeToC(root) {
+=======
+
+function parseTreeToC(root) {
+>>>>>>> 6b303a5 (Wiki page can now be edited.)
     if (!root) return;
     let buttonHTML = "";
     let addButtonHTML = "";
@@ -170,7 +184,12 @@ function renderToC(treeJSON) {
         retHTML += dfs(child)
      }
      return retHTML;
+<<<<<<< HEAD
 
+=======
+    
+   
+>>>>>>> 6b303a5 (Wiki page can now be edited.)
     function dfs(node){
         let buttonHTML = "";
         let childHTML = "";
@@ -180,7 +199,11 @@ function renderToC(treeJSON) {
         buttonHTML = deleteButton(node);
         retHTML = ` 
           <div id ='${node.name}' data-isOpen="false">
+<<<<<<< HEAD
            <p class="toc-item" onClick="clickableFiles('${node.file_path}')" data-path="${node.file_path}">${node.name}${(true) ? buttonHTML : " "}</p>
+=======
+           <p class="toc-item" onClick="clickableFiles('${node.file_path}')" data-path="${node.file_path}">${node.name}${buttonHTML}</p>
+>>>>>>> 6b303a5 (Wiki page can now be edited.)
            </div>
         `;
         return retHTML; 
@@ -192,7 +215,11 @@ function renderToC(treeJSON) {
              retHTML =  `
                 <div id="${node.name}" data-isOpen="false" class="toc-folder"><p class="toc-item"
                 onClick="clickableFiles('${node.file_path}')"
+<<<<<<< HEAD
                 data-path="${node.file_path}">${node.name} ${(true) ? addButtonHTML + deleteButtonHTML + addFolderButtonHTML : " "}</p>
+=======
+                data-path="${node.file_path}">${node.name}${addButtonHTML}${addFolderButtonHTML}${deleteButtonHTML}</p>
+>>>>>>> 6b303a5 (Wiki page can now be edited.)
                 <div class="toc-children" style="margin-left: 20px; display:none;">${childHTML}</div>
                 </div>
             `;
@@ -206,7 +233,11 @@ function renderToC(treeJSON) {
             retHTML =  `
                 <div id="${node.name}" data-isOpen="false" class="toc-folder"><p class="toc-item"
                 onClick="clickableFiles('${node.file_path}')"
+<<<<<<< HEAD
                 data-path="${node.file_path}">${node.name}${(true) ?  buttonHTML : " "}</p>
+=======
+                data-path="${node.file_path}">${node.name}${buttonHTML}</p>
+>>>>>>> 6b303a5 (Wiki page can now be edited.)
                 <div class="toc-children" style="margin-left: 20px; display:none;">${childHTML}</div>
                 </div>
             `;
@@ -243,7 +274,10 @@ function clickableFiles(path) { // This is no longer a `this` element (it can be
     let w_viwer = document.getElementById("w_viwer");
 }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 6b303a5 (Wiki page can now be edited.)
 function findPath(node, path) {
     if(node.file_path === path) return node;
 
@@ -317,6 +351,7 @@ function hideDirPopup(){
 
 
 function addFileButton(node){
+<<<<<<< HEAD
    return `<button class="file-btn" id="${node.name}" data-path="${node.file_path}" onClick="uploadNewFile(this)">📄</button>`
 }
 function addFolderButton(node){
@@ -325,6 +360,16 @@ function addFolderButton(node){
 
 function deleteButton(node){
     return `<button class="delete-btn" id="${node.name}" data-path="${node.file_path}" onClick="deleteElement(this)">❌</button>`
+=======
+   return `<button class="file-btn" id=${node.name} data-path="${node.file_path}" onClick="uploadNewFile(this)">📄</button>`
+}
+function addFolderButton(node){
+   return `<button class="folder-btn" id=${node.name} data-path="${node.file_path}" onClick="uploadNewFolder(this)">📁</button>`
+}
+
+function deleteButton(node){
+    return `<button class="delete-btn" id=${node.name} data-path="${node.file_path}" onClick="deleteElement(this)">❌</button>`
+>>>>>>> 6b303a5 (Wiki page can now be edited.)
 }
 // Article Viewer 
 //-------------------------------------------------------------------
