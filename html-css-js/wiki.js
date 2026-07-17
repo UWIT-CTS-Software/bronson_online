@@ -392,42 +392,106 @@ function deleteButton(node){
     
 }
 
-function clickable(target){
-    let treeJSON =  JSON.parse(sessionStorage.getItem('wikiTree'));
-        
-     if (!target) {
-        console.log("Target not found returning");
-        return;
-     }
-  
-        const path = target.dataset.path;
-        console.log("Path:", path)
+// Table of Contents (ToC)
+//-------------------------------------------------------------------
 
-        const node = findPath(treeJSON.tree, path);
-        console.log("Node",node);
 
-        if(!node) {
-            console.log("No node found at given path", path);
-            return;
-        }
-
-        if(Array.isArray(node.children)) {
-            console.log("Clicked Dir", node.name);
-            showDir(node, target);
-        } else if (node.children === null){
-            console.log("Clicked file", node.name);
-            // Load content when I figure out how to do that
-            getWiki_File(path);
-            return;
-       } else {
-        console.log("Something went wrong");
-        return;
-       }
-
-        let w_viwer = document.getElementById("w_viwer");
+function renderToC(treeJSON) {
+    let tocFieldset = document.getElementById("toc_fieldset"); 
+    tocFieldset.innerHTML = `
+        <legend> Table of Contents </legend>
+        ${parseTreeToC(treeJSON.tree)}
+    `;
+    return;
 }
 
-function findPath(node, path){
+
+function parseTreeToC(root) {
+    if (!root) return;
+    let buttonHTML = "";
+    let addButtonHTML = "";
+    let deleteButtonHTML = "";
+    let addFileButtonHTML = "";
+    let retHTML = "";
+     for (let child of root.children) {
+        retHTML += dfs(child)
+     }
+     return retHTML;
+    
+   
+    function dfs(node){
+        let buttonHTML = "";
+        let childHTML = "";
+        let isFile = node.children === null; 
+
+        if(isFile) { // Child is null
+        buttonHTML = deleteButton(node);
+        retHTML = ` 
+          <div id ='${node.name}' data-isOpen="false">
+           <p class="toc-item" onClick="clickableFiles('${node.file_path}')" data-path="${node.file_path}">${node.name}${buttonHTML}</p>
+           </div>
+        `;
+        return retHTML; 
+
+        } else if (node.children.length  === 0) {
+             addButtonHTML = addFileButton(node);
+             deleteButtonHTML = deleteButton(node);
+             addFolderButtonHTML = addFolderButton(node);
+             retHTML =  `
+                <div id="${node.name}" data-isOpen="false" class="toc-folder"><p class="toc-item"
+                onClick="clickableFiles('${node.file_path}')"
+                data-path="${node.file_path}">${node.name}${addButtonHTML}${addFolderButtonHTML}${deleteButtonHTML}</p>
+                <div class="toc-children" style="margin-left: 20px; display:none;">${childHTML}</div>
+                </div>
+            `;
+            return retHTML; 
+            
+        }else { // Directory with contents
+            for (let child of node.children) {
+                childHTML += dfs(child)
+            }
+            buttonHTML = addFileButton(node) + addFolderButton(node);
+            retHTML =  `
+                <div id="${node.name}" data-isOpen="false" class="toc-folder"><p class="toc-item"
+                onClick="clickableFiles('${node.file_path}')"
+                data-path="${node.file_path}">${node.name}${buttonHTML}</p>
+                <div class="toc-children" style="margin-left: 20px; display:none;">${childHTML}</div>
+                </div>
+            `;
+            return retHTML; 
+        }
+    }
+
+}
+
+
+function clickableFiles(path) { // This is no longer a `this` element (it can be if needed, just use single-quotes), it is a string
+
+    let treeJSON =  JSON.parse(sessionStorage.getItem('wikiTree'));
+        
+    if (!path) {
+    return;
+    }
+
+    const node = findPath(treeJSON.tree, path);
+   
+    if(!node) {
+        return;
+    }
+
+    if(Array.isArray(node.children)) {
+        showDir(node, path);
+    } else if (node.children === null){
+        getWiki_File(path);
+    } else {
+        console.log("Something went wrong");
+        return;
+    }
+
+    let w_viwer = document.getElementById("w_viwer");
+}
+
+function findPath(node, path) {
     if(node.file_path === path) return node;
 
     if(Array.isArray(node.children)){
@@ -441,34 +505,78 @@ function findPath(node, path){
     return null;
  }
 
-function showDir(node, targetElement){
-    console.log("showDir Reached");
-
-    if(targetElement.getAttribute("data-isOpen") === "true") {
-        targetElement.setAttribute("data-isOpen", "false");
-        closeDir(targetElement);
-        return;
+function showDir(node, path){
+    let folderDiv = document.querySelector(`[data-path="${path}"]`).parentElement;
+    let childDiv = folderDiv.querySelector(".toc-children");
+    if(folderDiv.dataset.isopen ==="true"){
+        childDiv.style.display="none";
+        folderDiv.dataset.isopen="false";
+       
+    }else {
+        childDiv.style.display="block";
+        folderDiv.dataset.isopen="true";
+    
     }
 
-    let html = `
-     <div id="scrollDir" class ="scrollDir"> 
-     ${node.children.map(child => `<p class="toc-item", onClick="clickable(this)" data-path="${child.file_path}" data-isOpen="false">${child.name}</p>`).join('')} </div>
-    `;
-    targetElement.setAttribute("data-isOpen", "true");
-    return targetElement.insertAdjacentHTML('afterend', html, true);
+   
 }
 
-function closeDir(targetElement){
-    const scrollDir = targetElement.nextElementSibling;
+// Add Wikis Popup 
+//------------------------------------------------------------------
 
-    if (scrollDir && scrollDir.id === "scrollDir"){
-        scrollDir.remove();
-    }
+
+function showWikiPopup(){
+    document.getElementById('w_popup').style.display='block';
+    document.getElementById('wiki_modal').style.display='block';
 }
+
+function hidePopupHTML(){
+    document.getElementById('w_popup').style.display='none';
+    document.getElementById('wiki_modal').style.display='none';
+
+}
+
+function showDeletePopup(){
+    document.getElementById('wd_popup').style.display='block';
+    document.getElementById('wiki_del_modal').style.display='block';
+}
+
+function hideDeletePopup(){
+    document.getElementById('wd_popup').style.display='none';
+    document.getElementById('wiki_del_modal').style.display='none';
+
+}
+
+
+function showFolderPopup(){
+    document.getElementById('wf_popup').style.display='block';
+    document.getElementById('wiki_folder_modal').style.display='block';
+}
+
+function hideDirPopup(){
+    document.getElementById('wf_popup').style.display='none';
+    document.getElementById('wiki_folder_modal').style.display='none';
+
+}
+
+
+
+
+
+function addFileButton(node){
+   return `<button class="file-btn" id=${node.name} data-path="${node.file_path}" onClick="uploadNewFile(this)">📄</button>`
+}
+function addFolderButton(node){
+   return `<button class="folder-btn" id=${node.name} data-path="${node.file_path}" onClick="uploadNewFolder(this)">📁</button>`
+}
+
+function deleteButton(node){
+    return `<button class="delete-btn" id=${node.name} data-path="${node.file_path}" onClick="deleteElement(this)">❌</button>`
+}
+// Article Viewer 
+//-------------------------------------------------------------------
 
  async function getArticleHTML(blob, filename) {
-    // let articles = JSON.parse(sessionStorage.getItem("wikiArticles"));
-    console.log("BLOB:", blob, "FILENAME:", filename);
    
     if (filename.endsWith('.md')){
         
@@ -491,8 +599,6 @@ function closeDir(targetElement){
         return;
         
     } else if (filename.endsWith('.pdf')){
-        // let pdf_file = articles[filename];
-        // console.log("This should be base64",pdf_file)
         let raw_blob = await blob;
         let pdf_blob = new Blob([raw_blob], {type: "application/pdf"});
         const blobUrl = URL.createObjectURL(pdf_blob); 
@@ -513,9 +619,6 @@ function closeDir(targetElement){
          return; 
     } else {
         let text = await blob.text();
-        // let text_blob = new Blob([raw_blob], {type: "text/plain"});
-        // const blobUrl = URL.createObjectURL(text_blob); 
-       
         let html = `
             <fieldset class="wA_fieldset">
                 <legend class='w_legend'> 
@@ -535,10 +638,6 @@ function closeDir(targetElement){
 
     
 }
-
-
-
-
 
 /*
  __        _          _     
