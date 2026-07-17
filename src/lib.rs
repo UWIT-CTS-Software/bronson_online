@@ -1876,6 +1876,7 @@ pub static LOG       : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/output.log")
 pub static LOGIN_XML : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/dummy_login.xml");
 pub static STATUS_200: &str = "HTTP/1.1 200 OK";
 pub static STATUS_303: &str = "HTTP/1.1 303 See Other";
+pub static STATUS_400: &str = "HTTP/1.1 400 Bad Request";
 pub static STATUS_401: &str = "HTTP/1.1 401 Unauthorized";
 pub static STATUS_404: &str = "HTTP/1.1 404 Not Found";
 pub static STATUS_500: &str = "HTTP/1.1 500 Internal Server Error";

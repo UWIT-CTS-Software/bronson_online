@@ -48,7 +48,7 @@ use server_lib::{
     jp::{ ping_this, },
     API, APIClient::{ MultiThread, SingleThread, },
     CFM_DIR, WIKI_DIR, /* LOG, */
-    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
+    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_400, STATUS_401, STATUS_404, STATUS_500, 
     SCHD_ERR, DASH_ERR, LDRB_ERR, SPRS_ERR, 
     Database, Terminal, 
     models::{
@@ -64,10 +64,11 @@ use std::{
     io::{ prelude::*, Read, stdout, },
     net::{ TcpListener, IpAddr, Ipv4Addr, },
     fs::{
-        read_dir, metadata,
+        read_dir, metadata, write, remove_file, remove_dir, create_dir,
         File, 
     },
     path::Path,
+    path::PathBuf,
     time::{ Duration, /* SystemTime */},
     string::{ String, },
     sync::{Arc, /*Mutex,*/ RwLock,
@@ -75,6 +76,7 @@ use std::{
     clone::{ Clone, },
     option::{ Option, },
     collections::{ HashMap, HashSet },
+
 };
 use reqwest::{
     Client,
@@ -84,6 +86,7 @@ use log::{ debug, info, warn, error, }; // trace, };
 use cookie::{ /* Cookie, */ CookieJar, /* Key, */ };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
+use serde::Deserialize;
 use regex::Regex;
 use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta, Utc };
 use urlencoding::decode;
@@ -91,6 +94,7 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
 use base64::{Engine as _, engine::general_purpose};
+use base64::decode as b64decode;
 
 extern crate serde;
 extern crate serde_xml_rs;
@@ -1823,8 +1827,7 @@ async fn handle_connection(
         },
 
         "POST /w_file HTTP/1.1" => {
-               let contents = get_file(req.body, WIKI_DIR);
-               println!("{}", contents);
+            let contents = get_file(req.body, WIKI_DIR);
             let mut f = match File::open(&contents) {
                 Ok(file) => file,
                 Err(e) => {
@@ -1853,6 +1856,215 @@ async fn handle_connection(
                     .send_contents(file_buffer)
             
         },
+        "POST /w_upload-json HTTP/1.1" => {
+            #[derive(Deserialize)]
+            struct UploadFile{
+                filename: String, 
+                parentPath: String, 
+                fileblob: String, //base64
+            }
+            //req.body was comming in as &Vec<u8>
+
+            let body_to_string = match String::from_utf8(req.body.clone()) {
+                 Ok(s) => s,
+                Err(e) => {
+                     error!("Invalid UTF-8 recived: {}", e);
+                    return Response::new()
+                         .status(STATUS_400)
+                         .send_contents(format!("Invalid UTF-8: {}", e).into())
+                         .build();
+
+                }
+            };
+
+            let fileObj: UploadFile = match serde_json::from_str(&body_to_string){
+                Ok(obj) => obj,
+                Err(e) => {
+                    error!("Invalid JSON recived: {}", e);
+                    return Response::new()
+                    .status(STATUS_400)
+                    .insert_header("Content-Type", "application/json")
+                    .send_contents(json!({  
+                            "response": "Unauthorized"
+                        }).to_string().into())
+                    .build();
+
+                }
+            };
+
+            let decode_bytes = match b64decode(&fileObj.fileblob) {
+                Ok(bytes) => bytes, 
+                Err(e) => {
+                    error!("Invalid base64: {}", e); 
+                     return Response::new()
+                         .status(STATUS_400)
+                         .insert_header("Content-Type", "application/json")
+                          .send_contents(json!({ 
+                            "response": "Unauthorized"
+                        }).to_string().into())
+                        .build();
+                }
+            };
+
+            let wiki_dirs = WIKI_DIR;
+            let relative_path = fileObj.parentPath.to_string() + &fileObj.filename;
+            let full_path = wiki_dirs.to_string() + (&relative_path);
+            let full_path_buf = PathBuf::from(full_path.clone());
+
+            let write_file = write(&full_path_buf, decode_bytes);
+            if write_file.is_err() {
+                let e = write_file.unwrap_err();
+                error!("Failed to write file: {}", e);
+                return Response::new()
+                    .status(STATUS_500)
+                    .send_contents(format!("Write error: {}", e).into())
+                    .build();
+            }
+
+            let response_json = serde_json::json!({
+                "status": "ok",
+                "saved_to": full_path_buf.to_string_lossy()
+            });
+
+            Response::new()
+                .status(STATUS_200)
+                .insert_header("Content-Type", "application/json")
+                .send_contents(response_json.to_string().into())
+        },
+
+        "POST /w_upload_folder HTTP/1.1" => {
+              #[derive(Deserialize)]
+            struct UploadDir {
+                filename: String, 
+                parentPath: String, 
+            }
+            //req.body was comming in as &Vec<u8>
+
+            let body_to_string = match String::from_utf8(req.body.clone()) {
+                 Ok(s) => s,
+                Err(e) => {
+                     error!("Invalid UTF-8 recived: {}", e);
+                    return Response::new()
+                         .status(STATUS_400)
+                         .send_contents(format!("Invalid UTF-8: {}", e).into())
+                         .build();
+
+                }
+            };
+
+            let folderObj: UploadDir = match serde_json::from_str(&body_to_string){
+                Ok(obj) => obj,
+                Err(e) => {
+                    error!("Invalid JSON recived: {}", e);
+                    return Response::new()
+                    .status(STATUS_400)
+                    .insert_header("Content-Type", "application/json")
+                    .send_contents(json!({  
+                            "response": "Unauthorized"
+                        }).to_string().into())
+                    .build();
+                }
+            };
+
+            let wiki_dirs = WIKI_DIR;
+            let relative_path = folderObj.parentPath.to_string() + &folderObj.filename;
+            let full_path = wiki_dirs.to_string() + (&relative_path);
+            let full_path_buf = PathBuf::from(full_path.clone());
+
+
+            let create_dir = create_dir(&full_path_buf);
+            if create_dir.is_err() {
+                let e = create_dir.unwrap_err();
+                error!("Failed to create dir: {}", e);
+                return Response::new()
+                    .status(STATUS_500)
+                    .send_contents(format!("Error: {}", e).into())
+                    .build();
+            }
+
+            let response_json = serde_json::json!({
+                "status": "ok",
+                "saved_to": full_path_buf.to_string_lossy()
+            });
+
+            Response::new()
+                .status(STATUS_200)
+                .insert_header("Content-Type", "application/json")
+                .send_contents(response_json.to_string().into())
+        },
+
+          
+
+
+        "DELETE /w_delete HTTP/1.1" => {
+            #[derive(Deserialize)]
+            struct FilePath {
+                filepath: String
+            }
+              let body_to_string = match String::from_utf8(req.body.clone()) {
+                 Ok(s) => s,
+                Err(e) => {
+                     error!("Invalid UTF-8 recived: {}", e);
+                    return Response::new()
+                         .status(STATUS_400)
+                         .send_contents(format!("Invalid UTF-8: {}", e).into())
+                         .build();
+
+                }
+            };
+
+
+            let received_path: FilePath = match serde_json::from_str(&body_to_string.clone()){
+                Ok(obj) => obj,
+                Err(e) => {
+                    error!("Invalid JSON recived: {}", e);
+                    return Response::new()
+                    .status(STATUS_400)
+                    .insert_header("Content-Type", "application/json")
+                    .send_contents(json!({  
+                            "response": "Unauthorized"
+                        }).to_string().into())
+                    .build();
+
+                }
+            };
+
+            let wiki_dirs = WIKI_DIR;
+            let relative_path = received_path.filepath.to_string();
+            let full_path = wiki_dirs.to_string() + (&relative_path);
+            let full_path_buf = PathBuf::from(full_path.clone());
+            if full_path_buf.is_dir(){
+                let delete_dir = remove_dir(&full_path_buf);
+                if delete_dir.is_err() {
+                    let e = delete_dir.unwrap_err();
+                    error!("Failed to delete directory: {}", e);
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents(format!("Delete error: {}", e).into())
+                        .build();
+                }
+             } else {
+                let delete_file = remove_file(&full_path_buf);
+                if delete_file.is_err() {
+                    let e = delete_file.unwrap_err();
+                    error!("Failed to delete file: {}", e);
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents(format!("Delete error: {}", e).into())
+                        .build();
+                    }
+                 }
+
+             let response_json = serde_json::json!({
+                "status": "ok",
+             });
+
+            Response::new()
+                .status(STATUS_200)
+                .insert_header("Content-Type", "application/json")
+                .send_contents(response_json.to_string().into())
+
+        }, 
 
         // Ticket Description
         start_line if start_line.starts_with("GET /ticket/description/") && start_line.ends_with(" HTTP/1.1") => {
@@ -2634,7 +2846,6 @@ fn build_tree(root: &str, needs_content: bool, blacklist: HashSet<&str>) -> Resu
             
         }
         let relative_path = item.replace(root, "./");
-        println!("path looks like this{}",relative_path);
         tree_root.push(build_subtree(&relative_path, root, blacklist.clone()));
          
     }
@@ -2658,7 +2869,6 @@ fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
         .unwrap_or("")
         .to_string();
         
-    //println!("Path is{}", &(root.to_string() + path));
     let mut node = if is_this_dir(&(root.to_string() + path)) {
         // Folder: children starts as empty vec
         TreeNode::with_name_path(name, path.to_string())
@@ -2703,7 +2913,6 @@ fn get_file(body: Vec<u8>, root: &str) -> String {
     //
     let cfmr_f: CFMRequestFile = serde_json::from_str(&tmp)
         .expect("Err, Failed to grab file");
-    println!("Is there still a root here?{:?}", cfmr_f);
     let filename = cfmr_f
         .filename
         .strip_prefix("Root/")
@@ -3407,7 +3616,6 @@ fn w_tree() -> Vec<u8>  {
        Ok(j)     =>  j,
        Err(m)    => {error!("[Data] - Tree Build FAILED: {}", m); json!([]).to_string() }
      };
-     //println!("JSON TREE {}", json_return.to_string());
     return json_return.to_string().into();
 }
 
