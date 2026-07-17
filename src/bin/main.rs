@@ -53,8 +53,8 @@ use server_lib::{
     CFMRequestFile, TreeNode,
     jp::{ ping_this, },
     API, APIClient::{ MultiThread, SingleThread, },
-    CFM_DIR, WIKI_DIR, TEMP_DIR, /* LOG, */
-    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
+    CFM_DIR, WIKI_DIR, /* LOG, */
+    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_400, STATUS_401, STATUS_404, STATUS_500, 
     SCHD_ERR, DASH_ERR, LDRB_ERR, SPRS_ERR, 
     Database, Terminal, 
     models::{
@@ -71,7 +71,7 @@ use std::{
     net::{ TcpListener, IpAddr, Ipv4Addr, },
     fs::{
         read_dir, metadata, write, remove_file, remove_dir, create_dir,
-        File, OpenOptions, 
+        File, 
     },
     path::Path,
     path::PathBuf,
@@ -82,6 +82,7 @@ use std::{
     clone::{ Clone, },
     option::{ Option, },
     collections::{ HashMap, HashSet },
+
 };
 use reqwest::{
     header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
@@ -98,7 +99,7 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
 use base64::{Engine as _, engine::general_purpose};
-// use base64::decode as b64decode;
+use base64::decode as b64decode;
 
 extern crate serde;
 extern crate serde_xml_rs;
@@ -3121,8 +3122,7 @@ fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
         .unwrap_or("")
         .to_string();
         
-    println!("Path is{}", &(WIKI_DIR.to_string() + path));
-    let mut node = if is_this_dir(&(WIKI_DIR.to_string() + path)) {
+    let mut node = if is_this_dir(&(root.to_string() + path)) {
         // Folder: children starts as empty vec
         TreeNode::with_name_path(name, path.to_string())
     } else {

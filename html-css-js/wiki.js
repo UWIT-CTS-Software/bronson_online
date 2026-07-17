@@ -52,6 +52,7 @@ async function setWiki() {
 
     let w_toc = document.createElement("div");
     w_toc.classList.add('w_toc');
+    w_toc.id = "w_toc";
 
     let article_list_html = await getTocHTML();
     w_toc.innerHTML = article_list_html;
