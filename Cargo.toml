@@ -30,10 +30,8 @@ base64 = "0.22.1"
 marked = "0.3.0"
 serde_derive = "1.0.228"
 serde-xml-rs = "0.8.2"
-=======
 base64 = "0.22.1"
 marked = "0.3.0"
->>>>>>> 0b2da00 (Wiki-Viwer is working for, md, txt, and pdf files.)
 
 # Default dev level options
 [profile.dev]
