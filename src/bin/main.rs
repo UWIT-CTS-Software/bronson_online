@@ -50,7 +50,6 @@ use server_lib::{
     ThreadPool, ThreadSchedule, TaskSchedule, PingRequest, 
     Building, 
     CFMRequestFile, TreeNode,
-    CFMRequestFile, TreeNode,
     jp::{ ping_this, },
     API, APIClient::{ MultiThread, SingleThread, },
     CFM_DIR, WIKI_DIR, /* LOG, */
@@ -2120,11 +2119,7 @@ async fn handle_connection(
             let create_dir = create_dir(&full_path_buf);
             if create_dir.is_err() {
                 let e = create_dir.unwrap_err();
-<<<<<<< HEAD
-                error!("Failed to create dir: {}", e,);
-=======
                 error!("Failed to create dir: {}", e);
->>>>>>> 6b303a5 (Wiki page can now be edited.)
                 return Response::new()
                     .status(STATUS_500)
                     .send_contents(format!("Error: {}", e).into())
