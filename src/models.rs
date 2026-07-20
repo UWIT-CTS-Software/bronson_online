@@ -257,6 +257,7 @@ pub struct DB_Ticket {
     pub modified_date: String,
     pub modified_full_name: String,
     pub requestor_name: String,
+    pub requestor_first_name: String,
     pub requestor_email: String,
     pub requestor_phone: String,
     pub days_old: i16,

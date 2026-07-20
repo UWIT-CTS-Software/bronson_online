@@ -47,6 +47,14 @@ p {
     font-size: medium;
 }
 
+hr {
+    display: block;
+    background-color: rgb(224, 193, 108);
+    width: 100%;
+    height: 1px;
+    border: none;
+}
+
 strong {
     color: rgb(236, 200, 101);
     text-align: center;
@@ -1822,12 +1830,12 @@ td.mobile_th {
 
 .dismissAllButtonConfirm {
     float: left;
-    margin: 0px 0px 3px 5px;
+    margin: 10px 0px 5px 7px;
 }
 
 .cancelPopupButton {
     float: right;
-    margin: 0px 5px 3px 0px;
+    margin: 10px 7px 5px 0px;
 }
 
 .tx_ticketPopupContainer {
@@ -1916,6 +1924,8 @@ td.mobile_th {
 .tx_newTicketPopupContainer .tx_popupBox {
     width: 500px;
     height: fit-content;
+    max-height: 65%;
+    overflow-y: scroll;
     border: 3px solid rgb(224, 193, 108);
     background: rgb(60, 60, 60);
     border-radius: 6px;
@@ -1947,14 +1957,27 @@ td.mobile_th {
 }
 
 .tx_editTicketPopupContainer .tx_popupBox {
-    width: 420px;
+    width: 500px;
     height: fit-content;
+    max-height: 65%;
+    overflow-y: scroll;
     border: 3px solid rgb(224, 193, 108);
     background: rgb(60, 60, 60);
     border-radius: 6px;
     margin-top: 125px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
+.tx_editTicketPopupContainer .tx_popupBox::-webkit-scrollbar {
+    display: block !important;
+    width: 8px;
+}
+.tx_editTicketPopupContainer .tx_popupBox::-webkit-scrollbar-thumb {
+    background: rgb(224, 193, 108);
+    border-radius: 4px;
+}
+.tx_editTicketPopupContainer .tx_popupBox::-webkit-scrollbar-track {
+    background: transparent;
+} 
 
 .tx_popupBox.mobile {
     width: 551px;
@@ -1999,7 +2022,7 @@ td.mobile_th {
 
 .tx_popupBox select {
     margin: 5px;
-    width: 98%;
+    width: 97%;
 }
 
 .tx_popupWrapper {
@@ -2131,13 +2154,25 @@ td.mobile_th {
 }
 
 .popup_linkToTicket {
-    float: left;
-    margin: 0px 0px 5px 5px;
+    float: right;
+    margin: 0px 7px 5px 0px;
 }
 
 .popup_commentsButton {
-    float: left;
-    margin: 0px 0px 5px 7px;
+    float: right;
+    margin: 0px 7px 5px 0px;
+}
+
+#tx_emailCheckbox {
+    margin: 10px 0 0 10px;
+}
+
+#tx_applyChangesButton {
+    margin: 10px 0px 5px 7px
+}
+
+#tx_createTicketButton {
+    margin: 10px 0px 5px 7px;
 }
 
 .tx_comment_header {
@@ -2190,18 +2225,8 @@ td.mobile_th {
 }
 
 .popup_editTicket {
-    display: block;
-    margin: 5px auto;
-}
-
-.popup_sendToASU {
-    float: right;
-    margin: 0px 7px 5px 0px;
-}
-
-.popup_sendToHelpDesk {
-    float: right;
-    margin: 0px 7px 5px 0px;
+    float: left;
+    margin: 0px 0px 5px 7px;
 }
 
 .tx_adjacent {
@@ -2244,11 +2269,6 @@ p.tx_popup_DaysOld {
 
 .tx_popup_Requestor {
     margin-top: 20px;
-}
-
-p.tx_popup_Title {
-    border-bottom: 1px solid rgb(224, 193, 108);
-    padding-bottom: 15px;
 }
 
 p.tx_Description {

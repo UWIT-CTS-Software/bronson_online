@@ -20,8 +20,6 @@ Notes:
         
 TOC:
     Write to TDX Functions (unimplemented for right now):
-    - sendToASU()
-    - sendToHelpDesk()
     - takeIncident()
     
     Popups:
@@ -79,18 +77,6 @@ TODO:
 
     /* -------------------- Write to TDX Functions -------------------- */
 
-// Macro for assigning a ticket to ASU
-// For Later - When we have write access to TDX API
-function sendToASU() {
-    alert("This feature is not yet implemented.");
-}
-
-// Macro for assigning a ticket to the Help Desk
-// For Later - When we have write access to TDX API
-function sendToHelpDesk() {
-    alert("This feature is not yet implemented.");
-}
-
 // Macro for taking Responsibility for a Ticket
 // For Later - When we have shibboleth
 function takeResponsibility() {
@@ -143,7 +129,7 @@ function newTicketPopup() {
             <br class="tx_createTicketBr">
             <div>
                 <label for="responsibility">Responsibility:</label>
-                <select name="responsibility" id="tx_createTicket_CreatedBy">
+                <select name="responsibility" id="tx_createTicket_Responsibility">
                     <option value="cts_ID">CTS</option>
                     <option value="helpdesk_ID">Help Desk</option>
                     <option value="asu_ID">ASU</option>
@@ -158,6 +144,9 @@ function newTicketPopup() {
     // Hide terminal if open
     const terminal = document.getElementById('terminal');
     terminal.style.display = 'none';
+
+    // Disable scrolling the main body when popup is active
+    document.body.classList.add('tx_no-scroll');
 }
 // Looks at new ticket popup, enforces required fields are not empty, and sends request to create ticket
 async function createTicket(container) {
@@ -190,13 +179,14 @@ async function createTicket(container) {
 
     // Package data and send to backend
     const jsonBody = {
-        "Title": titleField.innerText,
-        "Description": descriptionField.innerText,
-        "RequestorUid": requestorField.value,
-        "CreatedByUid": createdByField.value,
-        "ResponsibilityUid": responsibilityField.value
-    }; // TODO: Ensure these are actually what the fields are called in the TDX JSON
+        "Title": titleField.value.trim(),
+        "Description": descriptionField.value.trim(),
+        "RequestorUid": requestorField.value.trim(),
+        "CreatedUid": createdByField.value.trim(),
+        "ResponsibleUid": responsibilityField.value.trim()
+    };
     // TODO: Send json to backend
+    console.log(jsonBody);
 
     hideCurrentPopup(true);
 }
@@ -217,13 +207,18 @@ async function editTicketPopup(ticketID, ticketPopupContainer) {
     // Scrub HTML tags out
     description = description.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n+/g, '\n').trim();
 
-    const emailPreviewExample = `Hello ${ticket.RequestorName},
+    const commentsPreview = `Enter your comments... (This field is Required)
+    
+Notes you make here will NOT be sent to the Requestor.
+    `;
+    const emailPreview = `Hello ${ticket.RequestorFirstName},
 
-(Write your email to ${ticket.RequestorName} here, summarizing relevant information like fixes/issues/further actions...)
+(Write your email to ${ticket.RequestorFirstName} here, summarizing relevant information like fixes/issues/further actions...)
 
 Thanks,
+
 <Your Name>
-Classroom Technology Services`;
+Classroom Technology Services (CTS)`;
 
     editTicketPopupContainer.classList.add('tx_popupActive');
     editTicketPopupContainer.innerHTML = `
@@ -232,7 +227,7 @@ Classroom Technology Services`;
             <p>ID: ${ticket.ID}</p>
             <div>
                 <label for="status">Status:</label>
-                <select name="status" id="tx_createTicket_CreatedBy">
+                <select name="status" id="tx_editTicket_Status">
                     <option value="new_ID">New</option>
                     <option value="inprocess_ID">In Process</option>
                     <option value="closed_ID">Closed</option>
@@ -240,28 +235,29 @@ Classroom Technology Services`;
                 </select>
             </div>
             <br class="tx_createTicketBr">
-            <p class="tx_createTicketText">Title: </p>
-            <textarea id="tx_createTicket_Title" class="tx_createTicketTextarea" maxlength="80" placeholder="Ex: IT 173 - My Issue (This field is Required)">${ticket.Title}</textarea>
+            <p class="tx_editTicketText">Title: </p>
+            <textarea id="tx_editTicket_Title" class="tx_createTicketTextarea" maxlength="80" placeholder="Ex: IT 173 - My Issue (This field is Required)">${ticket.Title}</textarea>
             <br class="tx_createTicketBr">
             <p class="tx_createTicketText">Description:</p>
-            <textarea readonly id="tx_createTicket_Description" class="tx_createTicketTextarea" rows="8" placeholder="Explain your Ticket... (This field is Required)">${description}</textarea>
+            <p id="tx_editTicket_Description">${description}</p>
             <br class="tx_createTicketBr">
             <div>
                 <label for="responsibility">Responsibility:</label>
-                <select name="responsibility" id="tx_createTicket_CreatedBy">
+                <select name="responsibility" id="tx_editTicket_Responsibility">
                     <option value="cts_ID">CTS</option>
                     <option value="helpdesk_ID">Help Desk</option>
                     <option value="asu_ID">ASU</option>
                 </select>
             </div>
             <br class="tx_createTicketBr">
-            <p class="tx_createTicketText">Comments:</p>
-            <textarea id="tx_createTicket_Comments" class="tx_createTicketTextarea" rows="4" placeholder="Enter your comments..."></textarea>
+            <p class="tx_createTicketText">Notes (Private):</p>
+            <textarea id="tx_editTicket_Comments" class="tx_createTicketTextarea" rows="6" placeholder="${commentsPreview}"></textarea>
             <br class="tx_createTicketBr">
-            <p class="tx_createTicketText">Email Requestor (${ticket.RequestorName}):</p>
-            <textarea id="tx_createTicket_Description" class="tx_createTicketTextarea" rows="8" placeholder="${emailPreviewExample}"></textarea>
+            <input id="tx_emailCheckbox" type="checkbox" id="email" name="email" onClick="toggleEmailRequestor(this)"></input>
+            <label class="tx_createTicketText" for="email">Email Requestor (${ticket.RequestorName}):</label>
+            <textarea id="tx_editTicket_Email" class="tx_createTicketTextarea" style="display: none;" rows="12" placeholder="${emailPreview}"></textarea>
             <br class="tx_createTicketBr">
-            <button id="tx_applyChangesButton" onClick="applyChanges()">Apply Changes</button>
+            <button id="tx_applyChangesButton" onClick="applyChanges(${ticketID})">Apply Changes</button>
             <button class="cancelPopupButton" onClick="hideCurrentPopup()">Cancel</button>
         </div>
     `;
@@ -269,10 +265,69 @@ Classroom Technology Services`;
     // Hide terminal if open
     const terminal = document.getElementById('terminal');
     terminal.style.display = 'none';
+
+    // Disable scrolling the main body when popup is active
+    document.body.classList.add('tx_no-scroll');
+}
+// Toggles whether or not the requestor will emailed
+function toggleEmailRequestor(checkbox) {
+    const textfield = document.getElementById("tx_editTicket_Email");
+    if (checkbox.checked) {
+        textfield.style.display = '';
+    } else {
+        textfield.style.display = 'none';
+        textfield.value = ""; // Clear any text that was input
+    }
 }
 // Looks at edit ticket popup, enforces required fields are not empty, and sends request to edit ticket
-async function applyChanges(container) {
+async function applyChanges(ticketID) {
+    // Ensure required fields are filled out
+    const statusField = document.getElementById("tx_editTicket_Status");
+    const titleField = document.getElementById("tx_editTicket_Title");
+    const responsibilityField = document.getElementById("tx_editTicket_Responsibility");
+    const commentsFields = document.getElementById("tx_editTicket_Comments");
+    const emailCheckbox = document.getElementById("tx_emailCheckbox");
+    const emailRequestorField = document.getElementById("tx_editTicket_Email");
 
+    let canContinue = true;
+
+    // Title
+    if (titleField.value === "") {
+        canContinue = false;
+        titleField.classList.add("tx_textareaRequired");
+    } else {
+        titleField.classList.remove("tx_textareaRequired");
+    }
+    // Comments
+    if (commentsFields.value === "") {
+        canContinue = false;
+        commentsFields.classList.add("tx_textareaRequired");
+    } else {
+        commentsFields.classList.remove("tx_textareaRequired");
+    }
+    // Email Requestor
+    if (emailCheckbox.checked && emailRequestorField.value === "") {
+        canContinue = false;
+        emailRequestorField.classList.add("tx_textareaRequired");
+    } else {
+        emailRequestorField.classList.remove("tx_textareaRequired");
+        emailRequestorField.innerText = "";
+    }
+
+    // Stops here if any required fields are empty
+    if (!canContinue) return;
+
+    // Package data and send to backend
+    const jsonBody = {
+        "ID": ticketID,
+        "StatusName": statusField.value.trim(),
+        "Title": titleField.value.trim(),
+        "ResponsibleUid": responsibilityField.value.trim(),
+        "comments": commentsFields.value.trim(),
+        "email_to_requestor": emailRequestorField.value.trim() // Pass "" to imply no email will be sent
+    };
+    // TODO: Send json to backend
+    console.log(jsonBody);
 
     hideCurrentPopup(true);
 }
@@ -339,6 +394,9 @@ function dismissAllPopup() {
     // Hide terminal if open
     const terminal = document.getElementById('terminal');
     terminal.style.display = 'none';
+
+    // Disable scrolling the main body when popup is active
+    document.body.classList.add('tx_no-scroll');
 }
 
 // Dismisses the "What Changed" box in the popup
@@ -595,14 +653,21 @@ async function showTicket(ticket) {
         ticketPopupContainer.innerHTML = `
             <div class="tx_popupWrapper ${isMobile ? "mobile mobile_tx_font" : ""}">
                 <div class="tx_popupBox ${isMobile ? "mobile" : ""}">
-                <span>${ticket.Title || "No Title"}</span>
-                <button class="popup_closeButton" onClick="hideCurrentPopup()">X</button>
-                <div class="tx_adjacent">
-                <p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
-                    <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
-                    <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
-                    <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
+                    <span>${ticket.Title || "No Title"}</span>
+                    <button class="popup_closeButton" onClick="hideCurrentPopup()">X</button>
+                    <div class="tx_adjacent">
+                        <p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
+                        <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p>
+                    </div>
+                    <div class="tx_adjacent">
+                        <p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
+                        <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p>
+                    </div>
                     <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
+                    <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
+                        <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
+                    </a>
+                    <hr>
                     <button class="popup_toggleButton ${isMobile ? "mobile_tx_button" : ""}" onClick="toggleDetails(${ticket.ID})">Description</button>
                     <p class="tx_popup_Requestor tx_textwrap">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
                     <p class="tx_popup_Responsible tx_textwrap">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED <button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>`} || ${ticket.ResponsibleGroupName || ""}</p>
@@ -613,12 +678,7 @@ async function showTicket(ticket) {
                     <p class="tx_popup_Created tx_textwrap">Date Created: ${ticket.CreatedDate || ""} || Created by: ${ticket.CreatedFullName || ""}</p>
                     <p class="tx_popup_Modified tx_textwrap">Last Modified: ${ticket.ModifiedDate || ""} || Modified by: ${ticket.ModifiedFullName || ""}</p>
                     ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
-                    <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
-                        <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
-                    </a>
-                    <button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID}, ${ticketPopupContainer})">Edit Ticket</button>
-                    <button disabled class="popup_sendToASU ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToASU()">Send to ASU</button>
-                    <button disabled class="popup_sendToHelpDesk ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToHelpDesk()">Send to Help Desk</button>
+                    <button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID}, this.closest('.tx_ticketPopupContainer'))">Edit Ticket</button>
                 </div>
                 ${sideContent ? `<div class="tx_sideContent">${sideContent}</div>` : ''}
             </div>
@@ -631,26 +691,28 @@ async function showTicket(ticket) {
         ticketPopupContainer.innerHTML = `
             <div class="tx_popupWrapper ${isMobile ? "mobile mobile_tx_font" : ""}">
                 <div class="tx_popupBox ${isMobile ? "mobile" : ""}">
-                <span>${ticket.Title || "No Title"}</span>
-                ${isMobile ? "" : `<button class="popup_closeButton" onClick="hideCurrentPopup()">X</button>`}
-                <div class="tx_adjacent">
-                    <p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
-                    <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
+                    <span>${ticket.Title || "No Title"}</span>
+                    ${isMobile ? "" : `<button class="popup_closeButton" onClick="hideCurrentPopup()">X</button>`}
+                    <div class="tx_adjacent">
+                        <p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
+                        <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p>
+                    </div>
                     <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
-                    <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
+                        <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p>
+                    </div>
                     <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
+                    <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
+                        <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
+                    </a>
+                    <br>
+                    <hr>
                     <button class="popup_toggleButton ${isMobile ? "mobile_tx_button" : ""}" onClick="toggleDetails(${ticket.ID})">Details</button>
                     <p class="tx_popup_Requestor tx_textwrap">Requestor: ${ticket.RequestorName || ""}</p>
                     <p class="tx_popup_contact tx_textwrap">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
                     <p class="tx_popup_Responsible tx_textwrap${isMobile ? "mobile_tx_button" : ""}">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED <button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>`} || ${ticket.ResponsibleGroupName || ""}</p>
                     <p class="tx_Description">${description || "--- No Description Provided ---"}</p>
                     ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
-                    <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
-                        <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
-                    </a>
                     <button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID}, this.closest('.tx_ticketPopupContainer'))">Edit Ticket</button>
-                    <button disabled class="popup_sendToASU ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToASU()">Send to ASU</button>
-                    <button disabled class="popup_sendToHelpDesk ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToHelpDesk()">Send to Help Desk</button>
                 </div>
                 ${sideContent ? `<div class="tx_sideContent">${sideContent}</div>` : ''}
             </div>
