@@ -239,7 +239,7 @@ Classroom Technology Services (CTS)`;
             <textarea id="tx_editTicket_Title" class="tx_createTicketTextarea" maxlength="80" placeholder="Ex: IT 173 - My Issue (This field is Required)">${ticket.Title}</textarea>
             <br class="tx_createTicketBr">
             <p class="tx_createTicketText">Description:</p>
-            <p id="tx_editTicket_Description">${description}</p>
+            <p class="tx_Description" id="tx_editTicket_Description">${description}</p>
             <br class="tx_createTicketBr">
             <div>
                 <label for="responsibility">Responsibility:</label>
