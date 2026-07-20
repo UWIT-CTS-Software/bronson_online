@@ -476,7 +476,7 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
                     cfm_blacklist.insert("txt");
                     cfm_blacklist.insert("xlsx");
 
-                    let json_return = match build_tree(CFM_DIR, false, cfm_blacklist) {
+                    let json_return = match build_tree(CFM_DIR, cfm_blacklist) {
                         Ok(j)     =>  j,
                         Err(m)    => {error!("[Data] - Tree Build FAILED: {}", m); json!([]).to_string() }
                     };
@@ -1975,7 +1975,7 @@ async fn handle_connection(
             let create_dir = create_dir(&full_path_buf);
             if create_dir.is_err() {
                 let e = create_dir.unwrap_err();
-                error!("Failed to create dir: {}", e);
+                error!("Failed to create dir: {}", e,);
                 return Response::new()
                     .status(STATUS_500)
                     .send_contents(format!("Error: {}", e).into())
@@ -2831,7 +2831,7 @@ fn get_dir_contents(path: &str) -> Vec<String> {
 */
 
 // build_tree() - build virtual tree of files and directories and store in database as JSON
-fn build_tree(root: &str, needs_content: bool, blacklist: HashSet<&str>) -> Result<String, String> {
+fn build_tree(root: &str, blacklist: HashSet<&str>) -> Result<String, String> {
     let mut tree_root: TreeNode = TreeNode::with_name_path("Root", "./");
 
     let dirs = get_dir_contents(root);
@@ -3614,7 +3614,7 @@ fn w_build_articles() -> Vec<u8> {
 
 fn w_tree() -> Vec<u8>  {
     let mut wiki_blacklist = HashSet::new();
-    let json_return = match build_tree(WIKI_DIR, false, wiki_blacklist) {
+    let json_return = match build_tree(WIKI_DIR, wiki_blacklist) {
        Ok(j)     =>  j,
        Err(m)    => {error!("[Data] - Tree Build FAILED: {}", m); json!([]).to_string() }
      };

@@ -128,6 +128,17 @@ async function setWiki() {
     progGuts.replaceWith(main_container); 
 
      renderToC(treeJSON); 
+
+
+    // const isAuthorized = await fetchCurrentUserPermissions() >= 6; // Is a boolean
+    // const adminOnlyHTML = isAuthorized ? `
+    //     <div>
+    //         your content here
+    //     </div>
+    // ` : ""; // If not authorized, return nothing
+
+    // console.log(isAuthorized)
+   
 }
 
 // Table of Contents (ToC)
@@ -136,15 +147,19 @@ async function setWiki() {
 
 function renderToC(treeJSON) {
     let tocFieldset = document.getElementById("toc_fieldset"); 
+    let buttonHTML = "";
     tocFieldset.innerHTML = `
         <legend> Table of Contents </legend>
         ${parseTreeToC(treeJSON.tree)}
+        ${(true) ? 
+       ` <button class="file-btn" id=${"Root"} data-path="${""}" onClick="uploadNewFile(this)">📄</button>
+        <button class="folder-btn" id=${"Root"} data-path="${""}" onClick="uploadNewFolder(this)">📁</button>`
+        :"" } 
     `;
     return;
 }
 
-
-function parseTreeToC(root) {
+ function parseTreeToC(root) {
     if (!root) return;
     let buttonHTML = "";
     let addButtonHTML = "";
@@ -155,8 +170,7 @@ function parseTreeToC(root) {
         retHTML += dfs(child)
      }
      return retHTML;
-    
-   
+
     function dfs(node){
         let buttonHTML = "";
         let childHTML = "";
@@ -166,7 +180,7 @@ function parseTreeToC(root) {
         buttonHTML = deleteButton(node);
         retHTML = ` 
           <div id ='${node.name}' data-isOpen="false">
-           <p class="toc-item" onClick="clickableFiles('${node.file_path}')" data-path="${node.file_path}">${node.name}${buttonHTML}</p>
+           <p class="toc-item" onClick="clickableFiles('${node.file_path}')" data-path="${node.file_path}">${node.name}${(true) ? buttonHTML : " "}</p>
            </div>
         `;
         return retHTML; 
@@ -178,7 +192,7 @@ function parseTreeToC(root) {
              retHTML =  `
                 <div id="${node.name}" data-isOpen="false" class="toc-folder"><p class="toc-item"
                 onClick="clickableFiles('${node.file_path}')"
-                data-path="${node.file_path}">${node.name}${addButtonHTML}${addFolderButtonHTML}${deleteButtonHTML}</p>
+                data-path="${node.file_path}">${node.name} ${(true) ? addButtonHTML + deleteButtonHTML + addFolderButtonHTML : " "}</p>
                 <div class="toc-children" style="margin-left: 20px; display:none;">${childHTML}</div>
                 </div>
             `;
@@ -192,7 +206,7 @@ function parseTreeToC(root) {
             retHTML =  `
                 <div id="${node.name}" data-isOpen="false" class="toc-folder"><p class="toc-item"
                 onClick="clickableFiles('${node.file_path}')"
-                data-path="${node.file_path}">${node.name}${buttonHTML}</p>
+                data-path="${node.file_path}">${node.name}${(true) ?  buttonHTML : " "}</p>
                 <div class="toc-children" style="margin-left: 20px; display:none;">${childHTML}</div>
                 </div>
             `;
@@ -228,6 +242,7 @@ function clickableFiles(path) { // This is no longer a `this` element (it can be
 
     let w_viwer = document.getElementById("w_viwer");
 }
+
 
 function findPath(node, path) {
     if(node.file_path === path) return node;
@@ -302,14 +317,14 @@ function hideDirPopup(){
 
 
 function addFileButton(node){
-   return `<button class="file-btn" id=${node.name} data-path="${node.file_path}" onClick="uploadNewFile(this)">📄</button>`
+   return `<button class="file-btn" id="${node.name}" data-path="${node.file_path}" onClick="uploadNewFile(this)">📄</button>`
 }
 function addFolderButton(node){
-   return `<button class="folder-btn" id=${node.name} data-path="${node.file_path}" onClick="uploadNewFolder(this)">📁</button>`
+   return `<button class="folder-btn" id="${node.name}" data-path="${node.file_path}" onClick="uploadNewFolder(this)">📁</button>`
 }
 
 function deleteButton(node){
-    return `<button class="delete-btn" id=${node.name} data-path="${node.file_path}" onClick="deleteElement(this)">❌</button>`
+    return `<button class="delete-btn" id="${node.name}" data-path="${node.file_path}" onClick="deleteElement(this)">❌</button>`
 }
 // Article Viewer 
 //-------------------------------------------------------------------
