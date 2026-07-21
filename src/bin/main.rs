@@ -59,7 +59,7 @@ use server_lib::{
     Database, Terminal, 
     models::{
         DB_Room, DB_Building, DB_User, DB_DataElement,
-        DB_IpAddress, DB_Key, DB_Ticket
+        DB_IpAddress, DB_Key, DB_Ticket, DB_Reservation
     },
     LoginSuccess, Reservations, 
 };
@@ -425,6 +425,7 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
     // Not sure if this is even giving performance improvements.
     let jn_st = check_jn_thread();
     let jn_thread = ThreadPool::new(1);
+
 
     // Loop
     //let l_ts = Arc::clone(&thread_schedule);
@@ -2579,13 +2580,16 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
               
                 // Only insert if this is the first entry or if the new timestamp is more recent
                 let location_name = String::from(check["LocationName"].as_str().unwrap());
-                let completed_on = match check["CompletedOn"].as_str().unwrap_or("2000-01-01T00:00:00Z").parse::<DateTime<Local>>() {
-                    Ok(dt) => dt,
-                    Err(m) => {
-                        error!("Unable to parse CompletedOn for {}: {}", check["LocationName"].as_str().unwrap(), m);
-                        match "2000-01-01T00:00:00Z".parse::<DateTime<Local>>() {
-                            Ok(t) => t,
-                            Err(m) => { return Err(m.to_string()); }
+                let completed_on = String::from(check["CompletedOn"].as_str().unwrap_or("2000-01-01T00:00:00Z"));
+                if let Some(existing_timestamp) = check_map.get(&location_name) {
+                    match (DateTime::parse_from_rfc3339(existing_timestamp), DateTime::parse_from_rfc3339(&completed_on)) {
+                        (Ok(existing_dt), Ok(new_dt)) => {
+                            if new_dt > existing_dt {
+                                check_map.insert(location_name, completed_on);
+                            }
+                        },
+                        _ => {
+                            // If parsing fails, keep the existing value
                         }
                     }
                 };
@@ -4148,7 +4152,8 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
         // Define search
         let search_body = serde_json::json!({
             "ModifiedDateFrom": "2020-01-01T00:00:00Z",
-            "TypeID": 42460
+            "ResponsibilityGroupIDs": [2742], // CTS Group ID
+            "MaxResults": 100000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
         });
         // Make the request
         let resp_raw = req
@@ -4157,6 +4162,7 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
             .endpoint(url)
             .header("Authorization", &tdx_token.val)
             .header("Content-Type", "application/json")
+            .timeout(Duration::from_secs(120))
             .body(search_body)
             .timeout(Duration::from_secs(120))
             .send()
@@ -4172,35 +4178,46 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
         }
 
         // Parse the response as JSON
-        let parsed_projects: serde_json::Value = serde_json::from_str(&resp.body)
-            .map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
-        let projects_json: Vec<serde_json::Value> = match parsed_projects.as_array() {
-            Some(items) => items.clone(),
-            None => parsed_projects
-                .get("Items")
-                .and_then(serde_json::Value::as_array)
-                .cloned()
-                .ok_or_else(|| format!("Expected project array in response body: {}", resp.body))?,
-        };
+        let tickets_json: Vec<serde_json::Value> = 
+            serde_json::from_str(&resp.body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
 
-        // Map to DB_Project and insert
-        for project_val in &projects_json {
-            let project = DB_Project {
-                project_id: project_val["ID"].as_i64().unwrap_or(0) as i32,
-                created_date: project_val["CreatedDate"].as_str().unwrap_or("").to_string(),
-                modified_date: project_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
-                name: project_val["Name"].as_str().unwrap_or("").to_string(),
-                description: project_val["Description"].as_str().unwrap_or("").to_string(),
-                is_active: project_val["IsActive"].as_bool().unwrap_or(true),
-                type_id: project_val["TypeID"].as_i64().unwrap_or(0) as i32,
-                percent_complete: project_val["PercentComplete"].as_i64().unwrap_or(-1) as i16,
-                status_name: project_val["StatusName"].as_str().unwrap_or("").to_string(),
-                status_comments: project_val["StatusComments"].as_str().unwrap_or("").to_string(),
-                start_date: project_val["StartDate"].as_str().unwrap_or("").to_string(),
-                end_date: project_val["EndDate"].as_str().unwrap_or("").to_string(),
-                health: project_val["HealthDescription"].as_str().unwrap_or("").to_string(),
+        
+        // Map to DB_Ticket and insert
+        for ticket_val in &tickets_json {
+            let ticket = DB_Ticket {
+                ticket_id: ticket_val["ID"].as_i64().unwrap_or(0) as i32,
+                has_been_viewed: true,
+                type_name: ticket_val["TypeName"].as_str().unwrap_or("").to_string(),
+                type_category_name: ticket_val["TypeCategoryName"].as_str().unwrap_or("").to_string(),
+                title: ticket_val["Title"].as_str().unwrap_or("").to_string(),
+                account_name: ticket_val["AccountName"].as_str().unwrap_or("").to_string(),
+                status_name: ticket_val["StatusName"].as_str().unwrap_or("").to_string(),
+                service_name: ticket_val["ServiceName"].as_str().unwrap_or("").to_string(),
+                priority_name: ticket_val["PriorityName"].as_str().unwrap_or("").to_string(),
+                created_date: ticket_val["CreatedDate"].as_str().unwrap_or("").to_string(),
+                created_full_name: ticket_val["CreatedFullName"].as_str().unwrap_or("").to_string(),
+                modified_date: ticket_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
+                modified_full_name: ticket_val["ModifiedFullName"].as_str().unwrap_or("").to_string(),
+                requestor_name: ticket_val["RequestorName"].as_str().unwrap_or("").to_string(),
+                requestor_email: ticket_val["RequestorEmail"].as_str().unwrap_or("").to_string(),
+                requestor_phone: ticket_val["RequestorPhone"].as_str().unwrap_or("").to_string(),
+                days_old: ticket_val["DaysOld"].as_i64().unwrap_or(0) as i16,
+                responsible_full_name: ticket_val["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
+                responsible_group_name: ticket_val["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
+                comment_count: 0 as i16,
 
-                is_hidden: project_val["is_hidden"].as_bool().unwrap_or(false),
+                old_type_name: "".to_string(),
+                old_type_category_name: "".to_string(),
+                old_title: "".to_string(),
+                old_account_name: "".to_string(),
+                old_status_name: "".to_string(),
+                old_service_name: "".to_string(),
+                old_priority_name: "".to_string(),
+                old_modified_date: "".to_string(),
+                old_modified_full_name: "".to_string(),
+                old_responsible_full_name: "".to_string(),
+                old_responsible_group_name: "".to_string(),
+                old_comment_count: 0 as i16,
             };
 
             // Insert or update

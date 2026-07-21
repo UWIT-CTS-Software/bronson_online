@@ -1330,6 +1330,18 @@ impl Database {
 			.get_result(&mut conn)
 	}
 
+	pub fn update_reservation(&mut self, res: &DB_Reservation) -> Result<DB_Reservation, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		diesel::insert_into(reservations)
+			.values(res)
+			.on_conflict(reservation_id)
+			.do_update()
+			.set(res)
+			.returning(DB_Reservation::as_returning())
+			.get_result(&mut conn)
+	}
+	
 	pub fn get_project(&mut self, id_value: i32) -> Result<Option<DB_Project>, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
@@ -2195,22 +2207,6 @@ pub struct Reservation {
 pub struct Space {
 	#[serde(rename="r25:space_id")]
 	pub space_id: i64
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename="r25:events")]
-struct Events {
-	#[serde(rename="@pudate")]
-	pubdate: Option<String>,
-	#[serde(rename="@engine")]
-	engine: Option<String>,
-	#[serde(rename="r25:event")]
-	events: Vec<Event>
-}
-
-#[derive(Debug, Deserialize)]
-struct Event {
-	
 }
 
 pub static BUFF_SIZE : usize = 4096;
