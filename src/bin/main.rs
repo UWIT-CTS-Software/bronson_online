@@ -58,9 +58,9 @@ use server_lib::{
     Database, Terminal, 
     models::{
         DB_Room, DB_Building, DB_User, DB_DataElement,
-        DB_IpAddress, DB_Key, DB_Ticket, DB_Project
+        DB_IpAddress, DB_Key, DB_Ticket, DB_Reservation
     },
-    LoginSuccess, 
+    LoginSuccess, Reservations, 
 };
 use futures_util::future::FutureExt;
 use getopts::Options;
@@ -85,7 +85,6 @@ use std::{
 
 };
 use reqwest::{
-    Client,
     header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, }
 };
 use log::{ debug, info, warn, error, }; // trace, };
@@ -193,14 +192,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     connection.run_pending_migrations(MIGRATIONS)
             .map_err(|e| format!("Failed to run migrations: {}", e))?;
 
-    let mut request_database = Database::new();
-
-    let _ = match request_database.init_if_empty() {
-        Some(()) => (),
-        None     => {
-            return Err("Unable to initialize database!".into());
-        }
-    };
+    
     // Data Thread Pool Loop (data transfer)
     if matches.opt_present("j") {
         set_jn_thread_true();
@@ -211,8 +203,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             reqwest::Client::builder()
                 .cookie_store(true)
                 .user_agent("server_lib/1.10.1")
-                .default_headers(construct_headers("tdx", &mut request_database))
-                .timeout(Duration::from_secs(120))
+                .default_headers(match construct_headers("tdx") {
+                    Ok(h) => h,
+                    Err(m) => { error!("Unable to set tdx_client headers: {}", m); HeaderMap::new() }
+                })
                 .build()
                 .ok()
                 .expect("Unable to build TDX Request Client")
@@ -224,8 +218,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Arc::new(RwLock::new(reqwest::Client::builder()
                 .cookie_store(true)
                 .user_agent("server_lib/1.10.1")
-                .default_headers(construct_headers("lsm", &mut request_database))
-                .timeout(Duration::from_secs(15))
+                .default_headers(match construct_headers("lsm") {
+                    Ok(h) => h,
+                    Err(m) => { error!("Unable to set lsm_client headers: {}", m); HeaderMap::new() }
+                })
                 .build()
                 .ok()
                 .expect("Unable to build LSM Request Client")
@@ -233,15 +229,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
     ));
 
+    let cn_client = Arc::new(API::new(
+        MultiThread(
+            reqwest::Client::builder()
+                .cookie_store(true)
+                .user_agent("server_lib/1.10.1")
+                .default_headers(match construct_headers("25l") {
+                    Ok(h) => h,
+                    Err(m) => { error!("Unable to set cn_client headers: {}", m); HeaderMap::new() }
+                })
+                .build()
+                .ok()
+                .expect("Unable to build 25Live Request Client")
+        )
+    ));
+
+    let mut request_database = Database::new();
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let _ = match runtime.block_on(request_database.init(Arc::clone(&tdx_client), Arc::clone(&lsm_client))) {
+        Some(()) => (),
+        None     => {
+            return Err("Unable to initialize database!".into());
+        }
+    };
+
     let thread_schedule = Arc::new(RwLock::new(ThreadSchedule::new()));
     let data_ts = Arc::clone(&thread_schedule);
     let tc_clone = Arc::clone(&tdx_client);
     let lc_clone = Arc::clone(&lsm_client);
+    let cn_clone = Arc::clone(&cn_client);
     data_pool.execute(move || {
-        data_sync(data_ts, tc_clone, lc_clone);
+        data_sync(data_ts, tc_clone, lc_clone, cn_clone);
     });
-    
-    let _ = request_database.backup();
 
     for stream in listener.incoming() {
         let mut stream = match stream {
@@ -336,7 +355,7 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
 #[tokio::main]
 #[allow(unused_assignments)]
 #[allow(unreachable_code)]
-async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<API>, lsm_api: Arc<API>) {
+async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<API>, lsm_api: Arc<API>, cn_api: Arc<API>) {
     // Init Everyting
     // ThreadSchedule Init
     //let mut thread_schedule = ThreadSchedule::new();
@@ -359,10 +378,6 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
             duration: 3600,
             timestamp: Utc::now() - Duration::from_secs(3599),
         });
-        ts.tasks.insert("backup".to_string(), TaskSchedule {
-            duration: 86400,
-            timestamp: Utc::now() - Duration::from_secs(86400)
-        });
         ts.tasks.insert("checkerboard".to_string(), TaskSchedule {
             duration: 1800,
             timestamp: Utc::now() - Duration::from_secs(1799),
@@ -383,20 +398,16 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
             duration: 60,
             timestamp: Utc::now() - Duration::from_secs(50),
         });
+        ts.tasks.insert("reservations".to_string(), TaskSchedule {
+            duration: 86400,
+            timestamp: Utc::now() - Duration::from_secs(86450)
+        });
     }
+
     // Database Init
     let mut database = Database::new();
 
-    // ------------ DELETE LATER ------------
-    // let example_json = json!({
-    //     "an_accomplishments": [],
-    //     "an_notesForFuture": [],
-    //     "an_ticketAndRoomCheckNotes": []
-    // });
-    // export_to_pdf(&mut database, 0, example_json).await.unwrap();
-    // --------------------------------------
-
-    match collegenet_login(&mut database).await {
+    match collegenet_login(&cn_api).await {
         Ok(v)  => { println!("{:?}", v); },
         Err(m) => { error!("25L_ERR: {}", m); }
     };
@@ -414,6 +425,7 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
     // Not sure if this is even giving performance improvements.
     let jn_st = check_jn_thread();
     let jn_thread = ThreadPool::new(1);
+
 
     // Loop
     //let l_ts = Arc::clone(&thread_schedule);
@@ -449,17 +461,6 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
                     info!("[Data] - Pulling New LSM Spare Information");
                     update_lsm_spares(&mut database, &lsm_api).await;
                     info!("[Data] - New LSM Spare Information Pulled")
-                },
-                "backup"          => {
-                    info!("[Backup] - Backing up the database.");
-                    let _ = match database.backup() {
-                        Ok(_)     => (),
-                        Err(s)    => {
-                            error!("DBB_ERR: {}", s);
-                            ()
-                        }
-                    };
-                    info!("[Backup] - Backup request fulfilled.");
                 },
                 "lsmData"         => {
                     info!("[Data] - Pulling LSM Inventory Information");
@@ -519,7 +520,13 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
                         Ok(_)     =>  info!("[Data] - Tickex Run Complete"),
                         Err(m)    => error!("[Data] - Tickex Run FAILED: {}", m)
                     };
-                }  
+                },
+                "reservations"    => {
+                    let _ = match store_collegenet_reservations(&mut database, &cn_api).await {
+                        Ok(_)     => info!("[Data] - Reservations Stored"),
+                        Err(m)    => error!("[Data] - Unable to store reservations: {}", m)
+                    };
+                },
                 _                 => {
                     warn!("Unknown task: {}", task_name)
                 },
@@ -1291,15 +1298,7 @@ async fn handle_connection(
                 &lsm_building.lsm_name.as_str()
             );
             // Build and Send Request
-            let req = Arc::new(RwLock::new(reqwest::Client::builder()
-                .cookie_store(true)
-                .default_headers(construct_headers("lsm", &mut database))
-                .user_agent("server_lib/1.10.1")
-                .build()
-                .ok()?
-            ));
-
-            let devs = API::new(SingleThread(req))
+            let devs = lsm_client
                 .build()
                 .method("GET")
                 .endpoint(&url_devs)
@@ -1410,199 +1409,6 @@ async fn handle_connection(
                 //println!("DEBUG Updating DB_Room -> \n {:?}", new_db_room);
                 let _ = database.update_room(&new_db_room);
 
-                Response::new()
-                        .status(STATUS_200)
-                        .send_contents("".into())
-            }
-        },
-        "POST /insert/database_room HTTP/1.1" => { // destination
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
-            } else {
-                // Parse Request Body
-                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-                let new_room: String = body_json["destination"]
-                    .as_str()
-                    .unwrap()
-                    .to_string();
-                let new_values: Vec<u8> = [0,0,0,0,0,0,0,0,0,0].to_vec();
-                // Note: When we are inserting a new room, we are not providing the inventory in the same call. The intention is that the front-end will send the rooms to insert first and if their is inventory associated with it it will come after.
-                // Build DB_Room Object and insert to Database
-                // Ping Data Vector
-                let hn_vec = Database::gen_hn(new_room.clone(), &new_values[0..6].to_vec()); // Only device fields
-                let ping_vec = Database::gen_ip(&hn_vec);
-                // Insert New Room to Database
-                let new_db_room = DB_Room {
-                    abbrev: new_room.split(' ').collect::<Vec<&str>>()[0].to_string(),
-                    name: new_room,
-                    collegenet_id: Option::None,
-                    checked: "2000-01-01T00:00:00Z".to_string(),
-                    needs_checked: true,
-                    gp: match new_values[6] { 
-                        1 => true,
-                        0 => false,
-                        _ => false,
-                    },
-                    check_period: 2,
-                    offln: false,
-                    onln: "2000-01-01".to_string(),
-                    available: false,
-                    until: String::from("TOMORROW"),
-                    ping_data: ping_vec,
-                    schedule: Vec::new(),
-                };
-                debug!("[Admin Tools] - INSERTING DB_ROOM => \n {:?}", new_db_room);
-                // Note, the schedule field here is initialized as empty.
-                //   we will require some more tooling to get this data in here.
-                //   whether that be some kind of csv import or a manual page.
-                let _ = database.update_room(&new_db_room);
-
-                Response::new()
-                        .status(STATUS_200)
-                        .send_contents("".into())
-            }
-        },
-        "POST /remove/database_room HTTP/1.1" => { // destination
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
-            } else {
-                // Parse Request Body
-                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-                let target_room: String = body_json["destination"]
-                    .as_str()
-                    .unwrap()
-                    .to_string();
-                debug!("[Admin Tools] - REMOVING ROOM -> {:?}", target_room);
-                // Remove Specified Room from Database
-                let _ = database.delete_room(&target_room);
-                
-                Response::new()
-                        .status(STATUS_200)
-                        .send_contents("".into())
-            }
-        },
-        "POST /update/database_building HTTP/1.1" => { // destination, newValue
-            //let mut database = arc_database.write().unwrap();
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
-            } else {
-                // Parse Request Body
-                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-                let target_building: String = body_json["destination"]
-                    .as_str()
-                    .unwrap()
-                    .to_string();
-                let new_values: Vec<String> = body_json["newValue"]
-                    .as_array()
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                            .collect()
-                    })
-                    .unwrap();
-                
-                //println!("DEBUG Updating Building -> {} {:?}", target_building, new_values);
-                // Get Existing Building Record from database
-                let mut new_db_building : DB_Building = match database.get_building_by_abbrev(&target_building) {
-                    Ok(b)  => b,
-                    Err(m) => {
-                        error!("DB_ERR: {}", m);
-                        return Response::new()
-                                .status(STATUS_500)
-                                .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
-                                .build();
-                    }
-                };
-                // Update Building Values
-                new_db_building.name = new_values[0].to_string();
-                new_db_building.abbrev = new_values[1].to_string();
-                new_db_building.lsm_name = new_values[2].to_string();
-                new_db_building.zone = new_values[3].parse().expect("invalid zone");
-                // Update Database
-                debug!("[Admin Tools] - Updated Building Record:\n{:?}", &new_db_building);
-                let _ = database.update_building(&new_db_building);
-                
-                Response::new()
-                        .status(STATUS_200)
-                        .send_contents("".into())
-            }
-        },
-        "POST /insert/database_building HTTP/1.1" => { // destination, newValue
-            //let mut database = arc_database.write().unwrap();
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
-            } else {
-                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-                //println!("{:?}", body_json);
-                let new_values: Vec<String> = body_json["newValue"]
-                    .as_array()
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                            .collect()
-                    })
-                    .unwrap();
-                //println!("{} {:?}", target_building, new_values);
-                // Create New DB_Builing with new_values
-                let new_db_building = DB_Building {
-                    name: new_values[0].clone(),
-                    abbrev: new_values[1].clone(),
-                    lsm_name: new_values[2].clone(),
-                    zone: new_values[3].parse().expect("invalid zone"),
-                    checked_rooms: 0,
-                    total_rooms: 0
-                };
-                debug!("Inserting Building Record:\n {:?}", &new_db_building);
-                let _ = database.update_building(&new_db_building); 
-                
-                Response::new()
-                        .status(STATUS_200)
-                        .send_contents("".into())
-            }
-        },
-        "POST /remove/database_building HTTP/1.1" => { // destination
-            //let mut database = arc_database.write().unwrap();
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
-            } else {
-                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-                let target_building: String = body_json["destination"]
-                    .as_str()
-                    .unwrap()
-                    .to_string();
-                debug!("[Admin Tools] - DB Target Building to remove:\n {:?}", target_building);
-                let _ = database.delete_building(&target_building);
-                
                 Response::new()
                         .status(STATUS_200)
                         .send_contents("".into())
@@ -1815,7 +1621,7 @@ async fn handle_connection(
                             .send_contents("Task Not Found".into())
                 }
             }
-        }
+        },
         "POST /setAliasTable HTTP/1.1" => {
             if !req.has_valid_cookie(&mut database) {
                 Response::new()
@@ -2009,7 +1815,13 @@ async fn handle_connection(
             let url = "https://api.github.com/repos/UWIT-CTS-Software/bronson_online/issues";
             let req = reqwest::Client::builder()
                 .cookie_store(true)
-                .default_headers(construct_headers("gh", &mut database))
+                .default_headers(match construct_headers("gh") {
+                    Ok(h) => h,
+                    Err(m) => {
+                        error!("Unable to set gh_api headers: {}", m);
+                        HeaderMap::new()
+                    }
+                })
                 .user_agent("server_lib/1.10.1")
                 .build()
                 .ok()?
@@ -2744,7 +2556,7 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
                 // Replace Abbrevition if exists
                 if alias_abbrev.0 != "NOTSET" {
                     // check["LocationName"]
-                    debug!("[Checkerboard Alias] Building - {:?} to be replaced with {:?}",alias_abbrev.0, alias_abbrev.1);
+                    debug!("[Checkerboard Alias] Building - {:?} to be replaced with {:?}", alias_abbrev.0, alias_abbrev.1);
                     check["LocationName"] = serde_json::Value::String(
                         check["LocationName"]
                             .as_str()
@@ -2755,7 +2567,7 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
               
                 // Only insert if this is the first entry or if the new timestamp is more recent
                 let location_name = String::from(check["LocationName"].as_str().unwrap());
-                let completed_on = String::from(check["CompletedOn"].as_str().unwrap_or("3000-01-01T00:00:00Z"));
+                let completed_on = String::from(check["CompletedOn"].as_str().unwrap_or("2000-01-01T00:00:00Z"));
                 if let Some(existing_timestamp) = check_map.get(&location_name) {
                     match (DateTime::parse_from_rfc3339(existing_timestamp), DateTime::parse_from_rfc3339(&completed_on)) {
                         (Ok(existing_dt), Ok(new_dt)) => {
@@ -2793,8 +2605,13 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
             if !room.needs_checked {
                 checked_rooms += 1;
             }
-            debug!("Checkerboard Room - Inserting room into database: {:?}", &room);
-            let _ = database.update_room(&room);
+            debug!("Checkerboard Room - Inserting {} into database", &room.name);
+            match database.update_room(&room) {
+                Ok(_) => {},
+                Err(m) => {
+                    error!("Unable to insert room to database: {}", m.to_string());
+                }
+            };
         }
         let ret_building = match database.get_building_by_abbrev(&building.1.abbrev) {
             Ok(b)  => b,
@@ -2813,6 +2630,7 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
         let new_building: DB_Building = DB_Building {
             abbrev: ret_building.abbrev,
             name: ret_building.name,
+            building_id: ret_building.building_id,
             lsm_name: ret_building.lsm_name,
             zone: ret_building.zone,
             checked_rooms: checked_rooms,
@@ -3028,22 +2846,34 @@ $$ |  $$\ $$ |  $$ |$$  _$$<  $$ |      $$ |  $$ |$$ |      $$ |  $$ |
  \______/ \__|  \__|\__|  \__|\__|      \_______/ \__|       \_______|
 */
 
-fn construct_headers(call_type: &str,database: &mut Database) -> HeaderMap {
+fn construct_headers(call_type: &str) -> Result<HeaderMap, String> {
+    let k_json = match env::var("KEYS_JSON") {
+        Ok(k)  => String::from(k),
+        Err(m) => {
+            return Err(format!("Unable to parse keys from environment file: {}", m));
+        }
+    };
+    let json_keys: HashMap<String, Value> = match serde_json::from_str(&k_json) {
+        Ok(jk) => jk,
+        Err(m) => {
+            return Err(format!("Unable to parse key json into hashmap: {}", m));
+        }
+    };
     let mut header_map = HeaderMap::new();
     if call_type == "lsm" {
         header_map.insert(ACCEPT, HeaderValue::from_static("application/json"));
-        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&database.get_key("lsm_api").expect("No key found!").val).expect("[-] KEY_ERR: Not found."));
+        header_map.insert(AUTHORIZATION, HeaderValue::from_str(json_keys.get("lsm_api").unwrap().as_str().expect("Parse error")).expect("[-] KEY_ERR: Not found."));
     } else if call_type == "gh" {
         header_map.insert(ACCEPT, HeaderValue::from_static("application/vnd.github+json"));
-        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&database.get_key("gh_api").expect("No key found!").val).expect("[-] KEY_ERR: Not found."));
+        header_map.insert(AUTHORIZATION, HeaderValue::from_str(json_keys.get("gh_api").unwrap().as_str().expect("Parse error")).expect("[-] KEY_ERR: Not found."));
         header_map.insert(HeaderName::from_static("x-github-api-version"), HeaderValue::from_static("2022-11-28"));
     } else if call_type == "25l" {
         header_map.insert(ACCEPT, HeaderValue::from_static("text/xml"));
-        header_map.insert(AUTHORIZATION, HeaderValue::from_str(&database.get_key("25live_api").expect("No key found!").val).expect("[-] KEY_ERR: Not found."));
+        header_map.insert(AUTHORIZATION, HeaderValue::from_str(json_keys.get("25live_api").unwrap().as_str().expect("Parse error")).expect("[-] KEY_ERR: Not found."));
         header_map.insert(HeaderName::from_static("www-authenticate"), HeaderValue::from_static("Basic realm=\"R25 WebServices\", charset=\"UTF-8\""));
     }
 
-    return header_map;
+    return Ok(header_map);
 }
 
 fn check_schedule(room: &DB_Room) -> (bool, String) {
@@ -4233,7 +4063,8 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
         // Define search
         let search_body = serde_json::json!({
             "ModifiedDateFrom": "2020-01-01T00:00:00Z",
-            "TypeID": 42460
+            "ResponsibilityGroupIDs": [2742], // CTS Group ID
+            "MaxResults": 100000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
         });
         // Make the request
         let resp_raw = req
@@ -4242,6 +4073,7 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
             .endpoint(url)
             .header("Authorization", &tdx_token.val)
             .header("Content-Type", "application/json")
+            .timeout(Duration::from_secs(120))
             .body(search_body)
             .timeout(Duration::from_secs(120))
             .send()
@@ -4257,35 +4089,46 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
         }
 
         // Parse the response as JSON
-        let parsed_projects: serde_json::Value = serde_json::from_str(&resp.body)
-            .map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
-        let projects_json: Vec<serde_json::Value> = match parsed_projects.as_array() {
-            Some(items) => items.clone(),
-            None => parsed_projects
-                .get("Items")
-                .and_then(serde_json::Value::as_array)
-                .cloned()
-                .ok_or_else(|| format!("Expected project array in response body: {}", resp.body))?,
-        };
+        let tickets_json: Vec<serde_json::Value> = 
+            serde_json::from_str(&resp.body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
 
-        // Map to DB_Project and insert
-        for project_val in &projects_json {
-            let project = DB_Project {
-                project_id: project_val["ID"].as_i64().unwrap_or(0) as i32,
-                created_date: project_val["CreatedDate"].as_str().unwrap_or("").to_string(),
-                modified_date: project_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
-                name: project_val["Name"].as_str().unwrap_or("").to_string(),
-                description: project_val["Description"].as_str().unwrap_or("").to_string(),
-                is_active: project_val["IsActive"].as_bool().unwrap_or(true),
-                type_id: project_val["TypeID"].as_i64().unwrap_or(0) as i32,
-                percent_complete: project_val["PercentComplete"].as_i64().unwrap_or(-1) as i16,
-                status_name: project_val["StatusName"].as_str().unwrap_or("").to_string(),
-                status_comments: project_val["StatusComments"].as_str().unwrap_or("").to_string(),
-                start_date: project_val["StartDate"].as_str().unwrap_or("").to_string(),
-                end_date: project_val["EndDate"].as_str().unwrap_or("").to_string(),
-                health: project_val["HealthDescription"].as_str().unwrap_or("").to_string(),
+        
+        // Map to DB_Ticket and insert
+        for ticket_val in &tickets_json {
+            let ticket = DB_Ticket {
+                ticket_id: ticket_val["ID"].as_i64().unwrap_or(0) as i32,
+                has_been_viewed: true,
+                type_name: ticket_val["TypeName"].as_str().unwrap_or("").to_string(),
+                type_category_name: ticket_val["TypeCategoryName"].as_str().unwrap_or("").to_string(),
+                title: ticket_val["Title"].as_str().unwrap_or("").to_string(),
+                account_name: ticket_val["AccountName"].as_str().unwrap_or("").to_string(),
+                status_name: ticket_val["StatusName"].as_str().unwrap_or("").to_string(),
+                service_name: ticket_val["ServiceName"].as_str().unwrap_or("").to_string(),
+                priority_name: ticket_val["PriorityName"].as_str().unwrap_or("").to_string(),
+                created_date: ticket_val["CreatedDate"].as_str().unwrap_or("").to_string(),
+                created_full_name: ticket_val["CreatedFullName"].as_str().unwrap_or("").to_string(),
+                modified_date: ticket_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
+                modified_full_name: ticket_val["ModifiedFullName"].as_str().unwrap_or("").to_string(),
+                requestor_name: ticket_val["RequestorName"].as_str().unwrap_or("").to_string(),
+                requestor_email: ticket_val["RequestorEmail"].as_str().unwrap_or("").to_string(),
+                requestor_phone: ticket_val["RequestorPhone"].as_str().unwrap_or("").to_string(),
+                days_old: ticket_val["DaysOld"].as_i64().unwrap_or(0) as i16,
+                responsible_full_name: ticket_val["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
+                responsible_group_name: ticket_val["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
+                comment_count: 0 as i16,
 
-                is_hidden: project_val["is_hidden"].as_bool().unwrap_or(false),
+                old_type_name: "".to_string(),
+                old_type_category_name: "".to_string(),
+                old_title: "".to_string(),
+                old_account_name: "".to_string(),
+                old_status_name: "".to_string(),
+                old_service_name: "".to_string(),
+                old_priority_name: "".to_string(),
+                old_modified_date: "".to_string(),
+                old_modified_full_name: "".to_string(),
+                old_responsible_full_name: "".to_string(),
+                old_responsible_group_name: "".to_string(),
+                old_comment_count: 0 as i16,
             };
 
             // Insert or update
@@ -4954,6 +4797,44 @@ $$$$$$$$\                                $$\                     $$\
    \__| \_______|\__|      \__| \__| \__|\__|\__|  \__| \_______|\__|
 */
 
+async fn store_collegenet_reservations(database: &mut Database, cn_client: &Arc<API>) -> Result<(), String> {
+    let reservations_body = match cn_client
+        .build()
+        .method("GET")
+        .endpoint("https://webservices.collegenet.com/r25ws/wrd/uwyo/run/reservations.xml?start_dt=0")
+        .timeout(Duration::from_secs(15))
+        .return_type::<Reservations>()
+        .send()
+        .await {
+            Ok(rs) => rs,
+            Err(m) => { return Err(m.to_string()); }
+        }
+        .body;
+    
+    let reservations: Reservations = match serde_xml_rs::from_str(&reservations_body) {
+        Ok(rs) => rs,
+        Err(m) => { return Err(m.to_string()); }
+    };
+
+    for reservation in reservations.reservations {
+        match database.update_reservation(&DB_Reservation {
+            reservation_id: reservation.reservation_id,
+            start_dt: reservation.start_dt,
+            end_dt: reservation.end_dt,
+            event_name: reservation.event_name,
+            event_space_id: match reservation.space {
+                Some(e) => Some(e.space_id),
+                None    => None
+            }
+        }) {
+            Ok(_) => (),
+            Err(m) => { return Err(m.to_string()); }
+        };
+    }
+
+    Ok(())
+}
+
 
 /*
 $$$$$$$$\                    $$\               
@@ -4966,19 +4847,9 @@ $$$$$$$$\                    $$\
    \__| \_______|\_______/    \____/ \_______/ 
 */
 
-async fn collegenet_login(database: &mut Database) -> Result<LoginSuccess, String> {
+async fn collegenet_login(cn_client: &Arc<API>) -> Result<LoginSuccess, String> {
     let url = "https://webservices.collegenet.com/r25ws/wrd/uwyo/run/login.xml";
-    let req = reqwest::Client::builder()
-        .cookie_store(true)
-        // .cookie_provider(Arc::clone(&cookie_jar))
-        .user_agent("server_lib/1.10.1")
-        .default_headers(construct_headers("25l", database))
-        .build()
-        .ok()
-        .unwrap()
-    ;
-
-    let text = match API::new(MultiThread(req))
+    let text = match cn_client
         .build()
         .method("GET")
         .endpoint(url)

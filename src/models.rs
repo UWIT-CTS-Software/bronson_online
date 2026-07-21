@@ -5,7 +5,7 @@ use crate::schema::bronson::{
     rooms,
     keys,
     tickets,
-    projects,
+    reservations,
     sql_types::{
         IpAddress,
     }
@@ -15,7 +15,7 @@ use serde::{
     Serialize,
     Deserialize,
 };
-use::chrono::{ DateTime, Utc };
+use chrono::{ DateTime, Utc, Local, };
 use diesel::{
     prelude::*,
     pg::{
@@ -26,6 +26,7 @@ use diesel::{
         Integer,
         Text,
         Record,
+        Timestamptz
     },
     serialize,
     serialize::{
@@ -184,6 +185,7 @@ impl FromSql<IpAddress, Pg> for DB_IpAddress {
 pub struct DB_Building {
     pub abbrev: String,
     pub name: String,
+    pub building_id: i64,
     pub lsm_name: String,
     pub zone: i16,
     pub checked_rooms: i16,
@@ -198,7 +200,9 @@ pub struct DB_Building {
 pub struct DB_Room {
     pub abbrev: String,
     pub name: String,
-    pub collegenet_id: Option<i16>,
+    pub room_id: i64,
+    pub parent_id: i64,
+    pub collegenet_id: Option<i64>,
     pub checked: String,
     pub needs_checked: bool,
     pub gp: bool,
@@ -283,24 +287,15 @@ pub struct DB_Ticket {
 
 #[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable, AsChangeset, Default)]
-#[diesel(table_name = projects)]
+#[diesel(sql_type = Timestamptz)]
+#[diesel(table_name = reservations)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct DB_Project {
-    pub project_id: i32,
-    pub created_date: String,
-    pub modified_date: String,
-    pub name: String,
-    pub description: String,
-    pub is_active: bool,
-    pub type_id: i32,
-    pub percent_complete: i16,
-    pub status_name: String,
-    pub status_comments: String,
-    pub start_date: String,
-    pub end_date: String,
-    pub health: String,
-
-    pub is_hidden: bool,
+pub struct DB_Reservation {
+    pub reservation_id: i64,
+    pub start_dt: DateTime<Local>,
+    pub end_dt: DateTime<Local>,
+    pub event_name: String,
+    pub event_space_id: Option<i64>
 }
 
 /* #[allow(non_camel_case_types)]

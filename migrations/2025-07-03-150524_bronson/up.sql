@@ -26,6 +26,7 @@ CREATE TYPE bronson.ip_address AS (
 CREATE TABLE IF NOT EXISTS bronson.buildings (
     abbrev        TEXT         PRIMARY KEY,
     name          TEXT         NOT NULL,
+    building_id   BIGINT       NOT NULL,
     lsm_name      TEXT         NOT NULL,
     zone          SMALLINT     NOT NULL,
     total_rooms   SMALLINT     NOT NULL,
@@ -39,7 +40,9 @@ CREATE TABLE IF NOT EXISTS bronson.buildings (
 CREATE TABLE IF NOT EXISTS bronson.rooms (
     abbrev        TEXT         NOT NULL,
     name          TEXT         PRIMARY KEY,
-    collegenet_id SMALLINT             ,
+    room_id       BIGINT       NOT NULL,
+    parent_id     BIGINT       NOT NULL,
+    collegenet_id BIGINT               ,
     checked       TEXT         NOT NULL,
     needs_checked BOOLEAN      NOT NULL,
     gp            BOOLEAN      NOT NULL,
@@ -52,8 +55,8 @@ CREATE TABLE IF NOT EXISTS bronson.rooms (
     schedule      TEXT[]       NOT NULL,
 
     CHECK (length(abbrev) <= 5), 
-    CHECK (length(name) <= 10),
-    CHECK (length(checked) <= 21),
+    CHECK (length(name) <= 32),
+    CHECK (length(checked) <= 32),
     CHECK (length(onln) <= 11),
     CHECK (length(until) <= 9),
 
@@ -147,32 +150,12 @@ CREATE TABLE IF NOT EXISTS bronson.tickets (
     CHECK (length(old_responsible_group_name) <= 128)
 );
 
-CREATE TABLE IF NOT EXISTS bronson.projects (
-    project_id          INTEGER     PRIMARY KEY,
-    created_date        TEXT        NOT NULL,
-    modified_date       TEXT        NOT NULL,
-    name                TEXT        NOT NULL,
-    description         TEXT        NOT NULL,
-    is_active           BOOLEAN     NOT NULL,
-    type_id             INTEGER     NOT NULL,
-    percent_complete    SMALLINT    NOT NULL,
-    status_name         TEXT        NOT NULL,
-    status_comments     TEXT        NOT NULL,
-    start_date          TEXT        NOT NULL,
-    end_date            TEXT        NOT NULL,
-    health              TEXT        NOT NULL,
-
-    is_hidden           BOOLEAN     NOT NULL,
-    
-    CHECK (length(created_date) <= 32),
-    CHECK (length(modified_date) <= 32),
-    CHECK (length(name) <= 201),
-    CHECK (length(description) <= 2001),
-    CHECK (length(status_name) <= 32),
-    CHECK (length(status_comments) <= 10001),
-    CHECK (length(start_date) <= 32),
-    CHECK (length(end_date) <= 32),
-    CHECK (length(health) <= 201)
+CREATE TABLE IF NOT EXISTS bronson.reservations (
+    reservation_id BIGINT PRIMARY KEY,
+    start_dt TIMESTAMPTZ NOT NULL,
+    end_dt TIMESTAMPTZ NOT NULL,
+    event_name TEXT NOT NULL,
+    event_space_id BIGINT
 );
 
 /* CREATE TABLE IF NOT EXISTS bronson.api_schedule {

@@ -11,6 +11,7 @@ pub mod bronson {
         bronson.buildings (abbrev) {
             abbrev -> Text,
             name -> Text,
+            building_id -> Int8,
             lsm_name -> Text,
             zone -> Int2,
             total_rooms -> Int2,
@@ -33,21 +34,12 @@ pub mod bronson {
     }
 
     diesel::table! {
-        bronson.projects (project_id) {
-            project_id -> Int4,
-            created_date -> Text,
-            modified_date -> Text,
-            name -> Text,
-            description -> Text,
-            is_active -> Bool,
-            type_id -> Int4,
-            percent_complete -> Int2,
-            status_name -> Text,
-            status_comments -> Text,
-            start_date -> Text,
-            end_date -> Text,
-            health -> Text,
-            is_hidden -> Bool,
+        bronson.reservations (reservation_id) {
+            reservation_id -> Int8,
+            start_dt -> Timestamptz,
+            end_dt -> Timestamptz,
+            event_name -> Text,
+            event_space_id -> Nullable<Int8>,
         }
     }
 
@@ -58,7 +50,9 @@ pub mod bronson {
         bronson.rooms (name) {
             abbrev -> Text,
             name -> Text,
-            collegenet_id -> Nullable<Int2>,
+            room_id -> Int8,
+            parent_id -> Int8,
+            collegenet_id -> Nullable<Int8>,
             checked -> Text,
             needs_checked -> Bool,
             gp -> Bool,
@@ -124,7 +118,7 @@ pub mod bronson {
         buildings,
         data,
         keys,
-        projects,
+        reservations,
         rooms,
         tickets,
         users,

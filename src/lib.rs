@@ -49,18 +49,15 @@ use std::{
 	time::Duration,
 	clone::Clone,
 };
-use reqwest::{
-    Client,
-    header::{ HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, ACCEPT, IntoHeaderName }
-};
+use reqwest::header::{ HeaderMap, IntoHeaderName };
 use cookie::{ CookieJar, Key, };
 use csv::Reader;
-use log::{ warn, error, info };
+use log::{ warn, error, info, debug };
 use regex::bytes::Regex as RegBytes;
 use regex::Regex;
 use serde::{ Deserialize, Serialize, };
 use serde_json::{ json, Value };
-use chrono::{ DateTime, Utc, };
+use chrono::{ DateTime, Utc, Local, };
 use diesel::{
 	prelude::*,
 	r2d2::{ self, ConnectionManager },
@@ -76,12 +73,12 @@ use crate::schema::bronson::{
 	keys::dsl::*,
 	data::dsl::*,
 	tickets::dsl::*,
-	projects::dsl::*,
+	reservations::dsl::*
 };
 use crate::models::{
 	DB_Hostname, DB_IpAddress,
 	DB_Room, DB_Building, DB_User, DB_Key, DB_DataElement,
-	DeviceType, DB_Ticket, DB_Project
+	DeviceType, DB_Ticket, DB_Reservation
 };
 
 trait FnBox {
@@ -233,6 +230,14 @@ impl ThreadSchedule {
 // Database
 pub type PgPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
+pub struct HostnameGenerator { // Make i64 u8 through *n as u8
+	pub room: String,
+	pub procs: i64,
+	pub tps: i64,
+	pub pjs: i64,
+	pub disps: i64
+}
+
 #[derive(Debug, Clone)]
 pub struct Database {
 	pub pool: Arc<PgPool>,
@@ -257,174 +262,401 @@ impl Database {
 		}
 	}
 
-	pub fn init_if_empty(&mut self) -> Option<()> {
-		let recovery_data: HashMap<String, Value> = match self.try_get_backup() {
-			Ok(d) => d,
-			Err(m) => {
-				warn!("REC_ERR: {}", m);
-				return self.static_recovery();
+	pub async fn init(&mut self, tdx_client: Arc<API>, lsm_client: Arc<API>) -> Option<()> {
+		info!("[Data] Initializing database...");
+		info!("[Data] Fetching buildings...");
+		let buildings_body = match lsm_client
+			.build()
+			.method("GET")
+			.endpoint("https://uwyo.talem3.com/lsm/api/BuildingInfo")
+			.timeout(Duration::from_secs(15))
+			.send()
+			.await {
+				Ok(b) => b,
+				Err(m) => { 
+					error!("Buildings not recieved from lsm: {}", m); 
+					return None;
+				}
 			}
+			.body;
+		
+		let buildings_json: Value = serde_json::from_str(&buildings_body).expect("Empty");
+		let building_vec: Vec<Value> = match buildings_json["data"].as_array() {
+			Some(d) => d.clone(),
+			None    => Vec::new()
 		};
 
-		let table_tallys: HashMap<String, u16> = match self.tally_table_lengths() {
-			Some(hm) => hm,
-			None => {
-				warn!("Unable to query tables. Attempting static recovery.");
-				return self.static_recovery();
-			}
-		};
+		for b in building_vec {
+			let name_regex = Regex::new(r"^(?<name>.*)\s\((?<abbrev>.*)\)$").unwrap();
+			let name_captures = match name_regex.captures(&b["Location"]["name"].as_str().expect("Uh oh")) {
+				Some(caps) => caps,
+				None       => {
+					error!("Unable to collect building name regex."); 
+					return None; 
+				}
+			};
 
-		if *table_tallys.get("buildings").unwrap() == 0 {
-			info!("[Data] - No buildings found! Attempting recovery.");
-			let _ = self.try_recover_key("buildings", &recovery_data);
-		}
-
-		if *table_tallys.get("rooms").unwrap() == 0 {
-			info!("[Data] - No rooms found! Attempting recovery.");
-			let _ = self.try_recover_key("rooms", &recovery_data);
-		}
-
-		if *table_tallys.get("users").unwrap() == 0 {
-			info!("[Data] - No users found! Attempting recovery.");
-			let _ = self.try_recover_key("users", &recovery_data);
-		}
-
-		if *table_tallys.get("keys").unwrap() == 0 {
-			info!("[Data] - No keys found! Attempting recovery.");
-			let _ = self.try_recover_key("keys", &recovery_data);
-		}
-
-		if *table_tallys.get("data").unwrap() == 0 {
-			info!("[Data] - No data found! Attempting recovery.");
-			let _ = self.try_recover_key("data", &recovery_data);
-		}
-
-		Some(())
-	}
-
-	pub fn backup(&mut self) -> Result<u16, std::io::Error> {
-		let mut conn = self.pool.get().expect("Failed to get DB Connection");
-		let all_buildings: Vec<DB_Building> = buildings
-			.select(DB_Building::as_select())
-			.load(&mut conn)
-			.expect("Error loading buildings");
-
-		let all_rooms: Vec<DB_Room> = rooms
-			.select(DB_Room::as_select())
-			.load(&mut conn)
-			.expect("Error loading rooms");
-
-		let all_users: Vec<DB_User> = users
-			.select(DB_User::as_select())
-			.load(&mut conn)
-			.expect("Error loading users");
-
-		let all_data: Vec<DB_DataElement> = data
-			.select(DB_DataElement::as_select())
-			.load(&mut conn)
-			.expect("Error loading data");
-
-		let json_data: Vec<u8> = json!({
-			"buildings": all_buildings,
-			"rooms": all_rooms,
-			"users": all_users,
-			"data": all_data
-		}).to_string().into();
-
-		let mut backup_file = File::create(BACKUP)?;
-		let _ = backup_file.write_all(&json_data);
-
-		Ok(0)
-	}
-
-	pub fn static_recovery(&mut self) -> Option<()> {
-		let mut conn = self.pool.get().expect("Failed to get DB Connection");
-		let bldg_results = buildings
-			.select(DB_Building::as_select())
-			.load(&mut conn)
-			.expect("Error loading buildings.");
-
-		if bldg_results.len() == 0 {
-			let bldg_file: String = read_to_string(BLDG_JSON).ok()?;
-			let json_buildings: HashMap<String, Building> = serde_json::from_str(bldg_file.as_str()).ok()?;
-
-			for (json_abbrev, building) in json_buildings.iter() {
-				let new_bldg = DB_Building { 
-					abbrev: json_abbrev.to_string(), 
-					name: building.name.clone(), 
-					lsm_name: building.lsm_name.clone(), 
-					zone: building.zone as i16,
+			match self.update_building(
+				&DB_Building {
+					name: name_captures["name"].to_string(),
+					abbrev: name_captures["abbrev"].to_string(),
+					building_id: b["Location"]["id"].as_i64().expect("Uh oh"),
+					lsm_name: String::from(b["Location"]["name"].as_str().expect("Uh oh")),
+					zone: 1,
 					total_rooms: 0,
 					checked_rooms: 0
-				};
+				}
+			) {
+				Ok(_) => (),
+				Err(m) => {
+					error!("Unable to insert building: {}", m);
+				}
+			};
+		}
 
-				let _ = self.update_building(&new_bldg);
+		info!("[Data] Preparing to fetch rooms...");
+		let mut room_count;
+		let mut room_offset;
+
+		info!("[Data] Fetching room DHCP configuration...");
+
+		let mut rooms_map: HashMap<i64, HostnameGenerator> = HashMap::new();
+
+		room_count = 100;
+		room_offset = 0;
+		while room_count == 100 {
+			let proc_counts_body = match lsm_client
+				.build()
+				.method("GET")
+				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/ProcsPerRoom?offset={}", room_offset))
+				.timeout(Duration::from_secs(15))
+				.send()
+				.await {
+					Ok(b)  => b,
+					Err(m) => {
+						error!("Unable to parse ProcsPerRoom API call: {}", m);
+						return None;
+					}
+				}
+				.body;
+
+			let procs_json: Value = serde_json::from_str(&proc_counts_body).expect("Empty");
+			room_count = match procs_json["count"].as_i64() {
+				Some(c) => c,
+				None    => {
+					error!("Unable to get rooms count");
+					0
+				}
+			};
+
+			room_offset += room_count;
+
+			let counts_vec = match procs_json["data"].as_array() {
+				Some(cs) => cs,
+				None     => {
+					error!("Unable to parse ProcsPerRoom data");
+					&Vec::new()
+				}
+			};
+
+			for proc_count in counts_vec {
+				match rooms_map.get(&proc_count["Location"]["id"].as_i64().expect("Empty")) {
+					Some(cs) =>  {
+						rooms_map.insert(
+							proc_count["Location"]["id"].as_i64().expect("Empty"), 
+							HostnameGenerator {
+								room: String::from(proc_count["Location"]["name"].as_str().expect("Empty")),
+								procs: proc_count["Processors Count"].as_i64().expect("Empty"),
+								tps: cs.tps.clone(),
+								pjs: cs.pjs.clone(),
+								disps: cs.disps.clone()
+						});
+					},
+					None     => {
+						rooms_map.insert(
+							proc_count["Location"]["id"].as_i64().expect("Empty"),
+							HostnameGenerator {
+								room: String::from(proc_count["Location"]["name"].as_str().expect("Empty")),
+								procs: proc_count["Processors Count"].as_i64().expect("Empty"),
+								tps: 0,
+								pjs: 0,
+								disps: 0
+							}
+						);
+					}
+				}
 			}
 		}
 
-		let room_results = rooms
-			.select(DB_Room::as_select())
-			.load(&mut conn)
-			.expect("Error loading rooms.");
-		
-		if room_results.len() == 0 {
-			let room_filter = RegBytes::new(r"^[A-Z]+ [0-9A-Z]+$").unwrap();
-
-			let mut schedules: HashMap<String, Vec<String>> = HashMap::new();
-			let schedule_data = File::open(ROOM_CSV).unwrap();
-			let mut schedule_rdr = Reader::from_reader(schedule_data);
-			for result in schedule_rdr.records() {
-				let record = result.unwrap();
-				let room_name = record.get(0).expect("Empty");
-				if room_filter.is_match(room_name.as_bytes()) {
-					let room = String::from(room_name);
-					let mut room_schedule = Vec::new();
-					for block in 1..8 {
-						if record.get(block).expect("Empty") == "" {
-							break;
-						}
-
-						room_schedule.push(String::from(record.get(block).expect("Empty")));
+		room_count = 100;
+		room_offset = 0;
+		while room_count == 100 {
+			let tps_counts_body = match lsm_client
+				.build()
+				.method("GET")
+				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/TPsPerRoom?offset={}", room_offset))
+				.timeout(Duration::from_secs(15))
+				.send()
+				.await {
+					Ok(b)  => b,
+					Err(m) => {
+						error!("Unable to parse TPsPerRoom API call: {}", m);
+						return None;
 					}
-
-					schedules.insert(room, room_schedule);
 				}
-    		}
+				.body;
 
-			let room_data = File::open(CAMPUS_CSV).unwrap();
-			let mut room_rdr = Reader::from_reader(room_data);
-			for result in room_rdr.records() {
-				let record = result.unwrap();
-				let room_name = record.get(0).expect("Empty");
-				if room_filter.is_match(room_name.as_bytes()) {
-					let mut item_vec: Vec<u8> = Vec::new();
-					for i in 1..7 {
-						item_vec.push(record.get(i).expect("-1").parse().unwrap());
-					}
+			let tps_json: Value = serde_json::from_str(&tps_counts_body).expect("Empty");
+			room_count = match tps_json["count"].as_i64() {
+				Some(c) => c,
+				None    => {
+					error!("Unable to get rooms count");
+					0
+				}
+			};
 
-					let room_schedule = match schedules.get(&String::from(room_name)) {
-						Some(x) => {
-							let mut opt_vec = Vec::<Option<String>>::new();
-							for item in x {
-								opt_vec.push(Some(item.to_string()));
+			room_offset += room_count;
+
+			let counts_vec = match tps_json["data"].as_array() {
+				Some(cs) => cs,
+				None     => {
+					error!("Unable to parse TpsPerRoom data");
+					&Vec::new()
+				}
+			};
+
+			for tps_count in counts_vec {
+				match rooms_map.get(&tps_count["Location"]["id"].as_i64().expect("Empty")) {
+					Some(cs) =>  {
+						rooms_map.insert(
+							tps_count["Location"]["id"].as_i64().expect("Empty"), 
+							HostnameGenerator {
+								room: String::from(tps_count["Location"]["name"].as_str().expect("Empty")),
+								procs: cs.procs.clone(),
+								tps: tps_count["TPs Count"].as_i64().expect("Empty"),
+								pjs: cs.pjs.clone(),
+								disps: cs.disps.clone()
+						});
+					},
+					None     => {
+						rooms_map.insert(
+							tps_count["Location"]["id"].as_i64().expect("Empty"),
+							HostnameGenerator {
+								room: String::from(tps_count["Location"]["name"].as_str().expect("Empty")),
+								procs: 0,
+								tps: tps_count["TPs Count"].as_i64().expect("Empty"),
+								pjs: 0,
+								disps: 0
 							}
+						);
+					}
+				}
+			}
+		}
 
-							opt_vec
+		room_count = 100;
+		room_offset = 0;
+		while room_count == 100 {
+			let pjs_counts_body = match lsm_client
+				.build()
+				.method("GET")
+				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/ProjectorsPerRoom?offset={}", room_offset))
+				.timeout(Duration::from_secs(15))
+				.send()
+				.await {
+					Ok(b)  => b,
+					Err(m) => {
+						error!("Unable to parse ProjectorsPerRoom API call: {}", m);
+						return None;
+					}
+				}
+				.body;
+
+			let pjs_json: Value = serde_json::from_str(&pjs_counts_body).expect("Empty");
+			room_count = match pjs_json["count"].as_i64() {
+				Some(c) => c,
+				None    => {
+					error!("Unable to get rooms count");
+					0
+				}
+			};
+
+			room_offset += room_count;
+
+			let counts_vec = match pjs_json["data"].as_array() {
+				Some(cs) => cs,
+				None     => {
+					error!("Unable to parse ProjectorsPerRoom data");
+					&Vec::new()
+				}
+			};
+
+			for pj_count in counts_vec {
+				match rooms_map.get(&pj_count["Location"]["id"].as_i64().expect("Empty")) {
+					Some(cs) =>  {
+						rooms_map.insert(
+							pj_count["Location"]["id"].as_i64().expect("Empty"), 
+							HostnameGenerator {
+								room: String::from(pj_count["Location"]["name"].as_str().expect("Empty")),
+								procs: cs.procs.clone(),
+								tps: cs.tps.clone(),
+								pjs: pj_count["Projectors Count"].as_i64().expect("Empty"),
+								disps: cs.disps.clone()
+						});
+					},
+					None     => {
+						rooms_map.insert(
+							pj_count["Location"]["id"].as_i64().expect("Empty"),
+							HostnameGenerator {
+								room: String::from(pj_count["Location"]["name"].as_str().expect("Empty")),
+								procs: 0,
+								tps: 0,
+								pjs: pj_count["Projectors Count"].as_i64().expect("Empty"),
+								disps: 0
+							}
+						);
+					}
+				}
+			}
+		}
+
+		room_count = 100;
+		room_offset = 0;
+		while room_count == 100 {
+			let disp_counts_body = match lsm_client
+				.build()
+				.method("GET")
+				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/DisplaysPerRoom?offset={}", room_offset))
+				.timeout(Duration::from_secs(15))
+				.send()
+				.await {
+					Ok(b)  => b,
+					Err(m) => {
+						error!("Unable to parse DisplaysPerRoom API call: {}", m);
+						return None;
+					}
+				}
+				.body;
+
+			let disps_json: Value = serde_json::from_str(&disp_counts_body).expect("Empty");
+			room_count = match disps_json["count"].as_i64() {
+				Some(c) => c,
+				None    => {
+					error!("Unable to get rooms count");
+					0
+				}
+			};
+
+			room_offset += room_count;
+
+			let counts_vec = match disps_json["data"].as_array() {
+				Some(cs) => cs,
+				None     => {
+					error!("Unable to parse DisplaysPerRoom data");
+					&Vec::new()
+				}
+			};
+
+			for disp_count in counts_vec {
+				match rooms_map.get(&disp_count["Location"]["id"].as_i64().expect("Empty")) {
+					Some(cs) =>  {
+						rooms_map.insert(
+							disp_count["Location"]["id"].as_i64().expect("Empty"), 
+							HostnameGenerator {
+								room: String::from(disp_count["Location"]["name"].as_str().expect("Empty")),
+								procs: cs.procs.clone(),
+								tps: cs.tps.clone(),
+								pjs: cs.pjs.clone(),
+								disps: disp_count["Displays Count"].as_i64().expect("Empty")
+						});
+					},
+					None     => {
+						rooms_map.insert(
+							disp_count["Location"]["id"].as_i64().expect("Empty"),
+							HostnameGenerator {
+								room: String::from(disp_count["Location"]["name"].as_str().expect("Empty")),
+								procs: 0,
+								tps: 0,
+								pjs: 0,
+								disps: disp_count["Displays Count"].as_i64().expect("Empty")
+							}
+						);
+					}
+				}
+			}
+		}
+
+		info!("[Data] Fetching rooms...");
+
+		let rooms_ping_data: HashMap<i64, Vec<Option<DB_IpAddress>>> = Self::gen_dhcp_info(rooms_map);
+
+		room_count = 100;
+		room_offset = 0;
+		while room_count == 100 {
+			let rooms_body = match lsm_client
+				.build()
+				.method("GET")
+				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/RoomInfo?offset={}&p=%7BMinAssessmentCount%3A%200%7D", room_offset))
+				.timeout(Duration::from_secs(15))
+				.send()
+				.await {
+					Ok(r)  => r,
+					Err(m) => {
+						error!("Unable to parse RoomInfo API call: {}", m);
+						return None;
+					}
+				}
+				.body;
+
+			let rooms_json: Value = serde_json::from_str(&rooms_body).expect("Empty");
+			room_count = match rooms_json["count"].as_i64() {
+				Some(c) => c,
+				None    => {
+					error!("Unable to get rooms count");
+					0
+				}
+			};
+
+			room_offset += room_count;
+
+			let rooms_vec = match rooms_json["data"].as_array() {
+				Some(rs) => rs,
+				None     => {
+					error!("Unable to parse RoomInfo data");
+					&Vec::new()
+				}
+			};
+
+			for room in rooms_vec {
+				let name_regex = Regex::new(r"^(?<abbrev>[A-Z]*)\s.*$").unwrap();
+				let name_captures = match name_regex.captures(&room["Location"]["name"].as_str().expect("Uh oh")) {
+					Some(caps) => caps,
+					None       => {
+						error!("Unable to collect building name regex."); 
+						return None; 
+					}
+				};
+
+				let is_gp = match room["Organizational Group"]["name"].as_str().expect("Uh oh") {
+					"General Pool" => true,
+					_              => false
+				};
+
+				match self.get_room_by_name(&room["Location"]["name"].as_str().expect("Uh oh").to_string()) {
+					Ok(_) => { debug!("ROOM FOUND: {}", room["Location"]["name"].as_str().expect("Uh oh")); },
+					Err(_) => { }
+				}
+
+				match self.update_room(
+					&DB_Room {
+						name: room["Location"]["name"].as_str().expect("Uh oh").to_string(),
+						abbrev: name_captures["abbrev"].to_string(),
+						room_id: room["Location"]["id"].as_i64().expect("Uh oh"),
+						parent_id: room["Parent Id"].as_i64().expect("Uh oh"),
+						collegenet_id: match room["25Live Location ID"].as_number() {
+							Some(n) => Some(n.as_f64().unwrap() as i64),
+							None    => None
 						},
-						_       => Vec::<Option<String>>::new(),
-					};
-					let hn_vec = Self::gen_hn(String::from(room_name), &item_vec);
-					let ping_vec = Self::gen_ip(&hn_vec);
-
-					let is_gp = match record.get(7).expect("-1").parse().unwrap() {
-						0 => false,
-						_ => true,
-					};
-					
-					let new_room = DB_Room {
-						abbrev: String::from(room_name.split(' ').next().unwrap()),
-						name: String::from(room_name),
-						collegenet_id: Option::None, 
 						checked: String::from("2000-01-01T00:00:00Z"),
 						needs_checked: true,
 						gp: is_gp,
@@ -432,79 +664,52 @@ impl Database {
 						offln: false,
 						onln: "2000-01-01".to_string(),
 						available: false,
-						until: String::from("Tomorrow"),
-						ping_data: ping_vec,
-						schedule: room_schedule.to_vec()
-					};
-
-					let _ = self.update_room(&new_room);
-				}
-			}
-		}
-
-		let user_results = users
-			.select(DB_User::as_select())
-			.load(&mut conn)
-			.expect("Error loading users.");
-
-		if user_results.len() == 0 {
-			let u_json = match env::var("USERS_JSON") {
-				Ok(u)  => String::from(u),
-				Err(m) => { 
-					error!("USERS_JSON environment variable not found: {}", m);
-					return None;
-				}
-			};
-			let json_users: HashMap<String, i16> = match serde_json::from_str(&u_json) {
-				Ok(ju) => ju,
-				Err(m) => {
-					error!("Unable to parse users json: {}", m);
-					return None;
-				}
-			};
-
-			for (user, perms) in json_users.iter() {
-				let new_user = DB_User { 
-					username: user.clone(), 
-					permissions: *perms as i16
+						until: String::from("TOMORROW"),
+						ping_data: match rooms_ping_data.get(&room["Location"]["id"].as_i64().expect("Uh oh")) {
+							Some(v) => v.clone(),
+							None    => Vec::new()
+						},
+						schedule: Vec::new()
+					}
+				) {
+					Ok(_) => (),
+					Err(m) => {
+						error!("Error inserting room {}: {}", room["Location"]["name"].as_str().expect("Uh oh"), m);
+					}
 				};
-
-				let _ = self.update_user(&new_user);
 			}
 
 		}
 
-		let key_results = keys
-			.select(DB_Key::as_select())
-			.load(&mut conn)
-			.expect("Error loading keys");
-
-		if key_results.len() == 0 {
-			let k_json = match env::var("KEYS_JSON") {
-				Ok(k)  => String::from(k),
-				Err(m) => {
-					error!("KEYS_JSON environment variable not found: {}", m);
-					return None;
-				}
-			};
-			let json_keys: HashMap<String, Value> = match serde_json::from_str(&k_json) {
-				Ok(jk) => jk,
-				Err(m) => {
-					error!("Unable to parse keys json: {}", m);
-					return None;
-				}
-			};
-
-			for (id, value) in json_keys.iter() {
-				let new_key = DB_Key {
-					key_id: id.clone(),
-					val: value.to_string().trim_matches('"').to_string()
-				};
-
-				let _ = self.update_key(&new_key);
+		info!("[Data] Fetching users...");
+		
+		let u_json = match env::var("USERS_JSON") {
+			Ok(u)  => String::from(u),
+			Err(m) => { 
+				error!("USERS_JSON environment variable not found: {}", m);
+				return None;
 			}
+		};
+		let json_users: HashMap<String, i16> = match serde_json::from_str(&u_json) {
+			Ok(ju) => ju,
+			Err(m) => {
+				error!("Unable to parse users json: {}", m);
+				return None;
+			}
+		};
+
+		for (user, perms) in json_users.iter() {
+			let new_user = DB_User { 
+				username: user.clone(), 
+				permissions: *perms as i16
+			};
+
+			let _ = self.update_user(&new_user);
 		}
 
+		info!("[Data] Fetching data...");
+
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 		let data_results = data
 			.select(DB_DataElement::as_select())
 			.load(&mut conn)
@@ -536,174 +741,31 @@ impl Database {
 				val: String::from(SPRS_ERR),
 			});
 		}
+		
+		let k_json = match env::var("KEYS_JSON") {
+			Ok(k)  => String::from(k),
+			Err(m) => {
+				error!("Unable to parse keys from environment file: {}", m);
+				return None;
+			}
+		};
+		let json_keys: HashMap<String, Value> = match serde_json::from_str(&k_json) {
+			Ok(jk) => jk,
+			Err(m) => {
+				error!("Unable to parse key json into hashmap: {}", m);
+				return None;
+			}
+		};
+
+
+		let _ = self.update_key(
+			&DB_Key {
+				key_id: String::from("tdx_api_raw"),
+				val: String::from(json_keys.get("tdx_api_raw").unwrap().to_string())
+			}
+		);
 
 		Some(())
-	}
-
-	pub fn tally_table_lengths(&mut self) -> Option<HashMap<String, u16>> {
-		let mut conn = self.pool.get().expect("Failed to get DB Connection");
-		let mut ret_map: HashMap<String, u16> = HashMap::new();
-
-		let bldg_results = buildings
-			.select(DB_Building::as_select())
-			.load(&mut conn)
-			.expect("Error loading buildings.");
-
-		let room_results = rooms
-			.select(DB_Room::as_select())
-			.load(&mut conn)
-			.expect("Error loading rooms.");
-		
-		let user_results = users
-			.select(DB_User::as_select())
-			.load(&mut conn)
-			.expect("Error loading users.");
-
-		let key_results = keys
-			.select(DB_Key::as_select())
-			.load(&mut conn)
-			.expect("Error loading keys");
-
-		let data_results = data
-			.select(DB_DataElement::as_select())
-			.load(&mut conn)
-			.expect("Error loading data.");
-
-		ret_map.insert(String::from("buildings"), bldg_results.len().try_into().unwrap());
-		ret_map.insert(String::from("rooms"),     room_results.len().try_into().unwrap());
-		ret_map.insert(String::from("users"),     user_results.len().try_into().unwrap());
-		ret_map.insert(String::from("keys"),       key_results.len().try_into().unwrap());
-		ret_map.insert(String::from("data"),      data_results.len().try_into().unwrap());
-
-		Some(ret_map)
-	}
-
-	pub fn try_get_backup(&mut self) -> Result<HashMap<String, Value>, String> {
-		match read_to_string(BACKUP) {
-			Ok(fs) => match serde_json::from_str(fs.as_str()) {
-				Ok(je) => Ok(je),
-				Err(m) => {
-					return Err(format!("Unable to parse recovery file: {}", m));
-				}
-			},
-			Err(m) => { 
-				return Err(format!("Unable to find recovery file: {}", m)); 
-			}
-		}
-	}
-
-	pub fn try_recover_key(&mut self, recover_key: &str, recover_data: &HashMap<String, Value>) -> Result<(), String> {
-		match recover_key {
-			"buildings" => {
-				let recover_val = match recover_data.get(recover_key) {
-					Some(bs) => bs,
-					None     => { return Err(String::from("No buildings found!")); }
-				};
-				let backup_buildings: Vec<DB_Building> = match serde_json::from_value(recover_val.clone()) {
-					Ok(bs) => bs,
-					Err(m) => { return Err(format!("Unable to parse buildings from recovery data: {}", m)); }
-				};
-				for b in backup_buildings {
-					let _ = self.update_building(&b);
-				}
-			},
-			"rooms"     => {
-				let recover_val = match recover_data.get(recover_key) {
-					Some(rs) => rs,
-					None     => { return Err(String::from("No rooms found!")); }
-				};
-				let backup_rooms: Vec<DB_Room> = match serde_json::from_value(recover_val.clone()) {
-					Ok(rs) => rs,
-					Err(m) => { return Err(format!("Unable to parse rooms from recovery data: {}", m)); }
-				};
-				for r in backup_rooms {
-					let _ = self.update_room(&r);
-				}
-			},
-			"users"     => {
-				let _ = match recover_data.get(recover_key) {
-					Some(us) => {
-						let _ = match serde_json::from_value::<Vec<DB_User>>(us.clone()) {
-							Ok(bs) => {
-								for u in bs {
-									let _ = self.update_user(&u);
-								}
-							},
-							Err(_) => {
-								warn!("[Data] - No users found in recovery data. Attempting default recovery.");
-								let user_json = match &env::var("USERS_JSON") {
-									Ok(uj) => String::from(uj),
-									Err(m) => { return Err(format!("USERS_JSON environment varuable not found: {}", m)); }
-								};
-								let json_users: HashMap<String, i16> = match serde_json::from_str(&user_json) {
-									Ok(u)  => u,
-									Err(m) => { return Err(format!("Unable to parse users json: {}", m)); }
-								};
-
-								for (u, p) in json_users.iter() {
-									let _ = self.update_user(&DB_User {
-										username: u.clone(),
-										permissions: *p as i16
-									});
-								}
-							}
-						};
-					},
-					None     => {
-						warn!("[Data] - No users found in recovery data. Attempting default recovery.");
-						let user_json = match &env::var("USERS_JSON") {
-							Ok(uj) => String::from(uj),
-							Err(m) => { return Err(format!("USERS_JSON environment varuable not found: {}", m)); }
-						};
-						let json_users: HashMap<String, i16> = match serde_json::from_str(&user_json) {
-							Ok(u)  => u,
-							Err(m) => { return Err(format!("Unable to parse users json: {}", m)); }
-						};
-
-						for (u, p) in json_users.iter() {
-							let _ = self.update_user(&DB_User {
-								username: u.clone(),
-								permissions: *p as i16
-							});
-						}
-					}
-				};
-			},
-			"data"      => {
-				let recover_val = match recover_data.get(recover_key) {
-					Some(d) => d,
-					None    => { return Err(String::from("No data found!")); }
-				};
-				let backup_data: Vec<DB_DataElement> = serde_json::from_value(recover_val.clone()).unwrap();
-				for d in backup_data {
-					let _ = self.update_data(&d);
-				}
-			},
-			"keys"      => {
-				let key_json = match &env::var("KEYS_JSON") {
-					Ok(kj) => String::from(kj),
-					Err(m) => { return Err(format!("KEYS_JSON environment variable not found: {}", m)); }
-				};
-				let json_keys: HashMap<String, Value> = match serde_json::from_str(&key_json) {
-					Ok(k)  => k,
-					Err(m) => { return Err(format!("Unable to parse keys json: {}", m)); }
-				};
-				for (id, value) in json_keys.iter() {
-					let new_key = DB_Key {
-						key_id: id.clone(),
-						val: match value {
-							Value::String(s) => s.to_owned(),
-							_ => value.to_string()
-						}
-					};
-
-					let _ = self.update_key(&new_key);
-				}
-			}
-			&_          => { return Err(String::from("Unknown recovery file key")); }
-		}
-
-		Ok(())
 	}
 
 	pub fn gen_hn(room_name: String, items: &Vec<u8>) -> Vec<Option<DB_Hostname>> {
@@ -729,6 +791,84 @@ impl Database {
 		}
 
 		return hn_vec;
+	}
+
+	pub fn gen_dhcp_info(rooms_map: HashMap<i64, HostnameGenerator> ) -> HashMap<i64, Vec<Option<DB_IpAddress>>> {
+		let mut ret_hm: HashMap<i64, Vec<Option<DB_IpAddress>>> = HashMap::new();
+		let mut ip_vec: Vec<Option<DB_IpAddress>>;
+		for (r_id, devcounts) in rooms_map.iter() {
+			ip_vec = Vec::new();
+			for proc in 1..=devcounts.procs {
+				ip_vec.push(
+					Some(DB_IpAddress {
+						hostname: DB_Hostname {
+							room: devcounts.room.clone(),
+							dev_type: DeviceType::PROC,
+							num: proc as i32
+						},
+						ip: String::from("x"),
+						last_ping: String::from("2000-01-01T00:00:00Z"),
+						alert: 1,
+						error_message: String::from("Not run yet.")
+					})
+				);
+			}
+
+			for tp in 1..=devcounts.tps {
+				ip_vec.push(
+					Some(DB_IpAddress {
+						hostname: DB_Hostname {
+							room: devcounts.room.clone(),
+							dev_type: DeviceType::TP,
+							num: tp as i32
+						},
+						ip: String::from("x"),
+						last_ping: String::from("2000-01-01T00:00:00Z"),
+						alert: 1,
+						error_message: String::from("Not run yet.")
+					})
+				);
+			}
+
+			for pj in 1..=devcounts.pjs {
+				ip_vec.push(
+					Some(DB_IpAddress {
+						hostname: DB_Hostname {
+							room: devcounts.room.clone(),
+							dev_type: DeviceType::PJ,
+							num: pj as i32
+						},
+						ip: String::from("x"),
+						last_ping: String::from("2000-01-01T00:00:00Z"),
+						alert: 1,
+						error_message: String::from("Not run yet.")
+					})
+				);
+			}
+
+			for disp in 1..=devcounts.disps {
+				ip_vec.push(
+					Some(DB_IpAddress {
+						hostname: DB_Hostname {
+							room: devcounts.room.clone(),
+							dev_type: DeviceType::DISP,
+							num: disp as i32
+						},
+						ip: String::from("x"),
+						last_ping: String::from("2000-01-01T00:00:00Z"),
+						alert: 1,
+						error_message: String::from("Not run yet.")
+					})
+				);
+			}
+
+			ret_hm.insert(
+				*r_id,
+				ip_vec.clone()
+			);
+		}
+
+		ret_hm
 	}
 
 	pub fn gen_ip(hn_vec: &Vec<Option<DB_Hostname>>) -> Vec<Option<DB_IpAddress>> {
@@ -1106,81 +1246,25 @@ impl Database {
 			.get_result(&mut conn)
 	}
 
-	pub fn get_project(&mut self, id_value: i32) -> Result<Option<DB_Project>, DieselError> {
+	pub fn get_reservation(&mut self, res_id: i64) -> Result<Option<DB_Reservation>, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
-		projects
-			.select(DB_Project::as_select())
-			.filter(project_id.eq(id_value))
+		reservations
+			.select(DB_Reservation::as_select())
+			.filter(reservation_id.eq(res_id))
 			.first(&mut conn)
 			.optional()
 	}
 
-	pub fn get_latest_project(&mut self) -> Result<DB_Project, DieselError> {
+	pub fn update_reservation(&mut self, res: &DB_Reservation) -> Result<DB_Reservation, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
-		projects
-			.select(DB_Project::as_select())
-			.order(crate::schema::bronson::projects::dsl::created_date.desc())
-			.first(&mut conn)
-	}
-
-	pub fn get_all_projects(&mut self) -> Result<Vec<DB_Project>, DieselError> {
-		let mut conn = self.pool.get().expect("Failed to get DB Connection");
-
-		projects
-			.select(DB_Project::as_select())
-			.load::<DB_Project>(&mut conn)
-	}
-	
-	pub fn check_if_projects_empty(&mut self) -> bool {
-		let mut conn = self.pool.get().expect("Failed to get DB Connection");
-
-		projects
-			.count()
-			.get_result::<i64>(&mut conn)
-			.unwrap() == 0
-	}
-
-	pub fn update_project(&mut self, element: &DB_Project) -> Result<DB_Project, DieselError> {
-		let mut conn = self.pool.get().expect("Failed to get DB Connection");
-
-		diesel::insert_into(projects)
-			.values(element)
-			.on_conflict(project_id)
+		diesel::insert_into(reservations)
+			.values(res)
+			.on_conflict(reservation_id)
 			.do_update()
-			.set(element)
-			.returning(DB_Project::as_returning())
-			.get_result(&mut conn)
-	}
-
-	pub fn update_project_hidden(&mut self, id: i32, new_bool: bool) -> Result<Option<DB_Project>, DieselError> {
-		let mut conn = self.pool.get().expect("Failed to get DB Connection");
-
-		// Try to fetch the project first
-		let project_opt = projects
-			.filter(project_id.eq(id))
-			.first::<DB_Project>(&mut conn)
-			.optional()?;
-
-		// If not found, quietly return
-		let Some(_) = project_opt else { return Ok(None); };
-
-		// Update the flag
-		let updated = diesel::update(projects.filter(project_id.eq(id)))
-			.set(is_hidden.eq(new_bool))
-			.returning(DB_Project::as_returning())
-			.get_result::<DB_Project>(&mut conn)?;
-
-		Ok(Some(updated))
-	}
-	
-	pub fn delete_project(&mut self, id_value: i32) -> Result<DB_Project, DieselError> {
-		let mut conn = self.pool.get().expect("Failed to get DB Connection");
-
-		diesel::delete(projects)
-			.filter(project_id.eq(id_value))
-			.returning(DB_Project::as_returning())
+			.set(res)
+			.returning(DB_Reservation::as_returning())
 			.get_result(&mut conn)
 	}
 }
@@ -1584,7 +1668,6 @@ impl<B: std::clone::Clone> APIEndpoint<B>  {
 		};
 
 		if !self.data.clone().is_some() {
-			let args = self.args.clone();
 			self.data = Some(Arc::new(|c, b| { reqwest::RequestBuilder::json(c, &b) }));
 			
 			assert_eq!(self.data.clone().is_some(), true);
@@ -1947,20 +2030,31 @@ struct Login {
 	pub logout_url: String
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename="r25:events")]
-struct Events {
-	#[serde(rename="@pudate")]
-	pubdate: Option<String>,
-	#[serde(rename="@engine")]
-	engine: Option<String>,
-	#[serde(rename="r25:event")]
-	events: Vec<Event>
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename="r25:reservations")]
+pub struct Reservations {
+	#[serde(rename="r25:reservation")]
+	pub reservations: Vec<Reservation>
 }
 
-#[derive(Debug, Deserialize)]
-struct Event {
-	
+#[derive(Debug, Deserialize, Clone)]
+pub struct Reservation {
+	#[serde(rename="r25:reservation_id")]
+	pub reservation_id: i64,
+	#[serde(rename="r25:event_start_dt")]
+	pub start_dt: DateTime<Local>,
+	#[serde(rename="r25:event_end_dt")]
+	pub end_dt: DateTime<Local>,
+	#[serde(rename="r25:event_name")]
+	pub event_name: String,
+	#[serde(rename="r25:space_reservation")]
+	pub space: Option<Space>
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Space {
+	#[serde(rename="r25:space_id")]
+	pub space_id: i64
 }
 
 pub static BUFF_SIZE : usize = 4096;
