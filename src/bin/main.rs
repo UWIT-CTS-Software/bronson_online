@@ -95,7 +95,7 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
 use base64::{Engine as _, engine::general_purpose};
-use base64::decode as b64decode;
+// use base64::decode as b64decode;
 
 extern crate serde;
 extern crate serde_xml_rs;
@@ -1861,7 +1861,7 @@ async fn handle_connection(
             #[derive(Deserialize)]
             struct UploadFile{
                 filename: String, 
-                parentPath: String, 
+                parent_path: String, 
                 fileblob: String, //base64
             }
             //req.body was comming in as &Vec<u8>
@@ -1878,7 +1878,7 @@ async fn handle_connection(
                 }
             };
 
-            let fileObj: UploadFile = match serde_json::from_str(&body_to_string){
+            let file_obj: UploadFile = match serde_json::from_str(&body_to_string){
                 Ok(obj) => obj,
                 Err(e) => {
                     error!("Invalid JSON recived: {}", e);
@@ -1893,7 +1893,10 @@ async fn handle_connection(
                 }
             };
 
-            let decode_bytes = match b64decode(&fileObj.fileblob) {
+            let decode_bytes = general_purpose::STANDARD
+                .decode(&file_obj.fileblob);
+    
+            let bytes  = match decode_bytes {
                 Ok(bytes) => bytes, 
                 Err(e) => {
                     error!("Invalid base64: {}", e); 
@@ -1908,11 +1911,11 @@ async fn handle_connection(
             };
 
             let wiki_dirs = WIKI_DIR;
-            let relative_path = fileObj.parentPath.to_string() + &fileObj.filename;
+            let relative_path = file_obj.parent_path.to_string() + &file_obj.filename;
             let full_path = wiki_dirs.to_string() + (&relative_path);
             let full_path_buf = PathBuf::from(full_path.clone());
 
-            let write_file = write(&full_path_buf, decode_bytes);
+            let write_file = write::<&PathBuf, &Vec<u8>>(&full_path_buf, bytes.as_ref());
             if write_file.is_err() {
                 let e = write_file.unwrap_err();
                 error!("Failed to write file: {}", e);
@@ -1937,7 +1940,7 @@ async fn handle_connection(
               #[derive(Deserialize)]
             struct UploadDir {
                 filename: String, 
-                parentPath: String, 
+                parent_path: String, 
             }
             //req.body was comming in as &Vec<u8>
 
@@ -1953,7 +1956,7 @@ async fn handle_connection(
                 }
             };
 
-            let folderObj: UploadDir = match serde_json::from_str(&body_to_string){
+            let folder_obj: UploadDir = match serde_json::from_str(&body_to_string){
                 Ok(obj) => obj,
                 Err(e) => {
                     error!("Invalid JSON recived: {}", e);
@@ -1968,7 +1971,7 @@ async fn handle_connection(
             };
 
             let wiki_dirs = WIKI_DIR;
-            let relative_path = folderObj.parentPath.to_string() + &folderObj.filename;
+            let relative_path = folder_obj.parent_path.to_string() + &folder_obj.filename;
             let full_path = wiki_dirs.to_string() + (&relative_path);
             let full_path_buf = PathBuf::from(full_path.clone());
 
@@ -3615,8 +3618,8 @@ fn w_build_articles() -> Vec<u8> {
 }
 
 fn w_tree() -> Vec<u8>  {
-    let mut wiki_blacklist = HashSet::new();
-    let json_return = match build_tree(WIKI_DIR, wiki_blacklist) {
+    let  _wiki_blacklist = HashSet::new();
+    let json_return = match build_tree(WIKI_DIR, _wiki_blacklist) {
        Ok(j)     =>  j,
        Err(m)    => {error!("[Data] - Tree Build FAILED: {}", m); json!([]).to_string() }
      };
@@ -3700,161 +3703,85 @@ mod tests {
         assert_eq!(pad(String::from("test"), 4), String::from("test"));
         assert_eq!(pad(String::from("test"), 3), String::from("test"));
     }
+    
 
-    // This test works great, but cannot be used in GitHub's auto test due to the need for a database connection.
-    // Uncomment this test for local testing on DB CRUD operations :)
-    /* #[test]
-    fn test_db() {
-        let dummy_building = DB_Building {
-            abbrev: String::from("TEST"),
-            name: String::from("TEST"),
-            lsm_name: String::from("TEST"),
-            zone: -1,
-            checked_rooms: 0,
-            total_rooms: 0,
-        };
+    // Response Tests 
+    #[test] 
+    fn test_status() {
+       assert_eq!(Response::new()
+        .status, 
+        String::from(STATUS_500)
+    );
+        assert_eq!(Response::new()
+        .status(STATUS_200)
+        .status,
+        String::from(STATUS_200)
+    );
 
-        let dummy_room = DB_Room {
-            abbrev: String::from("TEST"),
-            name: String::from("TEST"),
-            25live_id: Option::None,
-            checked: "2000-01-01T00:00:00Z".to_string(),
-            needs_checked: true,
-            gp: false,
-            offln: false,
-            available: false,
-            until: String::from("TOMORROW"),
-            ping_data: Vec::new(),
-            schedule: Vec::new(),
-        };
+        assert_eq!(Response::new()
+        .status("Uh oh")
+        .status, 
+        String::from("Uh oh")
+    );
+       
+    }
+    #[test]
+    fn test_headers() {
+        assert_eq!(
+            Response::new() 
+            .headers, 
+            HashMap::from([
+                (String::from("Content-Type"),String::from("*/*")),
+                (String::from("Content-Length"),String::from("0")),
+            ])
+        );
 
-        let dummy_key = DB_Key {
-            key_id: String::from("TEST"),
-            val: String::from("TEST")
-        };
+        assert_eq!(    
+            Response::new()
+            .insert_header("Content-Type","application/json")
+            .headers,
+             
+            HashMap::from([
+                (String::from("Content-Type"),String::from("application/json")),
+                (String::from("Content-Length"),String::from("0")),
+            ])
 
-        let dummy_user = DB_User {
-            username: String::from("TEST"),
-            permissions: 0
-        };
+        );
 
-        let dummy_data = DB_DataElement {
-            key: String::from("TEST"),
-            val: String::from("TEST")
-        };
+         assert_eq!(    
+            Response::new()
+            .insert_header("Test-Random","test/random")
+            .headers,
+             
+            HashMap::from([
+                (String::from("Test-Random"),String::from("test/random")),
+                (String::from("Content-Type"),String::from("*/*")),
+                (String::from("Content-Length"),String::from("0")),
+            ])
+        );
+        
+    }
 
-        let mut db = Database::new();
+    #[test]
+    fn test_send_contents() {
 
-        let _ = match db.get_building_by_abbrev(&String::from("TEST")) {
-            Ok(_) => panic!("BUILDING FETCHED WHEN NONE EXPECTED"),
-            Err(_) => ()
-        };
+          
+        assert_eq!(
+            Response::new()
+            .body, 
+            Vec::<u8>::new()
 
-        let _ = match db.get_room_by_name(&String::from("TEST")) {
-            Ok(_) => panic!("ROOM FETCHED WHEN NONE EXPECTED"),
-            Err(_) => ()
-        };
+        );
 
-        let _ = match db.get_key(&String::from("TEST")) {
-            Ok(_) => panic!("KEY FETCHED WHEN NONE EXPECTED"),
-            Err(_) => ()
-        };
+        
+        assert_eq!(
+            Response::new()
+            .send_contents([10, 11, 12, 13].to_vec())
+            .body, 
+            Vec::from([10, 11, 12, 13])
 
-        let _ = match db.get_user(&String::from("TEST")) {
-            Ok(_) => panic!("USER FETCHED WHEN NONE EXPECTED"),
-            Err(_) => ()
-        };
+        );
+    }
 
-        let _ = match db.get_data(&String::from("TEST")) {
-            Ok(_) => panic!("DATA FETCHED WHEN NONE EXPECTED"),
-            Err(_) => ()
-        };
 
-        let _ = db.update_building(&dummy_building).expect("BUILDING UPDATE FAILED");
-        let _ = db.update_room(&dummy_room).expect("ROOM UPDATE FAILED");
-        let _ = db.update_key(&dummy_key).expect("KEY UPDATE FAILED");
-        let _ = db.update_user(&dummy_user).expect("USER UPDATE FAILED");
-        let _ = db.update_data(&dummy_data).expect("DATA UPDATE FAILED");
-
-        let _ = db.get_building_by_abbrev(&String::from("TEST")).expect("NO BUILDING FETCHED");
-        let _ = db.get_room_by_name(&String::from("TEST")).expect("NO ROOM FETCHED");
-        let _ = db.get_key(&String::from("TEST")).expect("NO KEY FETCHED");
-        let _ = db.get_user(&String::from("TEST")).expect("NO USER FETCHED");
-        let _ = db.get_data(&String::from("TEST")).expect("NO DATA FETCHED");
-
-        let dummy_building2 = DB_Building {
-            abbrev: String::from("TEST"),
-            name: String::from("TEST2"),
-            lsm_name: String::from("TEST"),
-            zone: -1,
-            checked_rooms: 0,
-            total_rooms: 0,
-        };
-
-        let dummy_room2 = DB_Room {
-            abbrev: String::from("TEST"),
-            name: String::from("TEST"),
-            checked: "2000-01-01T00:00:00Z".to_string(),
-            needs_checked: true,
-            gp: false,
-            offln: false,
-            available: false,
-            until: String::from("TOMORROW2"),
-            ping_data: Vec::new(),
-            schedule: Vec::new(),
-        };
-
-        let dummy_key2 = DB_Key {
-            key_id: String::from("TEST"),
-            val: String::from("TEST2")
-        };
-
-        let dummy_user2 = DB_User {
-            username: String::from("TEST"),
-            permissions: -1
-        };
-
-        let dummy_data2 = DB_DataElement {
-            key: String::from("TEST"),
-            val: String::from("TEST2")
-        };
-
-        let _ = db.update_building(&dummy_building2).expect("BUILDING UPDATE FAILED.");
-        let _ = db.update_room(&dummy_room2).expect("ROOM UPDATE FAILED.");
-        let _ = db.update_key(&dummy_key2).expect("KEY UPDATE FAILED.");
-        let _ = db.update_user(&dummy_user2).expect("USER UPDATE FAILED.");
-        let _ = db.update_data(&dummy_data2).expect("DATA UPDATE FAILED.");
-
-        let _ = db.delete_room(&String::from("TEST")).expect("ROOM DELETION FAILED.");
-        let _ = db.delete_building(&String::from("TEST")).expect("BUILDING DELETION FAILED.");
-        let _ = db.delete_key(&String::from("TEST")).expect("KEY DELETION FAILED.");
-        let _ = db.delete_user(&String::from("TEST")).expect("USER DELETION FAILED.");
-        let _ = db.delete_data(&String::from("TEST")).expect("DATA DELETION FAILED.");
-
-        let _ = match db.get_building_by_abbrev(&String::from("TEST")) {
-            Ok(_) => panic!("BUILDING FETCHED WHEN NONE EXPECTED"),
-            Err(_) => ()
-        };
-
-        let _ = match db.get_room_by_name(&String::from("TEST")) {
-            Ok(_) => panic!("ROOM FETCHED WHEN NONE EXPECTED"),
-            Err(_) => ()
-        };
-
-        let _ = match db.get_key(&String::from("TEST")) {
-            Ok(_) => panic!("KEY FETCHED WHEN NONE EXPECTED"),
-            Err(_) => ()
-        };
-
-        let _ = match db.get_user(&String::from("TEST")) {
-            Ok(_) => panic!("USER FETCHED WHEN NONE EXPECTED"),
-            Err(_) => ()
-        };
-
-        let _ = match db.get_data(&String::from("TEST")) {
-            Ok(_) => panic!("DATA FETCHED WHEN NONE EXPECTED"),
-            Err(_) => ()
-        };
-
-    } */
 }

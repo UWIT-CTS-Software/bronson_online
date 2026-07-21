@@ -1236,7 +1236,7 @@ impl Response {
 		self.status = String::from(status);
 
 		self
-	}
+	} 
 
 	pub fn insert_header(mut self, header: &str, value: &str) -> Response {
 		self.headers.insert(String::from(header), String::from(value));
@@ -1334,7 +1334,7 @@ impl Response {
 #[derive(Debug, Clone)]
 pub enum APIClient {
 	SingleThread(Arc<std::sync::RwLock<reqwest::Client>>),
-	MultiThread(reqwest::Client)
+	MultiThread(reqwest::Client),
 }
 
 #[derive(Debug, Clone)]
@@ -1493,7 +1493,7 @@ impl<B: std::clone::Clone> APIEndpoint<B>  {
 
 		let client = match &self.client {
 			APIClient::SingleThread(c) => method(c.write().unwrap().clone(), url.to_string()),
-			APIClient::MultiThread(c)  => method(c.clone(),                  url.to_string())
+			APIClient::MultiThread(c)  => method(c.clone(),                  url.to_string()),
 		};
 
 		let send = data_endpoint(client.timeout(self.timeout)
