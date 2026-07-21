@@ -724,14 +724,14 @@ async function fetchCurrentUserPermissions() {
 // send file new file to backend 
 
 async function uploadNewFile(button){
-     let parentPath = button.dataset.path;
-      sessionStorage.setItem("Parent Path", parentPath);
+     let parent_path = button.dataset.path;
+      sessionStorage.setItem("Parent Path", parent_path);
     showWikiPopup();
 }
 
 async function uploadNewFolder(button){
-     let parentPath = button.dataset.path;
-      sessionStorage.setItem("Parent Path", parentPath);
+     let parent_path = button.dataset.path;
+      sessionStorage.setItem("Parent Path", parent_path);
     showFolderPopup();
 }
 
@@ -740,14 +740,14 @@ async function uploadNewFolder(button){
 
 async function submitFile(){
     const newFile = document.getElementById("newFile").files[0];
-    const parentPath = sessionStorage.getItem("Parent Path") + "/";
+    const parent_path = sessionStorage.getItem("Parent Path") + "/";
     const newFileBytes = await newFile.bytes();
     const base64 = btoa(String.fromCharCode(...newFileBytes));
 
 
-    const fileObj = {
+    const file_obj = {
         filename: newFile.name, 
-        parentPath: parentPath, 
+        parent_path: parent_path, 
         fileblob:base64
     }
 
@@ -757,7 +757,7 @@ async function submitFile(){
         headers: {
             'Content-Type': 'application/json; charset=utf-8'
             },
-            body: JSON.stringify(fileObj)
+            body: JSON.stringify(file_obj)
         })
 
     hidePopupHTML()
@@ -767,12 +767,12 @@ async function submitFile(){
 
 async function submitFolder(){
     const newFolder = document.getElementById("newFolder").value;
-    const parentPath = sessionStorage.getItem("Parent Path") + "/";
+    const parent_path = sessionStorage.getItem("Parent Path") + "/";
 
 
-    const folderObj = {
+    const folder_obj = {
         filename: newFolder,
-        parentPath: parentPath, 
+        parent_path: parent_path, 
     }
 
 
@@ -782,7 +782,7 @@ async function submitFolder(){
         headers: {
             'Content-Type': 'application/json; charset=utf-8'
             },
-            body: JSON.stringify(folderObj)
+            body: JSON.stringify(folder_obj)
         })
         .then(response => console.log("item added"))
         .catch(error => console.log("Error", error));
@@ -793,15 +793,15 @@ async function submitFolder(){
 
 
 async function deleteElement(button) {
-     let parentPath = button.dataset.path;
-      sessionStorage.setItem("Parent Path", parentPath);
+     let parent_path = button.dataset.path;
+      sessionStorage.setItem("Parent Path", parent_path);
     showDeletePopup();
 }
 
 async function submitDelete(){
-    const parentPath = sessionStorage.getItem("Parent Path");
+    const parent_path = sessionStorage.getItem("Parent Path");
     const filePath = {
-        filepath: parentPath
+        filepath: parent_path
     }
 
     const response = await fetch('/w_delete',{

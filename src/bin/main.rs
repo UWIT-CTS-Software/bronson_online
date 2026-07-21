@@ -98,7 +98,8 @@ use urlencoding::decode;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
-use tera::{Tera, Context, Delimiters};
+use base64::{Engine as _, engine::general_purpose};
+// use base64::decode as b64decode;
 
 extern crate serde;
 extern crate serde_xml_rs;
@@ -2016,7 +2017,7 @@ async fn handle_connection(
             #[derive(Deserialize)]
             struct UploadFile{
                 filename: String, 
-                parentPath: String, 
+                parent_path: String, 
                 fileblob: String, //base64
             }
             //req.body was comming in as &Vec<u8>
@@ -2033,7 +2034,7 @@ async fn handle_connection(
                 }
             };
 
-            let fileObj: UploadFile = match serde_json::from_str(&body_to_string){
+            let file_obj: UploadFile = match serde_json::from_str(&body_to_string){
                 Ok(obj) => obj,
                 Err(e) => {
                     error!("Invalid JSON recived: {}", e);
@@ -2048,7 +2049,10 @@ async fn handle_connection(
                 }
             };
 
-            let decode_bytes = match b64decode(&fileObj.fileblob) {
+            let decode_bytes = general_purpose::STANDARD
+                .decode(&file_obj.fileblob);
+    
+            let bytes  = match decode_bytes {
                 Ok(bytes) => bytes, 
                 Err(e) => {
                     error!("Invalid base64: {}", e); 
@@ -2063,11 +2067,11 @@ async fn handle_connection(
             };
 
             let wiki_dirs = WIKI_DIR;
-            let relative_path = fileObj.parentPath.to_string() + &fileObj.filename;
+            let relative_path = file_obj.parent_path.to_string() + &file_obj.filename;
             let full_path = wiki_dirs.to_string() + (&relative_path);
             let full_path_buf = PathBuf::from(full_path.clone());
 
-            let write_file = write(&full_path_buf, decode_bytes);
+            let write_file = write::<&PathBuf, &Vec<u8>>(&full_path_buf, bytes.as_ref());
             if write_file.is_err() {
                 let e = write_file.unwrap_err();
                 error!("Failed to write file: {}", e);
@@ -2092,7 +2096,7 @@ async fn handle_connection(
               #[derive(Deserialize)]
             struct UploadDir {
                 filename: String, 
-                parentPath: String, 
+                parent_path: String, 
             }
             //req.body was comming in as &Vec<u8>
 
@@ -2108,7 +2112,7 @@ async fn handle_connection(
                 }
             };
 
-            let folderObj: UploadDir = match serde_json::from_str(&body_to_string){
+            let folder_obj: UploadDir = match serde_json::from_str(&body_to_string){
                 Ok(obj) => obj,
                 Err(e) => {
                     error!("Invalid JSON recived: {}", e);
@@ -2123,7 +2127,7 @@ async fn handle_connection(
             };
 
             let wiki_dirs = WIKI_DIR;
-            let relative_path = folderObj.parentPath.to_string() + &folderObj.filename;
+            let relative_path = folder_obj.parent_path.to_string() + &folder_obj.filename;
             let full_path = wiki_dirs.to_string() + (&relative_path);
             let full_path_buf = PathBuf::from(full_path.clone());
 
@@ -4483,8 +4487,8 @@ fn w_build_articles() -> Vec<u8> {
 }
 
 fn w_tree() -> Vec<u8>  {
-    let mut wiki_blacklist = HashSet::new();
-    let json_return = match build_tree(WIKI_DIR, wiki_blacklist) {
+    let  _wiki_blacklist = HashSet::new();
+    let json_return = match build_tree(WIKI_DIR, _wiki_blacklist) {
        Ok(j)     =>  j,
        Err(m)    => {error!("[Data] - Tree Build FAILED: {}", m); json!([]).to_string() }
      };
