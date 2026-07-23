@@ -15,6 +15,11 @@
 async function setWiki() {
     const menuItems = document.querySelectorAll(".menuItem");
 
+
+    const isMobile = localStorage.getItem("isMobile") === "true";
+    console.log(isMobile);
+
+
     menuItems.forEach(function(menuItem) {
       menuItem.addEventListener("click", toggleMenu);
     });
@@ -49,7 +54,7 @@ async function setWiki() {
 
     //w_toc.innerHTML = await getTocHTML();
     w_toc.innerHTML = `  
-            <fieldset class="w_fieldset" id="toc_fieldset">
+            <fieldset class=${isMobile ? "w_fieldset_mobile" : "w_fieldset"} id="toc_fieldset">
             <legend class="w_legend"> 
                 Table of Contents:
             </legend>
@@ -331,18 +336,17 @@ function deleteButton(node){
 //-------------------------------------------------------------------
 
  async function getArticleHTML(blob, filename) {
+    const isMobile = localStorage.getItem("isMobile") === "true";
    
     if (filename.endsWith('.md')){
-        
         let parsed_md = "";
         let md = await blob.text();
         parsed_md = marked.parse(md);
         let html = `
-            <fieldset class="wA_fieldset">
-                <legend class='w_legend'> 
+            <fieldset class=${isMobile ? "wA_fieldset_mobile" : "class=wA_fieldset"}>
+                <legend ${isMobile ? "class='mobile_legend'" : "class='w_legend'"}> 
                     ${filename}
-                </legend> 
-                <div class = "scrollArt"> 
+                </legend>  
                 <pre>${parsed_md} </pre>
                 </div>
 
@@ -353,17 +357,17 @@ function deleteButton(node){
         return;
         
     } else if (filename.endsWith('.pdf')){
+       
         let raw_blob = await blob;
         let pdf_blob = new Blob([raw_blob], {type: "application/pdf"});
         const blobUrl = URL.createObjectURL(pdf_blob); 
 
         let html = `
-            <fieldset class="wA_fieldset">
-                <legend class='w_legend'> 
+            <fieldset class=${isMobile ? "wA_fieldset_mobile'" : "class='wA_fieldset"}>
+                <legend ${isMobile ? "class='mobile_legend'" :  "class='w_legend'"}> 
                     ${filename}
                 </legend> 
-                <div class = "scrollArt"> 
-                <iframe width="1000px" height="1200px" src="${blobUrl}"></iframe>
+                <iframe width="100%" height="1200px" src="${blobUrl}"></iframe>
                 </div>
 
             </fieldset>
@@ -372,13 +376,13 @@ function deleteButton(node){
         w_viwer.innerHTML = html;
          return; 
     } else {
+      
         let text = await blob.text();
         let html = `
-            <fieldset class="wA_fieldset">
-                <legend class='w_legend'> 
+            <fieldset class=${isMobile ? "wA_fieldset_mobile'" : "class='wA_fieldset"}>
+                <legend ${isMobile ? "class='mobile_legend'" :  "class='w_legend'"}> 
                     ${filename}
                 </legend> 
-                <div class = "scrollArt"> 
                 <pre class="plain-text">${text}<pre>
                 </div>
 
