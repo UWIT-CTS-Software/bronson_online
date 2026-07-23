@@ -2099,9 +2099,6 @@ td.mobile_th {
 .tx_popupComments p {
     font-size: small;
     text-align: left;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     padding: 0px 8px;
 }
 

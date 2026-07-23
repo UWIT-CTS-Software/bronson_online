@@ -179,15 +179,15 @@ async function createTicket(container) {
 
     // Package data and send to backend
     const jsonBody = {
+        "_OperationType": "CREATE", 
         "Title": titleField.value.trim(),
         "Description": descriptionField.value.trim(),
-        "RequestorUid": requestorField.value.trim(),
+        "ResponsibleGroupID": requestorField.value.trim(),
         "CreatedUid": createdByField.value.trim(),
         "ResponsibleUid": responsibilityField.value.trim()
     };
-    // TODO: Send json to backend
-    console.log(jsonBody);
 
+    updateTicket(jsonBody);
     hideCurrentPopup(true);
 }
 
@@ -228,13 +228,11 @@ Classroom Technology Services (CTS)`;
             <div>
                 <label for="status">Status:</label>
                 <select name="status" id="tx_editTicket_Status">
-                    <option value="new_ID">New</option>
-                    <option value="inprocess_ID">In Process</option>
-                    <option value="closed_ID">Closed</option>
-                    <option value="other">Other (TODO)</option>
+                    <option value="New">New</option>
+                    <option value="In Process">In Process</option>
+                    <option value="Closed">Closed</option>
                 </select>
             </div>
-            <br class="tx_createTicketBr">
             <p class="tx_editTicketText">Title: </p>
             <textarea id="tx_editTicket_Title" class="tx_createTicketTextarea" maxlength="80" placeholder="Ex: IT 173 - My Issue (This field is Required)">${ticket.Title}</textarea>
             <br class="tx_createTicketBr">
@@ -319,16 +317,16 @@ async function applyChanges(ticketID) {
 
     // Package data and send to backend
     const jsonBody = {
+        "_OperationType": "EDIT", 
         "ID": ticketID,
-        "StatusName": statusField.value.trim(),
+        "StatusName": statusField.value.trim(), 
         "Title": titleField.value.trim(),
-        "ResponsibleUid": responsibilityField.value.trim(),
+        "ResponsibleGroupID": 2742, // Hard-coded for now
         "comments": commentsFields.value.trim(),
         "email_to_requestor": emailRequestorField.value.trim() // Pass "" to imply no email will be sent
     };
-    // TODO: Send json to backend
-    console.log(jsonBody);
 
+    updateTicket(jsonBody);
     hideCurrentPopup(true);
 }
 
@@ -1254,6 +1252,21 @@ async function updateTicketViewed(ticketId, viewed) {
         if (!response.ok) console.error('Failed to update ticket viewed status');
     } catch (error) {
         console.error('Error updating ticket viewed status:', error);
+    }
+}
+
+// Sends a request to TeamDynamix to Create/edit a Ticket
+async function updateTicket(body) {
+    try {
+        const response = await fetch('/update/ticket', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', },
+            body: JSON.stringify(body),
+        });
+
+        if (!response.ok) console.error('Failed to Creating/Editing ticket');
+    } catch (error) {
+        console.error('Error Creating/Editing ticket:', error);
     }
 }
 

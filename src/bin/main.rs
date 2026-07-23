@@ -41,6 +41,7 @@ Wiki
 // dependencies
 // ----------------------------------------------------------------------------
 use server_lib::{
+    APIResponse,
     BUFF_SIZE, 
     ThreadPool, ThreadSchedule, TaskSchedule, PingRequest, 
     Building, 
@@ -871,6 +872,35 @@ async fn handle_connection(
             Response::new()
                 .status(STATUS_200)
                 .send_contents(contents)
+        },
+        "POST /update/ticket HTTP/1.1" => {
+            // Parse JSON body
+            let body_json: Value = match serde_json::from_slice(&req.body) {
+                Ok(v) => v,
+                Err(_) => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Invalid JSON".into())
+                        .build();
+                }
+            };
+
+            let operation_type = body_json["_OperationType"].as_str().unwrap_or("");
+
+            let _ = match operation_type {
+                "CREATE" => create_tdx_ticket(&mut database, &tdx_client, body_json).await,
+                "EDIT" => edit_tdx_ticket(&mut database, &tdx_client, body_json).await,
+                _ => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Malformed '_OperationType' Field".into())
+                        .build();
+                }
+            };
+
+            Response::new()
+                .status(STATUS_200)
+                .send_contents("".into())
         },
         "POST /update/ticket/viewed HTTP/1.1" => {
             // Parse JSON body
@@ -2726,6 +2756,45 @@ async fn fetch_tdx_token(database: &mut Database, req: &API) -> Result<(), Strin
     return Ok(());
 }
 
+async fn retry_tdx_token(database: &mut Database, req: &API, method: &str, url: &str, request_body: Option<serde_json::Value>) -> Result<APIResponse, String> {
+    warn!("Unauthorized Response from TDX while performing action, trying again with new Token...");
+
+    // Grab new TDX Token
+    fetch_tdx_token(database, req).await?;
+
+    // Get the TDX API token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API token while retrying new Token pull: {}", e)),
+    };
+
+    // Build the request
+    let mut endpoint = req
+        .build()
+        .method(method)
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Accept", "application/json")
+        .timeout(Duration::from_secs(120));
+    // Add the body if there is one provided
+    if let Some(body) = request_body {
+        endpoint = endpoint.body(body);
+    }
+
+    // Make the request to TDX API
+    let retry_resp = match endpoint.send().await {
+        Ok(r) => r,
+        Err(e) => return Err(format!("Failed to fetch response from TDX: {}", e)),
+    };
+
+    if !retry_resp.status.is_success() {
+        return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
+    }
+        
+    warn!("Successfully recovered new TDX Token & fetched new description data");
+    return Ok(retry_resp);
+}
+
 async fn fetch_tdx_ticket_description(database: &mut Database, req: &API, ticket_id: i32) -> Result<String, String> {
     // Construct the API URL to fetch ticket details
     let url = format!(
@@ -2754,36 +2823,7 @@ async fn fetch_tdx_ticket_description(database: &mut Database, req: &API, ticket
 
     // Try fetching a new tdx token and try again if Unauthorized
     if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
-        warn!("Ticket description fetch failure was due to an unauthorized response, fetching new token and trying again...");
-
-        // Grab new TDX Token
-        let _ = fetch_tdx_token(database, req).await;
-
-        // Get the TDX API token from database
-        let tdx_token = match database.get_key("tdx_api") {
-            Ok(t) => t,
-            Err(e) => return Err(format!("Failed to get TDX API token while fetching ticket description: {}", e)),
-        };
-
-        // Make the request to TDX API
-        let retry_resp = match req
-            .build()
-            .method("GET")
-            .endpoint(&url)
-            .header("Authorization", &tdx_token.val)
-            .header("Accept", "application/json")
-            .send()
-            .await {
-                Ok(r) => r,
-                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
-            };
-
-        if !retry_resp.status.is_success() {
-            return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
-        } else {
-            warn!("Successfully recovered new TDX Token & fetched new description data");
-            resp = retry_resp;
-        }
+        resp = retry_tdx_token(database, req, "GET", &url, None).await?;
     }
 
     // Parse the response body
@@ -2822,41 +2862,12 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &API, ticket_id: i3
         .send()
         .await {
             Ok(r) => r,
-            Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
+            Err(e) => return Err(format!("Failed to fetch ticket feed from TDX: {}", e))
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
     if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
-        warn!("Ticket feed fetch failed due to an unauthorized response, fetching new token and trying again...");
-
-        // Grab new TDX Token
-        let _ = fetch_tdx_token(database, req).await;
-
-        // Get the TDX API token from database
-        let tdx_token = match database.get_key("tdx_api") {
-            Ok(t) => t,
-            Err(e) => return Err(format!("Failed to get TDX API token while fetching ticket feed: {}", e)),
-        };
-
-        // Make the request to TDX API
-        let retry_resp = match req
-            .build()
-            .method("GET")
-            .endpoint(&url)
-            .header("Authorization", &tdx_token.val)
-            .header("Accept", "application/json")
-            .send()
-            .await {
-                Ok(r) => r,
-                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)) 
-            };
-
-        if !retry_resp.status.is_success() {
-            return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
-        } else {
-            warn!("Successfully recovered new TDX Token & fetched new feed data");
-            resp = retry_resp;
-        }
+        resp = retry_tdx_token(database, req, "GET", &url, None).await?;
     }
 
     // Parse the response body
@@ -2940,41 +2951,12 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64
         .send()
         .await {
             Ok(r) => r,
-            Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
+            Err(e) => return Err(format!("Failed to fetch ticket feed from TDX: {}", e))
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
     if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
-        warn!("Ticket replies fetch failed due to an unauthorized response, fetching new token and trying again...");
-
-        // Grab new TDX Token
-        let _ = fetch_tdx_token(database, req).await;
-
-        // Get the TDX API token from database
-        let tdx_token = match database.get_key("tdx_api") {
-            Ok(t) => t,
-            Err(e) => return Err(format!("Failed to get TDX API token while fetching ticket feed: {}", e)),
-        };
-
-        // Make the request to TDX API
-        let retry_resp = match req
-            .build()
-            .method("GET")
-            .endpoint(&url)
-            .header("Authorization", &tdx_token.val)
-            .header("Accept", "application/json")
-            .send()
-            .await {
-                Ok(r) => r,
-                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
-            };
-
-        if !retry_resp.status.is_success() {
-            return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
-        } else {
-            warn!("Successfully recovered new TDX Token & fetched new feed data");
-            resp = retry_resp;
-        }
+        resp = retry_tdx_token(database, req, "GET", &url, None).await?;
     }
 
     // Parse the response body
@@ -3032,21 +3014,24 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
             "MaxResults": 5000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
         });
         // Make the request
-        let resp_raw = req
+        let mut resp = match req
             .build()
             .method("POST")
             .endpoint(url)
             .header("Authorization", &tdx_token.val)
             .header("Content-Type", "application/json")
-            .body(search_body)
+            .body(search_body.clone())
             .timeout(Duration::from_secs(120))
             .send()
-            .await;
-        
-        let resp = match resp_raw {
-            Ok(r) => r,
-            Err(e) => return Err(format!("Failed to fetch tickets: {}", e))
-        };
+            .await {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
+            };
+
+        // Try fetching a new tdx token and try again if Unauthorized
+        if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+            resp = retry_tdx_token(database, req, "POST", &url, Some(search_body)).await?;
+        }
 
         if !resp.status.is_success() {
             return Err(format!("TDX API error: {}", resp.status));
@@ -3055,7 +3040,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
         // Parse the response as JSON
         let tickets_json: Vec<serde_json::Value> = 
             serde_json::from_str(&resp.body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
-/* 
+        /* 
         let resp = match &req.client {
             SingleThread(_) => { return Err("Please dear God".to_string()); },
             MultiThread(c) => c
@@ -3169,44 +3154,12 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
 
         // Try fetching a new tdx token and try again if Unauthorized
         if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
-            warn!("Ticket data fetch failure was due to an unauthorized response, fetching new token and trying again...");
-
-            // Grab new TDX Token
-            let _ = fetch_tdx_token(database, req).await;
-
-            // Get the TDX API token from database
-            let tdx_token = match database.get_key("tdx_api") {
-                Ok(t) => t,
-                Err(e) => return Err(format!("Failed to get TDX API token while fetching ticket data: {}", e)),
-            };
-
-            // Make the request to TDX API
-            let retry_resp_raw = req
-                .build()
-                .method("POST")
-                .endpoint(url)
-                .header("Authorization", &tdx_token.val)
-                .header("Content-Type", "application/json")
-                .body(search_body)
-                .send()
-                .await;
-                
-            let retry_resp = match retry_resp_raw {
-                Ok(r) => r,
-                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
-            };
-
-            if !retry_resp.status.is_success() {
-                return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
-            } else {
-                warn!("Successfully recovered new TDX Token & fetched new ticket data");
-                resp = retry_resp;
-            }
+            resp = retry_tdx_token(database, req, "POST", &url, Some(search_body)).await?;
         }
 
         // Get the response body as text and convert to JSON
-        let tickets_json: Vec<serde_json::Value> = serde_json::from_str(&resp.body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
-
+        let tickets_json: Vec<serde_json::Value> = serde_json::from_str(&resp.body)
+            .map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
 
         // Map to DB_Ticket and update
         for ticket_val in &tickets_json {
@@ -3299,6 +3252,171 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
     return Ok(());
 }
 
+async fn create_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -> Result<(), String> {
+    info!("[Data] - Sending Create Ticket Request to TDX");
+    
+    let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/";
+
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e)),
+    };
+
+
+    // TODO:
+    // - Pull ticket template json file from backend directory
+    // - Aggregate body_json fields to this template json file
+    // - Send new Ticket Contents to TDX for creation on the cloud
+    // - Will receive a ticket body from TDX as a verification that creation was successful
+    // - Push this body to the DB to be added
+    // - run tickex??? (The ticket will have already been added into the DB)
+
+    info!("[Data] - Create Ticket Request Successful (New Ticket ID: {})", 12345678);
+
+    return Ok(());
+}
+
+async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -> Result<(), String> {
+    let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
+    info!("[Data] - Sending Edit Ticket Request to TDX (Ticket ID: {})", id);
+    
+    let url = format!("https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/{}", id);
+
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e)),
+    };
+
+    // Query TDX for the ticket we want to edit
+    let mut ticket_resp = match req
+        .build()
+        .method("GET")
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Content-Type", "application/json")
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch Ticket from TDX during update: {}", e))
+        };
+
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !ticket_resp.status.is_success() && ticket_resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        ticket_resp = retry_tdx_token(database, req, "GET", &url, None).await?;
+    }
+
+    if !ticket_resp.status.is_success() {
+        return Err(format!("TDX API error: {}", ticket_resp.status));
+    }
+
+    // Apply Ticket Edits
+    let mut revised_ticket: Value = serde_json::from_str(&ticket_resp.body)
+        .expect("TDX returned invalid JSON");
+
+    if let Some(status) = body_json.get("StatusName").and_then(|v| v.as_str()) {
+        let status_id = match fetch_status_id(database, &req, status).await {
+            Ok(v) => v,
+            Err(e) => return Err(format!("Failed to fetch StatusID from TDX: {}", e))
+        };
+        revised_ticket["StatusID"] = status_id.into();
+    }
+    if let Some(title) = body_json.get("Title").and_then(|v| v.as_str()) {
+        revised_ticket["Title"] = Value::String(title.trim().to_string());
+    }
+    if let Some(uid) = body_json.get("ResponsibleGroupID").and_then(|v| v.as_i64()) {
+        revised_ticket["ResponsibleGroupID"] = Value::Number(uid.into());
+    }
+
+    // Send updated ticket content and recieve the ticket as a verification response
+    let mut new_ticket_resp = match req
+        .build()
+        .method("POST")
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Content-Type", "application/json")
+        .body(revised_ticket.clone())
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to update Ticket in TDX: {}", e))
+        };
+
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !new_ticket_resp.status.is_success() && new_ticket_resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        new_ticket_resp = retry_tdx_token(database, req, "POST", &url, Some(revised_ticket)).await?;
+    }
+
+    if !new_ticket_resp.status.is_success() {
+        return Err(format!("TDX API error: {}", new_ticket_resp.status));
+    }
+
+
+
+    // TODO:
+    // - Will receive an additional ticket body from TDX as a verification the edit was successful (in new_ticket_resp)
+    // - Push this body to DB for updates
+    // - Post the comment with new function call
+    // - Send email to requestor (if email_to_requestor is not "")
+    // - run tickex??? (The ticket will have already been updated in DB & in cloud)
+
+    info!("[Data] - Edit Ticket Request Successful (Ticket ID: {})", id);
+    Ok(())
+}
+
+async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) -> Result<i32, String> {
+    let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/statuses/search";
+
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e))
+    };
+
+    // Define search
+    let search_body = serde_json::json!({
+        "IsActive": true
+    });
+
+    // Query TDX for the ticket we want to edit
+    let mut resp = match req
+        .build()
+        .method("POST")
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Content-Type", "application/json")
+        .body(search_body.clone().into())
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch StatusIDs from TDX: {}", e))
+        };
+
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        resp = retry_tdx_token(database, req, "POST", &url, Some(search_body)).await?;
+    }
+
+    // Find matching status name
+    let statuses: Value = serde_json::from_str(&resp.body)
+        .map_err(|e| format!("Failed to parse TDX status response: {}", e))?;
+
+    if let Some(statuses) = statuses.as_array() {
+        for status in statuses {
+            if status["Name"].as_str() == Some(status_name) {
+                if let Some(id) = status["ID"].as_i64() {
+                    return Ok(id as i32);
+                }
+            }
+        }
+    }
+
+    Err(format!("Could not find StatusID for status '{}'", status_name))
+}
 
 /*
 $$\      $$\ $$\ $$\       $$\ 
