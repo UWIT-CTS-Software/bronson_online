@@ -8,7 +8,7 @@ pub mod bronson {
     }
 
     diesel::table! {
-        bronson.buildings (abbrev) {
+        bronson.buildings (building_id) {
             abbrev -> Text,
             name -> Text,
             building_id -> Int8,
@@ -47,20 +47,20 @@ pub mod bronson {
         use diesel::sql_types::*;
         use super::sql_types::IpAddress;
 
-        bronson.rooms (name) {
+        bronson.rooms (room_id) {
             abbrev -> Text,
             name -> Text,
             room_id -> Int8,
             parent_id -> Int8,
             collegenet_id -> Nullable<Int8>,
-            checked -> Text,
+            checked -> Timestamptz,
             needs_checked -> Bool,
             gp -> Bool,
             check_period -> Int2,
             offln -> Bool,
-            onln -> Text,
+            onln -> Timestamptz,
             available -> Bool,
-            until -> Text,
+            until -> Timestamptz,
             ping_data -> Array<Nullable<IpAddress>>,
             schedule -> Array<Nullable<Text>>,
         }
@@ -111,8 +111,6 @@ pub mod bronson {
             permissions -> Int2,
         }
     }
-
-    diesel::joinable!(rooms -> buildings (abbrev));
 
     diesel::allow_tables_to_appear_in_same_query!(
         buildings,

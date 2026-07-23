@@ -92,7 +92,7 @@ use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
 use serde::Deserialize;
 use regex::Regex;
-use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta, Utc };
+use chrono::{ offset::Local, DateTime, TimeDelta, Utc, Days };
 use urlencoding::decode;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
@@ -1398,7 +1398,16 @@ async fn handle_connection(
                     0 => false,
                     _ => false,
                 };
-                new_db_room.onln = new_date;
+                new_db_room.onln = match new_date.parse::<DateTime<Local>>() {
+                    Ok(t) => t,
+                    Err(m) => {
+                        error!("Unable to parse new onln field from JSON: {}", m);
+                        return Response::new()
+                                        .status(STATUS_500)
+                                        .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                        .build();
+                    }
+                };
                 // Build Updated Ping Data Vector
                 let hn_vec = Database::gen_hn(String::from(target_room), &new_values[0..6].to_vec()); // Only device fields
                 let ping_vec = Database::gen_ip(&hn_vec);
@@ -2524,7 +2533,7 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
             }
         };
 
-        let mut check_map: HashMap<String, String> = HashMap::new();
+        let mut check_map: HashMap<String, DateTime<Local>> = HashMap::new();
         if v["count"].as_i64() > Some(0) {
             let num_entries = match v["count"].as_i64() {
                 Some(num) => num,
@@ -2563,26 +2572,31 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
               
                 // Only insert if this is the first entry or if the new timestamp is more recent
                 let location_name = String::from(check["LocationName"].as_str().unwrap());
-                let completed_on = String::from(check["CompletedOn"].as_str().unwrap_or("2000-01-01T00:00:00Z"));
-                if let Some(existing_timestamp) = check_map.get(&location_name) {
-                    match (DateTime::parse_from_rfc3339(existing_timestamp), DateTime::parse_from_rfc3339(&completed_on)) {
-                        (Ok(existing_dt), Ok(new_dt)) => {
-                            if new_dt > existing_dt {
-                                check_map.insert(location_name, completed_on);
-                            }
-                        },
-                        _ => {
-                            // If parsing fails, keep the existing value
+                let completed_on = match check["CompletedOn"].as_str().unwrap_or("2000-01-01T00:00:00Z").parse::<DateTime<Local>>() {
+                    Ok(dt) => dt,
+                    Err(m) => {
+                        error!("Unable to parse CompletedOn for {}: {}", check["LocationName"].as_str().unwrap(), m);
+                        match "2000-01-01T00:00:00Z".parse::<DateTime<Local>>() {
+                            Ok(t) => t,
+                            Err(m) => { return Err(m.to_string()); }
                         }
                     }
-                } else {
-                    check_map.insert(location_name, completed_on);
+                };
+                match check_map.get(&location_name) {
+                    Some(et) => {
+                        if completed_on > *et {
+                            check_map.insert(location_name, completed_on);
+                        }
+                    },
+                    None    => {
+                        check_map.insert(location_name, completed_on);
+                    }
                 }
             }
         }
         // Get checked_rooms
         let mut checked_rooms: i16 = 0;
-        let rooms = match database.get_rooms_by_abbrev(&building.1.abbrev) {
+        let rooms = match database.get_rooms_by_parent_id(building.1.building_id) {
             Ok(rs) => rs,
             Err(m) => {
                 error!("DB_ERR: {}", m);
@@ -2593,10 +2607,44 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
             if let Some(r) = check_map.get(&room.name) {
                 room.checked = r.clone();
             }
-            room.needs_checked = check_lsm(&room);
-            let schedule_params = check_schedule(&room);
-            room.available = schedule_params.0;
-            room.until = schedule_params.1;
+
+            let elapsed = Local::now() - room.checked;
+            let required_delta = check_period_to_delta(room.check_period);
+            room.needs_checked = elapsed >= required_delta;
+            
+            match room.collegenet_id {
+                Some(cn_id) => {
+                    match database.get_reservation_by_cn_id(cn_id) {
+                        Ok(res_result) => {
+                            match res_result {
+                                Some(res) => {
+                                    if res.start_dt <= Local::now() {
+                                        room.available = false;
+                                        room.until = res.end_dt;
+                                    } else {
+                                        room.available = true;
+                                        room.until = res.start_dt;
+                                    }
+                                },
+                                None => {
+                                    room.available = true;
+                                    room.until = Local::now() + Days::new(1);
+                                }
+                            }
+                        },
+                        Err(m) => {
+                            error!("Unable to get reservation by collegenet_id: {}", m);
+                            room.available = true;
+                            room.until = Local::now() + Days::new(1);
+                        }
+                    }
+                },
+                None        => {
+                    room.available = true;
+                    room.until = Local::now() + Days::new(1);
+                }
+            }
+
             // Check for room check
             if !room.needs_checked {
                 checked_rooms += 1;
@@ -2609,11 +2657,11 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
                 }
             };
         }
-        let ret_building = match database.get_building_by_abbrev(&building.1.abbrev) {
+        let ret_building = match database.get_building_by_id(building.1.building_id) {
             Ok(b)  => b,
             Err(m) => { return Err(m.to_string()); }
         };
-        let ret_rooms = match database.get_rooms_by_abbrev(&ret_building.abbrev) {
+        let ret_rooms = match database.get_rooms_by_parent_id(ret_building.building_id) {
             Ok(rs) => rs,
             Err(m) => {
                 error!("DB_ERR: {}", m);
@@ -2658,7 +2706,7 @@ fn pad(raw_in: String, length: usize) -> String {
     }
 }
 
-fn pad_zero(raw_in: String, length: usize) -> String {
+fn _pad_zero(raw_in: String, length: usize) -> String {
     if raw_in.len() < length {
         let mut out_string: String = String::new();
         for _ in 0..(length-raw_in.len()) {
@@ -2764,7 +2812,7 @@ async fn execute_ping(database: &mut Database) {
     };
 
     for building in buildings {
-        let rooms_to_ping: Vec<DB_Room> = match database.get_rooms_by_abbrev(&building.1.abbrev) {
+        let rooms_to_ping: Vec<DB_Room> = match database.get_rooms_by_parent_id(building.1.building_id) {
             Ok(rs) => rs,
             Err(m) => {
                 error!("DB_ERR: {}", m);
@@ -2872,7 +2920,7 @@ fn construct_headers(call_type: &str) -> Result<HeaderMap, String> {
     return Ok(header_map);
 }
 
-fn check_schedule(room: &DB_Room) -> (bool, String) {
+/* fn check_schedule(room: &DB_Room) -> (bool, String) {
     let mut available: bool = true;
     let mut until: String = String::from("TOMORROW");
 
@@ -2935,7 +2983,7 @@ fn check_schedule(room: &DB_Room) -> (bool, String) {
     }
 
     return (available, until);
-}
+} */
 
 fn check_period_to_delta(period: i16) -> TimeDelta {
     match period {
@@ -2945,21 +2993,6 @@ fn check_period_to_delta(period: i16) -> TimeDelta {
         3 => TimeDelta::days(90),   // 3 Months (approx)
         _ => TimeDelta::weeks(1),   // default
     }
-}
-
-fn check_lsm(room: &DB_Room) -> bool {
-    let parsed_checked: DateTime<Local> = match room.checked.parse::<DateTime<Utc>>() {
-        Ok(dt) => dt.with_timezone(&Local),
-        Err(e) => {
-            error!("Unable to parse incoming DateTime '{}': {}", room.checked, e);
-            return true; // fail-safe: assume it needs checked
-        }
-    };
-
-    let elapsed = Local::now() - parsed_checked;
-    let required_delta = check_period_to_delta(room.check_period);
-
-    return elapsed >= required_delta;
 }
 
 /*

@@ -57,7 +57,7 @@ use regex::bytes::Regex as RegBytes;
 use regex::Regex;
 use serde::{ Deserialize, Serialize, };
 use serde_json::{ json, Value };
-use chrono::{ DateTime, Utc, Local, };
+use chrono::{ DateTime, Utc, Local, Days, };
 use diesel::{
 	prelude::*,
 	r2d2::{ self, ConnectionManager },
@@ -642,7 +642,7 @@ impl Database {
 					_              => false
 				};
 
-				match self.get_room_by_name(&room["Location"]["name"].as_str().expect("Uh oh").to_string()) {
+				match self.get_room_by_id(room["Location"]["id"].as_i64().expect("Uh oh")) {
 					Ok(_) => { debug!("ROOM FOUND: {}", room["Location"]["name"].as_str().expect("Uh oh")); },
 					Err(_) => { }
 				}
@@ -657,14 +657,14 @@ impl Database {
 							Some(n) => Some(n.as_f64().unwrap() as i64),
 							None    => None
 						},
-						checked: String::from("2000-01-01T00:00:00Z"),
+						checked: "2000-01-01T00:00:00Z".parse::<DateTime<Local>>().ok()?,
 						needs_checked: true,
 						gp: is_gp,
 						check_period: if is_gp { 0 } else { 2 },
 						offln: false,
-						onln: "2000-01-01".to_string(),
-						available: false,
-						until: String::from("TOMORROW"),
+						onln: "2000-01-01T00:00:00Z".parse::<DateTime<Local>>().ok()?,
+						available: true,
+						until: Local::now() + Days::new(1),
 						ping_data: match rooms_ping_data.get(&room["Location"]["id"].as_i64().expect("Uh oh")) {
 							Some(v) => v.clone(),
 							None    => Vec::new()
@@ -942,33 +942,52 @@ impl Database {
 	}
 
 	pub fn get_building_by_abbrev(&mut self, bldg_abbrev: &String) -> Result<DB_Building, DieselError> {
+		use crate::schema::bronson::buildings::dsl::abbrev;
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
 		buildings
-			.find(bldg_abbrev)
+			.select(DB_Building::as_select())
+			.filter(abbrev.eq(bldg_abbrev))
+			.first(&mut conn)
+	}
+
+	pub fn get_building_by_id(&mut self, bldg_id: i64) -> Result<DB_Building, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		buildings
+			.find(bldg_id)
 			.select(DB_Building::as_select())
 			.first(&mut conn)
 	}
 
 	pub fn update_building(&mut self, building: &DB_Building) -> Result<DB_Building, DieselError> {
-		use crate::schema::bronson::buildings::dsl::abbrev;
+		use crate::schema::bronson::buildings::dsl::building_id;
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
 		diesel::insert_into(buildings)
 			.values(building)
-			.on_conflict(abbrev)
+			.on_conflict(building_id)
 			.do_update()
 			.set(building)
 			.returning(DB_Building::as_returning())
 			.get_result(&mut conn)
 	}
 
-	pub fn delete_building(&mut self, id: &String) -> Result<DB_Building, DieselError>{
+	pub fn delete_building_by_abbrev(&mut self, bldg_abbrev: &String) -> Result<DB_Building, DieselError> {
 		use crate::schema::bronson::buildings::dsl::abbrev;
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
 		diesel::delete(buildings)
-			.filter(abbrev.eq(id))
+			.filter(abbrev.eq(bldg_abbrev))
+			.returning(DB_Building::as_returning())
+			.get_result(&mut conn)
+	}
+
+	pub fn delete_building_by_id(&mut self, bldg_id: i64) -> Result<DB_Building, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		diesel::delete(buildings)
+			.filter(building_id.eq(bldg_id))
 			.returning(DB_Building::as_returning())
 			.get_result(&mut conn)
 	}
@@ -991,11 +1010,42 @@ impl Database {
 		}
 	}
 
+	pub fn get_rooms_by_parent_id(&mut self, bldg_id: i64) -> Result<Vec<DB_Room>, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		let ret_vec = rooms
+			.select(DB_Room::as_select())
+			.filter(parent_id.eq(bldg_id))
+			.load(&mut conn);
+
+		match ret_vec {
+			Ok(mut rv) => {
+				rv.sort_by_key(|r| r.name.clone());
+				Ok(rv)
+			},
+			Err(m) => Err(m)
+		}		
+	}
+
 	pub fn get_room_by_name(&mut self, room_name: &String) -> Result<DB_Room, DieselError> {
+		use crate::schema::bronson::rooms::dsl::name;
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		/* rooms
+			.find(room_name)
+			.select(DB_Room::as_select())
+			.first(&mut conn) */
+		rooms
+			.select(DB_Room::as_select())
+			.filter(name.eq(room_name))
+			.first(&mut conn)
+	}
+
+	pub fn get_room_by_id(&mut self, r_id: i64) -> Result<DB_Room, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
 		rooms
-			.find(room_name)
+			.find(r_id)
 			.select(DB_Room::as_select())
 			.first(&mut conn)
 	}
@@ -1252,6 +1302,17 @@ impl Database {
 		reservations
 			.select(DB_Reservation::as_select())
 			.filter(reservation_id.eq(res_id))
+			.first(&mut conn)
+			.optional()
+	}
+
+	pub fn get_reservation_by_cn_id(&mut self, cn_id: i64) -> Result<Option<DB_Reservation>, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		reservations
+			.select(DB_Reservation::as_select())
+			.filter(event_space_id.eq(cn_id))
+			.filter(end_dt.gt(Local::now()))
 			.first(&mut conn)
 			.optional()
 	}

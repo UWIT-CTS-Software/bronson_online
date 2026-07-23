@@ -194,7 +194,8 @@ pub struct DB_Building {
 
 
 #[allow(non_camel_case_types)]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Queryable, Selectable, Insertable, AsChangeset)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Queryable, Selectable, Insertable, AsChangeset, Default)]
+#[diesel(sql_type = Timestamptz)]
 #[diesel(table_name = rooms)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct DB_Room {
@@ -203,14 +204,14 @@ pub struct DB_Room {
     pub room_id: i64,
     pub parent_id: i64,
     pub collegenet_id: Option<i64>,
-    pub checked: String,
+    pub checked: DateTime<Local>,
     pub needs_checked: bool,
     pub gp: bool,
     pub check_period: i16,
     pub offln: bool,
-    pub onln: String,
+    pub onln: DateTime<Local>,
     pub available: bool,
-    pub until: String,
+    pub until: DateTime<Local>,
     pub ping_data: Vec<Option<DB_IpAddress>>,
     pub schedule: Vec<Option<String>>,
 }
