@@ -2580,16 +2580,13 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
               
                 // Only insert if this is the first entry or if the new timestamp is more recent
                 let location_name = String::from(check["LocationName"].as_str().unwrap());
-                let completed_on = String::from(check["CompletedOn"].as_str().unwrap_or("2000-01-01T00:00:00Z"));
-                if let Some(existing_timestamp) = check_map.get(&location_name) {
-                    match (DateTime::parse_from_rfc3339(existing_timestamp), DateTime::parse_from_rfc3339(&completed_on)) {
-                        (Ok(existing_dt), Ok(new_dt)) => {
-                            if new_dt > existing_dt {
-                                check_map.insert(location_name, completed_on);
-                            }
-                        },
-                        _ => {
-                            // If parsing fails, keep the existing value
+                let completed_on = match check["CompletedOn"].as_str().unwrap_or("2000-01-01T00:00:00Z").parse::<DateTime<Local>>() {
+                    Ok(dt) => dt,
+                    Err(m) => {
+                        error!("Unable to parse CompletedOn for {}: {}", check["LocationName"].as_str().unwrap(), m);
+                        match "2000-01-01T00:00:00Z".parse::<DateTime<Local>>() {
+                            Ok(t) => t,
+                            Err(m) => { return Err(m.to_string()); }
                         }
                     }
                 };
