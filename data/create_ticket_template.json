@@ -8,7 +8,8 @@
   "ServiceID": 8870,
   "ServiceCategoryID": 3284,
   "StatusID": 1741,
-  "PriorityID": 2493,
+  "PriorityID": 3840,
+  "ResponsibleGroupID": 2742,
   "AppID": 216,
   "AccountID": 78181,
   "Attributes": [

@@ -72,8 +72,8 @@ TODO:
         - TDX sort of has an AI summary, but I want to post it in the comments
 */
 
-
-
+    /* -------------------- Helpers -------------------- */
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     /* -------------------- Write to TDX Functions -------------------- */
 
@@ -127,15 +127,6 @@ function newTicketPopup() {
                 </select>
             </div>
             <br class="tx_createTicketBr">
-            <div>
-                <label for="responsibility">Responsibility:</label>
-                <select name="responsibility" id="tx_createTicket_Responsibility">
-                    <option value="cts_ID">CTS</option>
-                    <option value="helpdesk_ID">Help Desk</option>
-                    <option value="asu_ID">ASU</option>
-                </select>
-            </div>
-            <br class="tx_createTicketBr">
             <button id="tx_createTicketButton" onClick="createTicket()">Create Ticket</button>
             <button class="cancelPopupButton" onClick="hideCurrentPopup()">Cancel</button>
         </div>
@@ -155,7 +146,6 @@ async function createTicket(container) {
     const descriptionField = document.getElementById("tx_createTicket_Description");
     const requestorField = document.getElementById("tx_createTicket_Requestor");
     const createdByField = document.getElementById("tx_createTicket_CreatedBy");
-    const responsibilityField = document.getElementById("tx_createTicket_Responsibility");
 
     let canContinue = true;
 
@@ -183,12 +173,11 @@ async function createTicket(container) {
         "Title": titleField.value.trim(),
         "Description": descriptionField.value.trim(),
         "RequestorUid": "6f873055-ca2f-eb11-8b7c-000d3a9b77a1", // Hard-coded for now
-        "ResponsibleUid": "6f873055-ca2f-eb11-8b7c-000d3a9b77a1", // Hard-coded for now
-        "ResponsibleGroupID": 2742, // Hard-coded for now
     };
 
     await updateTicket(jsonBody);
     hideCurrentPopup(true);
+    await delay(750); // Pause for 0.75 seconds
     setTickex(); // Reload board to show changes
 }
 
@@ -246,15 +235,6 @@ Classroom Technology Services (CTS)`;
             <p class="tx_createTicketText">Description:</p>
             <p class="tx_Description" id="tx_editTicket_Description">${description}</p>
             <br class="tx_createTicketBr">
-            <div>
-                <label for="responsibility">Responsibility:</label>
-                <select name="responsibility" id="tx_editTicket_Responsibility">
-                    <option value="cts_ID">CTS</option>
-                    <option value="helpdesk_ID">Help Desk</option>
-                    <option value="asu_ID">ASU</option>
-                </select>
-            </div>
-            <br class="tx_createTicketBr">
             <p class="tx_createTicketText">Notes (Private):</p>
             <textarea id="tx_editTicket_Comments" class="tx_createTicketTextarea" rows="6" placeholder="${commentsPreview}"></textarea>
             <br class="tx_createTicketBr">
@@ -289,7 +269,6 @@ async function applyChanges(ticketID) {
     // Ensure required fields are filled out
     const statusField = document.getElementById("tx_editTicket_Status");
     const titleField = document.getElementById("tx_editTicket_Title");
-    const responsibilityField = document.getElementById("tx_editTicket_Responsibility");
     const commentsFields = document.getElementById("tx_editTicket_Comments");
     const emailCheckbox = document.getElementById("tx_emailCheckbox");
     const emailRequestorField = document.getElementById("tx_editTicket_Email");
@@ -328,13 +307,14 @@ async function applyChanges(ticketID) {
         "ID": ticketID,
         "StatusName": statusField.value.trim(), 
         "Title": titleField.value.trim(),
-        "ResponsibleGroupID": 2742, // Hard-coded for now
+        "ResponsibleUid": "6f873055-ca2f-eb11-8b7c-000d3a9b77a1", // Hard-coded for now
         "comments": commentsFields.value.trim(),
         "email_to_requestor": emailRequestorField.value.trim() // Pass "" to imply no email will be sent
     };
 
     await updateTicket(jsonBody);
     hideCurrentPopup(true);
+    await delay(750); // Pause for 0.75 seconds
     setTickex(); // Reload board to show changes
 }
 

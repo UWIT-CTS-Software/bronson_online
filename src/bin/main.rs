@@ -3275,10 +3275,10 @@ async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Va
     }
 
     // Convert New Ticket Response into JSON
-    let tickets_json: serde_json::Value = serde_json::from_str(&new_ticket_resp.body)
+    let ticket_json: serde_json::Value = serde_json::from_str(&new_ticket_resp.body)
         .map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, new_ticket_resp.body))?;
     
-    info!("[Data] - Create Ticket Request was Successful (New Ticket ID: {})", tickets_json["ID"]);
+    info!("[Data] - Create Ticket Request was Successful (New Ticket ID: {})", ticket_json["ID"]);
 
     // TODO:
     // - Post the comment with new function call
@@ -3335,8 +3335,8 @@ async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -
     if let Some(title) = body_json.get("Title").and_then(|v| v.as_str()) {
         revised_ticket["Title"] = Value::String(title.trim().to_string());
     }
-    if let Some(uid) = body_json.get("ResponsibleGroupID").and_then(|v| v.as_i64()) {
-        revised_ticket["ResponsibleGroupID"] = Value::Number(uid.into());
+    if let Some(uid) = body_json.get("ResponsibleUid").and_then(|v| v.as_str()) {
+        revised_ticket["ResponsibleUid"] = Value::String(uid.into());
     }
 
     // Send updated ticket content and recieve the new ticket JSON as a verification response
