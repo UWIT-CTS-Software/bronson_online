@@ -182,13 +182,14 @@ async function createTicket(container) {
         "_OperationType": "CREATE", 
         "Title": titleField.value.trim(),
         "Description": descriptionField.value.trim(),
-        "ResponsibleGroupID": requestorField.value.trim(),
-        "CreatedUid": createdByField.value.trim(),
-        "ResponsibleUid": responsibilityField.value.trim()
+        "RequestorUid": "6f873055-ca2f-eb11-8b7c-000d3a9b77a1", // Hard-coded for now
+        "ResponsibleUid": "6f873055-ca2f-eb11-8b7c-000d3a9b77a1", // Hard-coded for now
+        "ResponsibleGroupID": 2742, // Hard-coded for now
     };
 
-    updateTicket(jsonBody);
+    await updateTicket(jsonBody);
     hideCurrentPopup(true);
+    setTickex(); // Reload board to show changes
 }
 
 // Opens the popup for the edit ticket portal
@@ -224,7 +225,13 @@ Classroom Technology Services (CTS)`;
     editTicketPopupContainer.innerHTML = `
         <div class="tx_popupBox">
             <span>Edit Ticket</span>
-            <p>ID: ${ticket.ID}</p>
+            <div class="tx_adjacent">
+                <p>ID: ${ticket.ID}
+                    <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
+                        <button>Link to Ticket</button>
+                    </a>
+                </p>
+            </div>
             <div>
                 <label for="status">Status:</label>
                 <select name="status" id="tx_editTicket_Status">
@@ -326,8 +333,9 @@ async function applyChanges(ticketID) {
         "email_to_requestor": emailRequestorField.value.trim() // Pass "" to imply no email will be sent
     };
 
-    updateTicket(jsonBody);
+    await updateTicket(jsonBody);
     hideCurrentPopup(true);
+    setTickex(); // Reload board to show changes
 }
 
 // Clear all ticket rows of unread notifications
