@@ -83,8 +83,8 @@ function takeResponsibility() {
     alert("This feature is not yet implemented.");
 
     // Projected workflow w/ shibboleth:
-    //  - We will have some type of user name from shibboleth (example: "Lex Fermelia")
-    //  - Query TDX for a Uid from that user name ("Lex Fermelia" -> "6f873055-ca...")
+    //  - We will have some type of user name from shibboleth (example: "John Doe")
+    //  - Query TDX for a Uid from that user name ("John Doe" -> "6f873055-ca...")
     //  - If we get an ID, update ticket using /api/216/tickets/{id} endpoint
     //  - If not, display error and bail on action? 
 }
@@ -114,16 +114,14 @@ function newTicketPopup() {
             <div>
                 <label for="requestor">Requestor:</label>
                 <select name="requestor" id="tx_createTicket_Requestor">
-                    <option value="lfermeli_ID">Lex Fermelia</option>
-                    <option value="todo">Shibboleth Needed</option>
+                    <option value="johndoe_ID">John Doe</option>
                 </select>
             </div>
             <br class="tx_createTicketBr">
             <div>
                 <label for="created-by">Created By:</label>
                 <select name="created-by" id="tx_createTicket_CreatedBy">
-                    <option value="lfermeli_ID">Lex Fermelia</option>
-                    <option value="todo">Shibboleth Needed</option>
+                    <option value="johndoe_ID">John Doe</option>
                 </select>
             </div>
             <br class="tx_createTicketBr">
@@ -224,9 +222,12 @@ Classroom Technology Services (CTS)`;
             <div>
                 <label for="status">Status:</label>
                 <select name="status" id="tx_editTicket_Status">
-                    <option value="New">New</option>
-                    <option value="In Process">In Process</option>
-                    <option value="Closed">Closed</option>
+                    ${(ticket.StatusName !== "New" && ticket.StatusName !== "In Process" && ticket.StatusName !== "Closed") ?
+                        `<option selected value="Other">${ticket.StatusName}</option>`: ""
+                    }
+                    <option ${(ticket.StatusName === "New") ? "selected" : ""} value="New">New</option>
+                    <option ${(ticket.StatusName === "In Process") ? "selected" : ""} value="In Process">In Process</option>
+                    <option ${(ticket.StatusName === "Closed") ? "selected" : ""} value="Closed">Closed</option>
                 </select>
             </div>
             <p class="tx_editTicketText">Title: </p>
@@ -305,12 +306,16 @@ async function applyChanges(ticketID) {
     const jsonBody = {
         "_OperationType": "EDIT", 
         "ID": ticketID,
-        "StatusName": statusField.value.trim(), 
         "Title": titleField.value.trim(),
         "ResponsibleUid": "6f873055-ca2f-eb11-8b7c-000d3a9b77a1", // Hard-coded for now
         "comments": commentsFields.value.trim(),
         "email_to_requestor": emailRequestorField.value.trim() // Pass "" to imply no email will be sent
     };
+
+    // Omit Status if it is not "New", "In Process", or "Closed"
+    console.log(statusField.value.trim())
+    if (statusField.value.trim() !== "Other") jsonBody["StatusName"] = statusField.value.trim();
+    console.log(JSON.stringify(jsonBody))
 
     await updateTicket(jsonBody);
     hideCurrentPopup(true);
