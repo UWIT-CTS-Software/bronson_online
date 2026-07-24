@@ -2621,32 +2621,47 @@ async fn execute_ping(database: &mut Database) {
 
 fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
     let mut pinged_hns: Vec<Option<DB_IpAddress>> = Vec::new();
+
     for net in net_elements {
         let hn_string: String = net.as_ref().unwrap().hostname.to_string();
         pinged_hns.push(Some(
             match ping_this(&hn_string) {
-                Ok(ip) => DB_IpAddress {
+                Ok(ip) => { println!("Got Here01");
+                DB_IpAddress {
                     hostname: net.clone().unwrap().hostname,
                     ip: ip,
                     last_ping: String::from(format!("{}", chrono::Utc::now())),
                     alert: 0,
                     error_message: String::new()
+                }}, // Upon first instance of error ping again
+                _ => { 
+                   
+                    match ping_this(&hn_string) {
+                        Ok(ip) => {println!("Got Here02");
+                        DB_IpAddress {
+                            hostname: net.clone().unwrap().hostname,
+                            ip: ip,
+                            last_ping: String::from(format!("{}", chrono::Utc::now())),
+                            alert: 0,
+                            error_message: String::new()
+                        }},
+                        Err(m)      => {
+                            debug!("PIN_ERR: {} failed: {}", net.clone().unwrap().hostname.to_string(), m);
+                             println!("Got Here03");
+                            DB_IpAddress {
+                                hostname: net.clone().unwrap().hostname,
+                                ip: String::from("x"),
+                                last_ping: String::from(format!("{}", chrono::Utc::now())),
+                                alert: net.clone().unwrap().alert + 1,
+                                error_message: String::from(m)
+                            }
+                        }
+                    } 
+
                 },
-                Err(m)      => {
-                    debug!("PIN_ERR: {} failed: {}", net.clone().unwrap().hostname.to_string(), m);
-                    
-                    DB_IpAddress {
-                        hostname: net.clone().unwrap().hostname,
-                        ip: String::from("x"),
-                        last_ping: String::from(format!("{}", chrono::Utc::now())),
-                        alert: net.clone().unwrap().alert + 1,
-                        error_message: String::from(m)
-                    }
-                }
             }
         ))
-    }
-
+    };
     return pinged_hns;
 }
 
