@@ -360,6 +360,7 @@ async function dismissAll(confirmed) {
         clearInterval(ellipsisInterval);
         button.textContent = "Dismiss All";
         button.disabled = false;
+        document.body.classList.remove('tx_no-scroll');
     }
 }
 // Shows the "Dismiss All" confirmation popup
@@ -639,7 +640,7 @@ async function showTicket(ticket) {
     if (whatChangedHTML && !isMobile)
         sideContent += whatChangedHTML;
     
-
+    const isAuthorized = await fetchCurrentUserPermissions() > 3 || await checkUserExistsInDatabase(); 
     if (ticketPopupContainer.classList.contains('detailsShown')) { // Details Shown
         ticketPopupContainer.innerHTML = `
             <div class="tx_popupWrapper ${isMobile ? "mobile mobile_tx_font" : ""}">
@@ -669,7 +670,7 @@ async function showTicket(ticket) {
                     <p class="tx_popup_Created tx_textwrap">Date Created: ${ticket.CreatedDate || ""} || Created by: ${ticket.CreatedFullName || ""}</p>
                     <p class="tx_popup_Modified tx_textwrap">Last Modified: ${ticket.ModifiedDate || ""} || Modified by: ${ticket.ModifiedFullName || ""}</p>
                     ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
-                    <button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID}, this.closest('.tx_ticketPopupContainer'))">Edit Ticket</button>
+                    ${isAuthorized ? `<button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID}, this.closest('.tx_ticketPopupContainer'))">Edit Ticket</button>` : ""}
                 </div>
                 ${sideContent ? `<div class="tx_sideContent">${sideContent}</div>` : ''}
             </div>
@@ -703,7 +704,7 @@ async function showTicket(ticket) {
                     <p class="tx_popup_Responsible tx_textwrap${isMobile ? "mobile_tx_button" : ""}">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED <button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>`} || ${ticket.ResponsibleGroupName || ""}</p>
                     <p class="tx_Description">${description || "--- No Description Provided ---"}</p>
                     ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
-                    <button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID}, this.closest('.tx_ticketPopupContainer'))">Edit Ticket</button>
+                    ${isAuthorized ? `<button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID}, this.closest('.tx_ticketPopupContainer'))">Edit Ticket</button>` : ""}
                 </div>
                 ${sideContent ? `<div class="tx_sideContent">${sideContent}</div>` : ''}
             </div>
@@ -1233,6 +1234,40 @@ async function fetchCurrentUserPermissions() {
     }
 }
 
+// Fetches whether the current user exists within Database records
+async function checkUserExistsInDatabase() {
+    try {
+        const response = await fetch('/currentUser/existsInDB');
+        if (!response.ok) {
+            console.error("Failed to fetch current user permissions");
+            return 0;
+        }
+
+        const data = await response.json();
+        return data.response || 0;
+    } catch (error) {
+        console.error("Error fetching current user permissions:", error);
+        return 0;
+    }
+}
+
+// Fetches the TDX user ID for the current user
+async function checkUserExistsInDatabase() {
+    try {
+        const response = await fetch('/currentUser/fetchTDXUserID');
+        if (!response.ok) {
+            console.error("Failed to fetch current user permissions");
+            return "FAILED_TO_FETCH_TDX_USER_ID";
+        }
+
+        const data = await response.json();
+        return data.response || "FAILED_TO_FETCH_TDX_USER_ID";
+    } catch (error) {
+        console.error("Error fetching current user permissions:", error);
+        return "FAILED_TO_FETCH_TDX_USER_ID";
+    }
+}
+
 // Update ticket's viewed status in backend/database
 async function updateTicketViewed(ticketId, viewed) {
     try {
@@ -1319,6 +1354,15 @@ async function setTickex() {
 
     /* -------------------- Tickex Page -------------------- */
 
+    // isAdmin - Admin only privileges, permission level 6+
+    // isAuthorized - User is able to make/edit tickets (write access)
+    //              - permission level 4+ or is NOT in database (all users recieve this access by default)
+    // Permission 1-3 - User is in a read-only state
+    //                - User will be in database with this specified permission level
+    // Permission 0 - User is blacklisted, they are not allowed to view Bronson at all
+    const isAdmin = await fetchCurrentUserPermissions()  >= 6;
+    const isAuthorized = await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase(); 
+
     // Display loading message while fetching tickets
     let loadingMessage = document.createElement("div");
     loadingMessage.classList.add("tx_loadingMessage");
@@ -1374,7 +1418,7 @@ async function setTickex() {
     addTicketButton.innerHTML = `
         <button onclick="event.stopPropagation(); newTicketPopup()">+</button>
     `;
-    tx_container.append(addTicketButton);
+    if (isAuthorized) tx_container.append(addTicketButton);
 
     // New Ticket Popup Container
     let newTicketPopupContainer = document.createElement("div");
@@ -1435,8 +1479,7 @@ async function setTickex() {
         // Dismiss Notifications Button (Admin only)
         let dismissAllButton = document.createElement("div");
         dismissAllButton.classList.add("tx_dismissAllButton");
-        const userPermissions = await fetchCurrentUserPermissions();
-        if (userPermissions >= 6) {
+        if (isAdmin) {
             dismissAllButton.innerHTML = `
                 <button id="tx_dismissAllButton" onclick="dismissAllPopup()">Dismiss All</button>
             `;

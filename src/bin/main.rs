@@ -770,12 +770,12 @@ async fn handle_connection(
         "GET /currentUser HTTP/1.1" => { // OUTGOING, Current user info
             if !req.has_valid_cookie(&mut database) {
                 Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
+                    .status(STATUS_401)
+                    .send_contents(
+                        json!(
+                            {"response": "Unauthorized"}
+                        ).to_string().into()
+                    )
             } else {
                 // Extract username from cookie
                 let cookie = req.headers
@@ -814,6 +814,106 @@ async fn handle_connection(
                         "username": user.username,
                         "permissions": user.permissions
                     }).to_string().into())
+            }
+        },
+        "GET /currentUser/existsInDB HTTP/1.1" => {
+            if !req.has_valid_cookie(&mut database) {
+                Response::new()
+                    .status(STATUS_401)
+                    .send_contents(
+                        json!(
+                            {"response": "Unauthorized"}
+                        ).to_string().into()
+                    )
+            } else {
+                // Extract username from cookie
+                let cookie = req.headers
+                    .get("Cookie")
+                    .cloned()
+                    .unwrap_or(String::new());
+                let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
+                let username = match username_search.captures(&cookie) {
+                    Some(caps) => caps["username"].to_string(),
+                    None => {
+                        return Response::new()
+                            .status(STATUS_401)
+                            .send_contents(json!({
+                                "response": "Unauthorized"
+                            }).to_string().into())
+                            .build();
+                    }
+                };
+
+                // Fetch user from DB, default to standard user if not found
+                let user_exists = match database.get_user(&username) {
+                    Ok(_) => {
+                        json!({
+                            "response": true
+                        })
+                    },
+                    Err(e) => {
+                        error!("DB_ERR: {}", e);
+                        json!({
+                            "response": false
+                        })
+                    }
+                };
+
+                // Return user info
+                Response::new()
+                    .status(STATUS_200)
+                    .send_contents(
+                        user_exists.to_string().into()
+                    )
+            }
+        },
+        "GET /currentUser/fetchTDXUserID HTTP/1.1" => {
+            if !req.has_valid_cookie(&mut database) {
+                Response::new()
+                    .status(STATUS_401)
+                    .send_contents(
+                        json!(
+                            {"response": "Unauthorized"}
+                        ).to_string().into()
+                    )
+            } else {
+                // Extract username from cookie
+                let cookie = req.headers
+                    .get("Cookie")
+                    .cloned()
+                    .unwrap_or(String::new());
+                let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
+                let username = match username_search.captures(&cookie) {
+                    Some(caps) => caps["username"].to_string(),
+                    None => {
+                        return Response::new()
+                            .status(STATUS_401)
+                            .send_contents(json!({
+                                "response": "Unauthorized"
+                            }).to_string().into())
+                            .build();
+                    }
+                };
+
+                // Query TDX for User ID using the username provided in the cookie
+                let user_id = match get_TDX_user_id(&mut database, &tdx_client, &username.to_string()).await {
+                    Ok(id) => id,
+                    Err(e) => {
+                        return Response::new()
+                            .status(STATUS_401)
+                            .send_contents(json!({
+                                "response": "Failed to fetch TDX User ID"
+                            }).to_string().into())
+                            .build();
+                    }
+                };
+
+                // Return user info
+                Response::new()
+                    .status(STATUS_200)
+                    .send_contents(
+                        user_id.to_string().into()
+                    )
             }
         },
         "GET /tickets HTTP/1.1" => { // OUTGOING, Tickets for Tickex
@@ -3150,7 +3250,6 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &API, ticket_id: i3
     Ok(output_json)
 }
 
-
 async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64) -> Result<(Vec<String>, Vec<String>, Vec<String>), String> {
     // Construct the API URL to fetch feed replies
     let url = format!(
@@ -3434,6 +3533,43 @@ async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) 
     }
 
     Err(format!("Could not find StatusID for status '{}'", status_name))
+}
+
+async fn get_TDX_user_id(database: &mut Database, req: &API, username: &str) -> Result<Value, String> {
+    let url = format!("https://uwyo.teamdynamix.com/TDWebApi/api/people/getuid/{}{}", username, "@uwyo.edu");
+
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e))
+    };
+
+    // Query TDX 
+    let mut resp = match req
+        .build()
+        .method("GET")
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Content-Type", "application/json")
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch StatusIDs from TDX: {}", e))
+        };
+
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        resp = retry_tdx_token(database, req, "GET", &url, None).await?;
+    }
+
+    // Parse Response
+    let user_id: Value = serde_json::from_str(&resp.body)
+        .map_err(|e| format!("Failed to parse TDX status response: {}", e))?;
+
+    println!("{}", user_id.to_string());
+
+    Ok(user_id)
 }
 
 /*
