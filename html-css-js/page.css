@@ -2567,6 +2567,18 @@ p.tx_Description::-webkit-scrollbar-track {
         grid-row: 2;
     }
 }
+.an_k-pager {
+    margin-top: 5px;
+    text-align: center;
+}
+#prevBtn{
+    float: left;
+    margin-left: 10px;
+}
+#nextBtn{
+    float: right;
+    margin-right: 10px;
+}
 
 
 /* Admin Tools */

@@ -651,6 +651,7 @@ async function setProjectsBoard() {
         return new Date(a.EndDate) - new Date(b.EndDate);
     });
 
+    localStorage.setItem("matchingProjects", JSON.stringify(matchingProjects));
 
     // Clear the fieldset content except for the legend
     const legend = projectsFieldset.querySelector('legend');
@@ -673,17 +674,48 @@ async function setProjectsBoard() {
         return;
     }
 
+    const projectsWrapper = document.createElement('div');
+    projectsWrapper.id = "projectsWrapper";
+    projectsFieldset.appendChild(projectsWrapper);
+
+    window.currentPage = 1; 
+    await renderProjects();
+    // projectsFieldset.appendChild(projectsWrapper);
+
+    const k_pagerHTML = `
+        <div id="an_projectsPager" class="an_k-pager">
+                <button onClick="prevPage()" id="prevBtn"  ><</button>
+                 <button onClick= 'nextPage()' id="nextBtn">></button>
+                    <p id="currentPage">${window.currentPage}</p>
+                
+        </div>
+        `;
+    projectsFieldset.innerHTML += k_pagerHTML;
+}
+async function renderProjects() {
+    const isAdmin = await fetchCurrentUserPermissions() >= 6;
+
+    let matchingProjects = localStorage.getItem("matchingProjects");
+    matchingProjects = JSON.parse(matchingProjects);
+
+    const getPage = (data, page, size) => data.slice((page-1)* size, page * size);
+    const currentProjects = getPage(matchingProjects, currentPage, 5);
+
+
     // Dynamically create HTML for all matching projects
-    for (let i = 0; i < matchingProjects.length; i++) {
-        const project = matchingProjects[i];
-        const projectHTML = document.createElement('div');
+    // for (let i = indexStart; i < indexEnd; i++) {
+
+    const projectHTML = document.createElement('div');
+    currentProjects.forEach((project, index) => {
+        // const project = matchingProjects[i];
+
         const completionDate = new Date(project.EndDate).toLocaleDateString();
 
         const adminButtons = isAdmin ? `
             <button class='an_adminProjectButtons' onclick="setHideProject(${project.ID}, true)">Hide from Techs</button>
         ` : "";
 
-        projectHTML.innerHTML = `
+        projectHTML.innerHTML += `
             <strong>${project.Name}:</strong>
             <label for="an_project_${project.ID}">${project.PercentComplete}%</label>
             <strong class="an_projectStatus">${project.StatusName}</strong>
@@ -700,18 +732,59 @@ async function setProjectsBoard() {
                 </a>
                 ${adminButtons}
             </div>
-
             <br>
+            
         `;
-        
-        if (i < matchingProjects.length - 1) {
+
+        if (i < currentProjects.length - 1) {
             const hr = document.createElement('hr');
             projectHTML.appendChild(hr);
         }
-        
-        projectsFieldset.appendChild(projectHTML);
+    });
+    const projectsWrapper = document.getElementById('projectsWrapper');
+  
+    projectsWrapper.innerHTML = projectHTML.innerHTML;
+}
+
+async function nextPage(){
+    let matchingProjects = localStorage.getItem("matchingProjects");
+    if(window.currentPage * 5 < matchingProjects.length) {
+        window.currentPage++; 
+        await renderProjects();
+       const pageNum = document.getElementById(`currentPage`).innerText = window.currentPage;
+
+    }
+     updateButtons();
+
+}
+
+async function prevPage(){
+    if(window.currentPage > 1) {
+        window.currentPage--; 
+        await renderProjects();
+        const pageNum = document.getElementById(`currentPage`).innerText = window.currentPage;
+      
+    
+    }
+     updateButtons();
+}
+
+function updateButtons() {
+    let matchingProjects = localStorage.getItem("matchingProjects");
+     matchingProjects = JSON.parse(matchingProjects);
+    let maxPage = Math.floor(matchingProjects.length / 5)
+    if (matchingProjects.length % 5 != 0){
+        maxPage++;
+    }
+    
+    document.getElementById("prevBtn").disabled = window.currentPage <= 1;
+    document.getElementById("nextBtn").disabled = window.currentPage >= maxPage;
+    if(window.currentPage < 1 || window.currentPage > maxPage){
+        window.currentPage = 1;
     }
 }
+
+
 
 // Updates all analytics boards based on current time period selection
 async function setBoard() {
@@ -1212,6 +1285,7 @@ async function setAnalytics() {
             <ul>
                 <li></li>
             </ul>
+        
         </fieldset>
     `;
     rightCol.append(projects);
