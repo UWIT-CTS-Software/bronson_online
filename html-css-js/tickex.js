@@ -180,7 +180,7 @@ async function createTicket(container) {
 }
 
 // Opens the popup for the edit ticket portal
-async function editTicketPopup(ticketID, ticketPopupContainer) {
+async function editTicketPopup(ticketID) {
     hideCurrentPopup();
 
     const editTicketPopupContainer = document.querySelector('.tx_editTicketPopupContainer');
@@ -194,19 +194,6 @@ async function editTicketPopup(ticketID, ticketPopupContainer) {
     let description = await fetchTicketDescription(ticket.ID);
     // Scrub HTML tags out
     description = description.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n+/g, '\n').trim();
-
-    const commentsPreview = `Enter your comments... (This field is Required)
-    
-Notes you make here will NOT be sent to the Requestor.
-    `;
-    const emailPreview = `Hello ${ticket.RequestorFirstName},
-
-(Write your email to ${ticket.RequestorFirstName} here, summarizing relevant information like fixes/issues/further actions...)
-
-Thanks,
-
-<Your Name>
-Classroom Technology Services (CTS)`;
 
     editTicketPopupContainer.classList.add('tx_popupActive');
     editTicketPopupContainer.innerHTML = `
@@ -236,17 +223,18 @@ Classroom Technology Services (CTS)`;
             <p class="tx_createTicketText">Description:</p>
             <p class="tx_Description" id="tx_editTicket_Description">${description}</p>
             <br class="tx_createTicketBr">
-            <p class="tx_createTicketText">Notes (Private):</p>
-            <textarea id="tx_editTicket_Comments" class="tx_createTicketTextarea" rows="6" placeholder="${commentsPreview}"></textarea>
+            <p class="tx_createTicketText">Comments:</p>
+            <textarea id="tx_editTicket_Comments" class="tx_createTicketTextarea" rows="9"></textarea>
             <br class="tx_createTicketBr">
-            <input id="tx_emailCheckbox" type="checkbox" id="email" name="email" onClick="toggleEmailRequestor(this)"></input>
-            <label class="tx_createTicketText" for="email">Email Requestor (${ticket.RequestorName}):</label>
-            <textarea id="tx_editTicket_Email" class="tx_createTicketTextarea" style="display: none;" rows="12" placeholder="${emailPreview}"></textarea>
+            <input id="tx_editTicketEmailCheckbox" type="checkbox" id="email" name="email" onClick="toggleEmailRequestor('edit', ${ticketID})"></input>
+            <label class="tx_createTicketText" for="email">Notify Requestor (${ticket.RequestorName})</label>
             <br class="tx_createTicketBr">
             <button id="tx_applyChangesButton" onClick="applyChanges(${ticketID})">Apply Changes</button>
             <button class="cancelPopupButton" onClick="hideCurrentPopup()">Cancel</button>
         </div>
     `;
+
+    toggleEmailRequestor("edit", ticketID);
 
     // Hide terminal if open
     const terminal = document.getElementById('terminal');
@@ -255,24 +243,16 @@ Classroom Technology Services (CTS)`;
     // Disable scrolling the main body when popup is active
     document.body.classList.add('tx_no-scroll');
 }
-// Toggles whether or not the requestor will emailed
-function toggleEmailRequestor(checkbox) {
-    const textfield = document.getElementById("tx_editTicket_Email");
-    if (checkbox.checked) {
-        textfield.style.display = '';
-    } else {
-        textfield.style.display = 'none';
-        textfield.value = ""; // Clear any text that was input
-    }
-}
 // Looks at edit ticket popup, enforces required fields are not empty, and sends request to edit ticket
 async function applyChanges(ticketID) {
+    const ticket = window.ticketById?.get(ticketID);
+    if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
+
     // Ensure required fields are filled out
     const statusField = document.getElementById("tx_editTicket_Status");
     const titleField = document.getElementById("tx_editTicket_Title");
     const commentsFields = document.getElementById("tx_editTicket_Comments");
-    const emailCheckbox = document.getElementById("tx_emailCheckbox");
-    const emailRequestorField = document.getElementById("tx_editTicket_Email");
+    const emailCheckbox = document.getElementById("tx_editTicketEmailCheckbox");
 
     let canContinue = true;
 
@@ -290,37 +270,152 @@ async function applyChanges(ticketID) {
     } else {
         commentsFields.classList.remove("tx_textareaRequired");
     }
-    // Email Requestor
-    if (emailCheckbox.checked && emailRequestorField.value === "") {
-        canContinue = false;
-        emailRequestorField.classList.add("tx_textareaRequired");
-    } else {
-        emailRequestorField.classList.remove("tx_textareaRequired");
-        emailRequestorField.innerText = "";
-    }
 
     // Stops here if any required fields are empty
     if (!canContinue) return;
 
     // Package data and send to backend
-    const jsonBody = {
+    const ticketBody = {
         "_OperationType": "EDIT", 
         "ID": ticketID,
         "Title": titleField.value.trim(),
-        "ResponsibleUid": "6f873055-ca2f-eb11-8b7c-000d3a9b77a1", // Hard-coded for now
-        "comments": commentsFields.value.trim(),
-        "email_to_requestor": emailRequestorField.value.trim() // Pass "" to imply no email will be sent
+        "ResponsibleUid": "6f873055-ca2f-eb11-8b7c-000d3a9b77a1" // Hard-coded for now, "Lex Fermelia"
+    };
+
+    const c = "<b><i>This comment was made on behalf of " + "Lex Fermelia" + ":</i></b><br><br>" + commentsFields.value;
+    const commentBody = {
+        "ID": ticket.ID,
+        "Comments": c, // Hard-coded for now, "Lex Fermelia"
+        "IsPrivate": !emailCheckbox.checked,
+        "Notify": emailCheckbox.checked ? [ticket.RequestorEmail] : [] // An array, pass [] to NOT notify anybody
     };
 
     // Omit Status if it is not "New", "In Process", or "Closed"
-    console.log(statusField.value.trim())
     if (statusField.value.trim() !== "Other") jsonBody["StatusName"] = statusField.value.trim();
-    console.log(JSON.stringify(jsonBody))
 
-    await updateTicket(jsonBody);
     hideCurrentPopup(true);
+    await updateTicket(ticketBody);
+    await postComment(commentBody);
     await delay(750); // Pause for 0.75 seconds
     setTickex(); // Reload board to show changes
+}
+
+// Opens the new comment for a ticket portal
+function newCommentPopup(ticketID) {
+    hideCurrentPopup();
+
+    const commentOnTicketPopupContainer = document.querySelector('.tx_commentOnTicketPopupContainer');
+    if (!commentOnTicketPopupContainer) {
+        console.error("Comment on Ticket Popup Container not found");
+        return;
+    }
+
+    const ticket = window.ticketById?.get(ticketID);
+    if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
+
+
+    commentOnTicketPopupContainer.classList.add('tx_popupActive');
+    commentOnTicketPopupContainer.innerHTML = `
+        <div class="tx_popupBox">
+            <span>Comment on Ticket</span>
+            <p>ID: ${ticket.ID}
+                <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
+                    <button>Link to Ticket</button>
+                </a>
+            </p>
+            <p class="tx_creatTicketText">Title: ${ticket.Title}</p>
+            <br class="tx_createTicketBr">
+            <p class="tx_createTicketText">Comments:</p>
+            <textarea id="tx_commentOnTicket_Comments" class="tx_createTicketTextarea" rows="9"></textarea>
+            <br class="tx_createTicketBr">
+            <input id="tx_commentOnTicketEmailCheckbox" type="checkbox" id="email" name="email" onClick="toggleEmailRequestor('comment', ${ticketID})"></input>
+            <label class="tx_createTicketText" for="email">Notify Requestor (${ticket.RequestorName}):</label>
+            <br class="tx_createTicketBr">
+            <button id="tx_commentButton" onClick="comment(${ticket.ID})">Comment</button>
+            <button class="cancelPopupButton" onClick="hideCurrentPopup()">Cancel</button>
+        </div>
+    `;
+
+    toggleEmailRequestor("comment", ticketID);
+
+    // Hide terminal if open
+    const terminal = document.getElementById('terminal');
+    terminal.style.display = 'none';
+
+    // Disable scrolling the main body when popup is active
+    document.body.classList.add('tx_no-scroll');
+}
+// Looks at comment on ticket popup, enforces required fields are not empty, and sends request to comment
+async function comment(ticketID) {
+    const ticket = window.ticketById?.get(ticketID);
+    if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
+
+    // Ensure required fields are filled out
+    const commentsFields = document.getElementById("tx_commentOnTicket_Comments");
+    const emailCheckbox = document.getElementById("tx_commentOnTicketEmailCheckbox");
+
+    let canContinue = true;
+
+    // Comments
+    if (commentsFields.value === "") {
+        canContinue = false;
+        commentsFields.classList.add("tx_textareaRequired");
+    } else {
+        commentsFields.classList.remove("tx_textareaRequired");
+    }
+    
+    // Stops here if any required fields are empty
+    if (!canContinue) return;
+
+    // Package data and send to backend
+    const c = "<b><i>This comment was made on behalf of " + "Lex Fermelia" + ":</i></b><br><br>" + commentsFields.value;
+    const commentBody = {
+        "ID": ticket.ID,
+        "Comments": c,
+        "IsPrivate": !emailCheckbox.checked,
+        "Notify": emailCheckbox.checked ? [ticket.RequestorEmail] : [] // An array, pass [] to NOT notify anybody
+    };
+
+    hideCurrentPopup(true);
+    await postComment(commentBody);
+    await delay(750); // Pause for 0.75 seconds
+    setTickex(); // Reload board to show changes
+}
+
+// Toggles html that indicates whether the requestor will be emailed
+function toggleEmailRequestor(type, ticketID) {
+    const ticket = window.ticketById?.get(ticketID);
+    if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
+
+    const privateCommentsPreview = `Enter your private comments...
+    
+Notes you make here will NOT be sent to the Requestor unless the the checkbox is checked.
+    `;
+    const emailPreview = `Hello ${ticket.RequestorFirstName},
+
+(Write your email to ${ticket.RequestorFirstName} here, summarizing relevant information like fixes/issues/further actions...)
+
+Thanks,
+
+<Your Name>
+Classroom Technology Services (CTS)
+    `;
+
+    let checkbox = null;
+    let textfield = null;
+    if (type === "edit") {
+        checkbox = document.getElementById("tx_editTicketEmailCheckbox");
+        textfield = document.getElementById("tx_editTicket_Comments");
+    }
+    else if (type === "comment") {
+        checkbox = document.getElementById("tx_commentOnTicketEmailCheckbox");
+        textfield = document.getElementById("tx_commentOnTicket_Comments");
+    }
+
+    if (checkbox.checked) 
+        textfield.placeholder = emailPreview;
+    else 
+        textfield.placeholder = privateCommentsPreview;
 }
 
 // Clear all ticket rows of unread notifications
@@ -574,10 +669,12 @@ async function showTicket(ticket) {
         commentsHTML = `
             <div class="tx_popupComments ${isMobile ? "mobile" : ""}">
                 <span>Comments:</span>
-                ${isMobile ? "" : `<button class="popup_closeCommentsButton" onClick="toggleComments(${ticket.ID})">X</button>`}
-                <div class="tx_commentList">
-                    ${builtComments}
+                <div class="tx_commentWrapper">
+                    <div class="tx_commentList">
+                        ${builtComments}
+                    </div>
                 </div>
+                <button id="tx_newCommentButton" onClick="newCommentPopup(${ticket.ID})">Post New Comment</button>
             </div>
         `;
     }
@@ -670,7 +767,7 @@ async function showTicket(ticket) {
                     <p class="tx_popup_Created tx_textwrap">Date Created: ${ticket.CreatedDate || ""} || Created by: ${ticket.CreatedFullName || ""}</p>
                     <p class="tx_popup_Modified tx_textwrap">Last Modified: ${ticket.ModifiedDate || ""} || Modified by: ${ticket.ModifiedFullName || ""}</p>
                     ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
-                    ${isAuthorized ? `<button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID}, this.closest('.tx_ticketPopupContainer'))">Edit Ticket</button>` : ""}
+                    ${isAuthorized ? `<button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID})">Edit Ticket</button>` : ""}
                 </div>
                 ${sideContent ? `<div class="tx_sideContent">${sideContent}</div>` : ''}
             </div>
@@ -704,7 +801,7 @@ async function showTicket(ticket) {
                     <p class="tx_popup_Responsible tx_textwrap${isMobile ? "mobile_tx_button" : ""}">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED <button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>`} || ${ticket.ResponsibleGroupName || ""}</p>
                     <p class="tx_Description">${description || "--- No Description Provided ---"}</p>
                     ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
-                    ${isAuthorized ? `<button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID}, this.closest('.tx_ticketPopupContainer'))">Edit Ticket</button>` : ""}
+                    ${isAuthorized ? `<button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID})">Edit Ticket</button>` : ""}
                 </div>
                 ${sideContent ? `<div class="tx_sideContent">${sideContent}</div>` : ''}
             </div>
@@ -759,6 +856,8 @@ function toggleComments(ticketID) {
 
 // Hides the ticket popup
 function hideCurrentPopup(forceClose=false) {
+    if (event) event.stopPropagation();
+
     const container = document.getElementsByClassName("tx_popupActive")[0];
     if (!container) {
         console.error("hideCurrentPopup(): Couldn't resolve popupContainer");
@@ -780,6 +879,16 @@ function hideCurrentPopup(forceClose=false) {
         } else return;
     }
     if (container.classList.contains("tx_editTicketPopupContainer")) {
+        if (forceClose) {
+            container.classList.remove('tx_popupActive');
+            document.body.classList.remove('tx_no-scroll');
+            return;
+        }
+        if (confirm("Are you sure you want to continue? Unsaved changes will be lost.")) {
+            container.classList.remove('tx_popupActive');
+        } else return;
+    }
+    if (container.classList.contains("tx_commentOnTicketPopupContainer")) {
         if (forceClose) {
             container.classList.remove('tx_popupActive');
             document.body.classList.remove('tx_no-scroll');
@@ -819,6 +928,12 @@ function initializeListeners() {
 
         const editTicketPopupContainer = document.querySelector('.tx_editTicketPopupContainer.tx_popupActive');
         if (editTicketPopupContainer) {
+            const clickedInPopupBox = e.target.closest('.tx_popupBox');
+            if (!clickedInPopupBox) hideCurrentPopup();
+        }
+
+        const commentOnTicketPopupContainer = document.querySelector('.tx_commentOnTicketPopupContainer.tx_popupActive');
+        if (commentOnTicketPopupContainer) {
             const clickedInPopupBox = e.target.closest('.tx_popupBox');
             if (!clickedInPopupBox) hideCurrentPopup();
         }
@@ -1106,18 +1221,18 @@ function getTicketCache() {
 }
 
 // Grabs a Specific Ticket from the Cache
-function getCachedTicketData(ticketId, type) {
+function getCachedTicketData(ticketID, type) {
     const cache = getTicketCache();
-    return cache.data[`${ticketId}_${type}`] || null;
+    return cache.data[`${ticketID}_${type}`] || null;
 }
 
 // Saves a Ticket to the Cache
-function setCachedTicketData(ticketId, type, value) {
+function setCachedTicketData(ticketID, type, value) {
     // Stores 50 tickets, comments & description for every ticket
     const MAX_CACHED = 100;
 
     const cache = getTicketCache();
-    const key = `${ticketId}_${type}`;
+    const key = `${ticketID}_${type}`;
     
     // If already exists, remove from order queue to re-add at end
     if (cache.data[key])
@@ -1140,9 +1255,10 @@ function setCachedTicketData(ticketId, type, value) {
     }
 }
 
-function removeFromCache(ticketId) {
+// Removes a ticket from the Cache
+function removeFromCache(ticketID) {
     const cache = getTicketCache();
-    const keysToRemove = [ `${ticketId}_description`, `${ticketId}_comments` ];
+    const keysToRemove = [ `${ticketID}_description`, `${ticketID}_comments` ];
 
     cache.order = cache.order.filter(k => !keysToRemove.includes(k));
     keysToRemove.forEach(k => delete cache.data[k]);
@@ -1176,18 +1292,18 @@ async function fetchTickets() {
 }
 
 // Grab ticket Description from backend 
-async function fetchTicketDescription(ticketId, forceFetch=false) {
+async function fetchTicketDescription(ticketID, forceFetch=false) {
     // Check cache first
-    const cached = getCachedTicketData(ticketId, 'description');
+    const cached = getCachedTicketData(ticketID, 'description');
     if (cached && !forceFetch) return cached;
 
     try {
-        const response = await fetch(`/ticket/description/${ticketId}`);
+        const response = await fetch(`/ticket/description/${ticketID}`);
         if (!response.ok) throw new Error('Network response was not ok');
 
         // Cache response
         const result = await response.text();
-        setCachedTicketData(ticketId, 'description', result);
+        setCachedTicketData(ticketID, 'description', result);
 
         return result;
     } catch (error) {
@@ -1197,18 +1313,18 @@ async function fetchTicketDescription(ticketId, forceFetch=false) {
 }
 
 // Grab ticket Comments (feed) from backend
-async function fetchTicketComments(ticketId, forceFetch=false) {
+async function fetchTicketComments(ticketID, forceFetch=false) {
     // Check cache first
-    const cached = getCachedTicketData(ticketId, 'comments');
+    const cached = getCachedTicketData(ticketID, 'comments');
     if (cached && !forceFetch) return cached;
 
     try {
-        const response = await fetch(`/ticket/feed/${ticketId}`);
+        const response = await fetch(`/ticket/feed/${ticketID}`);
         if (!response.ok) throw new Error('Network response was not ok');
 
         // Cache response
         const result = await response.json();
-        setCachedTicketData(ticketId, 'comments', result);
+        setCachedTicketData(ticketID, 'comments', result);
 
         return result;
     } catch (error) {
@@ -1269,12 +1385,12 @@ async function checkUserExistsInDatabase() {
 }
 
 // Update ticket's viewed status in backend/database
-async function updateTicketViewed(ticketId, viewed) {
+async function updateTicketViewed(ticketID, viewed) {
     try {
         const response = await fetch('/update/ticket/viewed', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', },
-            body: JSON.stringify({ id: ticketId, viewed: viewed }),
+            body: JSON.stringify({ id: ticketID, viewed: viewed }),
         });
 
         if (!response.ok) console.error('Failed to update ticket viewed status');
@@ -1287,6 +1403,21 @@ async function updateTicketViewed(ticketId, viewed) {
 async function updateTicket(body) {
     try {
         const response = await fetch('/update/ticket', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', },
+            body: JSON.stringify(body),
+        });
+
+        if (!response.ok) console.error('Failed to Creating/Editing ticket');
+    } catch (error) {
+        console.error('Error Creating/Editing ticket:', error);
+    }
+}
+
+// Send a request to TeamDynamix to Post a Comment to a Ticket
+async function postComment(body) {
+    try {
+        const response = await fetch('/update/ticket/postComment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', },
             body: JSON.stringify(body),
@@ -1354,12 +1485,6 @@ async function setTickex() {
 
     /* -------------------- Tickex Page -------------------- */
 
-    // isAdmin - Admin only privileges, permission level 6+
-    // isAuthorized - User is able to make/edit tickets (write access)
-    //              - permission level 4+ or is NOT in database (all users recieve this access by default)
-    // Permission 1-3 - User is in a read-only state
-    //                - User will be in database with this specified permission level
-    // Permission 0 - User is blacklisted, they are not allowed to view Bronson at all
     const isAdmin = await fetchCurrentUserPermissions()  >= 6;
     const isAuthorized = await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase(); 
 
@@ -1429,6 +1554,12 @@ async function setTickex() {
     let editTicketPopupContainer = document.createElement("div");
     editTicketPopupContainer.classList.add("tx_editTicketPopupContainer");
     tx_container.append(editTicketPopupContainer);
+
+    // Comment on Ticket Popup Container
+    let commentOnTicketPopupContainer = document.createElement("div");
+    commentOnTicketPopupContainer.classList.add("tx_commentOnTicketPopupContainer");
+    tx_container.append(commentOnTicketPopupContainer);
+
 
     // Sort By Box - by date and status
     let sortByBox = document.createElement("div");

@@ -1979,6 +1979,53 @@ td.mobile_th {
     background: transparent;
 } 
 
+.tx_commentOnTicketPopupContainer {
+    position: fixed;
+    width: 100%;
+    height: auto;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    opacity: 0;
+    background-color: rgba(0,0,0,0.4);
+    pointer-events: none;
+    transition: .2s ease;
+}
+
+.tx_commentOnTicketPopupContainer.tx_popupActive {
+    opacity: 1;
+    pointer-events: auto;
+    transition: .3s ease;
+}
+
+.tx_commentOnTicketPopupContainer .tx_popupBox {
+    width: 500px;
+    height: fit-content;
+    max-height: 65%;
+    overflow-y: scroll;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 125px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+.tx_commentOnTicketPopupContainer .tx_popupBox::-webkit-scrollbar {
+    display: block !important;
+    width: 8px;
+}
+.tx_commentOnTicketPopupContainer .tx_popupBox::-webkit-scrollbar-thumb {
+    background: rgb(224, 193, 108);
+    border-radius: 4px;
+}
+.tx_commentOnTicketPopupContainer .tx_popupBox::-webkit-scrollbar-track {
+    background: transparent;
+} 
+
+
 .tx_popupBox.mobile {
     width: 551px;
     height: fit-content;
@@ -2046,18 +2093,21 @@ td.mobile_th {
 }
 
 .tx_ticketPopupContainer .tx_popupComments {
+    display: flex;
+    flex-direction: column;
+    position: relative;
     max-width: 401px;
     min-width: 301px;
     width: fit-content;
     max-height: 450px;
-    height: fit-content;
+    height: 100%;
     border: 3px solid rgb(224, 193, 108);
     background: rgb(60, 60, 60);
     border-radius: 6px;
     margin-left: 10px;
     margin-bottom: 10px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    overflow-y: auto;
+    overflow-y: hidden;
 }
 .tx_popupComments.mobile {
     max-width: 401px;
@@ -2066,15 +2116,15 @@ td.mobile_th {
     scale: 135%;
 }
 
-.tx_popupComments::-webkit-scrollbar {
+.tx_commentWrapper::-webkit-scrollbar {
     display: block !important;
     width: 8px;
 }
-.tx_popupComments::-webkit-scrollbar-thumb {
+.tx_commentWrapper::-webkit-scrollbar-thumb {
     background: rgb(224, 193, 108);
     border-radius: 4px;
 }
-.tx_popupComments::-webkit-scrollbar-track {
+.tx_commentWrapper::-webkit-scrollbar-track {
     background: transparent;
 }
 
@@ -2089,17 +2139,53 @@ td.mobile_th {
     padding: 0px 10px 0 10px;
     margin: 0px 0px;
     border-radius: 0px 0px 6px 0px;
-    max-width: 90%;
+    max-width: 28%;
     display: inline-block;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    flex-shrink: 0;
 }
 
 .tx_popupComments p {
     font-size: small;
     text-align: left;
     padding: 0px 8px;
+}
+
+.tx_popupComments::after {
+    content: "";
+    position: absolute;
+    bottom: 39px;
+    margin-right: 8px;
+    left: 0;
+    right: 0;
+    height: 70px;
+    pointer-events: none;
+    background: linear-gradient(
+        to bottom,
+        transparent,
+        rgb(60, 60, 60)
+    );
+}
+
+#tx_newCommentButton {
+    align-self: flex-end;
+    margin: 10px 7px 5px 0;
+    flex-shrink: 0;
+}
+
+.tx_commentWrapper {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+
+.tx_commentList {
+    height: 100%;
+    overflow-y: auto;
 }
 
 .tx_ticketPopupContainer .tx_whatChangedBox {
@@ -2165,6 +2251,10 @@ td.mobile_th {
 }
 
 #tx_applyChangesButton {
+    margin: 10px 0px 5px 7px
+}
+
+#tx_commentButton {
     margin: 10px 0px 5px 7px
 }
 

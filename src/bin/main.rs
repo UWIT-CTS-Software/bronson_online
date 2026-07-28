@@ -1002,6 +1002,33 @@ async fn handle_connection(
                 .status(STATUS_200)
                 .send_contents("".into())
         },
+        "POST /update/ticket/postComment HTTP/1.1" => {
+            // Parse JSON body
+            let body_json: Value = match serde_json::from_slice(&req.body) {
+                Ok(v) => v,
+                Err(_) => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Invalid JSON".into())
+                        .build();
+                }
+            };
+
+            let _ = match post_comment(&mut database, &tdx_client, body_json).await {
+                Ok(v) => v,
+                Err(e) => {
+                    error!("Failed to post comment: {}", e);
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("[]".into())
+                        .build();
+                }
+            };
+
+            Response::new()
+                .status(STATUS_200)
+                .send_contents("".into())
+        },
         "POST /update/ticket/viewed HTTP/1.1" => {
             // Parse JSON body
             let body_json: Value = match serde_json::from_slice(&req.body) {
@@ -3481,6 +3508,60 @@ async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -
     // - Send email to requestor (if email_to_requestor is not "")
 
     info!("[Data] - Edit Ticket Request was Successful (Ticket ID: {})", id);
+    Ok(())
+}
+
+async fn post_comment(database: &mut Database, req: &API, body_json: Value) -> Result<(), String> {
+    let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
+    info!("[Data] - Sending Commenting Request to TDX (Ticket ID: {})", id);
+    
+    let url = format!("https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/{}/feed", id);
+    
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e)),
+    };
+
+    // Remove ticket ID, which is not a valid field for the body
+    let mut comment = body_json.clone();
+    if let Some(obj) = comment.as_object_mut() {
+        obj.remove("ID");
+    }
+
+    // Add RichHtml Tag
+    if let Some(obj) = comment.as_object_mut() {
+        obj.insert("IsRichHtml".to_string(), Value::Bool(true));
+    }
+
+    // Prefix Comment with 
+
+    // Query TDX for the ticket we want to edit
+    let mut ticket_resp = match req
+        .build()
+        .method("POST")
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Content-Type", "application/json")
+        .body(comment.clone())
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch Ticket from TDX during update: {}", e))
+        };
+
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !ticket_resp.status.is_success() && ticket_resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        ticket_resp = retry_tdx_token(database, req, "GET", &url, Some(comment)).await?;
+    }
+
+    if !ticket_resp.status.is_success() {
+        return Err(format!("TDX API error: {}", ticket_resp.status));
+    }
+
+
+    info!("[Data] - Commenting Request was Successful (Ticket ID: {})", id);
     Ok(())
 }
 
