@@ -2092,14 +2092,14 @@ td.mobile_th {
     margin-left: 5px;
 }
 
-.tx_ticketPopupContainer .tx_popupComments {
+.tx_popupComments {
     display: flex;
     flex-direction: column;
     position: relative;
     max-width: 401px;
     min-width: 301px;
     width: fit-content;
-    max-height: 450px;
+    max-height: 500px;
     height: 100%;
     border: 3px solid rgb(224, 193, 108);
     background: rgb(60, 60, 60);
@@ -2154,10 +2154,10 @@ td.mobile_th {
     padding: 0px 8px;
 }
 
-.tx_popupComments::after {
+/* .tx_popupComments::after {
     content: "";
     position: absolute;
-    bottom: 39px;
+    bottom: 35px;
     margin-right: 8px;
     left: 0;
     right: 0;
@@ -2168,7 +2168,7 @@ td.mobile_th {
         transparent,
         rgb(60, 60, 60)
     );
-}
+} */
 
 #tx_newCommentButton {
     align-self: flex-end;
@@ -2187,6 +2187,20 @@ td.mobile_th {
 .tx_commentList {
     height: 100%;
     overflow-y: auto;
+}
+
+.tx_newCommentDialog {
+    margin: 0;
+}
+
+.tx_newCommentDialog hr {
+    margin: 0;
+    height: 2px;
+}
+
+.tx_newCommentDialog span {
+    margin-top: 0;
+    min-width: 150px;
 }
 
 .tx_ticketPopupContainer .tx_whatChangedBox {

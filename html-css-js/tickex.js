@@ -300,49 +300,39 @@ async function applyChanges(ticketID) {
 }
 
 // Opens the new comment for a ticket portal
-function newCommentPopup(ticketID) {
-    hideCurrentPopup();
-
-    const commentOnTicketPopupContainer = document.querySelector('.tx_commentOnTicketPopupContainer');
-    if (!commentOnTicketPopupContainer) {
-        console.error("Comment on Ticket Popup Container not found");
-        return;
-    }
+function newCommentDiolog(ticketID, commentButton) {
+    if (event) event.stopPropagation();
 
     const ticket = window.ticketById?.get(ticketID);
     if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
 
-
-    commentOnTicketPopupContainer.classList.add('tx_popupActive');
-    commentOnTicketPopupContainer.innerHTML = `
-        <div class="tx_popupBox">
-            <span>Comment on Ticket</span>
-            <p>ID: ${ticket.ID}
-                <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
-                    <button>Link to Ticket</button>
-                </a>
-            </p>
-            <p class="tx_creatTicketText">Title: ${ticket.Title}</p>
-            <br class="tx_createTicketBr">
-            <p class="tx_createTicketText">Comments:</p>
-            <textarea id="tx_commentOnTicket_Comments" class="tx_createTicketTextarea" rows="9"></textarea>
-            <br class="tx_createTicketBr">
-            <input id="tx_commentOnTicketEmailCheckbox" type="checkbox" id="email" name="email" onClick="toggleEmailRequestor('comment', ${ticketID})"></input>
-            <label class="tx_createTicketText" for="email">Notify Requestor (${ticket.RequestorName}):</label>
-            <br class="tx_createTicketBr">
-            <button id="tx_commentButton" onClick="comment(${ticket.ID})">Comment</button>
-            <button class="cancelPopupButton" onClick="hideCurrentPopup()">Cancel</button>
-        </div>
+    // Replace comment button with new commenet dialog
+    const dialog = document.createElement("div");
+    dialog.classList.add("tx_newCommentDialog");
+    dialog.id = "tx_newCommentDialogBox";
+    dialog.innerHTML = `
+        <hr>
+        <span>New Comment:</span>
+        <textarea id="tx_commentOnTicket_Comments" class="tx_createTicketTextarea" rows="9"></textarea>
+        <br>
+        <input id="tx_commentOnTicketEmailCheckbox" type="checkbox" id="email" name="email" onClick="toggleEmailRequestor('comment', ${ticketID})"></input>
+        <label class="tx_createTicketText" for="email">Notify Requestor (${ticket.RequestorName}):</label>
+        <br>
+        <button id="tx_commentButton" onClick="comment(${ticket.ID})">Comment</button>
+        <button class="cancelPopupButton" onClick="closeCommentDialog(${ticket.ID})">Cancel</button>
     `;
 
+    commentButton.outerHTML = dialog.outerHTML;
+    
     toggleEmailRequestor("comment", ticketID);
+}
+function closeCommentDialog(ticketID) {
+    if (event) event.stopPropagation();
 
-    // Hide terminal if open
-    const terminal = document.getElementById('terminal');
-    terminal.style.display = 'none';
-
-    // Disable scrolling the main body when popup is active
-    document.body.classList.add('tx_no-scroll');
+    const dialog = document.getElementById("tx_newCommentDialogBox");
+    dialog.outerHTML = `
+        <button id="tx_newCommentButton" onClick="newCommentDiolog(${ticketID}, this)">Post New Comment</button>
+    `;
 }
 // Looks at comment on ticket popup, enforces required fields are not empty, and sends request to comment
 async function comment(ticketID) {
@@ -355,7 +345,7 @@ async function comment(ticketID) {
 
     let canContinue = true;
 
-    // Comments
+    // Require Comments Field
     if (commentsFields.value === "") {
         canContinue = false;
         commentsFields.classList.add("tx_textareaRequired");
@@ -673,7 +663,7 @@ async function showTicket(ticket) {
                         ${builtComments}
                     </div>
                 </div>
-                <button id="tx_newCommentButton" onClick="newCommentPopup(${ticket.ID})">Post New Comment</button>
+                <button id="tx_newCommentButton" onClick="newCommentDiolog(${ticket.ID}, this)">Post New Comment</button>
             </div>
         `;
     }
@@ -887,16 +877,6 @@ function hideCurrentPopup(forceClose=false) {
             container.classList.remove('tx_popupActive');
         } else return;
     }
-    if (container.classList.contains("tx_commentOnTicketPopupContainer")) {
-        if (forceClose) {
-            container.classList.remove('tx_popupActive');
-            document.body.classList.remove('tx_no-scroll');
-            return;
-        }
-        if (confirm("Are you sure you want to continue? Unsaved changes will be lost.")) {
-            container.classList.remove('tx_popupActive');
-        } else return;
-    }
 
     document.body.classList.remove('tx_no-scroll');
 }
@@ -927,12 +907,6 @@ function initializeListeners() {
 
         const editTicketPopupContainer = document.querySelector('.tx_editTicketPopupContainer.tx_popupActive');
         if (editTicketPopupContainer) {
-            const clickedInPopupBox = e.target.closest('.tx_popupBox');
-            if (!clickedInPopupBox) hideCurrentPopup();
-        }
-
-        const commentOnTicketPopupContainer = document.querySelector('.tx_commentOnTicketPopupContainer.tx_popupActive');
-        if (commentOnTicketPopupContainer) {
             const clickedInPopupBox = e.target.closest('.tx_popupBox');
             if (!clickedInPopupBox) hideCurrentPopup();
         }
@@ -1553,11 +1527,6 @@ async function setTickex() {
     let editTicketPopupContainer = document.createElement("div");
     editTicketPopupContainer.classList.add("tx_editTicketPopupContainer");
     tx_container.append(editTicketPopupContainer);
-
-    // Comment on Ticket Popup Container
-    let commentOnTicketPopupContainer = document.createElement("div");
-    commentOnTicketPopupContainer.classList.add("tx_commentOnTicketPopupContainer");
-    tx_container.append(commentOnTicketPopupContainer);
 
 
     // Sort By Box - by date and status
