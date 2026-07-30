@@ -281,6 +281,8 @@ async function applyChanges(ticketID) {
         "Title": titleField.value.trim(),
         "ResponsibleUid": "6f873055-ca2f-eb11-8b7c-000d3a9b77a1" // Hard-coded for now, "Lex Fermelia"
     };
+    // Omit Status if it is not "New", "In Process", or "Closed"
+    if (statusField.value.trim() !== "Other") ticketBody["StatusName"] = statusField.value.trim();
 
     const c = "<b><i>This comment was made on behalf of " + "Lex Fermelia" + ":</i></b><br><br>" + commentsFields.value;
     const commentBody = {
@@ -289,9 +291,6 @@ async function applyChanges(ticketID) {
         "IsPrivate": !emailCheckbox.checked,
         "Notify": emailCheckbox.checked ? [ticket.RequestorEmail] : [] // An array, pass [] to NOT notify anybody
     };
-
-    // Omit Status if it is not "New", "In Process", or "Closed"
-    if (statusField.value.trim() !== "Other") jsonBody["StatusName"] = statusField.value.trim();
 
     hideCurrentPopup(true);
     await updateTicket(ticketBody);
