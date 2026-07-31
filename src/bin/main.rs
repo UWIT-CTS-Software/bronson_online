@@ -896,9 +896,9 @@ async fn handle_connection(
                 };
 
                 // Query TDX for User ID using the username provided in the cookie
-                let user_id = match get_TDX_user_id(&mut database, &tdx_client, &username.to_string()).await {
+                let user_id = match get_tdx_user_id(&mut database, &tdx_client, &username.to_string()).await {
                     Ok(id) => id,
-                    Err(e) => {
+                    Err(_) => {
                         return Response::new()
                             .status(STATUS_401)
                             .send_contents(json!({
@@ -3381,7 +3381,7 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64
     Ok((created_by, replies_body, created_date))
 }
 
-async fn mark_ticket_false(database: &mut Database, req: &API, mut body_json: Value) -> Result<(), String> {
+async fn mark_ticket_false(database: &mut Database, req: &API, body_json: Value) -> Result<(), String> {
     let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
     info!("[Data] - Marking Ticket as False (Ticket ID: {})", id);
     
@@ -3494,13 +3494,12 @@ async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Va
     info!("[Data] - Create Ticket Request was Successful (New Ticket ID: {})", ticket_json["ID"]);
 
     // TODO:
-    // - Post the comment with new function call
+    // - Post the comment with new function call saying who performed what ticket actions (shibboleth)
 
     Ok(())
 }
 
 async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -> Result<(), String> {
-    let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
     let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
     info!("[Data] - Sending Edit Ticket Request to TDX (Ticket ID: {})", id);
     
@@ -3592,8 +3591,7 @@ async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -
     }
 
     // TODO:
-    // - Post the comment with new function call
-    // - Send email to requestor (if email_to_requestor is not "")
+    // - Post the comment with new function call saying who performed what ticket actions (shibboleth)
 
     info!("[Data] - Edit Ticket Request was Successful (Ticket ID: {})", id);
     Ok(())
@@ -3704,7 +3702,7 @@ async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) 
     Err(format!("Could not find StatusID for status '{}'", status_name))
 }
 
-async fn get_TDX_user_id(database: &mut Database, req: &API, username: &str) -> Result<Value, String> {
+async fn get_tdx_user_id(database: &mut Database, req: &API, username: &str) -> Result<Value, String> {
     let url = format!("https://uwyo.teamdynamix.com/TDWebApi/api/people/getuid/{}{}", username, "@uwyo.edu");
 
     // Grab token from database

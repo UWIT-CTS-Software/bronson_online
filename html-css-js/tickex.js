@@ -58,16 +58,11 @@ TOC:
 
 TODO:
     Main Features to Add when we get write access:
-    - Add ticket editing/saving to TDX API (Title, Priority, Status, etc...)
-    - Add "Send to ASU"/"Send to Help Desk" button
     - Add "Take Responsibility" Button to unassigned tickets
         - This will disappear when a tech takes responsibility
     - Add "Assign Responsibility" Button to assign other techs to tickets
         - Maybe a dropdown of all CTS techs that you can assign to? (Can we get this list from the API?)
-    - Reply to Requestor from the popup
-    - Add ability to comment/reply on tickets from the popup
-        - This is meant to act as our "Microsoft Teams" chat, we should theorically move communicate to this
-    - (Optional, but would be nice) Have an AI Summarize the actions of the tickets when closing the ticket 
+    - (Optional, but might be nice) Have an AI Summarize the actions of the tickets when closing the ticket 
         - Client side?/Server side?
         - TDX sort of has an AI summary, but I want to post it in the comments
 */
@@ -198,7 +193,7 @@ async function createTicket(container) {
 
     await updateTicket(jsonBody);
     hideCurrentPopup(true);
-    await delay(750); // Pause for 0.75 seconds
+    await delay(250); // Pause for a little
     setTickex(); // Reload board to show changes
 }
 
@@ -318,8 +313,8 @@ async function applyChanges(ticketID) {
     hideCurrentPopup(true);
     await updateTicket(ticketBody);
     await postComment(commentBody);
-    await delay(750); // Pause for 0.75 seconds
-    setTickex(); // Reload board to show changes
+    await delay(100); // Pause for a little
+    setTickex(ticketID); // Reload page to show changes 
 }
 
 // Opens the new comment for a ticket portal
@@ -389,8 +384,8 @@ async function comment(ticketID) {
 
     hideCurrentPopup(true);
     await postComment(commentBody);
-    await delay(750); // Pause for 0.75 seconds
-    setTickex(); // Reload board to show changes
+    await delay(100); // Pause for a little
+    setTickex(ticketID); // Reload page to show changes
 }
 
 // Toggles html that indicates whether the requestor will be emailed
@@ -1445,7 +1440,7 @@ async function updateFalseStatus(jsonBody) {
     /* -------------------- "Main" Function -------------------- */
 
 // Sets up the Tickex tool page
-async function setTickex() {
+async function setTickex(openTicketByID = -1) {
     preserveCurrentTool();
     document.title = "Tickex - Bronson";
 
@@ -1833,6 +1828,12 @@ async function setTickex() {
                 }
             }).catch(error => console.error('Error fetching tickets for update:', error));
         }, 60000); // Refresh every 60 seconds
+    }
+
+    // Instantly opens up the provided ticket upon page loadup
+    const t = window.ticketById?.get(openTicketByID);
+    if (openTicketByID != -1 && t) { // -1: default for no popup on loadup
+        showTicketPopup(t); 
     }
 
     await Promise.resolve();
