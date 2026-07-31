@@ -90,6 +90,29 @@ function takeResponsibility() {
 }
 
 
+async function markTicketFalse(ticketID, parentID) {
+    const confirmationMessage = ` Are You Sure?
+    Example False Ticket Criteria:
+    - Tech arrives to Ticket being resolved/no issue is found
+    - Loud noises not related to Classroom Tech
+    - PC BIOS Screen or bad PC Power Supply
+    - Ticket was offloaded to a different department
+
+If you are unsure if this is a false ticket, ask a full-timer.
+    `;
+
+    if (!confirm(confirmationMessage)) return;
+
+    const jsonBody = {
+        "ID": ticketID,
+        "ParentID": parentID,
+    };
+
+    hideCurrentPopup();
+
+    await updateFalseStatus(jsonBody);
+}
+
     /* -------------------- Popups -------------------- */
 
 // Opens the popup for the new ticket portal
@@ -742,6 +765,7 @@ async function showTicket(ticket) {
                         <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p>
                     </div>
                     <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
+                    <button class="popup_falseTicketButton" onClick="markTicketFalse(${ticket.ID}, ${ticket.ParentID})">Mark Ticket as False</button>
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                         <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
                     </a>
@@ -779,6 +803,7 @@ async function showTicket(ticket) {
                         <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p>
                     </div>
                     <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
+                    <button class="popup_falseTicketButton" onClick="markTicketFalse(${ticket.ID}, ${ticket.ParentID})">Mark Ticket as False</button>
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                         <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
                     </a>
@@ -1394,6 +1419,20 @@ async function postComment(body) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', },
             body: JSON.stringify(body),
+        });
+
+        if (!response.ok) console.error('Failed to Creating/Editing ticket');
+    } catch (error) {
+        console.error('Error Creating/Editing ticket:', error);
+    }
+}
+
+async function updateFalseStatus(jsonBody) {
+    try {
+        const response = await fetch('/update/ticket/markFalse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', },
+            body: JSON.stringify(jsonBody),
         });
 
         if (!response.ok) console.error('Failed to Creating/Editing ticket');

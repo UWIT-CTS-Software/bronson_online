@@ -2318,6 +2318,11 @@ td.mobile_th {
     margin: 0px 0px 5px 7px;
 }
 
+.popup_falseTicketButton {
+    float: left;
+    margin: 0px 0px 5px 7px;
+}
+
 .tx_adjacent {
     display: flex;
     justify-content: space-between;

@@ -1042,6 +1042,27 @@ impl Database {
 		Ok(Some(updated))
 	}
 
+	pub fn update_ticket_mark_as_false(&mut self, id: i32) -> Result<Option<DB_Ticket>, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		// Try to fetch the ticket first
+		let ticket_opt = tickets
+			.filter(ticket_id.eq(id))
+			.first::<DB_Ticket>(&mut conn)
+			.optional()?;
+
+		// If not found, quietly return
+		let Some(_) = ticket_opt else { return Ok(None); };
+
+		// Update the flag
+		let updated = diesel::update(tickets.filter(ticket_id.eq(id)))
+			.set(parent_id.eq(22873142))
+			.returning(DB_Ticket::as_returning())
+			.get_result::<DB_Ticket>(&mut conn)?;
+
+		Ok(Some(updated))
+	}
+
 	pub fn update_ticket_comment_count(&mut self, id: i32, new_count: i16) -> Result<Option<DB_Ticket>,	DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 

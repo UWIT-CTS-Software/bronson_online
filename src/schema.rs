@@ -56,6 +56,7 @@ pub mod bronson {
     diesel::table! {
         bronson.tickets (ticket_id) {
             ticket_id -> Int4,
+            parent_id -> Int4,
             has_been_viewed -> Bool,
             type_name -> Text,
             type_category_name -> Text,

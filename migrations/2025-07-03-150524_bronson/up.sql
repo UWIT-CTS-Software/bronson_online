@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS bronson.data (
 
 CREATE TABLE IF NOT EXISTS bronson.tickets (
     ticket_id                   INTEGER     PRIMARY KEY,
+    parent_id                   INTEGER     NOT NULL,
     has_been_viewed             BOOLEAN     NOT NULL,
     type_name                   TEXT        NOT NULL,
     type_category_name          TEXT        NOT NULL,

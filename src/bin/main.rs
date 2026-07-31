@@ -930,6 +930,7 @@ async fn handle_connection(
             let tickets: Vec<Value> = db_tickets.into_iter().map(|t| {
                 json!({
                     "ID": t.ticket_id,
+                    "ParentID": t.parent_id,
                     "has_been_viewed": t.has_been_viewed,
                     "Title": t.title,
                     "StatusName": t.status_name,
@@ -1057,6 +1058,43 @@ async fn handle_connection(
                         .send_contents("Error".into())
                 }
             }
+        },
+        "POST /update/ticket/markFalse HTTP/1.1" => {
+            // Parse JSON body
+            let body_json: Value = match serde_json::from_slice(&req.body) {
+                Ok(v) => v,
+                Err(_) => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Invalid JSON".into())
+                        .build();
+                }
+            };
+
+            // Check if ParentID is already set to false, if so just return status 200
+            let parent_id = body_json["ParentID"].as_i64().unwrap_or(-1) as i32;
+            if parent_id == 22873142 {
+                return Response::new()
+                    .status(STATUS_200)
+                    .send_contents("".into())
+                    .build();
+            }
+
+            // Mark the ticket as false
+            let _ = match mark_ticket_false(&mut database, &tdx_client, body_json).await {
+                Ok(v) => v,
+                Err(e) => {
+                    error!("Failed to mark Ticket as false: {}", e);
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("[]".into())
+                        .build();
+                }
+            };
+
+            Response::new()
+                .status(STATUS_200)
+                .send_contents("".into())
         },
         "POST /lsmData HTTP/1.1" => { // OUTGOING
             let body_str = String::from_utf8(req.body).expect("AT: LSM Data Err, invalid UTF-8");
@@ -3116,6 +3154,7 @@ fn serialize_ticket(database: &mut Database, ticket_json: serde_json::Value) -> 
     // Serialize Ticket data into DB_Ticket struct. If this is a new ticket, fields will populated with default values
     Ok(DB_Ticket {
         ticket_id: ticket_json["ID"].as_i64().unwrap_or(0) as i32,
+        parent_id: ticket_json["ParentID"].as_i64().unwrap_or(0) as i32,
         has_been_viewed: orig_viewed,
         type_name: ticket_json["TypeName"].as_str().unwrap_or("").to_string(),
         type_category_name: ticket_json["TypeCategoryName"].as_str().unwrap_or("").to_string(),
@@ -3342,6 +3381,54 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64
     Ok((created_by, replies_body, created_date))
 }
 
+async fn mark_ticket_false(database: &mut Database, req: &API, mut body_json: Value) -> Result<(), String> {
+    let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
+    info!("[Data] - Marking Ticket as False (Ticket ID: {})", id);
+    
+    let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/22873142/children";
+
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e)),
+    };
+
+    let mut resp = match req
+        .build()
+        .method("POST")
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Content-Type", "application/json")
+        .body([id].into())
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to update Ticket in TDX: {}", e))
+        };
+
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        resp = retry_tdx_token(database, req, "POST", &url, Some(body_json)).await?;
+    }
+
+    if !resp.status.is_success() {
+        return Err(format!("TDX API error: {}", resp.status));
+    }
+
+    // Update DB with new ParentID
+    let _ = match database.update_ticket_mark_as_false(id) {
+        Ok(v) => v,
+        Err(e) => {
+            return Err(format!("Failed to update DB Records for updated False Ticket Status: {}", e));
+        }
+    };
+
+    info!("[Data] - Successfully Marked Ticket as False (Ticket ID: {})", id);
+
+    Ok(())
+}
+
 async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Value) -> Result<(), String> {
     info!("[Data] - Sending Create Ticket Request to TDX");
     
@@ -3413,6 +3500,7 @@ async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Va
 }
 
 async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -> Result<(), String> {
+    let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
     let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
     info!("[Data] - Sending Edit Ticket Request to TDX (Ticket ID: {})", id);
     
