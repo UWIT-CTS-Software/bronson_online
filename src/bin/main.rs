@@ -14,10 +14,12 @@ Backend
 
 JackNet
     - execute_ping(body: Vec<u8>) -> String
+    - write_doubleOK(path: &str, name: String) -> std::io::Result<()>
 
 ChkrBrd
     - construct_headers(call_type: &str, database: &mut Database) -> HeaderMap
     - check_schedule(room: Room) -> String
+    - check_period_to_delta(period: i16) -> TimeDelta
     - check_lsm(room: Room) -> String
 
 CamCode
@@ -36,7 +38,8 @@ Tickex
     - run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
 
 Wiki
-    - w_build_articles() -> String
+    - w_build_articles() -> Vec<u8>
+    - w_tree() -> Vec<u8> 
 */
 
 // dependencies
@@ -2552,6 +2555,7 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 
  - ping_response()
  - execute_ping()
+ - write_doubleOK()
  - ping_room()
  - execute_ping_st()
  - ping_room_st()
@@ -2586,13 +2590,14 @@ NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
       CAMPUS_STR -> "html-css-js/campus.json"
 */
 
-fn write_doubleOK(path: &str) -> std::io::Result<()> {
+fn write_doubleOK(path: &str, name: String) -> std::io::Result<()> {
     let mut f = OpenOptions::new()
         .create(true)
         .append(true)
         .open(path)?;
     let ts = chrono::Utc::now().to_rfc3339();
-    writeln!(f, "+ {}", ts)?;
+    let hn = name;
+    writeln!(f, "+ {} Hostname: {}", ts, hn)?;
     //writeln!(f, "* {}", ts)?;
     Ok(())
 }
@@ -2638,6 +2643,10 @@ fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress
         pinged_hns.push(Some(
             match ping_this(&hn_string) {
                 Ok(ip) => { //println!("Got Here01");
+                //  if let Err(e) = write_doubleOK("single_ping.log", hn_string) {
+                //      debug!("Failed to write to log") 
+                //     }
+    
                 DB_IpAddress {
                     hostname: net.clone().unwrap().hostname,
                     ip: ip,
@@ -2649,7 +2658,7 @@ fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress
                    
                     match ping_this(&hn_string) {
                         Ok(ip) => {//println!("Got Here02");\
-                        if let Err(e) = write_doubleOK("double_ping.log") {
+                        if let Err(e) = write_doubleOK("double_ping.log", hn_string) {
                             debug!("Failed to write to log")
                         }
                         DB_IpAddress {
