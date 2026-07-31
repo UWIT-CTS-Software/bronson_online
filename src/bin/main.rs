@@ -62,11 +62,11 @@ use futures_util::future::FutureExt;
 use getopts::Options;
 use std::{
     str, env,
-    io::{ prelude::*, Read, stdout, },
+    io::{ prelude::*, Read, stdout, Write },
     net::{ TcpListener, IpAddr, Ipv4Addr, },
     fs::{
         read_dir, metadata, write, remove_file, remove_dir, create_dir,
-        File, 
+        File, OpenOptions, 
     },
     path::Path,
     path::PathBuf,
@@ -2586,6 +2586,17 @@ NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
       CAMPUS_STR -> "html-css-js/campus.json"
 */
 
+fn write_doubleOK(path: &str) -> std::io::Result<()> {
+    let mut f = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)?;
+    let ts = chrono::Utc::now().to_rfc3339();
+    writeln!(f, "+ {}", ts)?;
+    //writeln!(f, "* {}", ts)?;
+    Ok(())
+}
+
 // call ping_this executible here
 async fn execute_ping(database: &mut Database) {
     let buildings: HashMap<String, DB_Building> = match database.get_buildings() {
@@ -2626,7 +2637,7 @@ fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress
         let hn_string: String = net.as_ref().unwrap().hostname.to_string();
         pinged_hns.push(Some(
             match ping_this(&hn_string) {
-                Ok(ip) => { println!("Got Here01");
+                Ok(ip) => { //println!("Got Here01");
                 DB_IpAddress {
                     hostname: net.clone().unwrap().hostname,
                     ip: ip,
@@ -2637,7 +2648,10 @@ fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress
                 _ => { 
                    
                     match ping_this(&hn_string) {
-                        Ok(ip) => {println!("Got Here02");
+                        Ok(ip) => {//println!("Got Here02");\
+                        if let Err(e) = write_doubleOK("double_ping.log") {
+                            debug!("Failed to write to log")
+                        }
                         DB_IpAddress {
                             hostname: net.clone().unwrap().hostname,
                             ip: ip,
@@ -2647,7 +2661,7 @@ fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress
                         }},
                         Err(m)      => {
                             debug!("PIN_ERR: {} failed: {}", net.clone().unwrap().hostname.to_string(), m);
-                             println!("Got Here03");
+                             //println!("Got Here03");
                             DB_IpAddress {
                                 hostname: net.clone().unwrap().hostname,
                                 ip: String::from("x"),
