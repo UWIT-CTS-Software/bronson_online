@@ -311,7 +311,6 @@ function newCommentDiolog(ticketID, commentButton) {
     dialog.classList.add("tx_newCommentDialog");
     dialog.id = "tx_newCommentDialogBox";
     dialog.innerHTML = `
-        <hr>
         <span>New Comment:</span>
         <textarea id="tx_commentOnTicket_Comments" class="tx_createTicketTextarea" rows="9"></textarea>
         <br>
@@ -663,6 +662,7 @@ async function showTicket(ticket) {
                         ${builtComments}
                     </div>
                 </div>
+                <hr class="tx_popupCommentsHR">
                 <button id="tx_newCommentButton" onClick="newCommentDiolog(${ticket.ID}, this)">Post New Comment</button>
             </div>
         `;

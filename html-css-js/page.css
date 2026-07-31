@@ -2154,22 +2154,6 @@ td.mobile_th {
     padding: 0px 8px;
 }
 
-/* .tx_popupComments::after {
-    content: "";
-    position: absolute;
-    bottom: 35px;
-    margin-right: 8px;
-    left: 0;
-    right: 0;
-    height: 70px;
-    pointer-events: none;
-    background: linear-gradient(
-        to bottom,
-        transparent,
-        rgb(60, 60, 60)
-    );
-} */
-
 #tx_newCommentButton {
     align-self: flex-end;
     margin: 10px 7px 5px 0;
@@ -2183,6 +2167,10 @@ td.mobile_th {
     overflow-y: scroll;
     overflow-x: hidden;
 }
+.tx_popupCommentsHR {
+    margin: 0;
+    height: 2px;
+}
 
 .tx_commentList {
     height: 100%;
@@ -2191,11 +2179,6 @@ td.mobile_th {
 
 .tx_newCommentDialog {
     margin: 0;
-}
-
-.tx_newCommentDialog hr {
-    margin: 0;
-    height: 2px;
 }
 
 .tx_newCommentDialog span {
