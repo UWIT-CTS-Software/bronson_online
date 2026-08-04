@@ -182,6 +182,11 @@ function newTicketPopup() {
 }
 // Looks at new ticket popup and sends request to create ticket
 async function createTicket(container) {
+    // Disable Button while loading
+    const button  = document.getElementById('tx_createTicketButton');
+    button.disabled = true;
+    button.textContent = "Creating..."  
+
     // Ensure required fields are filled out
     const titleField = document.getElementById("tx_createTicket_Title");
     const descriptionField = document.getElementById("tx_createTicket_Description");
@@ -214,10 +219,10 @@ async function createTicket(container) {
         "Title": titleField.value.trim(),
         "Description": descriptionField.value.trim(),
         "RequestorUid": "6f873055-ca2f-eb11-8b7c-000d3a9b77a1", // Hard-coded for now
+        // CreatedBy field will be the current signed in user, done in backend
     };
 
     await updateTicket(jsonBody);
-    hideCurrentPopup(true);
     await delay(250); // Pause for a little
     setTickex(); // Reload board to show changes
 }
@@ -288,6 +293,11 @@ async function editTicketPopup(ticketID) {
 }
 // Looks at edit ticket popup and sends request to edit ticket
 async function applyChanges(ticketID) {
+    // Disable Button while loading
+    const button  = document.getElementById('tx_applyChangesButton');
+    button.disabled = true;
+    button.textContent = "Editting..."  
+
     const isAuthorized = await fetchTDXUserID() != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
 
     const ticket = window.ticketById?.get(ticketID);
@@ -337,10 +347,9 @@ async function applyChanges(ticketID) {
         "Notify": emailCheckbox.checked ? [ticket.RequestorEmail] : [] // An array, pass [] to NOT notify anybody
     };
 
-    hideCurrentPopup(true);
     await updateTicket(ticketBody);
     await postComment(commentBody);
-    await delay(100); // Pause for a little
+    await delay(250); // Pause for a little
     setTickex(ticketID); // Reload page to show changes 
 }
 
@@ -382,6 +391,11 @@ async function closeCommentDialog(ticketID) {
 }
 // Looks at comment dialog and sends request to comment
 async function comment(ticketID) {
+    // Disable Button while loading
+    const button  = document.getElementById('tx_commentButton');
+    button.disabled = true;
+    button.textContent = "Sending Comment..."  
+
     const ticket = window.ticketById?.get(ticketID);
     if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
 
@@ -406,14 +420,14 @@ async function comment(ticketID) {
     const c = "<b><i>This comment was made on behalf of " + "Lex Fermelia" + ":</i></b><br><br>" + commentsFields.value;
     const commentBody = {
         "ID": ticket.ID,
-        "Comments": c,
+        "Comments": c, // Hard-coded for now, "Lex Fermelia"
         "IsPrivate": !emailCheckbox.checked,
         "Notify": emailCheckbox.checked ? [ticket.RequestorEmail] : [] // An array, pass [] to NOT notify anybody
     };
 
-    hideCurrentPopup(true);
+
     await postComment(commentBody);
-    await delay(100); // Pause for a little
+    await delay(250); // Pause for a little
     setTickex(ticketID); // Reload page to show changes
 }
 
@@ -1428,7 +1442,7 @@ async function updateTicketViewed(ticketID, viewed) {
 async function updateTicket(body) {
     const isAuthorized = await fetchTDXUserID() != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
     if (!isAuthorized) return;
-    
+
     try {
         const response = await fetch('/update/ticket', {
             method: 'POST',
