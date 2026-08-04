@@ -3655,7 +3655,7 @@ async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) 
     }
     
     if !resp.status.is_success() {
-        return Err(format!("TDX API error: {}", ticket_resp.status));
+        return Err(format!("TDX API error: {}", resp.status));
     }
 
     // Find matching status name
@@ -3704,7 +3704,7 @@ async fn get_tdx_user_id(database: &mut Database, req: &API, username: &str) -> 
     }
 
     if !resp.status.is_success() {
-        return Err(format!("TDX API error: {}", ticket_resp.status));
+        return Err(format!("TDX API error: {}", resp.status));
     }
 
     // Parse Response
