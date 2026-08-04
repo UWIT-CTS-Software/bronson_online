@@ -1523,6 +1523,8 @@ async function setTickex(openTicketByID = -1) {
 
     /* -------------------- Tickex Page -------------------- */
 
+    console.log(await fetchTDXUserID()); // Temporary, delete line later
+
     const isAdmin = await fetchCurrentUserPermissions()  >= 6;
     const isAuthorized = await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase(); 
 

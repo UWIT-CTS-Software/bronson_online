@@ -3654,7 +3654,7 @@ async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) 
         resp = retry_tdx_token(database, req, "POST", &url, Some(search_body)).await?;
     }
     
-    if !ticket_resp.status.is_success() {
+    if !resp.status.is_success() {
         return Err(format!("TDX API error: {}", ticket_resp.status));
     }
 
@@ -3703,7 +3703,7 @@ async fn get_tdx_user_id(database: &mut Database, req: &API, username: &str) -> 
         resp = retry_tdx_token(database, req, "GET", &url, None).await?;
     }
 
-    if !ticket_resp.status.is_success() {
+    if !resp.status.is_success() {
         return Err(format!("TDX API error: {}", ticket_resp.status));
     }
 
