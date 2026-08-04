@@ -902,7 +902,7 @@ async fn handle_connection(
                         return Response::new()
                             .status(STATUS_401)
                             .send_contents(json!({
-                                "response": "Failed to fetch TDX User ID"
+                                "response": "Unauthorized"
                             }).to_string().into())
                             .build();
                     }
@@ -3695,12 +3695,17 @@ async fn get_tdx_user_id(database: &mut Database, req: &API, username: &str) -> 
         .send()
         .await {
             Ok(r) => r,
-            Err(e) => return Err(format!("Failed to fetch StatusIDs from TDX: {}", e))
+            Err(e) => return Err(format!("Failed to fetch User ID from TDX: {}", e))
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
     if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
         resp = retry_tdx_token(database, req, "GET", &url, None).await?;
+    }
+
+    // User ID wasn't found, return 0 as the ID (ID NOT FOUND)
+    if resp.status == reqwest::StatusCode::NOT_FOUND {
+        return Ok(Value::Number(0.into()));
     }
 
     if !resp.status.is_success() {
@@ -3710,8 +3715,6 @@ async fn get_tdx_user_id(database: &mut Database, req: &API, username: &str) -> 
     // Parse Response
     let user_id: Value = serde_json::from_str(&resp.body)
         .map_err(|e| format!("Failed to parse TDX status response: {}", e))?;
-
-    println!("{}", user_id.to_string());
 
     Ok(user_id)
 }

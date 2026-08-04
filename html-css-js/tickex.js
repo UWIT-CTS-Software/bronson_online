@@ -27,11 +27,11 @@ TOC:
     - markTicketFalse() : Marks a ticket as false
 
     Popups:
-    - newTicketPopup()               : Opens the popup for the new ticket portal
+    - newTicketPopup()               : Opens the popup for the new ticket dialog
     - createTicket()                 : Looks at new ticket popup and sends request to create ticket
-    - editTicketPopup()              : Opens the popup for the edit ticket portal
+    - editTicketPopup()              : Opens the popup for the edit ticket dialog
     - applyChanges()                 : Looks at edit ticket popup and sends request to edit ticket
-    - newCommentDiolog()             : Opens the new comment for a ticket portal
+    - newCommentDiolog()             : Opens the new comment for a ticket dialog
     - closeCommentDialog()           : Closes the new comment dialog
     - comment()                      : Looks at comment dialog and sends request to comment
     - toggleEmailRequestor()         : Toggles html that indicates whether the requestor will be emailed
@@ -135,7 +135,7 @@ If you are unsure if this is a false ticket, ask a full-timer.
 
     /* -------------------- Popups -------------------- */
 
-// Opens the popup for the new ticket portal
+// Opens the popup for the new ticket dialog
 function newTicketPopup() {
     const newTicketPopupContainer = document.querySelector('.tx_newTicketPopupContainer');
     if (!newTicketPopupContainer) {
@@ -175,7 +175,7 @@ function newTicketPopup() {
 
     // Hide terminal if open
     const terminal = document.getElementById('terminal');
-    terminal.style.display = 'none';
+    if (terminal) terminal.style.display = 'none';
 
     // Disable scrolling the main body when popup is active
     document.body.classList.add('tx_no-scroll');
@@ -222,7 +222,7 @@ async function createTicket(container) {
     setTickex(); // Reload board to show changes
 }
 
-// Opens the popup for the edit ticket portal
+// Opens the popup for the edit ticket dialog
 async function editTicketPopup(ticketID) {
     hideCurrentPopup();
 
@@ -281,13 +281,15 @@ async function editTicketPopup(ticketID) {
 
     // Hide terminal if open
     const terminal = document.getElementById('terminal');
-    terminal.style.display = 'none';
+    if (terminal) terminal.style.display = 'none';
 
     // Disable scrolling the main body when popup is active
     document.body.classList.add('tx_no-scroll');
 }
 // Looks at edit ticket popup and sends request to edit ticket
 async function applyChanges(ticketID) {
+    const isAuthorized = await fetchTDXUserID() != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+
     const ticket = window.ticketById?.get(ticketID);
     if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
 
@@ -369,12 +371,13 @@ function newCommentDiolog(ticketID, commentButton) {
     toggleEmailRequestor("comment", ticketID);
 }
 // Closes the new comment dialog
-function closeCommentDialog(ticketID) {
+async function closeCommentDialog(ticketID) {
+    const isAuthorized = await fetchTDXUserID() != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
     if (event) event.stopPropagation();
 
     const dialog = document.getElementById("tx_newCommentDialogBox");
     dialog.outerHTML = `
-        <button id="tx_newCommentButton" onClick="newCommentDiolog(${ticketID}, this)">Post New Comment</button>
+        ${isAuthorized ? `<button id="tx_newCommentButton" onClick="newCommentDiolog(${ticketID}, this)">Post New Comment</button>` : ""}
     `;
 }
 // Looks at comment dialog and sends request to comment
@@ -512,7 +515,7 @@ function dismissAllPopup() {
 
     // Hide terminal if open
     const terminal = document.getElementById('terminal');
-    terminal.style.display = 'none';
+    if (terminal) terminal.style.display = 'none';
 
     // Disable scrolling the main body when popup is active
     document.body.classList.add('tx_no-scroll');
@@ -581,6 +584,7 @@ async function showTicket(ticket) {
     }
 
     const isMobile = localStorage.getItem("isMobile") === "true";
+    const isAuthorized = await fetchTDXUserID() != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
 
     let ticketPopupContainer = document.querySelector('.tx_ticketPopupContainer');
     if (!ticketPopupContainer) {
@@ -707,7 +711,7 @@ async function showTicket(ticket) {
                     </div>
                 </div>
                 <hr class="tx_popupCommentsHR">
-                <button id="tx_newCommentButton" onClick="newCommentDiolog(${ticket.ID}, this)">Post New Comment</button>
+                ${isAuthorized ? `<button id="tx_newCommentButton" onClick="newCommentDiolog(${ticket.ID}, this)">Post New Comment</button>` : ""}
             </div>
         `;
     }
@@ -770,7 +774,6 @@ async function showTicket(ticket) {
     if (whatChangedHTML && !isMobile)
         sideContent += whatChangedHTML;
     
-    const isAuthorized = await fetchCurrentUserPermissions() > 3 || await checkUserExistsInDatabase(); 
     if (ticketPopupContainer.classList.contains('detailsShown')) { // Details Shown
         ticketPopupContainer.innerHTML = `
             <div class="tx_popupWrapper ${isMobile ? "mobile mobile_tx_font" : ""}">
@@ -786,14 +789,14 @@ async function showTicket(ticket) {
                         <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p>
                     </div>
                     <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
-                    <button class="popup_falseTicketButton" onClick="markTicketFalse(${ticket.ID}, ${ticket.ParentID})">Mark Ticket as False</button>
+                    ${isAuthorized ? `<button class="popup_falseTicketButton" onClick="markTicketFalse(${ticket.ID}, ${ticket.ParentID})">Mark Ticket as False</button>` : ""}
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                         <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
                     </a>
                     <hr>
                     <button class="popup_toggleButton ${isMobile ? "mobile_tx_button" : ""}" onClick="toggleDetails(${ticket.ID})">Description</button>
                     <p class="tx_popup_Requestor tx_textwrap">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                    <p class="tx_popup_Responsible tx_textwrap">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED <button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>`} || ${ticket.ResponsibleGroupName || ""}</p>
+                    <p class="tx_popup_Responsible tx_textwrap">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED ${isAuthorized ? `<button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>` : ""}`} || ${ticket.ResponsibleGroupName || ""}</p>
                     <p class="tx_popup_ServiceName tx_textwrap">Service: ${ticket.ServiceName || ""}</p>
                     <p class="tx_popup_AccountName tx_textwrap">Account Department: ${ticket.AccountName || ""}</p>
                     <p class="tx_popup_TypeName tx_textwrap">Type: ${ticket.TypeName || ""}</p>
@@ -824,7 +827,7 @@ async function showTicket(ticket) {
                         <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p>
                     </div>
                     <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
-                    <button class="popup_falseTicketButton" onClick="markTicketFalse(${ticket.ID}, ${ticket.ParentID})">Mark Ticket as False</button>
+                    ${isAuthorized ? `<button class="popup_falseTicketButton" onClick="markTicketFalse(${ticket.ID}, ${ticket.ParentID})">Mark Ticket as False</button>` : ""}
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                         <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
                     </a>
@@ -833,7 +836,7 @@ async function showTicket(ticket) {
                     <button class="popup_toggleButton ${isMobile ? "mobile_tx_button" : ""}" onClick="toggleDetails(${ticket.ID})">Details</button>
                     <p class="tx_popup_Requestor tx_textwrap">Requestor: ${ticket.RequestorName || ""}</p>
                     <p class="tx_popup_contact tx_textwrap">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                    <p class="tx_popup_Responsible tx_textwrap${isMobile ? "mobile_tx_button" : ""}">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED <button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>`} || ${ticket.ResponsibleGroupName || ""}</p>
+                    <p class="tx_popup_Responsible tx_textwrap${isMobile ? "mobile_tx_button" : ""}">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED ${isAuthorized ? `<button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>` : ""}`} || ${ticket.ResponsibleGroupName || ""}</p>
                     <p class="tx_Description">${description || "--- No Description Provided ---"}</p>
                     ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
                     ${isAuthorized ? `<button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID})">Edit Ticket</button>` : ""}
@@ -846,7 +849,7 @@ async function showTicket(ticket) {
     if (!ticketPopupContainer.classList.contains('tx_popupActive')) {
         // Hide terminal if open
         const terminal = document.getElementById('terminal');
-        terminal.style.display = 'none';
+        if (terminal) terminal.style.display = 'none';
 
         ticketPopupContainer.classList.add('tx_popupActive');
 
@@ -1399,7 +1402,7 @@ async function fetchTDXUserID() {
         }
 
         const data = await response.json();
-        return data.response || "FAILED_TO_FETCH_TDX_USER_ID";
+        return data;
     } catch (error) {
         console.error("Error fetching current user permissions:", error);
         return "FAILED_TO_FETCH_TDX_USER_ID";
@@ -1423,6 +1426,9 @@ async function updateTicketViewed(ticketID, viewed) {
 
 // Send a request to TeamDynamix to Create/edit a Ticket
 async function updateTicket(body) {
+    const isAuthorized = await fetchTDXUserID() != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    if (!isAuthorized) return;
+    
     try {
         const response = await fetch('/update/ticket', {
             method: 'POST',
@@ -1438,6 +1444,9 @@ async function updateTicket(body) {
 
 // Send a request to TeamDynamix to Post a Comment to a Ticket
 async function postComment(body) {
+    const isAuthorized = await fetchTDXUserID() != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    if (!isAuthorized) return;
+
     try {
         const response = await fetch('/update/ticket/postComment', {
             method: 'POST',
@@ -1453,6 +1462,9 @@ async function postComment(body) {
 
 // Send a request to TeamDynamix to mark at Ticket as a True/False Ticket
 async function updateFalseStatus(jsonBody) {
+    const isAuthorized = await fetchTDXUserID() != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    if (!isAuthorized) return;
+
     try {
         const response = await fetch('/update/ticket/markFalse', {
             method: 'POST',
@@ -1523,10 +1535,8 @@ async function setTickex(openTicketByID = -1) {
 
     /* -------------------- Tickex Page -------------------- */
 
-    console.log(await fetchTDXUserID()); // Temporary, delete line later
-
     const isAdmin = await fetchCurrentUserPermissions()  >= 6;
-    const isAuthorized = await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase(); 
+    const isAuthorized = await fetchTDXUserID() != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
 
     // Display loading message while fetching tickets
     let loadingMessage = document.createElement("div");
