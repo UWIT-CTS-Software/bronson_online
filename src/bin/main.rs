@@ -3006,34 +3006,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
         // Parse the response as JSON
         let tickets_json: Vec<serde_json::Value> = 
             serde_json::from_str(&resp.body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
-        /* 
-        let resp = match &req.client {
-            SingleThread(_) => { return Err("Please dear God".to_string()); },
-            MultiThread(c) => c
-        }
-            .post(url)
-            .header("Authorization", &tdx_token.val)
-            .header("Content-Type", "application/json")
-            .body(search_body.to_string())
-            .send()
-            .await;
 
-        let resp = match resp {
-            Ok(r) => r,
-            Err(e) => return Err(format!("Failed to fetch tickets: {}", e)),
-        };
-
-        if !resp.status().is_success() {
-            return Err(format!("TDX API error: {}", resp.status()));
-        }
-
-        // Get the response body as text
-        let body = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
-
-        // Parse the response as JSON
-        let tickets_json: Vec<serde_json::Value> = 
-            serde_json::from_str(&body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, body))?; */
-        
         // Map to DB_Ticket and insert
         for ticket_val in &tickets_json {
             match serialize_ticket(database, ticket_val.clone()) {
@@ -3123,7 +3096,7 @@ fn serialize_ticket(database: &mut Database, ticket_json: serde_json::Value) -> 
         }
     };
 
-    // Get old ticket if it exists (new tickets won't and default to empty string)
+    // Get old ticket if it exists (new tickets won't have one and defaults to empty string)
     let old_ticket = database.get_ticket(ticket_json["ID"].as_i64().unwrap_or(0) as i32).unwrap_or(None);
     let (
         old_type_name, old_type_category_name, old_title,
@@ -3350,11 +3323,9 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64
     // Parse the response body
     let replies_json: Value = serde_json::from_str(&resp.body)
         .map_err(|e| format!("Failed to parse ticket replies JSON: {}", e))?;
-
     let replies_array = replies_json.get("Replies")
         .and_then(|v| v.as_array())
         .map_or(&[][..], |v| v);
-
 
     let created_by: Vec<String> = replies_array.iter()
         .map(|reply| {
@@ -3393,6 +3364,7 @@ async fn mark_ticket_false(database: &mut Database, req: &API, body_json: Value)
         Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e)),
     };
 
+    // Make the request
     let mut resp = match req
         .build()
         .method("POST")
@@ -3494,7 +3466,7 @@ async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Va
     info!("[Data] - Create Ticket Request was Successful (New Ticket ID: {})", ticket_json["ID"]);
 
     // TODO:
-    // - Post the comment with new function call saying who performed what ticket actions (shibboleth)
+    // - Post the comment with new function call saying who performed what ticket actions (requires shibboleth to know who made the changes)
 
     Ok(())
 }
@@ -3591,7 +3563,7 @@ async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -
     }
 
     // TODO:
-    // - Post the comment with new function call saying who performed what ticket actions (shibboleth)
+    // - Post the comment with new function call saying who performed what ticket actions (requires shibboleth to know who made the changes)
 
     info!("[Data] - Edit Ticket Request was Successful (Ticket ID: {})", id);
     Ok(())
@@ -3620,8 +3592,6 @@ async fn post_comment(database: &mut Database, req: &API, body_json: Value) -> R
         obj.insert("IsRichHtml".to_string(), Value::Bool(true));
     }
 
-    // Prefix Comment with 
-
     // Query TDX for the ticket we want to edit
     let mut ticket_resp = match req
         .build()
@@ -3646,7 +3616,6 @@ async fn post_comment(database: &mut Database, req: &API, body_json: Value) -> R
         return Err(format!("TDX API error: {}", ticket_resp.status));
     }
 
-
     info!("[Data] - Commenting Request was Successful (Ticket ID: {})", id);
     Ok(())
 }
@@ -3665,7 +3634,7 @@ async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) 
         "IsActive": true
     });
 
-    // Query TDX for the ticket we want to edit
+    // Query TDX for status IDs
     let mut resp = match req
         .build()
         .method("POST")
@@ -3683,6 +3652,10 @@ async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) 
     // Try fetching a new tdx token and try again if Unauthorized
     if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
         resp = retry_tdx_token(database, req, "POST", &url, Some(search_body)).await?;
+    }
+    
+    if !ticket_resp.status.is_success() {
+        return Err(format!("TDX API error: {}", ticket_resp.status));
     }
 
     // Find matching status name
@@ -3711,7 +3684,7 @@ async fn get_tdx_user_id(database: &mut Database, req: &API, username: &str) -> 
         Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e))
     };
 
-    // Query TDX 
+    // Query TDX for User ID
     let mut resp = match req
         .build()
         .method("GET")
@@ -3730,6 +3703,10 @@ async fn get_tdx_user_id(database: &mut Database, req: &API, username: &str) -> 
         resp = retry_tdx_token(database, req, "GET", &url, None).await?;
     }
 
+    if !ticket_resp.status.is_success() {
+        return Err(format!("TDX API error: {}", ticket_resp.status));
+    }
+
     // Parse Response
     let user_id: Value = serde_json::from_str(&resp.body)
         .map_err(|e| format!("Failed to parse TDX status response: {}", e))?;
@@ -3738,6 +3715,8 @@ async fn get_tdx_user_id(database: &mut Database, req: &API, username: &str) -> 
 
     Ok(user_id)
 }
+
+
 
 /*
 $$\      $$\ $$\ $$\       $$\ 
