@@ -19,17 +19,31 @@ Notes:
 
         
 TOC:
+    Helpers:
+    - delay() : Simple delay/wait function
+
     Write to TDX Functions (unimplemented for right now):
-    - takeIncident()
-    
+    - takeIncident()    : Takes responsibility for a ticket
+    - markTicketFalse() : Marks a ticket as false
+
     Popups:
+    - newTicketPopup()               : Opens the popup for the new ticket portal
+    - createTicket()                 : Looks at new ticket popup and sends request to create ticket
+    - editTicketPopup()              : Opens the popup for the edit ticket portal
+    - applyChanges()                 : Looks at edit ticket popup and sends request to edit ticket
+    - newCommentDiolog()             : Opens the new comment for a ticket portal
+    - closeCommentDialog()           : Closes the new comment dialog
+    - comment()                      : Looks at comment dialog and sends request to comment
+    - toggleEmailRequestor()         : Toggles html that indicates whether the requestor will be emailed
     - dismissAll()                   : Clear all ticket rows of unread notifications
     - dismissAllPopup()              : Shows the "Dismiss All" confirmation popup
     - dismissChanges()               : Dismisses the "What Changed" box in the popup
-    - showTicketPopup()/showTicket() : Shows the popup with relavent ticket info
+    - showTicketPopup()              : Shows the popup with relavent ticket info
+    - showTicketPopupFromDashboard() : Shows popup from dashboard - opens Tickex first, then shows the popup
+    - showTicket()                   : Shows the ticket popup
     - toggleDetails()                : Toggles the details page in the popup
     - toggleComments()               : Toggles the comments box in the popup
-    - hideCurrentPopup()             : Hides the provided popup
+    - hideCurrentPopup()             : Hides the current popup
 
     Board Setup:
     - initializeListeners() : Initializes all listeners for Tickex
@@ -50,7 +64,12 @@ TOC:
     - fetchTicketDescription()      : Grab ticket Description from backend 
     - fetchTicketComments()         : Grab ticket Comments (feed) from backend
     - fetchCurrentUserPermissions() : Fetches the current user's permission level
+    - checkUserExistsInDatabase()   : Fetches whether the current user exists within Database records
+    - fetchTDXUserID()              : Fetches the TDX user ID for the current user
     - updateTicketViewed()          : Update ticket's viewed status in backend/database
+    - updateTicket()                : Send a request to TeamDynamix to Create/edit a Ticket
+    - postComment()                 : Send a request to TeamDynamix to Post a Comment to a Ticket
+    - updateFalseStatus()           : Send a request to TeamDynamix to mark at Ticket as a True/False Ticket
 
     "Main" Function:
     - setTickex()   : Sets up the Tickex tool page
@@ -68,7 +87,11 @@ TODO:
 */
 
     /* -------------------- Helpers -------------------- */
+
+// Simple delay/wait function
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+
 
     /* -------------------- Write to TDX Functions -------------------- */
 
@@ -84,7 +107,7 @@ function takeResponsibility() {
     //  - If not, display error and bail on action? 
 }
 
-
+// Macro for marking a ticket as false
 async function markTicketFalse(ticketID, parentID) {
     const confirmationMessage = ` Are You Sure?
     Example False Ticket Criteria:
@@ -107,6 +130,8 @@ If you are unsure if this is a false ticket, ask a full-timer.
 
     await updateFalseStatus(jsonBody);
 }
+
+
 
     /* -------------------- Popups -------------------- */
 
@@ -155,7 +180,7 @@ function newTicketPopup() {
     // Disable scrolling the main body when popup is active
     document.body.classList.add('tx_no-scroll');
 }
-// Looks at new ticket popup, enforces required fields are not empty, and sends request to create ticket
+// Looks at new ticket popup and sends request to create ticket
 async function createTicket(container) {
     // Ensure required fields are filled out
     const titleField = document.getElementById("tx_createTicket_Title");
@@ -261,7 +286,7 @@ async function editTicketPopup(ticketID) {
     // Disable scrolling the main body when popup is active
     document.body.classList.add('tx_no-scroll');
 }
-// Looks at edit ticket popup, enforces required fields are not empty, and sends request to edit ticket
+// Looks at edit ticket popup and sends request to edit ticket
 async function applyChanges(ticketID) {
     const ticket = window.ticketById?.get(ticketID);
     if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
@@ -317,7 +342,7 @@ async function applyChanges(ticketID) {
     setTickex(ticketID); // Reload page to show changes 
 }
 
-// Opens the new comment for a ticket portal
+// Opens the new comment dialog
 function newCommentDiolog(ticketID, commentButton) {
     if (event) event.stopPropagation();
 
@@ -343,6 +368,7 @@ function newCommentDiolog(ticketID, commentButton) {
     
     toggleEmailRequestor("comment", ticketID);
 }
+// Closes the new comment dialog
 function closeCommentDialog(ticketID) {
     if (event) event.stopPropagation();
 
@@ -351,7 +377,7 @@ function closeCommentDialog(ticketID) {
         <button id="tx_newCommentButton" onClick="newCommentDiolog(${ticketID}, this)">Post New Comment</button>
     `;
 }
-// Looks at comment on ticket popup, enforces required fields are not empty, and sends request to comment
+// Looks at comment dialog and sends request to comment
 async function comment(ticketID) {
     const ticket = window.ticketById?.get(ticketID);
     if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
@@ -547,7 +573,7 @@ async function showTicketPopupFromDashboard(ticket, element) {
         });
     });
 }
-// Child function to showTicketPopup() - shows the popup
+// Shows the ticket popup
 async function showTicket(ticket) {
     if (!ticket) {
         console.error("Ticket data not found");
@@ -863,7 +889,7 @@ function toggleComments(ticketID) {
     if (ticket) showTicketPopup(ticket);
 }
 
-// Hides the ticket popup
+// Hides the current popup
 function hideCurrentPopup(forceClose=false) {
     if (event) event.stopPropagation();
 
@@ -900,6 +926,7 @@ function hideCurrentPopup(forceClose=false) {
 
     document.body.classList.remove('tx_no-scroll');
 }
+
 
 
     /* -------------------- Board Setup -------------------- */
@@ -1202,6 +1229,7 @@ function initBoard() {
 }
 
 
+
     /* -------------------- Cache Functions -------------------- */
 
 // Grabs the Ticket Cache
@@ -1268,6 +1296,7 @@ function removeFromCache(ticketID) {
 function tokenize(text) {
     return (text || "").toString().toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 }
+
 
 
     /* -------------------- Backend Calls -------------------- */
@@ -1361,7 +1390,7 @@ async function checkUserExistsInDatabase() {
 }
 
 // Fetches the TDX user ID for the current user
-async function checkUserExistsInDatabase() {
+async function fetchTDXUserID() {
     try {
         const response = await fetch('/currentUser/fetchTDXUserID');
         if (!response.ok) {
@@ -1392,7 +1421,7 @@ async function updateTicketViewed(ticketID, viewed) {
     }
 }
 
-// Sends a request to TeamDynamix to Create/edit a Ticket
+// Send a request to TeamDynamix to Create/edit a Ticket
 async function updateTicket(body) {
     try {
         const response = await fetch('/update/ticket', {
@@ -1422,6 +1451,7 @@ async function postComment(body) {
     }
 }
 
+// Send a request to TeamDynamix to mark at Ticket as a True/False Ticket
 async function updateFalseStatus(jsonBody) {
     try {
         const response = await fetch('/update/ticket/markFalse', {
@@ -1435,6 +1465,7 @@ async function updateFalseStatus(jsonBody) {
         console.error('Error Creating/Editing ticket:', error);
     }
 }
+
 
 
     /* -------------------- "Main" Function -------------------- */
