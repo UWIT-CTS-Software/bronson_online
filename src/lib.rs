@@ -1042,7 +1042,8 @@ impl Database {
 		Ok(Some(updated))
 	}
 
-	pub fn update_ticket_mark_as_false(&mut self, id: i32) -> Result<Option<DB_Ticket>, DieselError> {
+
+	pub fn update_ticket_parent_id(&mut self, id: i32, new_parent_id: i32) -> Result<Option<DB_Ticket>, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
 		// Try to fetch the ticket first
@@ -1054,9 +1055,9 @@ impl Database {
 		// If not found, quietly return
 		let Some(_) = ticket_opt else { return Ok(None); };
 
-		// Update the flag
+		// Update the parent ID
 		let updated = diesel::update(tickets.filter(ticket_id.eq(id)))
-			.set(parent_id.eq(22873142))
+			.set(parent_id.eq(new_parent_id))
 			.returning(DB_Ticket::as_returning())
 			.get_result::<DB_Ticket>(&mut conn)?;
 

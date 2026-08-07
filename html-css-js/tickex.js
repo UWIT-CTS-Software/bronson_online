@@ -109,7 +109,18 @@ function takeResponsibility() {
 
 // Macro for marking a ticket as false
 async function markTicketFalse(ticketID, parentID) {
-    const confirmationMessage = ` Are You Sure?
+    // Marking to a True Ticket 
+    if (parentID == 22873142) {
+        const confirmationMessage = `Are You Sure?
+        
+    This action will mark this ticket as TRUE ticket. 
+        `;
+
+        if (!confirm(confirmationMessage)) return;
+    }
+    // Marking to a False Ticket
+    else {
+        const confirmationMessage = `Are You Sure?
     Example False Ticket Criteria:
     - Tech arrives to Ticket being resolved/no issue is found
     - Loud noises not related to Classroom Tech
@@ -117,9 +128,10 @@ async function markTicketFalse(ticketID, parentID) {
     - Ticket was offloaded to a different department
 
 If you are unsure if this is a false ticket, ask a full-timer.
-    `;
+        `;
 
-    if (!confirm(confirmationMessage)) return;
+        if (!confirm(confirmationMessage)) return;
+    }
 
     const jsonBody = {
         "ID": ticketID,
@@ -127,7 +139,6 @@ If you are unsure if this is a false ticket, ask a full-timer.
     };
 
     hideCurrentPopup();
-
     await updateFalseStatus(jsonBody);
 }
 
@@ -803,7 +814,7 @@ async function showTicket(ticket) {
                         <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p>
                     </div>
                     <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
-                    ${isAuthorized ? `<button class="popup_falseTicketButton" onClick="markTicketFalse(${ticket.ID}, ${ticket.ParentID})">Mark Ticket as False</button>` : ""}
+                    ${isAuthorized ? `<button class="popup_falseTicketButton" onClick="markTicketFalse(${ticket.ID}, ${ticket.ParentID})">${ticket.ParentID == 22873142 ? "Mark Ticket as True" : "Mark Ticket as False"}</button>` : ""}
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                         <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
                     </a>
@@ -841,7 +852,7 @@ async function showTicket(ticket) {
                         <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p>
                     </div>
                     <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
-                    ${isAuthorized ? `<button class="popup_falseTicketButton" onClick="markTicketFalse(${ticket.ID}, ${ticket.ParentID})">Mark Ticket as False</button>` : ""}
+                    ${isAuthorized ? `<button class="popup_falseTicketButton" onClick="markTicketFalse(${ticket.ID}, ${ticket.ParentID})">${ticket.ParentID == 22873142 ? "Mark Ticket as True" : "Mark Ticket as False"}</button>` : ""}
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                         <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
                     </a>

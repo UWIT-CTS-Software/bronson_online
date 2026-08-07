@@ -1071,17 +1071,17 @@ async fn handle_connection(
                 }
             };
 
-            // Check if ParentID is already set to false, if so just return status 200
+            // If ParentID is not one of these three, return error
             let parent_id = body_json["ParentID"].as_i64().unwrap_or(-1) as i32;
-            if parent_id == 22873142 {
+            if parent_id != 22873142 && parent_id != 22873186 && parent_id != 0 {
                 return Response::new()
-                    .status(STATUS_200)
-                    .send_contents("".into())
+                    .status(STATUS_500)
+                    .send_contents("Invalid ParentID Passed as Argument".into())
                     .build();
             }
 
             // Mark the ticket as false
-            let _ = match mark_ticket_false(&mut database, &tdx_client, body_json).await {
+            let _ = match toggle_mark_ticket_false(&mut database, &tdx_client, body_json).await {
                 Ok(v) => v,
                 Err(e) => {
                     error!("Failed to mark Ticket as false: {}", e);
@@ -3352,11 +3352,20 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64
     Ok((created_by, replies_body, created_date))
 }
 
-async fn mark_ticket_false(database: &mut Database, req: &API, body_json: Value) -> Result<(), String> {
+async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_json: Value) -> Result<(), String> {
     let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
-    info!("[Data] - Marking Ticket as False (Ticket ID: {})", id);
-    
-    let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/22873142/children";
+    info!("[Data] - Marking Ticket as False/True (Ticket ID: {})", id);
+
+    let parent_id = body_json["ParentID"].as_i64().unwrap_or(-1) as i32;
+    let new_parent_id = match parent_id {
+        0 => 22873142,
+        22873142 => 22873186,
+        22873186 => 22873142,
+        invalid => return Err(format!("Invalid ParentID passed into toggle_mark_ticket_false: {}", invalid)),
+    };
+    body_json["ParentID"] = json!(new_parent_id);
+
+    let url = format!("https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/{}/children", new_parent_id);
 
     // Grab token from database
     let tdx_token = match database.get_key("tdx_api") {
@@ -3389,14 +3398,14 @@ async fn mark_ticket_false(database: &mut Database, req: &API, body_json: Value)
     }
 
     // Update DB with new ParentID
-    let _ = match database.update_ticket_mark_as_false(id) {
+    let _ = match database.update_ticket_parent_id(id, new_parent_id) {
         Ok(v) => v,
         Err(e) => {
-            return Err(format!("Failed to update DB Records for updated False Ticket Status: {}", e));
+            return Err(format!("Failed to update DB Records for updated Ticket ParentID: {}", e));
         }
     };
 
-    info!("[Data] - Successfully Marked Ticket as False (Ticket ID: {})", id);
+    info!("[Data] - Successfully updated ticket parent state (Ticket ID: {}, ParentID: {})", id, new_parent_id);
 
     Ok(())
 }
