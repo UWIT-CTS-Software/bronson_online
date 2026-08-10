@@ -867,7 +867,7 @@ async fn handle_connection(
                     )
             }
         },
-        "GET /currentUser/fetchTDXUserID HTTP/1.1" => {
+        "GET /currentUser/fetchTDXUser HTTP/1.1" => {
             if !req.has_valid_cookie(&mut database) {
                 Response::new()
                     .status(STATUS_401)
@@ -896,13 +896,13 @@ async fn handle_connection(
                 };
 
                 // Query TDX for User ID using the username provided in the cookie
-                let user_id = match get_tdx_user_id(&mut database, &tdx_client, &username.to_string()).await {
-                    Ok(id) => id,
+                let user = match get_tdx_user(&mut database, &tdx_client, &username.to_string()).await {
+                    Ok(u) => u,
                     Err(_) => {
                         return Response::new()
-                            .status(STATUS_401)
+                            .status(STATUS_500)
                             .send_contents(json!({
-                                "response": "Unauthorized"
+                                "response": "Failed to Fetch User ID from TDX"
                             }).to_string().into())
                             .build();
                     }
@@ -912,7 +912,7 @@ async fn handle_connection(
                 Response::new()
                     .status(STATUS_200)
                     .send_contents(
-                        user_id.to_string().into()
+                        user.to_string().into()
                     )
             }
         },
@@ -3684,7 +3684,7 @@ async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) 
     Err(format!("Could not find StatusID for status '{}'", status_name))
 }
 
-async fn get_tdx_user_id(database: &mut Database, req: &API, username: &str) -> Result<Value, String> {
+async fn get_tdx_user(database: &mut Database, req: &API, username: &str) -> Result<Value, String> {
     let url = format!("https://uwyo.teamdynamix.com/TDWebApi/api/people/getuid/{}{}", username, "@uwyo.edu");
 
     // Grab token from database
@@ -3725,7 +3725,45 @@ async fn get_tdx_user_id(database: &mut Database, req: &API, username: &str) -> 
     let user_id: Value = serde_json::from_str(&resp.body)
         .map_err(|e| format!("Failed to parse TDX status response: {}", e))?;
 
-    Ok(user_id)
+    // Default to blank if there is no user ID
+    let mut full_name = String::new();
+
+    if user_id.to_string() != 0.to_string() {
+        let second_url = format!("https://uwyo.teamdynamix.com/TDWebApi/api/people/{}", user_id.to_string().trim_matches('"'));
+        let mut second_resp = match req
+            .build()
+            .method("GET")
+            .endpoint(&second_url)
+            .header("Authorization", &tdx_token.val)
+            .header("Content-Type", "application/json")
+            .timeout(Duration::from_secs(15))
+            .send()
+            .await {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch User Information from TDX: {}", e)),
+            };
+
+            // Try fetching a new TDX token and try again if Unauthorized
+        if !second_resp.status.is_success() && second_resp.status == reqwest::StatusCode::UNAUTHORIZED {
+            second_resp = retry_tdx_token(database, req, "GET", &second_url, None).await?;
+        }
+
+        if !second_resp.status.is_success() {
+            return Err(format!("TDX API error: {}", second_resp.status));
+        }
+
+        let user_info: Value = serde_json::from_str(&second_resp.body)
+            .map_err(|e| format!("Failed to parse TDX user information: {}", e))?;
+
+        full_name = user_info["FullName"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
+
+    }
+
+    // Return both values
+    Ok(json!({"UID": user_id, "FullName": full_name}))
 }
 
 

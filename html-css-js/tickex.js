@@ -92,6 +92,35 @@ TODO:
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 
+// Decode HTML entities and convert HTML to readable plain-text while
+// preserving sensible line breaks (handles &nbsp; and common block tags).
+function decodeHtmlEntities(input) {
+    try {
+        const txt = document.createElement('textarea');
+        txt.innerHTML = input || '';
+        return txt.value;
+    } catch (e) {
+        return input || '';
+    }
+}
+
+function scrubHtmlToText(html) {
+    if (!html) return "";
+    // First decode entities like &nbsp; &amp; etc.
+    let s = decodeHtmlEntities(html);
+    // Normalize line breaks from <br> and common block tags
+    s = s.replace(/<br\s*\/?\s*>/gi, '\n');
+    s = s.replace(/<\/?(p|div|li|ul|ol|tr|table|h[1-6])[^>]*>/gi, '\n');
+    // Remove any remaining tags
+    s = s.replace(/<[^>]*>/g, '');
+    // Normalize CRLF to LF
+    s = s.replace(/\r\n?|\r/g, '\n');
+    // Collapse excessive blank lines to at most one empty line
+    s = s.replace(/\n{2,}/g, '\n');
+    return s.trim();
+}
+
+
 
     /* -------------------- Write to TDX Functions -------------------- */
 
@@ -198,6 +227,15 @@ async function createTicket(container) {
     button.disabled = true;
     button.textContent = "Creating..."  
 
+    // Verify user is authorized to create tickets
+    const userID = await fetchTDXUserID();
+    const isAuthorized = userID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    if (!isAuthorized) {
+        console.error("User is not authorized to create this ticket.");
+        alert("You are not authorized to create this ticket. Please contact an admin for assistance.");
+        return;
+    }
+
     // Ensure required fields are filled out
     const titleField = document.getElementById("tx_createTicket_Title");
     const descriptionField = document.getElementById("tx_createTicket_Description");
@@ -229,7 +267,7 @@ async function createTicket(container) {
         "_OperationType": "CREATE", 
         "Title": titleField.value.trim(),
         "Description": descriptionField.value.trim(),
-        "RequestorUid": "6f873055-ca2f-eb11-8b7c-000d3a9b77a1", // Hard-coded for now
+        "RequestorUid": userID
         // CreatedBy field will be the current signed in user, done in backend
     };
 
@@ -251,8 +289,8 @@ async function editTicketPopup(ticketID) {
     const ticket = window.ticketById?.get(ticketID);
     if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
     let description = await fetchTicketDescription(ticket.ID);
-    // Scrub HTML tags out
-    description = description.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n+/g, '\n').trim();
+    // Scrub HTML/HTML entities into readable text (preserve spacing)
+    description = scrubHtmlToText(description);
 
     editTicketPopupContainer.classList.add('tx_popupActive');
     editTicketPopupContainer.innerHTML = `
@@ -309,7 +347,14 @@ async function applyChanges(ticketID) {
     button.disabled = true;
     button.textContent = "Editting..."  
 
-    const isAuthorized = await fetchTDXUserID() != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    // Verify user is authorized to edit tickets
+    const userID = await fetchTDXUserID();
+    const isAuthorized = userID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    if (!isAuthorized) {
+        console.error("User is not authorized to edit this ticket.");
+        alert("You are not authorized to edit this ticket. Please contact an admin for assistance.");
+        return;
+    }
 
     const ticket = window.ticketById?.get(ticketID);
     if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
@@ -345,15 +390,16 @@ async function applyChanges(ticketID) {
         "_OperationType": "EDIT", 
         "ID": ticketID,
         "Title": titleField.value.trim(),
-        "ResponsibleUid": "6f873055-ca2f-eb11-8b7c-000d3a9b77a1" // Hard-coded for now, "Lex Fermelia"
+        "ResponsibleUid": userID
     };
     // Omit Status if it is not "New", "In Process", or "Closed"
     if (statusField.value.trim() !== "Other") ticketBody["StatusName"] = statusField.value.trim();
 
-    const c = "<b><i>This comment was made on behalf of " + "Lex Fermelia" + ":</i></b><br><br>" + commentsFields.value;
+    const userDisplayName = await fetchTDXUserDisplayName();
+    const c = "<b><i>This comment was made on behalf of " + userDisplayName + ":</i></b><br><br>" + commentsFields.value;
     const commentBody = {
         "ID": ticket.ID,
-        "Comments": c, // Hard-coded for now, "Lex Fermelia"
+        "Comments": c,
         "IsPrivate": !emailCheckbox.checked,
         "Notify": emailCheckbox.checked ? [ticket.RequestorEmail] : [] // An array, pass [] to NOT notify anybody
     };
@@ -405,7 +451,16 @@ async function comment(ticketID) {
     // Disable Button while loading
     const button  = document.getElementById('tx_commentButton');
     button.disabled = true;
-    button.textContent = "Sending Comment..."  
+    button.textContent = "Sending Comment..." ;
+
+    // Verify user is authorized to post comments
+    const userID = await fetchTDXUserID();
+    const isAuthorized = userID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    if (!isAuthorized) {
+        console.error("User is not authorized to post comments.");
+        alert("You are not authorized to post comments. Please contact an admin for assistance.");
+        return;
+    }
 
     const ticket = window.ticketById?.get(ticketID);
     if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
@@ -428,10 +483,11 @@ async function comment(ticketID) {
     if (!canContinue) return;
 
     // Package data and send to backend
-    const c = "<b><i>This comment was made on behalf of " + "Lex Fermelia" + ":</i></b><br><br>" + commentsFields.value;
+    const userDisplayName = await fetchTDXUserDisplayName();
+    const c = "<b><i>This comment was made on behalf of " + userDisplayName + ":</i></b><br><br>" + commentsFields.value;
     const commentBody = {
         "ID": ticket.ID,
-        "Comments": c, // Hard-coded for now, "Lex Fermelia"
+        "Comments": c,
         "IsPrivate": !emailCheckbox.checked,
         "Notify": emailCheckbox.checked ? [ticket.RequestorEmail] : [] // An array, pass [] to NOT notify anybody
     };
@@ -443,10 +499,11 @@ async function comment(ticketID) {
 }
 
 // Toggles html that indicates whether the requestor will be emailed
-function toggleEmailRequestor(type, ticketID) {
+async function toggleEmailRequestor(type, ticketID) {
     const ticket = window.ticketById?.get(ticketID);
     if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
 
+    const userDisplayName = await fetchTDXUserDisplayName();
     const privateCommentsPreview = `Enter your private comments...
     
 Notes you make here will NOT be sent to the Requestor unless the the checkbox is checked.
@@ -457,7 +514,7 @@ Notes you make here will NOT be sent to the Requestor unless the the checkbox is
 
 Thanks,
 
-<Your Name>
+${userDisplayName}
 Classroom Technology Services (CTS)
     `;
 
@@ -655,41 +712,67 @@ async function showTicket(ticket) {
     // Set the HTML for comments section
     let commentsHTML = "";
     const container = document.querySelector('.tx_container');
-    if (container.classList.contains('commentsShown')) {
-        // Fetch from either cache or TDX
-        let comments;
-        if (ticket.has_been_viewed)
-            comments = await fetchTicketComments(ticket.ID); // Try fetching from cache
-        else 
-            comments = await fetchTicketComments(ticket.ID, true); // Force fetch from TDX
+    const isCommentsShown = container?.classList.contains('commentsShown');
+    if (isCommentsShown) {
+        commentsHTML = `
+            <div class="tx_popupComments ${isMobile ? "mobile" : ""}">
+                <span>Comments:</span>
+                <div class="tx_commentWrapper">
+                    <div class="tx_commentList">
+                        <div class="tx_comment">
+                            <br>
+                            <p class="tx_comment_header">
+                                <strong class="tx_strong">Loading comments...</strong>
+                            </p>
+                            <br>
+                        </div>
+                    </div>
+                </div>
+                <hr class="tx_popupCommentsHR">
+                ${isAuthorized ? `<button id="tx_newCommentButton" onClick="newCommentDiolog(${ticket.ID}, this)">Post New Comment</button>` : ""}
+            </div>
+        `;
+    }
 
-        // Build comments
+    async function updateDescription() {
+        const descriptionElement = ticketPopupContainer.querySelector('.tx_Description');
+        if (!descriptionElement) return;
+
+        let description = await fetchTicketDescription(ticket.ID);
+        description = scrubHtmlToText(description);
+        descriptionElement.textContent = description || "--- No Description Provided ---";
+    }
+
+    async function updateComments() {
+        const commentsList = ticketPopupContainer.querySelector('.tx_commentList');
+        if (!commentsList) return;
+
+        const comments = await fetchTicketComments(ticket.ID);
         let builtComments = "";
+
         for (let i = 0; i < comments.length; i++) {
             const c = comments[i];
 
             let formattedDate = "";
             if (c.date != "") formattedDate = new Date(c.date).toLocaleString();
 
-            for (let i = 0; i < c.created_date.length; i++) {
-                c.created_date[i] = new Date(c.created_date[i]).toLocaleString();
+            for (let j = 0; j < (c.created_date || []).length; j++) {
+                c.created_date[j] = new Date(c.created_date[j]).toLocaleString();
             }
 
             // Scrub HTML tags out
-            let commentBody = c.comment.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n+/g, '\n').trim(); 
+            let commentBody = scrubHtmlToText(c.comment || "");
 
             // Build replies
             let repliesRows = "";
-            for (let i = 0; i < c.replies_count; i++) {
-                let reply = c.replies[i];
-
-                // Scrub HTML tags out
-                reply = reply.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n+/g, '\n').trim();
+            for (let j = 0; j < (c.replies_count || 0); j++) {
+                let reply = c.replies[j] || "";
+                reply = scrubHtmlToText(reply);
 
                 repliesRows += `
                 <div class="tx_reply">
                     <p class="tx_reply_person">
-                        <strong class="tx_strong">${c.created_by[i]}, ${c.created_date[i]}</strong>
+                        <strong class="tx_strong">${c.created_by[j]}, ${c.created_date[j]}</strong>
                     </p>
                     <p class="tx_reply_body">${reply}</p>
                 </div>
@@ -726,19 +809,8 @@ async function showTicket(ticket) {
                 </div>
             `;
         }
-        
-        commentsHTML = `
-            <div class="tx_popupComments ${isMobile ? "mobile" : ""}">
-                <span>Comments:</span>
-                <div class="tx_commentWrapper">
-                    <div class="tx_commentList">
-                        ${builtComments}
-                    </div>
-                </div>
-                <hr class="tx_popupCommentsHR">
-                ${isAuthorized ? `<button id="tx_newCommentButton" onClick="newCommentDiolog(${ticket.ID}, this)">Post New Comment</button>` : ""}
-            </div>
-        `;
+
+        commentsList.innerHTML = builtComments;
     }
 
     // Set the HTML for what changed, if anything changed
@@ -835,10 +907,6 @@ async function showTicket(ticket) {
             </div>
         `;
     } else { // Description Shown
-        let description = await fetchTicketDescription(ticket.ID);
-        // Scrub HTML tags out
-        description = description.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n+/g, '\n').trim(); 
-
         ticketPopupContainer.innerHTML = `
             <div class="tx_popupWrapper ${isMobile ? "mobile mobile_tx_font" : ""}">
                 <div class="tx_popupBox ${isMobile ? "mobile" : ""}">
@@ -862,7 +930,7 @@ async function showTicket(ticket) {
                     <p class="tx_popup_Requestor tx_textwrap">Requestor: ${ticket.RequestorName || ""}</p>
                     <p class="tx_popup_contact tx_textwrap">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
                     <p class="tx_popup_Responsible tx_textwrap${isMobile ? "mobile_tx_button" : ""}">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED ${isAuthorized ? `<button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>` : ""}`} || ${ticket.ResponsibleGroupName || ""}</p>
-                    <p class="tx_Description">${description || "--- No Description Provided ---"}</p>
+                    <p class="tx_Description">Loading description...</p>
                     ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
                     ${isAuthorized ? `<button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID})">Edit Ticket</button>` : ""}
                 </div>
@@ -881,6 +949,10 @@ async function showTicket(ticket) {
         // Disable scrolling the main body when popup is active
         document.body.classList.add('tx_no-scroll');
     }
+
+    // Load description and comments after popup renders
+    updateDescription();
+    if (isCommentsShown) updateComments();
 
     // Mark ticket as viewed
     updateTicketViewed(ticket.ID, true);
@@ -999,6 +1071,7 @@ function initializeListeners() {
     document.getElementById("sortByBox").addEventListener('click', (e) => {
         if (e.target.matches('input[type="radio"]')) {
             window.currentSortBy = e.target.id;
+            updateTickexSetting('sortBy', window.currentSortBy);
 
             const searchBar = document.getElementById('searchBar');
             let search = searchBar.value;
@@ -1012,6 +1085,10 @@ function initializeListeners() {
         document.getElementById(`${section}Ticket_dropdown`)
             .addEventListener("change", () => {
                 document.getElementById(`${section}Ticket_input`).value = 1; // Reset to page 1
+                const currentValue = parseInt(document.getElementById(`${section}Ticket_dropdown`).value);
+                if (section === 'new') updateTickexSetting('newTicketMaxItems', currentValue);
+                if (section === 'catchAll') updateTickexSetting('catchAllMaxItems', currentValue);
+                if (section === 'closed') updateTickexSetting('closedMaxItems', currentValue);
                 performSearch(document.getElementById("searchBar").value, window.currentSortBy);
             });
 
@@ -1269,6 +1346,37 @@ function getTicketCache() {
     }
 }
 
+const DEFAULT_TICKEX_SETTINGS = {
+    newTicketMaxItems: 15,
+    catchAllMaxItems: 15,
+    closedMaxItems: 10,
+    sortBy: 'modified',
+};
+
+function getTickexSettings() {
+    try {
+        const settings = JSON.parse(sessionStorage.getItem('tickex_settings')) || {};
+        return { ...DEFAULT_TICKEX_SETTINGS, ...settings };
+    } catch {
+        return { ...DEFAULT_TICKEX_SETTINGS };
+    }
+}
+
+function saveTickexSettings(settings) {
+    try {
+        sessionStorage.setItem('tickex_settings', JSON.stringify(settings));
+    } catch (e) {
+        console.warn('Failed to save Tickex settings:', e);
+    }
+}
+
+function updateTickexSetting(key, value) {
+    const settings = getTickexSettings();
+    settings[key] = value;
+    saveTickexSettings(settings);
+    return settings;
+}
+
 // Grabs a Specific Ticket from the Cache
 function getCachedTicketData(ticketID, type) {
     const cache = getTicketCache();
@@ -1364,19 +1472,11 @@ async function fetchTicketDescription(ticketID, forceFetch=false) {
 
 // Grab ticket Comments (feed) from backend
 async function fetchTicketComments(ticketID, forceFetch=false) {
-    // Check cache first
-    const cached = getCachedTicketData(ticketID, 'comments');
-    if (cached && !forceFetch) return cached;
-
     try {
         const response = await fetch(`/ticket/feed/${ticketID}`);
         if (!response.ok) throw new Error('Network response was not ok');
 
-        // Cache response
-        const result = await response.json();
-        setCachedTicketData(ticketID, 'comments', result);
-
-        return result;
+        return await response.json();
     } catch (error) {
         console.error('Failed to fetch ticket feed:', error);
         return [];
@@ -1420,17 +1520,36 @@ async function checkUserExistsInDatabase() {
 // Fetches the TDX user ID for the current user
 async function fetchTDXUserID() {
     try {
-        const response = await fetch('/currentUser/fetchTDXUserID');
+        const response = await fetch('/currentUser/fetchTDXUser');
         if (!response.ok) {
-            console.error("Failed to fetch current user permissions");
+            console.error("Failed to fetch current user ID");
             return "FAILED_TO_FETCH_TDX_USER_ID";
         }
 
         const data = await response.json();
-        return data;
+        console.log(data);
+        return data.UID || 0;
     } catch (error) {
-        console.error("Error fetching current user permissions:", error);
+        console.error("Error fetching current user ID:", error);
         return "FAILED_TO_FETCH_TDX_USER_ID";
+    }
+}
+
+// Fetches the TDX Display Name for the current user
+async function fetchTDXUserDisplayName() {
+    try {
+        const response = await fetch('/currentUser/fetchTDXUser');
+        if (!response.ok) {
+            console.error("Failed to fetch current user display name");
+            return "FAILED_TO_FETCH_TDX_USER_DISPLAY_NAME";
+        }
+
+        const data = await response.json();
+        console.log(data);
+        return data.FullName || "";
+    } catch (error) {
+        console.error("Error fetching current user display name:", error);
+        return "FAILED_TO_FETCH_TDX_USER_DISPLAY_NAME";
     }
 }
 
@@ -1631,6 +1750,9 @@ async function setTickex(openTicketByID = -1) {
     tx_container.append(editTicketPopupContainer);
 
 
+    const tickexSettings = getTickexSettings();
+    window.currentSortBy = tickexSettings.sortBy || DEFAULT_TICKEX_SETTINGS.sortBy;
+
     // Sort By Box - by date and status
     let sortByBox = document.createElement("div");
     sortByBox.classList.add("tx_sortByBox");
@@ -1639,15 +1761,15 @@ async function setTickex(openTicketByID = -1) {
     sortByBox.innerHTML = `
         <legend ${isMobile ? "class='mobile_legend'" : ""}>Sort By</legend>
         <div>
-            <input class="tx_radio" type="radio" name="tx_dev" id="modified" checked>
+            <input class="tx_radio" type="radio" name="tx_dev" id="modified" ${window.currentSortBy === 'modified' ? 'checked' : ''}>
             <label for="modified">Date Modified</label>
         </div>
         <div>
-            <input class="tx_radio" type="radio" name="tx_dev" id="created">
+            <input class="tx_radio" type="radio" name="tx_dev" id="created" ${window.currentSortBy === 'created' ? 'checked' : ''}>
             <label for="created">Date Created</label>
         </div>
         <div>
-            <input class="tx_radio" type="radio" name="tx_dev" id="status">
+            <input class="tx_radio" type="radio" name="tx_dev" id="status" ${window.currentSortBy === 'status' ? 'checked' : ''}>
             <label for="status">Status</label>
         </div>
 
@@ -1719,16 +1841,16 @@ async function setTickex(openTicketByID = -1) {
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="new_plus10" onclick="kPagerButton(10, 'newTicket_input', 'newMaxPage')">+10</button>
                     <div><span ${isMobile ? "class='mobile_font'" : ""}>Max Items per Page: </span>
                     <select class="k_pager_button ${isMobile ? "mobile_font" : ""}" id="newTicket_dropdown">
-                        <option value="5">5</option>
-                        <option value="10">10</option>
-                        <option value="15" selected>15</option>
-                        <option value="20">20</option>
-                        <option value="30">30</option>
+                        <option value="5" ${tickexSettings.newTicketMaxItems === 5 ? 'selected' : ''}>5</option>
+                        <option value="10" ${tickexSettings.newTicketMaxItems === 10 ? 'selected' : ''}>10</option>
+                        <option value="15" ${tickexSettings.newTicketMaxItems === 15 ? 'selected' : ''}>15</option>
+                        <option value="20" ${tickexSettings.newTicketMaxItems === 20 ? 'selected' : ''}>20</option>
+                        <option value="30" ${tickexSettings.newTicketMaxItems === 30 ? 'selected' : ''}>30</option>
                         ${!isMobile ? `
-                            <option value="40">40</option>
-                            <option value="50">50</option>
-                            <option value="75">75</option>
-                            <option value="100">100</option>` : ""
+                            <option value="40" ${tickexSettings.newTicketMaxItems === 40 ? 'selected' : ''}>40</option>
+                            <option value="50" ${tickexSettings.newTicketMaxItems === 50 ? 'selected' : ''}>50</option>
+                            <option value="75" ${tickexSettings.newTicketMaxItems === 75 ? 'selected' : ''}>75</option>
+                            <option value="100" ${tickexSettings.newTicketMaxItems === 100 ? 'selected' : ''}>100</option>` : ""
                         }
                     </select></div>
                 </div>
@@ -1760,16 +1882,16 @@ async function setTickex(openTicketByID = -1) {
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="catchAll_plus10" onclick="kPagerButton(10, 'catchAllTicket_input', 'catchAllMaxPage')">+10</button>
                     <div><span ${isMobile ? "class='mobile_font'" : ""}>Max Items per Page: </span>
                     <select class="k_pager_button ${isMobile ? "mobile_font" : ""}" id="catchAllTicket_dropdown">
-                        <option value="5">5</option>
-                        <option value="10">10</option>
-                        <option value="15" selected>15</option>
-                        <option value="20">20</option>
-                        <option value="30">30</option>
+                        <option value="5" ${tickexSettings.catchAllMaxItems === 5 ? 'selected' : ''}>5</option>
+                        <option value="10" ${tickexSettings.catchAllMaxItems === 10 ? 'selected' : ''}>10</option>
+                        <option value="15" ${tickexSettings.catchAllMaxItems === 15 ? 'selected' : ''}>15</option>
+                        <option value="20" ${tickexSettings.catchAllMaxItems === 20 ? 'selected' : ''}>20</option>
+                        <option value="30" ${tickexSettings.catchAllMaxItems === 30 ? 'selected' : ''}>30</option>
                         ${!isMobile ? `
-                            <option value="40">40</option>
-                            <option value="50">50</option>
-                            <option value="75">75</option>
-                            <option value="100">100</option>` : ""
+                            <option value="40" ${tickexSettings.catchAllMaxItems === 40 ? 'selected' : ''}>40</option>
+                            <option value="50" ${tickexSettings.catchAllMaxItems === 50 ? 'selected' : ''}>50</option>
+                            <option value="75" ${tickexSettings.catchAllMaxItems === 75 ? 'selected' : ''}>75</option>
+                            <option value="100" ${tickexSettings.catchAllMaxItems === 100 ? 'selected' : ''}>100</option>` : ""
                         }
                     </select></div>
                 </div>
@@ -1800,16 +1922,16 @@ async function setTickex(openTicketByID = -1) {
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="closed_plus10" onclick="kPagerButton(10, 'closedTicket_input', 'closedMaxPage')">+10</button>
                     <div><span ${isMobile ? "class='mobile_font'" : ""}>Max Items per Page: </span>
                     <select class="k_pager_button ${isMobile ? "mobile_font" : ""}" id="closedTicket_dropdown">
-                        <option value="5">5</option>
-                        <option value="10" selected>10</option>
-                        <option value="15">15</option>
-                        <option value="20">20</option>
-                        <option value="30">30</option>
+                        <option value="5" ${tickexSettings.closedMaxItems === 5 ? 'selected' : ''}>5</option>
+                        <option value="10" ${tickexSettings.closedMaxItems === 10 ? 'selected' : ''}>10</option>
+                        <option value="15" ${tickexSettings.closedMaxItems === 15 ? 'selected' : ''}>15</option>
+                        <option value="20" ${tickexSettings.closedMaxItems === 20 ? 'selected' : ''}>20</option>
+                        <option value="30" ${tickexSettings.closedMaxItems === 30 ? 'selected' : ''}>30</option>
                         ${!isMobile ? `
-                            <option value="40">40</option>
-                            <option value="50">50</option>
-                            <option value="75">75</option>
-                            <option value="100">100</option>` : ""
+                            <option value="40" ${tickexSettings.closedMaxItems === 40 ? 'selected' : ''}>40</option>
+                            <option value="50" ${tickexSettings.closedMaxItems === 50 ? 'selected' : ''}>50</option>
+                            <option value="75" ${tickexSettings.closedMaxItems === 75 ? 'selected' : ''}>75</option>
+                            <option value="100" ${tickexSettings.closedMaxItems === 100 ? 'selected' : ''}>100</option>` : ""
                         }
                     </select></div>
                 </div>
