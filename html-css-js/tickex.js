@@ -19,19 +19,33 @@ Notes:
 
         
 TOC:
+    Helpers:
+    - delay() : Simple delay/wait function
+    - decodeHtmlEntities() : Decode HTML entities into plain text
+    - scrubHtmlToText()    : Convert HTML snippets into readable text
+
     Write to TDX Functions (unimplemented for right now):
-    - sendToASU()
-    - sendToHelpDesk()
-    - takeIncident()
-    
+    - takeResponsibility() : Takes responsibility for a ticket
+    - markTicketFalse()    : Marks a ticket as false
+
     Popups:
-    - dismissAll()       : Clear all ticket rows of unread notifications
-    - dismissAllPopup()  : Shows the "Dismiss All" confirmation popup
-    - dismissChanges()   : Dismisses the "What Changed" box in the popup
-    - showPopup()/show() : Shows the popup with relavent ticket info
-    - toggleDetails()    : Toggles the details page in the popup
-    - toggleComments()   : Toggles the comments box in the popup
-    - hidePopup()        : Hides the popup
+    - newTicketPopup()               : Opens the popup for the new ticket dialog
+    - createTicket()                 : Looks at new ticket popup and sends request to create ticket
+    - editTicketPopup()              : Opens the popup for the edit ticket dialog
+    - applyChanges()                 : Looks at edit ticket popup and sends request to edit ticket
+    - newCommentDiolog()             : Opens the new comment for a ticket dialog
+    - closeCommentDialog()           : Closes the new comment dialog
+    - comment()                      : Looks at comment dialog and sends request to comment
+    - toggleEmailRequestor()         : Toggles html that indicates whether the requestor will be emailed
+    - dismissAll()                   : Clear all ticket rows of unread notifications
+    - dismissAllPopup()              : Shows the "Dismiss All" confirmation popup
+    - dismissChanges()               : Dismisses the "What Changed" box in the popup
+    - showTicketPopup()              : Shows the popup with relavent ticket info
+    - showTicketPopupFromDashboard() : Shows popup from dashboard - opens Tickex first, then shows the popup
+    - showTicket()                   : Shows the ticket popup
+    - toggleDetails()                : Toggles the details page in the popup
+    - toggleComments()               : Toggles the comments box in the popup
+    - hideCurrentPopup()             : Hides the current popup
 
     Board Setup:
     - initializeListeners() : Initializes all listeners for Tickex
@@ -42,6 +56,9 @@ TOC:
 
     Cache Functions:
     - getTicketCache()      : Grabs the Ticket Cache
+    - getTickexSettings()   : Gets saved Tickex settings (with defaults)
+    - saveTickexSettings()  : Persists Tickex settings to sessionStorage
+    - updateTickexSetting() : Updates a single Tickex setting
     - getCachedTicketData() : Grabs a Specific Ticket from the Cache
     - setCachedTicketData() : Saves a Ticket to the Cache
     - removeFromCache()     : Removes a Ticket from the Cache 
@@ -52,7 +69,12 @@ TOC:
     - fetchTicketDescription()      : Grab ticket Description from backend 
     - fetchTicketComments()         : Grab ticket Comments (feed) from backend
     - fetchCurrentUserPermissions() : Fetches the current user's permission level
+    - checkUserExistsInDatabase()   : Fetches whether the current user exists within Database records
+    - fetchTDXUser()                : Fetches the TDX user for the current user
     - updateTicketViewed()          : Update ticket's viewed status in backend/database
+    - updateTicket()                : Send a request to TeamDynamix to Create/edit a Ticket
+    - postComment()                 : Send a request to TeamDynamix to Post a Comment to a Ticket
+    - updateFalseStatus()           : Send a request to TeamDynamix to mark at Ticket as a True/False Ticket
 
     "Main" Function:
     - setTickex()   : Sets up the Tickex tool page
@@ -60,56 +82,488 @@ TOC:
 
 TODO:
     Main Features to Add when we get write access:
-    - Add ticket editing/saving to TDX API (Title, Priority, Status, etc...)
-    - Add "Send to ASU"/"Send to Help Desk" button
     - Add "Take Responsibility" Button to unassigned tickets
         - This will disappear when a tech takes responsibility
     - Add "Assign Responsibility" Button to assign other techs to tickets
         - Maybe a dropdown of all CTS techs that you can assign to? (Can we get this list from the API?)
-    - Reply to Requestor from the popup
-    - Add ability to comment/reply on tickets from the popup
-        - This is meant to act as our "Microsoft Teams" chat, we should theorically move communicate to this
-    - (Optional, but would be nice) Have an AI Summarize the actions of the tickets when closing the ticket 
+    - (Optional, but might be nice) Have an AI Summarize the actions of the tickets when closing the ticket 
         - Client side?/Server side?
         - TDX sort of has an AI summary, but I want to post it in the comments
 */
 
 
 
+    /* -------------------- Global Definitions -------------------- */
+
+const DEFAULT_TICKEX_SETTINGS = {
+    newTicketMaxItems: 15,
+    catchAllMaxItems: 15,
+    closedMaxItems: 10,
+    sortBy: 'modified',
+};
+
+
+
+    /* -------------------- Helpers -------------------- */
+
+// Simple delay/wait function
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+
+// Convert HTML entities like &amp; and &nbsp; into plain text.
+function decodeHtmlEntities(input) {
+    try {
+        const txt = document.createElement('textarea');
+        txt.innerHTML = input || '';
+        return txt.value;
+    } catch (e) {
+        return input || '';
+    }
+}
+
+// Convert a snippet of HTML into readable plain text, preserving line breaks.
+function scrubHtmlToText(html) {
+    if (!html) return "";
+    // First decode entities like &nbsp; &amp; etc.
+    let s = decodeHtmlEntities(html);
+    // Normalize line breaks from <br> and common block tags
+    s = s.replace(/<br\s*\/?\s*>/gi, '\n');
+    s = s.replace(/<\/?(p|div|li|ul|ol|tr|table|h[1-6])[^>]*>/gi, '\n');
+    // Remove any remaining tags
+    s = s.replace(/<[^>]*>/g, '');
+    // Normalize CRLF to LF
+    s = s.replace(/\r\n?|\r/g, '\n');
+    // Collapse excessive blank lines to at most one empty line
+    s = s.replace(/\n{2,}/g, '\n');
+    return s.trim();
+}
+
+
 
     /* -------------------- Write to TDX Functions -------------------- */
 
-// Macro for assigning a ticket to ASU
-// For Later - When we have write access to TDX API
-function sendToASU() {
-    alert("This feature is not yet implemented.");
-}
-
-// Macro for assigning a ticket to the Help Desk
-// For Later - When we have write access to TDX API
-function sendToHelpDesk() {
-    alert("This feature is not yet implemented.");
-}
-
 // Macro for taking Responsibility for a Ticket
-// For Later - When we have write access to TDX API
+// For Later - When we have shibboleth
 function takeResponsibility() {
     alert("This feature is not yet implemented.");
 
+    // Projected workflow w/ shibboleth:
+    //  - We will have some type of user name from shibboleth (example: "John Doe")
+    //  - Query TDX for a Uid from that user name ("John Doe" -> "6f873055-ca...")
+    //  - If we get an ID, update ticket using /api/216/tickets/{id} endpoint
+    //  - If not, display error and bail on action? 
+}
+
+// Macro for marking a ticket as false
+async function markTicketFalse(ticketID, parentID) {
+    // Marking to a True Ticket 
+    if (parentID == 22873142) {
+        const confirmationMessage = `Are You Sure?
+        
+    This action will mark this ticket as TRUE ticket. 
+        `;
+
+        if (!confirm(confirmationMessage)) return;
+    }
+    // Marking to a False Ticket
+    else {
+        const confirmationMessage = `Are You Sure?
+    Example False Ticket Criteria:
+    - Tech arrives to Ticket being resolved/no issue is found
+    - Loud noises not related to Classroom Tech
+    - PC BIOS Screen or bad PC Power Supply
+    - Ticket was offloaded to a different department
+
+If you are unsure if this is a false ticket, ask a full-timer.
+        `;
+
+        if (!confirm(confirmationMessage)) return;
+    }
+
+    const jsonBody = {
+        "ID": ticketID,
+        "ParentID": parentID,
+    };
+
+    hideCurrentPopup();
+    await updateFalseStatus(jsonBody);
 }
 
 
+
     /* -------------------- Popups -------------------- */
+
+// Opens the popup for the new ticket dialog
+function newTicketPopup() {
+    const newTicketPopupContainer = document.querySelector('.tx_newTicketPopupContainer');
+    if (!newTicketPopupContainer) {
+        console.error("New Ticket Popup Container not found");
+        return;
+    }
+
+    newTicketPopupContainer.classList.add('tx_popupActive');
+    newTicketPopupContainer.innerHTML = `
+        <div class="tx_popupBox">
+            <span>Create New Ticket</span>
+            <br class="tx_createTicketBr">
+            <p class="tx_createTicketText">Title: </p>
+            <textarea id="tx_createTicket_Title" class="tx_createTicketTextarea" maxlength="80" placeholder="Ex: IT 173 - My Issue (This field is Required)"></textarea>
+            <br class="tx_createTicketBr">
+            <p class="tx_createTicketText">Description:</p>
+            <textarea id="tx_createTicket_Description" class="tx_createTicketTextarea" rows="8" placeholder="Explain your Ticket... (This field is Required)"></textarea>
+            <br class="tx_createTicketBr">
+            <div>
+                <label for="requestor">Requestor:</label>
+                <select name="requestor" id="tx_createTicket_Requestor">
+                    <option value="johndoe_ID">John Doe</option>
+                </select>
+            </div>
+            <br class="tx_createTicketBr">
+            <div>
+                <label for="created-by">Created By:</label>
+                <select name="created-by" id="tx_createTicket_CreatedBy">
+                    <option value="johndoe_ID">John Doe</option>
+                </select>
+            </div>
+            <br class="tx_createTicketBr">
+            <button id="tx_createTicketButton" onClick="createTicket()">Create Ticket</button>
+            <button class="cancelPopupButton" onClick="hideCurrentPopup()">Cancel</button>
+        </div>
+    `;
+
+    // Hide terminal if open
+    const terminal = document.getElementById('terminal');
+    if (terminal) terminal.style.display = 'none';
+
+    // Disable scrolling the main body when popup is active
+    document.body.classList.add('tx_no-scroll');
+}
+// Looks at new ticket popup and sends request to create ticket
+async function createTicket(container) {
+    // Verify user is authorized to create tickets
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.UID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    if (!isAuthorized) {
+        console.error("User is not authorized to create this ticket.");
+        alert("You are not authorized to create this ticket. Please contact an admin for assistance.");
+        return;
+    }
+
+    // Ensure required fields are filled out
+    const titleField = document.getElementById("tx_createTicket_Title");
+    const descriptionField = document.getElementById("tx_createTicket_Description");
+    const requestorField = document.getElementById("tx_createTicket_Requestor");
+    const createdByField = document.getElementById("tx_createTicket_CreatedBy");
+
+    let canContinue = true;
+
+    // Title
+    if (titleField.value === "") {
+        canContinue = false;
+        titleField.classList.add("tx_textareaRequired");
+    } else {
+        titleField.classList.remove("tx_textareaRequired");
+    }
+    // Description
+    if (descriptionField.value === "") {
+        canContinue = false;
+        descriptionField.classList.add("tx_textareaRequired");
+    } else {
+        descriptionField.classList.remove("tx_textareaRequired");
+    }
+
+    // Stops here if any required fields are empty
+    if (!canContinue) return;
+
+    // Disable Button while loading
+    const button  = document.getElementById('tx_createTicketButton');
+    button.disabled = true;
+    button.textContent = "Creating..."  
+
+    // Package data and send to backend
+    const jsonBody = {
+        "_OperationType": "CREATE", 
+        "Title": titleField.value.trim(),
+        "Description": descriptionField.value.trim(),
+        "RequestorUid": userID
+        // CreatedBy field will be the current signed in user, done in backend
+    };
+
+    await updateTicket(jsonBody);
+    await delay(250); // Pause for a little
+    setTickex(); // Reload board to show changes
+}
+
+// Opens the popup for the edit ticket dialog
+async function editTicketPopup(ticketID) {
+    hideCurrentPopup();
+
+    const editTicketPopupContainer = document.querySelector('.tx_editTicketPopupContainer');
+    if (!editTicketPopupContainer) {
+        console.error("Edit Ticket Popup Container not found");
+        return;
+    }
+
+    const ticket = window.ticketById?.get(ticketID);
+    if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
+    let description = await fetchTicketDescription(ticket.ID);
+    // Scrub HTML/HTML entities into readable text (preserve spacing)
+    description = scrubHtmlToText(description);
+
+    editTicketPopupContainer.classList.add('tx_popupActive');
+    editTicketPopupContainer.innerHTML = `
+        <div class="tx_popupBox">
+            <span>Edit Ticket</span>
+            <div class="tx_adjacent">
+                <p>ID: ${ticket.ID}
+                    <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
+                        <button>Link to Ticket</button>
+                    </a>
+                </p>
+            </div>
+            <div>
+                <label for="status">Status:</label>
+                <select name="status" id="tx_editTicket_Status">
+                    ${(ticket.StatusName !== "New" && ticket.StatusName !== "In Process" && ticket.StatusName !== "Closed") ?
+                        `<option selected value="Other">${ticket.StatusName}</option>`: ""
+                    }
+                    <option ${(ticket.StatusName === "New") ? "selected" : ""} value="New">New</option>
+                    <option ${(ticket.StatusName === "In Process") ? "selected" : ""} value="In Process">In Process</option>
+                    <option ${(ticket.StatusName === "Closed") ? "selected" : ""} value="Closed">Closed</option>
+                </select>
+            </div>
+            <p class="tx_editTicketText">Title: </p>
+            <textarea id="tx_editTicket_Title" class="tx_createTicketTextarea" maxlength="80" placeholder="Ex: IT 173 - My Issue (This field is Required)">${ticket.Title}</textarea>
+            <br class="tx_createTicketBr">
+            <p class="tx_createTicketText">Description:</p>
+            <p class="tx_Description" id="tx_editTicket_Description">${description}</p>
+            <br class="tx_createTicketBr">
+            <p class="tx_createTicketText">Comments:</p>
+            <textarea id="tx_editTicket_Comments" class="tx_createTicketTextarea" rows="9"></textarea>
+            <br class="tx_createTicketBr">
+            <input id="tx_editTicketEmailCheckbox" type="checkbox" id="email" name="email" onClick="toggleEmailRequestor('edit', ${ticketID})"></input>
+            <label class="tx_createTicketText" for="email">Notify Requestor (${ticket.RequestorName})</label>
+            <br class="tx_createTicketBr">
+            <button id="tx_applyChangesButton" onClick="applyChanges(${ticketID})">Apply Changes</button>
+            <button class="cancelPopupButton" onClick="hideCurrentPopup()">Cancel</button>
+        </div>
+    `;
+
+    toggleEmailRequestor("edit", ticketID);
+
+    // Hide terminal if open
+    const terminal = document.getElementById('terminal');
+    if (terminal) terminal.style.display = 'none';
+
+    // Disable scrolling the main body when popup is active
+    document.body.classList.add('tx_no-scroll');
+}
+// Looks at edit ticket popup and sends request to edit ticket
+async function applyChanges(ticketID) {
+    // Verify user is authorized to edit tickets
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.ID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    if (!isAuthorized) {
+        console.error("User is not authorized to edit this ticket.");
+        alert("You are not authorized to edit this ticket. Please contact an admin for assistance.");
+        return;
+    }
+
+    const ticket = window.ticketById?.get(ticketID);
+    if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
+
+    // Ensure required fields are filled out
+    const statusField = document.getElementById("tx_editTicket_Status");
+    const titleField = document.getElementById("tx_editTicket_Title");
+    const commentsFields = document.getElementById("tx_editTicket_Comments");
+    const emailCheckbox = document.getElementById("tx_editTicketEmailCheckbox");
+
+    let canContinue = true;
+
+    // Title
+    if (titleField.value === "") {
+        canContinue = false;
+        titleField.classList.add("tx_textareaRequired");
+    } else {
+        titleField.classList.remove("tx_textareaRequired");
+    }
+    // Comments
+    if (commentsFields.value === "") {
+        canContinue = false;
+        commentsFields.classList.add("tx_textareaRequired");
+    } else {
+        commentsFields.classList.remove("tx_textareaRequired");
+    }
+
+    // Stops here if any required fields are empty
+    if (!canContinue) return;
+
+    // Disable Button while loading
+    const button  = document.getElementById('tx_applyChangesButton');
+    button.disabled = true;
+    button.textContent = "Editting..."  
+
+    // Package data and send to backend
+    const ticketBody = {
+        "_OperationType": "EDIT", 
+        "ID": ticketID,
+        "Title": titleField.value.trim(),
+        "ResponsibleUid": userID
+    };
+    // Omit Status if it is not "New", "In Process", or "Closed"
+    if (statusField.value.trim() !== "Other") ticketBody["StatusName"] = statusField.value.trim();
+
+    const userDisplayName = tdxUser.FullName;
+    const c = "<b><i>This comment was made on behalf of " + userDisplayName + ":</i></b><br><br>" + commentsFields.value;
+    const commentBody = {
+        "ID": ticket.ID,
+        "Comments": c,
+        "IsPrivate": !emailCheckbox.checked,
+        "Notify": emailCheckbox.checked ? [ticket.RequestorEmail] : [] // An array, pass [] to NOT notify anybody
+    };
+
+    await updateTicket(ticketBody);
+    await postComment(commentBody);
+    await delay(250); // Pause for a little
+    setTickex(ticketID); // Reload page to show changes 
+}
+
+// Opens the new comment dialog
+function newCommentDiolog(ticketID, commentButton) {
+    if (event) event.stopPropagation();
+
+    const ticket = window.ticketById?.get(ticketID);
+    if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
+
+    // Replace comment button with new commenet dialog
+    const dialog = document.createElement("div");
+    dialog.classList.add("tx_newCommentDialog");
+    dialog.id = "tx_newCommentDialogBox";
+    dialog.innerHTML = `
+        <span>New Comment:</span>
+        <textarea id="tx_commentOnTicket_Comments" class="tx_createTicketTextarea" rows="9"></textarea>
+        <br>
+        <input id="tx_commentOnTicketEmailCheckbox" type="checkbox" id="email" name="email" onClick="toggleEmailRequestor('comment', ${ticketID})"></input>
+        <label class="tx_createTicketText" for="email">Notify Requestor (${ticket.RequestorName}):</label>
+        <br>
+        <button id="tx_commentButton" onClick="comment(${ticket.ID})">Comment</button>
+        <button class="cancelPopupButton" onClick="closeCommentDialog(${ticket.ID})">Cancel</button>
+    `;
+
+    commentButton.outerHTML = dialog.outerHTML;
+    
+    toggleEmailRequestor("comment", ticketID);
+}
+// Closes the new comment dialog
+async function closeCommentDialog(ticketID) {
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.UID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    if (event) event.stopPropagation();
+
+    const dialog = document.getElementById("tx_newCommentDialogBox");
+    dialog.outerHTML = `
+        ${isAuthorized ? `<button id="tx_newCommentButton" onClick="newCommentDiolog(${ticketID}, this)">Post New Comment</button>` : ""}
+    `;
+}
+// Looks at comment dialog and sends request to comment
+async function comment(ticketID) {
+    // Verify user is authorized to post comments
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.UID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    if (!isAuthorized) {
+        console.error("User is not authorized to post comments.");
+        alert("You are not authorized to post comments. Please contact an admin for assistance.");
+        return;
+    }
+
+    const ticket = window.ticketById?.get(ticketID);
+    if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
+
+    // Ensure required fields are filled out
+    const commentsFields = document.getElementById("tx_commentOnTicket_Comments");
+    const emailCheckbox = document.getElementById("tx_commentOnTicketEmailCheckbox");
+
+    let canContinue = true;
+
+    // Require Comments Field
+    if (commentsFields.value === "") {
+        canContinue = false;
+        commentsFields.classList.add("tx_textareaRequired");
+    } else {
+        commentsFields.classList.remove("tx_textareaRequired");
+    }
+    
+    // Stops here if any required fields are empty
+    if (!canContinue) return;
+
+    // Disable Button while loading
+    const button  = document.getElementById('tx_commentButton');
+    button.disabled = true;
+    button.textContent = "Sending Comment..." ;
+
+    // Package data and send to backend
+    const userDisplayName = tdxUser.FullName;
+    const c = "<b><i>This comment was made on behalf of " + userDisplayName + ":</i></b><br><br>" + commentsFields.value;
+    const commentBody = {
+        "ID": ticket.ID,
+        "Comments": c,
+        "IsPrivate": !emailCheckbox.checked,
+        "Notify": emailCheckbox.checked ? [ticket.RequestorEmail] : [] // An array, pass [] to NOT notify anybody
+    };
+
+
+    await postComment(commentBody);
+    await delay(250); // Pause for a little
+    setTickex(ticketID); // Reload page to show changes
+}
+
+// Toggles html that indicates whether the requestor will be emailed
+async function toggleEmailRequestor(type, ticketID) {
+    const ticket = window.ticketById?.get(ticketID);
+    if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
+
+    const tdxUser = await fetchTDXUser();
+    const userDisplayName = tdxUser.FullName;
+    const privateCommentsPreview = `Enter your private comments...
+    
+Notes you make here will NOT be sent to the Requestor unless the the checkbox is checked.
+    `;
+    const emailPreview = `Hello ${ticket.RequestorFirstName},
+
+(Write your email to ${ticket.RequestorFirstName} here, summarizing relevant information like fixes/issues/further actions...)
+
+Thanks,
+
+${userDisplayName}
+Classroom Technology Services (CTS)
+    `;
+
+    let checkbox = null;
+    let textfield = null;
+    if (type === "edit") {
+        checkbox = document.getElementById("tx_editTicketEmailCheckbox");
+        textfield = document.getElementById("tx_editTicket_Comments");
+    }
+    else if (type === "comment") {
+        checkbox = document.getElementById("tx_commentOnTicketEmailCheckbox");
+        textfield = document.getElementById("tx_commentOnTicket_Comments");
+    }
+
+    if (checkbox.checked) 
+        textfield.placeholder = emailPreview;
+    else 
+        textfield.placeholder = privateCommentsPreview;
+}
 
 // Clear all ticket rows of unread notifications
 async function dismissAll(confirmed) {
     // Dismiss Popup
     const dismissAllPopupContainer = document.querySelector('.tx_dismissAllPopupContainer');
-    if (!dismissAllPopupContainer) {
+    if (!dismissAllPopupContainer) { 
         console.error("Dismiss All Popup container not found");
         return;
     }
-    dismissAllPopupContainer.classList.remove('popupActive');
+    dismissAllPopupContainer.classList.remove('tx_popupActive');
 
     // If confirmed, proceed to dismiss all notifications
     if (confirmed) {
@@ -138,9 +592,9 @@ async function dismissAll(confirmed) {
         clearInterval(ellipsisInterval);
         button.textContent = "Dismiss All";
         button.disabled = false;
+        document.body.classList.remove('tx_no-scroll');
     }
 }
-
 // Shows the "Dismiss All" confirmation popup
 function dismissAllPopup() {
     const dismissAllPopupContainer = document.querySelector('.tx_dismissAllPopupContainer');
@@ -148,34 +602,43 @@ function dismissAllPopup() {
         console.error("Dismiss All Popup container not found");
         return;
     }
-    dismissAllPopupContainer.classList.add('popupActive');
+    dismissAllPopupContainer.classList.add('tx_popupActive');
+    event.stopPropagation();
 
     dismissAllPopupContainer.innerHTML = `
         <div class="tx_popupBox">
-        <span>Are You Sure?</span>
-        <p>This action will apply to all users.</p>
-        <p>Are you sure you wish to Dismiss All Notifications?</p>
-        <button class="dismissAllButtonConfirm" onClick="dismissAll(true)">Yes, Dismiss All</button>
-        <button class="cancelPopupButton" onClick="dismissAll(false)">Cancel</button>
+            <span>Are You Sure?</span>
+            <p>This action will apply to all users.</p>
+            <p>Are you sure you wish to Dismiss All Notifications?</p>
+            <button class="dismissAllButtonConfirm" onClick="dismissAll(true)">Yes, Dismiss All</button>
+            <button class="cancelPopupButton" onClick="dismissAll(false)">Cancel</button>
+        </div>
     `;
+
+    // Hide terminal if open
+    const terminal = document.getElementById('terminal');
+    if (terminal) terminal.style.display = 'none';
+
+    // Disable scrolling the main body when popup is active
+    document.body.classList.add('tx_no-scroll');
 }
 
 // Dismisses the "What Changed" box in the popup
 function dismissChanges(ticketID, event) {
     if (event) event.stopPropagation();
     
-    const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
-    if (!popupContainer) return;
+    const ticketPopupContainer = document.querySelector('.tx_ticketPopupContainer.tx_popupActive');
+    if (!ticketPopupContainer) return;
 
     // Remove the "What Changed" box
-    const whatChangedBox = popupContainer.querySelector('.tx_whatChangedBox');
+    const whatChangedBox = ticketPopupContainer.querySelector('.tx_whatChangedBox');
     if (whatChangedBox) whatChangedBox.remove();
 
     updateTicketViewed(ticketID, true);
 }
 
 // Shows the popup with relavent ticket info
-function showPopup(ticket, element) {
+function showTicketPopup(ticket, element) {
     // Change cursor to loading
     if (!document.body.classList.contains('tx_waiting-cursor')) 
         document.body.classList.add('tx_waiting-cursor');
@@ -184,7 +647,7 @@ function showPopup(ticket, element) {
 
     // Force cursor wheel to show
     requestAnimationFrame(() => {
-        show(ticket).finally(() => {
+        showTicket(ticket).finally(() => {
             // Remove loading cursor
             if (document.body.classList.contains('tx_waiting-cursor'))
                 document.body.classList.remove('tx_waiting-cursor');
@@ -193,9 +656,8 @@ function showPopup(ticket, element) {
         });
     });
 }
-
 // Shows popup from dashboard - opens Tickex first, then shows the popup
-async function showPopupFromDashboard(ticket, element) {
+async function showTicketPopupFromDashboard(ticket, element) {
     // Set up Tickex first
     await setTickex();
     
@@ -207,7 +669,7 @@ async function showPopupFromDashboard(ticket, element) {
 
     // Force cursor wheel to show
     requestAnimationFrame(() => {
-        show(ticket).finally(() => {
+        showTicket(ticket).finally(() => {
             // Remove loading cursor
             if (document.body.classList.contains('tx_waiting-cursor'))
                 document.body.classList.remove('tx_waiting-cursor');
@@ -216,25 +678,26 @@ async function showPopupFromDashboard(ticket, element) {
         });
     });
 }
-
-// Child function to showPopup() - shows the popup
-async function show(ticket) {
+// Shows the ticket popup
+async function showTicket(ticket) {
     if (!ticket) {
         console.error("Ticket data not found");
         return;
     }
 
     const isMobile = localStorage.getItem("isMobile") === "true";
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.UID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
 
-    let popupContainer = document.querySelector('.tx_popupContainer');
-    if (!popupContainer) {
+    let ticketPopupContainer = document.querySelector('.tx_ticketPopupContainer');
+    if (!ticketPopupContainer) {
         // Wait for popup to load (timeout of 3 seconds)
         let waited = 0;
         while (waited < 3000) {
             await new Promise(resolve => setTimeout(resolve, 100));
-            const pc = document.querySelector('.tx_popupContainer');
+            const pc = document.querySelector('.tx_ticketPopupContainer');
             if (pc) {
-                popupContainer = pc;
+                ticketPopupContainer = pc;
                 break;
             }
             waited += 100;
@@ -267,47 +730,70 @@ async function show(ticket) {
         ticket.RequestorPhone = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
 
 
-    // Set the HTML for comments section
-    let commentsHTML = "";
+    // Set the HTML for comments section. Always render it so toggle can show/hide without rebuilding.
     const container = document.querySelector('.tx_container');
-    if (container.classList.contains('commentsShown')) {
-        // Fetch from either cache or TDX
-        let comments;
-        if (ticket.has_been_viewed)
-            comments = await fetchTicketComments(ticket.ID); // Try fetching from cache
-        else 
-            comments = await fetchTicketComments(ticket.ID, true); // Force fetch from TDX
+    const isCommentsShown = container?.classList.contains('commentsShown');
+    const commentsHTML = `
+        <div class="tx_popupComments ${isMobile ? "mobile" : ""}" style="${isCommentsShown ? "" : "display:none;"}">
+            <span>Comments:</span>
+            <div class="tx_commentWrapper">
+                <div class="tx_commentList">
+                    <div class="tx_comment">
+                        <br>
+                        <p class="tx_comment_header">
+                            <strong class="tx_strong">Loading comments...</strong>
+                        </p>
+                        <br>
+                    </div>
+                </div>
+            </div>
+            <hr class="tx_popupCommentsHR">
+            ${isAuthorized ? `<button id="tx_newCommentButton" onClick="newCommentDiolog(${ticket.ID}, this)">Post New Comment</button>` : ""}
+        </div>
+    `;
 
-        // Build comments
+    async function updateDescription() {
+        const descriptionElement = ticketPopupContainer.querySelector('.tx_Description');
+        if (!descriptionElement) return;
+
+        let description = await fetchTicketDescription(ticket.ID);
+        description = scrubHtmlToText(description);
+        descriptionElement.textContent = description || "--- No Description Provided ---";
+    }
+
+    async function updateComments() {
+        const commentsList = ticketPopupContainer.querySelector('.tx_commentList');
+        if (!commentsList) return;
+
+        const comments = await fetchTicketComments(ticket.ID);
         let builtComments = "";
+
         for (let i = 0; i < comments.length; i++) {
             const c = comments[i];
 
             let formattedDate = "";
             if (c.date != "") formattedDate = new Date(c.date).toLocaleString();
 
-            for (let i = 0; i < c.created_date.length; i++) {
-                c.created_date[i] = new Date(c.created_date[i]).toLocaleString();
+            for (let j = 0; j < (c.created_date || []).length; j++) {
+                c.created_date[j] = new Date(c.created_date[j]).toLocaleString();
             }
 
             // Scrub HTML tags out
-            let commentBody = c.comment.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n+/g, '\n').trim(); 
+            let commentBody = scrubHtmlToText(c.comment || "");
 
             // Build replies
             let repliesRows = "";
-            for (let i = 0; i < c.replies_count; i++) {
-                let reply = c.replies[i];
-
-                // Scrub HTML tags out
-                reply = reply.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n+/g, '\n').trim();
+            for (let j = 0; j < (c.replies_count || 0); j++) {
+                let reply = c.replies[j] || "";
+                reply = scrubHtmlToText(reply);
 
                 repliesRows += `
-                <div class="tx_reply">
-                    <p class="tx_reply_person">
-                        <strong class="tx_strong">${c.created_by[i]}, ${c.created_date[i]}</strong>
-                    </p>
-                    <p class="tx_reply_body">${reply}</p>
-                </div>
+                    <div class="tx_reply">
+                        <p class="tx_reply_person">
+                            <strong class="tx_strong">${c.created_by[j]}, ${c.created_date[j]}</strong>
+                        </p>
+                        <p class="tx_reply_body">${reply}</p>
+                    </div>
                 `;
             }
 
@@ -341,16 +827,8 @@ async function show(ticket) {
                 </div>
             `;
         }
-        
-        commentsHTML = `
-            <div class="tx_popupComments ${isMobile ? "mobile" : ""}">
-                <span>Comments:</span>
-                ${isMobile ? "" : `<button class="popup_closeCommentsButton" onClick="toggleComments(${ticket.ID})">X</button>`}
-                <div class="tx_commentList">
-                    ${builtComments}
-                </div>
-            </div>
-        `;
+
+        commentsList.innerHTML = builtComments;
     }
 
     // Set the HTML for what changed, if anything changed
@@ -359,16 +837,6 @@ async function show(ticket) {
         ticket.has_been_viewed = true;
         
         // Grab old ticket info. Compares what changed. (Field: Old info => New info)
-        //  - TypeName ("General Classroom Issue" or similar)
-        //  - TypeCategoryName ("Instructional Technology & Classroom Support" or similar)
-        //  - Title
-        //  - AccountName (Department Name)
-        //  - StatusName (New, In Process, etc...)
-        //  - ServiceName ("I need help with my classroom" or similar)
-        //  - PriorityName (High, Medium, Low, Not Specified)
-        //  - ResponsibilityFullName (Tech's name)
-        //  - ResponsibilityGropuName (CTS)
-        //  - comment_count (how many comments/replies are on the ticket)
         let whatChangedRows = "";
         if (ticket.old_type_name != ticket.TypeName && ticket.old_type_name !== "")
             whatChangedRows += `<p>Type: ${ticket.old_type_name} => ${ticket.TypeName}</p>`;
@@ -411,22 +879,29 @@ async function show(ticket) {
     if (whatChangedHTML && !isMobile)
         sideContent += whatChangedHTML;
     
-
-    if (popupContainer.classList.contains('detailsShown')) { // Details Shown
-        popupContainer.innerHTML = `
+    if (ticketPopupContainer.classList.contains('detailsShown')) { // Details Shown
+        ticketPopupContainer.innerHTML = `
             <div class="tx_popupWrapper ${isMobile ? "mobile mobile_tx_font" : ""}">
                 <div class="tx_popupBox ${isMobile ? "mobile" : ""}">
-                <span>${ticket.Title || "No Title"}</span>
-                <button class="popup_closeButton" onClick="hidePopup()">X</button>
-                <div class="tx_adjacent">
-                <p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
-                    <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
-                    <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
-                    <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
+                    <span>${ticket.Title || "No Title"}</span>
+                    <button class="popup_closeButton" onClick="hideCurrentPopup()">X</button>
+                    <div class="tx_adjacent">
+                        <p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
+                        <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p>
+                    </div>
+                    <div class="tx_adjacent">
+                        <p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
+                        <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p>
+                    </div>
                     <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
+                    ${isAuthorized ? `<button class="popup_falseTicketButton" onClick="markTicketFalse(${ticket.ID}, ${ticket.ParentID})">${ticket.ParentID == 22873142 ? "Mark Ticket as True" : "Mark Ticket as False"}</button>` : ""}
+                    <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
+                        <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
+                    </a>
+                    <hr>
                     <button class="popup_toggleButton ${isMobile ? "mobile_tx_button" : ""}" onClick="toggleDetails(${ticket.ID})">Description</button>
                     <p class="tx_popup_Requestor tx_textwrap">Requestor: ${ticket.RequestorName || ""} || ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                    <p class="tx_popup_Responsible tx_textwrap">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED <button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>`} || ${ticket.ResponsibleGroupName || ""}</p>
+                    <p class="tx_popup_Responsible tx_textwrap">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED ${isAuthorized ? `<button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>` : ""}`} || ${ticket.ResponsibleGroupName || ""}</p>
                     <p class="tx_popup_ServiceName tx_textwrap">Service: ${ticket.ServiceName || ""}</p>
                     <p class="tx_popup_AccountName tx_textwrap">Account Department: ${ticket.AccountName || ""}</p>
                     <p class="tx_popup_TypeName tx_textwrap">Type: ${ticket.TypeName || ""}</p>
@@ -434,62 +909,58 @@ async function show(ticket) {
                     <p class="tx_popup_Created tx_textwrap">Date Created: ${ticket.CreatedDate || ""} || Created by: ${ticket.CreatedFullName || ""}</p>
                     <p class="tx_popup_Modified tx_textwrap">Last Modified: ${ticket.ModifiedDate || ""} || Modified by: ${ticket.ModifiedFullName || ""}</p>
                     ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
-                    <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
-                        <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
-                    </a>
-                    <button disabled class="popup_sendToASU ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToASU()">Send to ASU</button>
-                    <button disabled class="popup_sendToHelpDesk ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToHelpDesk()">Send to Help Desk</button>
+                    ${isAuthorized ? `<button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID})">Edit Ticket</button>` : ""}
                 </div>
                 ${sideContent ? `<div class="tx_sideContent">${sideContent}</div>` : ''}
             </div>
         `;
     } else { // Description Shown
-        let description = await fetchTicketDescription(ticket.ID);
-        // Scrub HTML tags out
-        description = description.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n+/g, '\n').trim(); 
-
-        popupContainer.innerHTML = `
+        ticketPopupContainer.innerHTML = `
             <div class="tx_popupWrapper ${isMobile ? "mobile mobile_tx_font" : ""}">
                 <div class="tx_popupBox ${isMobile ? "mobile" : ""}">
-                <span>${ticket.Title || "No Title"}</span>
-                ${isMobile ? "" : `<button class="popup_closeButton" onClick="hidePopup()">X</button>`}
-                <div class="tx_adjacent">
-                    <p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
-                    <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p></div>
+                    <span>${ticket.Title || "No Title"}</span>
+                    ${isMobile ? "" : `<button class="popup_closeButton" onClick="hideCurrentPopup()">X</button>`}
+                    <div class="tx_adjacent">
+                        <p class="tx_popup_ID">Ticket ID: ${ticket.ID || ""}</p>
+                        <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p>
+                    </div>
                     <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
-                    <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p></div>
+                        <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p>
+                    </div>
                     <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
-                    <button class="popup_toggleButton ${isMobile ? "mobile_tx_button" : ""}" onClick="toggleDetails(${ticket.ID})">Details</button>
-                    <p class="tx_popup_Requestor tx_textwrap">Requestor: ${ticket.RequestorName || ""}</p>
-                    <p class="tx_popup_contact tx_textwrap">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
-                    <p class="tx_popup_Responsible tx_textwrap${isMobile ? "mobile_tx_button" : ""}">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED <button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>`} || ${ticket.ResponsibleGroupName || ""}</p>
-                    <p class="tx_Description">${description || "--- No Description Provided ---"}</p>
-                    ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
+                    ${isAuthorized ? `<button class="popup_falseTicketButton" onClick="markTicketFalse(${ticket.ID}, ${ticket.ParentID})">${ticket.ParentID == 22873142 ? "Mark Ticket as True" : "Mark Ticket as False"}</button>` : ""}
                     <a href="https://uwyo.teamdynamix.com/TDNext/Apps/216/Tickets/TicketDet?TicketID=${ticket.ID}" target="_blank" rel="noopener noreferrer">
                         <button class="popup_linkToTicket ${isMobile ? "mobile_tx_button" : ""}">Link to Ticket</button>
                     </a>
-                    <button disabled class="popup_sendToASU ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToASU()">Send to ASU</button>
-                    <button disabled class="popup_sendToHelpDesk ${isMobile ? "mobile_tx_button" : ""}" onClick="sendToHelpDesk()">Send to Help Desk</button>
+                    <br>
+                    <hr>
+                    <button class="popup_toggleButton ${isMobile ? "mobile_tx_button" : ""}" onClick="toggleDetails(${ticket.ID})">Details</button>
+                    <p class="tx_popup_Requestor tx_textwrap">Requestor: ${ticket.RequestorName || ""}</p>
+                    <p class="tx_popup_contact tx_textwrap">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
+                    <p class="tx_popup_Responsible tx_textwrap${isMobile ? "mobile_tx_button" : ""}">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED ${isAuthorized ? `<button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>` : ""}`} || ${ticket.ResponsibleGroupName || ""}</p>
+                    <p class="tx_Description">Loading description...</p>
+                    ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">${isCommentsShown ? 'Hide Comments' : 'Show Comments'}</button>`}
+                    ${isAuthorized ? `<button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID})">Edit Ticket</button>` : ""}
                 </div>
                 ${sideContent ? `<div class="tx_sideContent">${sideContent}</div>` : ''}
             </div>
         `;
     }
-
     // Show popup
-    if (!popupContainer.classList.contains('popupActive')) {
-        // Save terminal state and hide terminal if open
+    if (!ticketPopupContainer.classList.contains('tx_popupActive')) {
+        // Hide terminal if open
         const terminal = document.getElementById('terminal');
-        if (terminal) {
-            window.terminalStateBeforePopup = terminal.style.display || 'block';
-            terminal.style.display = 'none';
-        }
+        if (terminal) terminal.style.display = 'none';
 
-        popupContainer.classList.add('popupActive');
+        ticketPopupContainer.classList.add('tx_popupActive');
 
         // Disable scrolling the main body when popup is active
         document.body.classList.add('tx_no-scroll');
     }
+
+    // Load description and comments after popup renders
+    updateDescription();
+    if (isCommentsShown) updateComments();
 
     // Mark ticket as viewed
     updateTicketViewed(ticket.ID, true);
@@ -497,84 +968,173 @@ async function show(ticket) {
 
 // Toggles the details page in the popup
 function toggleDetails(ticketID) {
-    const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
-    if (!popupContainer) return;
+    const ticketPopupContainer = document.querySelector('.tx_ticketPopupContainer.tx_popupActive');
+    if (!ticketPopupContainer) return;
 
-    const isDetailsShown = popupContainer.classList.contains('detailsShown');
+    const isDetailsShown = ticketPopupContainer.classList.contains('detailsShown');
     if (isDetailsShown) 
-        popupContainer.classList.remove('detailsShown');
+        ticketPopupContainer.classList.remove('detailsShown');
     else 
-        popupContainer.classList.add('detailsShown');
+        ticketPopupContainer.classList.add('detailsShown');
     
     // O(1) lookup via ticketById map
     const ticket = window.ticketById?.get(ticketID);
-    if (ticket) showPopup(ticket);
+    if (ticket) showTicketPopup(ticket);
 }
-
 // Toggles the comments box in the popup
 function toggleComments(ticketID) {
     const container = document.querySelector('.tx_container');
-    if (!container) return;
+    const ticketPopupContainer = document.querySelector('.tx_ticketPopupContainer.tx_popupActive');
+    if (!container || !ticketPopupContainer) return;
 
-    const isCommentsShown = container.classList.contains('commentsShown');
-    if (isCommentsShown) 
-        container.classList.remove('commentsShown');
-    else 
+    const commentsSection = ticketPopupContainer.querySelector('.tx_popupComments');
+    const commentsButton = ticketPopupContainer.querySelector('.popup_commentsButton');
+    const isCommentsShown = !container.classList.contains('commentsShown');
+
+    if (isCommentsShown) {
         container.classList.add('commentsShown');
-    
-    // O(1) lookup via ticketById map
-    const ticket = window.ticketById?.get(ticketID);
-    if (ticket) showPopup(ticket);
-}
-
-// Hides the popup
-function hidePopup() {
-    const popupContainer = document.querySelector('.tx_popupContainer.popupActive');
-    if (popupContainer) {
-        if (popupContainer.classList.contains('detailsShown')) 
-            popupContainer.classList.remove('detailsShown');
-
-        if (popupContainer.classList.contains('commentsShown')) 
-            popupContainer.classList.remove('commentsShown');
-
-        popupContainer.classList.remove('popupActive');
-
-        // Enable scrolling the main body when popup is inactive
-        document.body.classList.remove('tx_no-scroll');
-
-        // Restore terminal to its previous state
-        const terminal = document.getElementById('terminal');
-        if (terminal && window.terminalStateBeforePopup !== null) {
-            terminal.style.display = window.terminalStateBeforePopup;
-            window.terminalStateBeforePopup = null;
+        if (commentsSection) {
+            commentsSection.style.display = '';
+            const commentsList = commentsSection.querySelector('.tx_commentList');
+            if (commentsList) {
+                fetchTicketComments(ticketID).then(comments => {
+                    let builtComments = "";
+                    for (let i = 0; i < comments.length; i++) {
+                        const c = comments[i];
+                        let formattedDate = "";
+                        if (c.date != "") formattedDate = new Date(c.date).toLocaleString();
+                        for (let j = 0; j < (c.created_date || []).length; j++) {
+                            c.created_date[j] = new Date(c.created_date[j]).toLocaleString();
+                        }
+                        let commentBody = scrubHtmlToText(c.comment || "");
+                        let repliesRows = "";
+                        for (let j = 0; j < (c.replies_count || 0); j++) {
+                            let reply = c.replies[j] || "";
+                            reply = scrubHtmlToText(reply);
+                            repliesRows += `
+                                <div class="tx_reply">
+                                    <p class="tx_reply_person">
+                                        <strong class="tx_strong">${c.created_by[j]}, ${c.created_date[j]}</strong>
+                                    </p>
+                                    <p class="tx_reply_body">${reply}</p>
+                                </div>
+                            `;
+                        }
+                        let repliesHTML = `
+                            <p class="tx_reply_header">
+                                <strong class="tx_strong">Replies:</strong>
+                                ${repliesRows}
+                            </p>
+                        `;
+                        builtComments += `
+                            <div class="tx_comment">
+                                <p class="tx_comment_header">
+                                    <strong class="tx_strong">${c.commenter}</strong> - ${formattedDate}
+                                </p>
+                                <p class="tx_comment_body">${commentBody}</p>
+                                <div class="tx_replies">${c.replies_count ? repliesHTML : "" }</div>
+                                <p class="tx_comment_seperator"></p>
+                            </div>
+                        `;
+                    }
+                    if (comments.length == 0) {
+                        builtComments = `
+                            <div class="tx_comment">
+                                <br>
+                                    <p class="tx_comment_header">
+                                        <strong class="tx_strong">No Comments Exist for this Ticket</strong>
+                                    </p>
+                                <br>
+                            </div>
+                        `;
+                    }
+                    commentsList.innerHTML = builtComments;
+                });
+            }
         }
+        if (commentsButton) commentsButton.textContent = 'Hide Comments';
+    } else {
+        container.classList.remove('commentsShown');
+        if (commentsSection) commentsSection.style.display = 'none';
+        if (commentsButton) commentsButton.textContent = 'Show Comments';
     }
 }
+
+// Hides the current popup
+function hideCurrentPopup(forceClose=false) {
+    if (event) event.stopPropagation();
+
+    const container = document.getElementsByClassName("tx_popupActive")[0];
+    if (!container) {
+        console.error("hideCurrentPopup(): Couldn't resolve popupContainer");
+        return;
+    }
+
+    if (container.classList.contains("tx_ticketPopupContainer")) {
+        container.classList.remove('detailsShown');
+        container.classList.remove('tx_popupActive');
+    }
+    if (container.classList.contains("tx_newTicketPopupContainer")) {
+        if (forceClose) {
+            container.classList.remove('tx_popupActive');
+            document.body.classList.remove('tx_no-scroll');
+            return;
+        }
+        if (confirm("Are you sure you want to continue? Unsaved changes will be lost.")) {
+            container.classList.remove('tx_popupActive');
+        } else return;
+    }
+    if (container.classList.contains("tx_editTicketPopupContainer")) {
+        if (forceClose) {
+            container.classList.remove('tx_popupActive');
+            document.body.classList.remove('tx_no-scroll');
+            return;
+        }
+        if (confirm("Are you sure you want to continue? Unsaved changes will be lost.")) {
+            container.classList.remove('tx_popupActive');
+        } else return;
+    }
+
+    document.body.classList.remove('tx_no-scroll');
+}
+
 
 
     /* -------------------- Board Setup -------------------- */
 
 // Initializes all listeners for Tickex
 function initializeListeners() {
-    // Escape Key
-    document.addEventListener('keydown', (e) => {
-        const pressedKey = e.key;
-        if (pressedKey == 'Escape') 
-            if (document.querySelector('.tx_popupContainer.popupActive')) hidePopup();
-            if (document.querySelector('.tx_dismissAllPopupContainer.popupActive')) dismissAll(false);
-    });
-
     // Left Click Outside of Popup
     document.addEventListener('click', (e) => {
         if (e.button !== 0) return; // Ensure only left clicking
 
-        const popup = document.querySelector('.tx_popupContainer.popupActive');
-        if (popup) {
+        const ticketPopupContainer = document.querySelector('.tx_ticketPopupContainer.tx_popupActive');
+        if (ticketPopupContainer) {
             // Check if clicked element is within popupBox, comments, or whatChangedBox
             const clickedInPopupBox = e.target.closest('.tx_popupBox');
             const clickedInSideContent = e.target.closest('.tx_sideContent');
             
-            if (!clickedInPopupBox && !clickedInSideContent) hidePopup();
+            if (!clickedInPopupBox && !clickedInSideContent) hideCurrentPopup();
+        }
+
+        const newTicketPopupContainer = document.querySelector('.tx_newTicketPopupContainer.tx_popupActive');
+        if (newTicketPopupContainer) {
+            const clickedInPopupBox = e.target.closest('.tx_popupBox');
+            if (!clickedInPopupBox) hideCurrentPopup();
+        }
+
+        const editTicketPopupContainer = document.querySelector('.tx_editTicketPopupContainer.tx_popupActive');
+        if (editTicketPopupContainer) {
+            const clickedInPopupBox = e.target.closest('.tx_popupBox');
+            if (!clickedInPopupBox) hideCurrentPopup();
+        }
+
+        const dismissAllPopupContainer = document.querySelector('.tx_dismissAllPopupContainer.tx_popupActive');
+        if (dismissAllPopupContainer) {
+            const clickedInPopupBox = e.target.closest('.tx_popupBox');
+            if (!clickedInPopupBox) {    
+                dismissAll(false);
+            }
         }
     });
 
@@ -582,6 +1142,7 @@ function initializeListeners() {
     document.getElementById("sortByBox").addEventListener('click', (e) => {
         if (e.target.matches('input[type="radio"]')) {
             window.currentSortBy = e.target.id;
+            updateTickexSetting('sortBy', window.currentSortBy);
 
             const searchBar = document.getElementById('searchBar');
             let search = searchBar.value;
@@ -595,6 +1156,10 @@ function initializeListeners() {
         document.getElementById(`${section}Ticket_dropdown`)
             .addEventListener("change", () => {
                 document.getElementById(`${section}Ticket_input`).value = 1; // Reset to page 1
+                const currentValue = parseInt(document.getElementById(`${section}Ticket_dropdown`).value);
+                if (section === 'new') updateTickexSetting('newTicketMaxItems', currentValue);
+                if (section === 'catchAll') updateTickexSetting('catchAllMaxItems', currentValue);
+                if (section === 'closed') updateTickexSetting('closedMaxItems', currentValue);
                 performSearch(document.getElementById("searchBar").value, window.currentSortBy);
             });
 
@@ -782,7 +1347,7 @@ function initBoard() {
 
         let highlightClass = ticket.has_been_viewed ? '' : 'tx_highlight_row';
         let ticketRow = `
-            <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
+            <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showTicketPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
                 <td>${ticket.Title}</td>
                 ${isMobile ? "" : `<td>${ticket.ID}</td>`}
                 <td>${ticket.StatusName}</td>
@@ -815,7 +1380,7 @@ function initBoard() {
         }
         if (isClosed) {
             let closedRow = `
-                <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
+                <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showTicketPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
                     <td>${ticket.Title}</td>
                     ${isMobile ? "" : `<td>${ticket.ID}</td>`}
                 </tr>
@@ -840,6 +1405,7 @@ function initBoard() {
 }
 
 
+
     /* -------------------- Cache Functions -------------------- */
 
 // Grabs the Ticket Cache
@@ -851,19 +1417,43 @@ function getTicketCache() {
     }
 }
 
+function getTickexSettings() {
+    try {
+        const settings = JSON.parse(sessionStorage.getItem('tickex_settings')) || {};
+        return { ...DEFAULT_TICKEX_SETTINGS, ...settings };
+    } catch {
+        return { ...DEFAULT_TICKEX_SETTINGS };
+    }
+}
+
+function saveTickexSettings(settings) {
+    try {
+        sessionStorage.setItem('tickex_settings', JSON.stringify(settings));
+    } catch (e) {
+        console.warn('Failed to save Tickex settings:', e);
+    }
+}
+
+function updateTickexSetting(key, value) {
+    const settings = getTickexSettings();
+    settings[key] = value;
+    saveTickexSettings(settings);
+    return settings;
+}
+
 // Grabs a Specific Ticket from the Cache
-function getCachedTicketData(ticketId, type) {
+function getCachedTicketData(ticketID, type) {
     const cache = getTicketCache();
-    return cache.data[`${ticketId}_${type}`] || null;
+    return cache.data[`${ticketID}_${type}`] || null;
 }
 
 // Saves a Ticket to the Cache
-function setCachedTicketData(ticketId, type, value) {
+function setCachedTicketData(ticketID, type, value) {
     // Stores 50 tickets, comments & description for every ticket
     const MAX_CACHED = 100;
 
     const cache = getTicketCache();
-    const key = `${ticketId}_${type}`;
+    const key = `${ticketID}_${type}`;
     
     // If already exists, remove from order queue to re-add at end
     if (cache.data[key])
@@ -886,9 +1476,10 @@ function setCachedTicketData(ticketId, type, value) {
     }
 }
 
-function removeFromCache(ticketId) {
+// Removes a ticket from the Cache
+function removeFromCache(ticketID) {
     const cache = getTicketCache();
-    const keysToRemove = [ `${ticketId}_description`, `${ticketId}_comments` ];
+    const keysToRemove = [ `${ticketID}_description`, `${ticketID}_comments` ];
 
     cache.order = cache.order.filter(k => !keysToRemove.includes(k));
     keysToRemove.forEach(k => delete cache.data[k]);
@@ -907,6 +1498,7 @@ function tokenize(text) {
 }
 
 
+
     /* -------------------- Backend Calls -------------------- */
 
 // Grab all tickets from backend/api
@@ -922,18 +1514,18 @@ async function fetchTickets() {
 }
 
 // Grab ticket Description from backend 
-async function fetchTicketDescription(ticketId, forceFetch=false) {
+async function fetchTicketDescription(ticketID, forceFetch=false) {
     // Check cache first
-    const cached = getCachedTicketData(ticketId, 'description');
+    const cached = getCachedTicketData(ticketID, 'description');
     if (cached && !forceFetch) return cached;
 
     try {
-        const response = await fetch(`/ticket/description/${ticketId}`);
+        const response = await fetch(`/ticket/description/${ticketID}`);
         if (!response.ok) throw new Error('Network response was not ok');
 
         // Cache response
         const result = await response.text();
-        setCachedTicketData(ticketId, 'description', result);
+        setCachedTicketData(ticketID, 'description', result);
 
         return result;
     } catch (error) {
@@ -943,20 +1535,12 @@ async function fetchTicketDescription(ticketId, forceFetch=false) {
 }
 
 // Grab ticket Comments (feed) from backend
-async function fetchTicketComments(ticketId, forceFetch=false) {
-    // Check cache first
-    const cached = getCachedTicketData(ticketId, 'comments');
-    if (cached && !forceFetch) return cached;
-
+async function fetchTicketComments(ticketID, forceFetch=false) {
     try {
-        const response = await fetch(`/ticket/feed/${ticketId}`);
+        const response = await fetch(`/ticket/feed/${ticketID}`);
         if (!response.ok) throw new Error('Network response was not ok');
 
-        // Cache response
-        const result = await response.json();
-        setCachedTicketData(ticketId, 'comments', result);
-
-        return result;
+        return await response.json();
     } catch (error) {
         console.error('Failed to fetch ticket feed:', error);
         return [];
@@ -980,13 +1564,47 @@ async function fetchCurrentUserPermissions() {
     }
 }
 
+// Fetches whether the current user exists within Database records
+async function checkUserExistsInDatabase() {
+    try {
+        const response = await fetch('/currentUser/existsInDB');
+        if (!response.ok) {
+            console.error("Failed to fetch current user permissions");
+            return 0;
+        }
+
+        const data = await response.json();
+        return data.response || 0;
+    } catch (error) {
+        console.error("Error fetching current user permissions:", error);
+        return 0;
+    }
+}
+
+// Fetches the TDX user ID for the current user
+async function fetchTDXUser() {
+    try {
+        const response = await fetch('/currentUser/fetchTDXUser');
+        if (!response.ok) {
+            console.error("Failed to fetch current user ID");
+            return "FAILED_TO_FETCH_TDX_USER_ID";
+        }
+
+        const data = await response.json();
+        return data || {"UID": 0, "FullName": ""};
+    } catch (error) {
+        console.error("Error fetching current user ID:", error);
+        return "FAILED_TO_FETCH_TDX_USER_ID";
+    }
+}
+
 // Update ticket's viewed status in backend/database
-async function updateTicketViewed(ticketId, viewed) {
+async function updateTicketViewed(ticketID, viewed) {
     try {
         const response = await fetch('/update/ticket/viewed', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', },
-            body: JSON.stringify({ id: ticketId, viewed: viewed }),
+            body: JSON.stringify({ id: ticketID, viewed: viewed }),
         });
 
         if (!response.ok) console.error('Failed to update ticket viewed status');
@@ -995,11 +1613,69 @@ async function updateTicketViewed(ticketId, viewed) {
     }
 }
 
+// Send a request to TeamDynamix to Create/edit a Ticket
+async function updateTicket(body) {
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.UID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    if (!isAuthorized) return;
+
+    try {
+        const response = await fetch('/update/ticket', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', },
+            body: JSON.stringify(body),
+        });
+
+        if (!response.ok) console.error('Failed to Creating/Editing ticket');
+    } catch (error) {
+        console.error('Error Creating/Editing ticket:', error);
+    }
+}
+
+// Send a request to TeamDynamix to Post a Comment to a Ticket
+async function postComment(body) {
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.UID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    if (!isAuthorized) return;
+
+    try {
+        const response = await fetch('/update/ticket/postComment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', },
+            body: JSON.stringify(body),
+        });
+
+        if (!response.ok) console.error('Failed to Creating/Editing ticket');
+    } catch (error) {
+        console.error('Error Creating/Editing ticket:', error);
+    }
+}
+
+// Send a request to TeamDynamix to mark at Ticket as a True/False Ticket
+async function updateFalseStatus(jsonBody) {
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.UID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    if (!isAuthorized) return;
+
+    try {
+        const response = await fetch('/update/ticket/markFalse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', },
+            body: JSON.stringify(jsonBody),
+        });
+
+        if (!response.ok) console.error('Failed to Creating/Editing ticket');
+    } catch (error) {
+        console.error('Error Creating/Editing ticket:', error);
+    }
+}
+
+
 
     /* -------------------- "Main" Function -------------------- */
 
 // Sets up the Tickex tool page
-async function setTickex() {
+async function setTickex(openTicketByID = -1) {
     preserveCurrentTool();
     document.title = "Tickex - Bronson";
 
@@ -1008,9 +1684,6 @@ async function setTickex() {
     
     // Clear stash and remove strobing indicator
     sessionStorage.removeItem("Tickex_stash");
-
-    // Track terminal state when popup is shown
-    window.terminalStateBeforePopup = null;
 
     const isMobile = (localStorage.getItem("isMobile") === "true") ? true : false;
 
@@ -1053,6 +1726,10 @@ async function setTickex() {
 
 
     /* -------------------- Tickex Page -------------------- */
+
+    const isAdmin = await fetchCurrentUserPermissions()  >= 6;
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.UID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase());
 
     // Display loading message while fetching tickets
     let loadingMessage = document.createElement("div");
@@ -1103,6 +1780,28 @@ async function setTickex() {
     loadingMessage.remove();
 
 
+    // Add Ticket Button
+    let addTicketButton = document.createElement("div");
+    addTicketButton.classList.add("tx_addTicketButton");
+    addTicketButton.innerHTML = `
+        <button onclick="event.stopPropagation(); newTicketPopup()">+</button>
+    `;
+    if (isAuthorized) tx_container.append(addTicketButton);
+
+    // New Ticket Popup Container
+    let newTicketPopupContainer = document.createElement("div");
+    newTicketPopupContainer.classList.add("tx_newTicketPopupContainer");
+    tx_container.append(newTicketPopupContainer);
+
+    // Edit Ticket Popup Container
+    let editTicketPopupContainer = document.createElement("div");
+    editTicketPopupContainer.classList.add("tx_editTicketPopupContainer");
+    tx_container.append(editTicketPopupContainer);
+
+
+    const tickexSettings = getTickexSettings();
+    window.currentSortBy = tickexSettings.sortBy || DEFAULT_TICKEX_SETTINGS.sortBy;
+
     // Sort By Box - by date and status
     let sortByBox = document.createElement("div");
     sortByBox.classList.add("tx_sortByBox");
@@ -1111,15 +1810,15 @@ async function setTickex() {
     sortByBox.innerHTML = `
         <legend ${isMobile ? "class='mobile_legend'" : ""}>Sort By</legend>
         <div>
-            <input class="tx_radio" type="radio" name="tx_dev" id="modified" checked>
+            <input class="tx_radio" type="radio" name="tx_dev" id="modified" ${window.currentSortBy === 'modified' ? 'checked' : ''}>
             <label for="modified">Date Modified</label>
         </div>
         <div>
-            <input class="tx_radio" type="radio" name="tx_dev" id="created">
+            <input class="tx_radio" type="radio" name="tx_dev" id="created" ${window.currentSortBy === 'created' ? 'checked' : ''}>
             <label for="created">Date Created</label>
         </div>
         <div>
-            <input class="tx_radio" type="radio" name="tx_dev" id="status">
+            <input class="tx_radio" type="radio" name="tx_dev" id="status" ${window.currentSortBy === 'status' ? 'checked' : ''}>
             <label for="status">Status</label>
         </div>
 
@@ -1152,8 +1851,7 @@ async function setTickex() {
         // Dismiss Notifications Button (Admin only)
         let dismissAllButton = document.createElement("div");
         dismissAllButton.classList.add("tx_dismissAllButton");
-        const userPermissions = await fetchCurrentUserPermissions();
-        if (userPermissions >= 6) {
+        if (isAdmin) {
             dismissAllButton.innerHTML = `
                 <button id="tx_dismissAllButton" onclick="dismissAllPopup()">Dismiss All</button>
             `;
@@ -1165,15 +1863,6 @@ async function setTickex() {
         dismissAllPopupContainer.classList.add("tx_dismissAllPopupContainer");
         tx_container.append(dismissAllPopupContainer);
     }
-
-    // New Tickets Popup
-    let newTicketsPopup = document.createElement("div");
-    newTicketsPopup.classList.add("tx_newTicketsPopup");
-    if (isMobile) newTicketsPopup.classList.add("mobile");
-    newTicketsPopup.innerHTML = `
-        <legend ${isMobile ? "class='mobile_font'" : ""}>New Tickets Available!</legend>
-    `;
-    tx_container.append(newTicketsPopup);
 
     // The 3 Tickex boards - New, Catch All, Closed
     let newTickets = document.createElement("div");
@@ -1201,20 +1890,21 @@ async function setTickex() {
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="new_plus10" onclick="kPagerButton(10, 'newTicket_input', 'newMaxPage')">+10</button>
                     <div><span ${isMobile ? "class='mobile_font'" : ""}>Max Items per Page: </span>
                     <select class="k_pager_button ${isMobile ? "mobile_font" : ""}" id="newTicket_dropdown">
-                        <option value="5">5</option>
-                        <option value="10">10</option>
-                        <option value="15" selected>15</option>
-                        <option value="20">20</option>
-                        <option value="30">30</option>
+                        <option value="5" ${tickexSettings.newTicketMaxItems === 5 ? 'selected' : ''}>5</option>
+                        <option value="10" ${tickexSettings.newTicketMaxItems === 10 ? 'selected' : ''}>10</option>
+                        <option value="15" ${tickexSettings.newTicketMaxItems === 15 ? 'selected' : ''}>15</option>
+                        <option value="20" ${tickexSettings.newTicketMaxItems === 20 ? 'selected' : ''}>20</option>
+                        <option value="30" ${tickexSettings.newTicketMaxItems === 30 ? 'selected' : ''}>30</option>
                         ${!isMobile ? `
-                            <option value="40">40</option>
-                            <option value="50">50</option>
-                            <option value="75">75</option>
-                            <option value="100">100</option>` : ""
+                            <option value="40" ${tickexSettings.newTicketMaxItems === 40 ? 'selected' : ''}>40</option>
+                            <option value="50" ${tickexSettings.newTicketMaxItems === 50 ? 'selected' : ''}>50</option>
+                            <option value="75" ${tickexSettings.newTicketMaxItems === 75 ? 'selected' : ''}>75</option>
+                            <option value="100" ${tickexSettings.newTicketMaxItems === 100 ? 'selected' : ''}>100</option>` : ""
                         }
                     </select></div>
                 </div>
-            </div></fieldset>
+            </div>
+        </fieldset>
     `;
 
     let catchAll = document.createElement("div");
@@ -1242,20 +1932,21 @@ async function setTickex() {
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="catchAll_plus10" onclick="kPagerButton(10, 'catchAllTicket_input', 'catchAllMaxPage')">+10</button>
                     <div><span ${isMobile ? "class='mobile_font'" : ""}>Max Items per Page: </span>
                     <select class="k_pager_button ${isMobile ? "mobile_font" : ""}" id="catchAllTicket_dropdown">
-                        <option value="5">5</option>
-                        <option value="10">10</option>
-                        <option value="15" selected>15</option>
-                        <option value="20">20</option>
-                        <option value="30">30</option>
+                        <option value="5" ${tickexSettings.catchAllMaxItems === 5 ? 'selected' : ''}>5</option>
+                        <option value="10" ${tickexSettings.catchAllMaxItems === 10 ? 'selected' : ''}>10</option>
+                        <option value="15" ${tickexSettings.catchAllMaxItems === 15 ? 'selected' : ''}>15</option>
+                        <option value="20" ${tickexSettings.catchAllMaxItems === 20 ? 'selected' : ''}>20</option>
+                        <option value="30" ${tickexSettings.catchAllMaxItems === 30 ? 'selected' : ''}>30</option>
                         ${!isMobile ? `
-                            <option value="40">40</option>
-                            <option value="50">50</option>
-                            <option value="75">75</option>
-                            <option value="100">100</option>` : ""
+                            <option value="40" ${tickexSettings.catchAllMaxItems === 40 ? 'selected' : ''}>40</option>
+                            <option value="50" ${tickexSettings.catchAllMaxItems === 50 ? 'selected' : ''}>50</option>
+                            <option value="75" ${tickexSettings.catchAllMaxItems === 75 ? 'selected' : ''}>75</option>
+                            <option value="100" ${tickexSettings.catchAllMaxItems === 100 ? 'selected' : ''}>100</option>` : ""
                         }
                     </select></div>
                 </div>
-            </div></fieldset>
+            </div>
+        </fieldset>
     `;
 
     let closedTickets = document.createElement("div");
@@ -1282,16 +1973,16 @@ async function setTickex() {
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="closed_plus10" onclick="kPagerButton(10, 'closedTicket_input', 'closedMaxPage')">+10</button>
                     <div><span ${isMobile ? "class='mobile_font'" : ""}>Max Items per Page: </span>
                     <select class="k_pager_button ${isMobile ? "mobile_font" : ""}" id="closedTicket_dropdown">
-                        <option value="5">5</option>
-                        <option value="10" selected>10</option>
-                        <option value="15">15</option>
-                        <option value="20">20</option>
-                        <option value="30">30</option>
+                        <option value="5" ${tickexSettings.closedMaxItems === 5 ? 'selected' : ''}>5</option>
+                        <option value="10" ${tickexSettings.closedMaxItems === 10 ? 'selected' : ''}>10</option>
+                        <option value="15" ${tickexSettings.closedMaxItems === 15 ? 'selected' : ''}>15</option>
+                        <option value="20" ${tickexSettings.closedMaxItems === 20 ? 'selected' : ''}>20</option>
+                        <option value="30" ${tickexSettings.closedMaxItems === 30 ? 'selected' : ''}>30</option>
                         ${!isMobile ? `
-                            <option value="40">40</option>
-                            <option value="50">50</option>
-                            <option value="75">75</option>
-                            <option value="100">100</option>` : ""
+                            <option value="40" ${tickexSettings.closedMaxItems === 40 ? 'selected' : ''}>40</option>
+                            <option value="50" ${tickexSettings.closedMaxItems === 50 ? 'selected' : ''}>50</option>
+                            <option value="75" ${tickexSettings.closedMaxItems === 75 ? 'selected' : ''}>75</option>
+                            <option value="100" ${tickexSettings.closedMaxItems === 100 ? 'selected' : ''}>100</option>` : ""
                         }
                     </select></div>
                 </div>
@@ -1299,9 +1990,9 @@ async function setTickex() {
     `;
 
     // Popup Container - click on ticket for popup to appear
-    let popupContainer = document.createElement("div");
-    popupContainer.classList.add("tx_popupContainer");
-    tx_container.append(popupContainer);
+    let ticketPopupContainer = document.createElement("div");
+    ticketPopupContainer.classList.add("tx_ticketPopupContainer");
+    tx_container.append(ticketPopupContainer);
     
 
     // Initialize board on loadup
@@ -1327,9 +2018,9 @@ async function setTickex() {
                                                             t.StatusName != 'Resolved' && 
                                                             t.StatusName != 'Cancelled');
                     const closedTickets = newTickets.filter(t => !oldTickets.has(t.ModifiedDate) && 
-                                                                (t.StatusName == "Closed" || 
-                                                                t.StatusName == 'Resolved' || 
-                                                                t.StatusName == 'Cancelled'));
+                                                            (t.StatusName == "Closed" || 
+                                                            t.StatusName == 'Resolved' || 
+                                                            t.StatusName == 'Cancelled'));
 
                     // New tickets found
                     if (actuallyNew.length > 0) {
@@ -1345,24 +2036,8 @@ async function setTickex() {
 
                         // Check if user is currently on Tickex page
                         const txButton = document.getElementById("TXButton");
-                        if (txButton && txButton.classList.contains("selected")) {
-                            // User is on Tickex, show the popup
-                            newTicketsPopup.classList.add("tx_newTicketsPopupActive");
-                            newTicketsPopup.classList.remove("tx_newTicketsPopup");
-                            setTimeout(() => {
-                                newTicketsPopup.classList.add("tx_newTicketsPopup");
-                                newTicketsPopup.classList.remove("tx_newTicketsPopupActive");
-                            }, 60000);
-                        } else {
-                            // User is NOT on Tickex, stash the response and strobe the tab
-                            stashTickexResponse(actuallyNew);
-                        }
-                    }
-
-                    // Update New Tickets Popup if needed
-                    if (newTicketsPopup.classList.contains("tx_newTicketsPopupActive") && actuallyNew.length == 0) {
-                        newTicketsPopup.classList.remove("tx_newTicketsPopupActive");
-                        newTicketsPopup.classList.add("tx_newTicketsPopup");
+                        if (!(txButton && txButton.classList.contains("selected"))) 
+                            stashTickexResponse(actuallyNew); // User is NOT on Tickex, stash the response and strobe the tab
                     }
 
                     // Prevent Search Task Disruption
@@ -1395,6 +2070,11 @@ async function setTickex() {
         }, 60000); // Refresh every 60 seconds
     }
 
+    // Instantly opens up the provided ticket upon page loadup
+    const t = window.ticketById?.get(openTicketByID);
+    if (openTicketByID != -1 && t) { // -1: default for no popup on loadup
+        showTicketPopup(t); 
+    }
+
     await Promise.resolve();
-    return;
 }

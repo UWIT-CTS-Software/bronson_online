@@ -1043,6 +1043,28 @@ impl Database {
 		Ok(Some(updated))
 	}
 
+
+	pub fn update_ticket_parent_id(&mut self, id: i32, new_parent_id: i32) -> Result<Option<DB_Ticket>, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		// Try to fetch the ticket first
+		let ticket_opt = tickets
+			.filter(ticket_id.eq(id))
+			.first::<DB_Ticket>(&mut conn)
+			.optional()?;
+
+		// If not found, quietly return
+		let Some(_) = ticket_opt else { return Ok(None); };
+
+		// Update the parent ID
+		let updated = diesel::update(tickets.filter(ticket_id.eq(id)))
+			.set(parent_id.eq(new_parent_id))
+			.returning(DB_Ticket::as_returning())
+			.get_result::<DB_Ticket>(&mut conn)?;
+
+		Ok(Some(updated))
+	}
+
 	pub fn update_ticket_comment_count(&mut self, id: i32, new_count: i16) -> Result<Option<DB_Ticket>,	DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
@@ -1947,9 +1969,10 @@ pub static TSCH_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/techSch
 pub static BLDG_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/buildings.json");
 pub static CAMPUS_STR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.json");
 pub static ALIAS_JSON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/alias_table.json");
+pub static TICKT_JSON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/create_ticket_template.json");
 pub static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
+pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/wiki_articles/");
 pub static TEMP_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/generated_files/temp");
-pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
 pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/roomConfig_agg.csv");
 pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.csv");
 pub static LOG       : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/output.log");

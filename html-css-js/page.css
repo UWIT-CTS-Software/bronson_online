@@ -59,6 +59,14 @@ p {
     font-size: medium;
 }
 
+hr {
+    display: block;
+    background-color: rgb(224, 193, 108);
+    width: 100%;
+    height: 1px;
+    border: none;
+}
+
 strong {
     color: rgb(236, 200, 101);
     text-align: center;
@@ -1504,6 +1512,20 @@ ol li::marker {
     grid-auto-rows: minmax(20px, auto);
 }
 
+.tx_addTicketButton {
+    grid-column: 2 / 3;
+    grid-row: 1 / 3;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.tx_addTicketButton button {
+    width: 35px;
+    height: 35px;
+    font-size: 18pt;
+}
+
 .tx_container.mobile {
     display: grid;
     grid-template-columns: repeat(100, 1fr);
@@ -1540,70 +1562,6 @@ ol li::marker {
 
 .tx_strong {
     font-size: 12pt;
-}
-
-.tx_newTicketsPopupActive {
-    max-width: 85%;
-    grid-column: 2 / 3;
-    grid-row: 1 / 3;
-    place-self: center;
-    font-size: small;
-    opacity: 100%;
-    transition: .2s ease;
-    pointer-events: none;
-    animation: flash 1.5s ease-in-out infinite;
-}
-.tx_newTicketsPopupActive.mobile {
-    grid-column: 76 / 101;
-    grid-row: 1;
-    width: 100%;
-    height: auto;
-    opacity: 100%;
-    transition: .2s ease;
-    pointer-events: none;
-    animation: flash 1.5s ease-in-out infinite;
-}
-@keyframes flash {
-    0% {
-        background-color: rgb(50, 50, 50);
-        border-radius: 15px;
-    }
-    50% {
-        background-color: rgb(80, 80, 80);
-        border-radius: 15px;
-    }
-    100% {
-        background-color: rgb(50, 50, 50);
-        border-radius: 15px;
-    }
-}
-
-.tx_newTicketsPopup {
-    max-width: 85%;
-    font-size: small;
-    grid-column: 2 / 3;
-    grid-row: 1 / 3;
-    place-self: center;
-    opacity: 0%;
-    transition: .2s ease;
-    pointer-events: none;
-}
-.tx_newTicketsPopup.mobile {
-    grid-column: 76 / 101;
-    grid-row: 1;
-    width: 100%;
-    height: auto;
-    opacity: 0%;
-    transition: .2s ease;
-    pointer-events: none;
-}
-
-.tx_newTicketsPopupActive legend {
-    font-size: 16px;
-}
-
-.tx_newTicketsPopup legend {
-    font-size: 16px;
 }
 
 .tx_dismissAllButton {
@@ -1778,6 +1736,10 @@ td.mobile_th {
   appearance: textfield; 
 }
 
+#tx_editTicketEmailCheckbox {
+    margin-left: 10px;
+}
+
 .tx_ticketContainer button {
     background-color: #ecc865;
     padding-inline: 4px;
@@ -1866,7 +1828,7 @@ td.mobile_th {
     transition: .2s ease;
 }
 
-.tx_dismissAllPopupContainer.popupActive {
+.tx_dismissAllPopupContainer.tx_popupActive {
     opacity: 1;
     pointer-events: auto;
     transition: .3s ease;
@@ -1884,15 +1846,15 @@ td.mobile_th {
 
 .dismissAllButtonConfirm {
     float: left;
-    margin: 0px 0px 3px 5px;
+    margin: 10px 0px 5px 7px;
 }
 
 .cancelPopupButton {
     float: right;
-    margin: 0px 5px 3px 0px;
+    margin: 10px 7px 5px 0px;
 }
 
-.tx_popupContainer {
+.tx_ticketPopupContainer {
     position: fixed;
     width: 100%;
     height: auto;
@@ -1910,7 +1872,7 @@ td.mobile_th {
     overflow-y: scroll;
 }
 
-.tx_popupContainer.popupActive {
+.tx_ticketPopupContainer.tx_popupActive {
     opacity: 1;
     pointer-events: auto;
     transition: .3s ease;
@@ -1920,7 +1882,7 @@ td.mobile_th {
     overflow: hidden;
 }
 
-.tx_popupContainer .tx_popupBox {
+.tx_ticketPopupContainer .tx_popupBox {
     width: 40%;
     height: fit-content;
     border: 3px solid rgb(224, 193, 108);
@@ -1929,6 +1891,157 @@ td.mobile_th {
     margin-top: 90px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
+
+.tx_createTicketText {
+    margin: 3px 0;
+}
+
+.tx_createTicketTextarea {
+    width: 98%;
+    margin: 5px;
+}
+
+.tx_textareaRequired {
+    border: 2px inset rgb(209, 23, 23);
+}
+
+.tx_textareaRequired::placeholder {
+    color: rgb(209, 23, 23);
+    opacity: 1;
+}
+
+.tx_createTicketBr {
+    margin: 4px 0;
+}
+
+.tx_newTicketPopupContainer {
+    position: fixed;
+    width: 100%;
+    height: auto;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    opacity: 0;
+    background-color: rgba(0,0,0,0.4);
+    pointer-events: none;
+    transition: .2s ease;
+}
+
+.tx_newTicketPopupContainer.tx_popupActive {
+    opacity: 1;
+    pointer-events: auto;
+    transition: .3s ease;
+}
+
+.tx_newTicketPopupContainer .tx_popupBox {
+    width: 500px;
+    height: fit-content;
+    max-height: 65%;
+    overflow-y: scroll;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 125px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.tx_editTicketPopupContainer {
+    position: fixed;
+    width: 100%;
+    height: auto;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    opacity: 0;
+    background-color: rgba(0,0,0,0.4);
+    pointer-events: none;
+    transition: .2s ease;
+}
+
+.tx_editTicketPopupContainer.tx_popupActive {
+    opacity: 1;
+    pointer-events: auto;
+    transition: .3s ease;
+}
+
+.tx_editTicketPopupContainer .tx_popupBox {
+    width: 500px;
+    height: fit-content;
+    max-height: 65%;
+    overflow-y: scroll;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 125px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+.tx_editTicketPopupContainer .tx_popupBox::-webkit-scrollbar {
+    display: block !important;
+    width: 8px;
+}
+.tx_editTicketPopupContainer .tx_popupBox::-webkit-scrollbar-thumb {
+    background: rgb(224, 193, 108);
+    border-radius: 4px;
+}
+.tx_editTicketPopupContainer .tx_popupBox::-webkit-scrollbar-track {
+    background: transparent;
+} 
+
+.tx_commentOnTicketPopupContainer {
+    position: fixed;
+    width: 100%;
+    height: auto;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    opacity: 0;
+    background-color: rgba(0,0,0,0.4);
+    pointer-events: none;
+    transition: .2s ease;
+}
+
+.tx_commentOnTicketPopupContainer.tx_popupActive {
+    opacity: 1;
+    pointer-events: auto;
+    transition: .3s ease;
+}
+
+.tx_commentOnTicketPopupContainer .tx_popupBox {
+    width: 500px;
+    height: fit-content;
+    max-height: 65%;
+    overflow-y: scroll;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 125px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+.tx_commentOnTicketPopupContainer .tx_popupBox::-webkit-scrollbar {
+    display: block !important;
+    width: 8px;
+}
+.tx_commentOnTicketPopupContainer .tx_popupBox::-webkit-scrollbar-thumb {
+    background: rgb(224, 193, 108);
+    border-radius: 4px;
+}
+.tx_commentOnTicketPopupContainer .tx_popupBox::-webkit-scrollbar-track {
+    background: transparent;
+} 
+
+
 .tx_popupBox.mobile {
     width: 551px;
     height: fit-content;
@@ -1961,9 +2074,18 @@ td.mobile_th {
 .tx_popupBox p {
     text-align: left;
     padding: 0px 8px;
-    white-space: nowrap;
+    /* white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
+    text-overflow: ellipsis; */
+}
+
+.tx_popupBox label {
+    margin: 5px;
+}
+
+.tx_popupBox select {
+    margin: 5px;
+    width: 97%;
 }
 
 .tx_popupWrapper {
@@ -1986,19 +2108,22 @@ td.mobile_th {
     margin-left: 5px;
 }
 
-.tx_popupContainer .tx_popupComments {
+.tx_popupComments {
+    display: flex;
+    flex-direction: column;
+    position: relative;
     max-width: 401px;
     min-width: 301px;
     width: fit-content;
-    max-height: 450px;
-    height: fit-content;
+    max-height: 500px;
+    height: 100%;
     border: 3px solid rgb(224, 193, 108);
     background: rgb(60, 60, 60);
     border-radius: 6px;
     margin-left: 10px;
     margin-bottom: 10px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    overflow-y: auto;
+    overflow-y: hidden;
 }
 .tx_popupComments.mobile {
     max-width: 401px;
@@ -2007,15 +2132,15 @@ td.mobile_th {
     scale: 135%;
 }
 
-.tx_popupComments::-webkit-scrollbar {
+.tx_commentWrapper::-webkit-scrollbar {
     display: block !important;
     width: 8px;
 }
-.tx_popupComments::-webkit-scrollbar-thumb {
+.tx_commentWrapper::-webkit-scrollbar-thumb {
     background: rgb(224, 193, 108);
     border-radius: 4px;
 }
-.tx_popupComments::-webkit-scrollbar-track {
+.tx_commentWrapper::-webkit-scrollbar-track {
     background: transparent;
 }
 
@@ -2030,23 +2155,54 @@ td.mobile_th {
     padding: 0px 10px 0 10px;
     margin: 0px 0px;
     border-radius: 0px 0px 6px 0px;
-    max-width: 90%;
+    max-width: 28%;
+    min-width: 110px;
     display: inline-block;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    flex-shrink: 0;
 }
 
 .tx_popupComments p {
     font-size: small;
     text-align: left;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     padding: 0px 8px;
 }
 
-.tx_popupContainer .tx_whatChangedBox {
+#tx_newCommentButton {
+    align-self: flex-end;
+    margin: 10px 7px 5px 0;
+    flex-shrink: 0;
+}
+
+.tx_commentWrapper {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+.tx_popupCommentsHR {
+    margin: 0;
+    height: 2px;
+}
+
+.tx_commentList {
+    height: 100%;
+    overflow-y: auto;
+}
+
+.tx_newCommentDialog {
+    margin: 0;
+}
+
+.tx_newCommentDialog span {
+    margin-top: 0;
+    min-width: 150px;
+}
+
+.tx_ticketPopupContainer .tx_whatChangedBox {
     max-width: 401px;
     min-width: 301px;
     width: fit-content;
@@ -2095,13 +2251,33 @@ td.mobile_th {
 }
 
 .popup_linkToTicket {
-    float: left;
-    margin: 0px 0px 5px 5px;
+    float: right;
+    margin: 0px 7px 5px 0px;
 }
 
 .popup_commentsButton {
-    float: left;
-    margin: 0px 0px 5px 7px;
+    float: right;
+    margin: 0px 7px 5px 0px;
+}
+
+#tx_emailCheckbox {
+    margin: 10px 0 0 10px;
+}
+
+#tx_applyChangesButton {
+    margin: 10px 0px 5px 7px
+}
+
+#tx_commentButton {
+    margin: 10px 0px 5px 7px
+}
+
+#tx_createTicketButton {
+    margin: 10px 0px 5px 7px;
+}
+
+.tx_comment {
+    margin: 8px 0 40px 0;
 }
 
 .tx_comment_header {
@@ -2153,14 +2329,14 @@ td.mobile_th {
     margin: 3px;
 }
 
-.popup_sendToASU {
-    float: right;
-    margin: 0px 7px 5px 0px;
+.popup_editTicket {
+    float: left;
+    margin: 0px 0px 5px 7px;
 }
 
-.popup_sendToHelpDesk {
-    float: right;
-    margin: 0px 7px 5px 0px;
+.popup_falseTicketButton {
+    float: left;
+    margin: 0px 0px 5px 7px;
 }
 
 .tx_adjacent {
@@ -2203,11 +2379,6 @@ p.tx_popup_DaysOld {
 
 .tx_popup_Requestor {
     margin-top: 20px;
-}
-
-p.tx_popup_Title {
-    border-bottom: 1px solid rgb(224, 193, 108);
-    padding-bottom: 15px;
 }
 
 p.tx_Description {

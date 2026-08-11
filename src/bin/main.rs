@@ -45,13 +45,14 @@ Wiki
 // dependencies
 // ----------------------------------------------------------------------------
 use server_lib::{
+    APIResponse,
     BUFF_SIZE, 
     ThreadPool, ThreadSchedule, TaskSchedule, PingRequest, 
     Building, 
     CFMRequestFile, TreeNode,
     jp::{ ping_this, },
     API, APIClient::{ MultiThread, SingleThread, },
-    CFM_DIR, WIKI_DIR, /* LOG, */
+    TICKT_JSON, CFM_DIR, WIKI_DIR, TEMP_DIR, /* LOG, */
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_400, STATUS_401, STATUS_404, STATUS_500, 
     SCHD_ERR, DASH_ERR, LDRB_ERR, SPRS_ERR, 
     Database, Terminal, 
@@ -812,12 +813,12 @@ async fn handle_connection(
         "GET /currentUser HTTP/1.1" => { // OUTGOING, Current user info
             if !req.has_valid_cookie(&mut database) {
                 Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
+                    .status(STATUS_401)
+                    .send_contents(
+                        json!(
+                            {"response": "Unauthorized"}
+                        ).to_string().into()
+                    )
             } else {
                 // Extract username from cookie
                 let cookie = req.headers
@@ -858,6 +859,106 @@ async fn handle_connection(
                     }).to_string().into())
             }
         },
+        "GET /currentUser/existsInDB HTTP/1.1" => {
+            if !req.has_valid_cookie(&mut database) {
+                Response::new()
+                    .status(STATUS_401)
+                    .send_contents(
+                        json!(
+                            {"response": "Unauthorized"}
+                        ).to_string().into()
+                    )
+            } else {
+                // Extract username from cookie
+                let cookie = req.headers
+                    .get("Cookie")
+                    .cloned()
+                    .unwrap_or(String::new());
+                let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
+                let username = match username_search.captures(&cookie) {
+                    Some(caps) => caps["username"].to_string(),
+                    None => {
+                        return Response::new()
+                            .status(STATUS_401)
+                            .send_contents(json!({
+                                "response": "Unauthorized"
+                            }).to_string().into())
+                            .build();
+                    }
+                };
+
+                // Fetch user from DB, default to standard user if not found
+                let user_exists = match database.get_user(&username) {
+                    Ok(_) => {
+                        json!({
+                            "response": true
+                        })
+                    },
+                    Err(e) => {
+                        error!("DB_ERR: {}", e);
+                        json!({
+                            "response": false
+                        })
+                    }
+                };
+
+                // Return user info
+                Response::new()
+                    .status(STATUS_200)
+                    .send_contents(
+                        user_exists.to_string().into()
+                    )
+            }
+        },
+        "GET /currentUser/fetchTDXUser HTTP/1.1" => {
+            if !req.has_valid_cookie(&mut database) {
+                Response::new()
+                    .status(STATUS_401)
+                    .send_contents(
+                        json!(
+                            {"response": "Unauthorized"}
+                        ).to_string().into()
+                    )
+            } else {
+                // Extract username from cookie
+                let cookie = req.headers
+                    .get("Cookie")
+                    .cloned()
+                    .unwrap_or(String::new());
+                let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
+                let username = match username_search.captures(&cookie) {
+                    Some(caps) => caps["username"].to_string(),
+                    None => {
+                        return Response::new()
+                            .status(STATUS_401)
+                            .send_contents(json!({
+                                "response": "Unauthorized"
+                            }).to_string().into())
+                            .build();
+                    }
+                };
+
+                // Query TDX for User ID using the username provided in the cookie
+                let user = match get_tdx_user(&mut database, &tdx_client, &username.to_string()).await {
+                    Ok(u) => u,
+                    Err(_) => {
+                        return Response::new()
+                            .status(STATUS_500)
+                            .send_contents(json!({
+                                "response": "Failed to Fetch User ID from TDX"
+                            }).to_string().into())
+                            .build();
+                    }
+                };
+
+                // Return user info
+                Response::new()
+                    .status(STATUS_200)
+                    .send_contents(
+                        user.to_string().into()
+                    )
+            }
+        },
         "GET /tickets HTTP/1.1" => { // OUTGOING, Tickets for Tickex
             let db_tickets = match database.get_all_tickets() {
                 Ok(t) => t,
@@ -877,6 +978,7 @@ async fn handle_connection(
                     "Title": t.title,
                     "StatusName": t.status_name,
                     "RequestorName": t.requestor_name,
+                    "RequestorFirstName": t.requestor_first_name,
                     "RequestorEmail": t.requestor_email,
                     "RequestorPhone": t.requestor_phone,
                     "CreatedFullName": t.created_full_name,
@@ -915,6 +1017,62 @@ async fn handle_connection(
                 .status(STATUS_200)
                 .send_contents(contents)
         },
+        "POST /update/ticket HTTP/1.1" => {
+            // Parse JSON body
+            let body_json: Value = match serde_json::from_slice(&req.body) {
+                Ok(v) => v,
+                Err(_) => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Invalid JSON".into())
+                        .build();
+                }
+            };
+
+            let operation_type = body_json["_OperationType"].as_str().unwrap_or("");
+
+            let _ = match operation_type {
+                "CREATE" => create_tdx_ticket(&mut database, &tdx_client, body_json).await,
+                "EDIT" => edit_tdx_ticket(&mut database, &tdx_client, body_json).await,
+                _ => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Malformed '_OperationType' Field".into())
+                        .build();
+                }
+            };
+
+            Response::new()
+                .status(STATUS_200)
+                .send_contents("".into())
+        },
+        "POST /update/ticket/postComment HTTP/1.1" => {
+            // Parse JSON body
+            let body_json: Value = match serde_json::from_slice(&req.body) {
+                Ok(v) => v,
+                Err(_) => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Invalid JSON".into())
+                        .build();
+                }
+            };
+
+            let _ = match post_comment(&mut database, &tdx_client, body_json).await {
+                Ok(v) => v,
+                Err(e) => {
+                    error!("Failed to post comment: {}", e);
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("[]".into())
+                        .build();
+                }
+            };
+
+            Response::new()
+                .status(STATUS_200)
+                .send_contents("".into())
+        },
         "POST /update/ticket/viewed HTTP/1.1" => {
             // Parse JSON body
             let body_json: Value = match serde_json::from_slice(&req.body) {
@@ -943,6 +1101,43 @@ async fn handle_connection(
                         .send_contents("Error".into())
                 }
             }
+        },
+        "POST /update/ticket/markFalse HTTP/1.1" => {
+            // Parse JSON body
+            let body_json: Value = match serde_json::from_slice(&req.body) {
+                Ok(v) => v,
+                Err(_) => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Invalid JSON".into())
+                        .build();
+                }
+            };
+
+            // If ParentID is not one of these three, return error
+            let parent_id = body_json["ParentID"].as_i64().unwrap_or(-1) as i32;
+            if parent_id != 22873142 && parent_id != 22873186 && parent_id != 0 {
+                return Response::new()
+                    .status(STATUS_500)
+                    .send_contents("Invalid ParentID Passed as Argument".into())
+                    .build();
+            }
+
+            // Mark the ticket as false
+            let _ = match toggle_mark_ticket_false(&mut database, &tdx_client, body_json).await {
+                Ok(v) => v,
+                Err(e) => {
+                    error!("Failed to mark Ticket as false: {}", e);
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("[]".into())
+                        .build();
+                }
+            };
+
+            Response::new()
+                .status(STATUS_200)
+                .send_contents("".into())
         },
         "GET /projects HTTP/1.1" => {
             if database.check_if_projects_empty() {
@@ -2972,6 +3167,7 @@ fn dir_exists(path: &str) -> bool {
 }
 
 fn is_this_dir(path: &str) -> bool {
+    println!("{:?}", path);
     return metadata(path).unwrap().is_dir();
 }
 
@@ -3161,7 +3357,243 @@ async fn fetch_tdx_token(database: &mut Database, req: &API) -> Result<(), Strin
 
     debug!("[Tickex] Stored new TDX token successfully into Database");
 
-    return Ok(());
+    Ok(())
+}
+
+async fn retry_tdx_token(database: &mut Database, req: &API, method: &str, url: &str, request_body: Option<serde_json::Value>) -> Result<APIResponse, String> {
+    warn!("Unauthorized Response from TDX while performing action, trying again with new Token...");
+
+    // Grab new TDX Token
+    fetch_tdx_token(database, req).await?;
+
+    // Get the TDX API token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API token while retrying new Token pull: {}", e)),
+    };
+
+    // Build the request
+    let mut endpoint = req
+        .build()
+        .method(method)
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Accept", "application/json")
+        .timeout(Duration::from_secs(120));
+    // Add the body if there is one provided
+    if let Some(body) = request_body {
+        endpoint = endpoint.body(body);
+    }
+
+    // Make the request to TDX API
+    let retry_resp = match endpoint.send().await {
+        Ok(r) => r,
+        Err(e) => return Err(format!("Failed to fetch response from TDX: {}", e)),
+    };
+
+    if !retry_resp.status.is_success() {
+        return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
+    }
+        
+    warn!("Successfully recovered new TDX Token & fetched new description data");
+    Ok(retry_resp)
+}
+
+async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
+    let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/search";
+
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e)),
+    };
+
+    // If no tickets exist, perform a tickets fetch from Jan 1st, 2020 to now
+    if database.check_if_tickets_empty() {
+        warn!("[Data] - No tickets exist in Database. Pulling all tickets from Jan 1st, 2020...");
+
+        // Define search
+        let search_body = serde_json::json!({
+            "ModifiedDateFrom": "2020-01-01T00:00:00Z",
+            "ResponsibilityGroupIDs": [2742], // CTS Group ID
+            "MaxResults": 5000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
+        });
+        // Make the request
+        let mut resp = match req
+            .build()
+            .method("POST")
+            .endpoint(url)
+            .header("Authorization", &tdx_token.val)
+            .header("Content-Type", "application/json")
+            .body(search_body.clone())
+            .timeout(Duration::from_secs(120))
+            .send()
+            .await {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
+            };
+
+        // Try fetching a new tdx token and try again if Unauthorized
+        if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+            resp = retry_tdx_token(database, req, "POST", &url, Some(search_body)).await?;
+        }
+
+        if !resp.status.is_success() {
+            return Err(format!("TDX API error: {}", resp.status));
+        }
+
+        // Parse the response as JSON
+        let tickets_json: Vec<serde_json::Value> = 
+            serde_json::from_str(&resp.body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
+
+        // Map to DB_Ticket and insert
+        for ticket_val in &tickets_json {
+            match serialize_ticket(database, ticket_val.clone()) {
+                Ok(ticket) => {
+                    if let Err(e) = database.update_ticket(&ticket) {
+                        error!("Failed to insert/update ticket {}: {}", ticket.ticket_id, e);
+                    }
+                }
+                Err(e) => error!("Failed to process ticket: {}", e)
+            }
+        }
+
+        // Double check tickets exist in database, but this should not be necessary
+        if database.check_if_tickets_empty() {
+            return Err("Failed to insert tickets into database".to_string());
+        }
+    } else { // Tickets table not empty, only update more recent tickets
+        // Look in database for most recent Ticket and look at its date
+        let latest_ticket = match database.get_latest_ticket() {
+            Ok(t) => t,
+            Err(e) => return Err(format!("Failed to get latest ticket: {}", e)),
+        };
+        
+        let latest_ticket_date = latest_ticket.created_date[..10].to_string(); // Truncate to YYYY-MM-DD
+
+        // Calculate date 6 months back
+        let latest_date = chrono::NaiveDate::parse_from_str(&latest_ticket_date, "%Y-%m-%d").unwrap();
+        let from_date = latest_date.checked_sub_months(chrono::Months::new(6)).unwrap().format("%Y-%m-%dT00:00:00Z").to_string();
+
+        // Define search
+        let search_body = serde_json::json!({
+            "ModifiedDateFrom": from_date,
+            "MaxResults": 10000,
+            "ResponsibilityGroupIDs": [2742]
+        });
+
+        // Make the request to TDX API
+        let mut resp = match req
+            .build()
+            .method("POST")
+            .endpoint(url)
+            .header("Authorization", &tdx_token.val)
+            .header("Content-Type", "application/json")
+            .body(search_body.clone())
+            .timeout(Duration::from_secs(120))
+            .send()
+            .await {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
+            };
+
+        // Try fetching a new tdx token and try again if Unauthorized
+        if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+            resp = retry_tdx_token(database, req, "POST", &url, Some(search_body)).await?;
+        }
+
+        // Get the response body as text and convert to JSON
+        let tickets_json: Vec<serde_json::Value> = serde_json::from_str(&resp.body)
+            .map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
+
+        // Serialize to DB_Ticket and insert/update ticket in database
+        for ticket_val in &tickets_json {
+            match serialize_ticket(database, ticket_val.clone()) {
+                Ok(ticket) => {
+                    if let Err(e) = database.update_ticket(&ticket) {
+                        error!("Failed to insert/update ticket {}: {}", ticket.ticket_id, e);
+                    }
+                }
+                Err(e) => error!("Failed to process ticket: {}", e)
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn serialize_ticket(database: &mut Database, ticket_json: serde_json::Value) -> Result<DB_Ticket, String> {
+    let id = ticket_json["ID"].as_i64().unwrap_or(0) as i32;
+
+    // Try to fetch ticket from DB if it exists
+    let orig_viewed = match database.get_ticket(id) {
+        Ok(Some(ticket)) => ticket.has_been_viewed,
+        Ok(None) => false,
+        Err(e) => {
+            error!("DB error fetching ticket {}: {}", id, e);
+            false
+        }
+    };
+
+    // Get old ticket if it exists (new tickets won't have one and defaults to empty string)
+    let old_ticket = database.get_ticket(ticket_json["ID"].as_i64().unwrap_or(0) as i32).unwrap_or(None);
+    let (
+        old_type_name, old_type_category_name, old_title,
+        old_account_name, old_status_name, old_service_name,
+        old_priority_name, old_modified_date, old_modified_full_name,
+        old_responsible_full_name, old_responsible_group_name,
+
+        comment_count, old_comment_count
+    ) = match old_ticket {
+        Some(t) => (
+            t.type_name, t.type_category_name, t.title,
+            t.account_name, t.status_name, t.service_name,
+            t.priority_name, t.modified_date, t.modified_full_name,
+            t.responsible_full_name, t.responsible_group_name,
+
+            t.comment_count, t.old_comment_count
+        ),
+        None => (
+            String::new(), String::new(), String::new(),
+            String::new(), String::new(), String::new(),
+            String::new(), String::new(), String::new(),
+            String::new(), String::new(), 
+            
+            0_i16, 0_i16,
+        ),
+    };
+
+    // Serialize Ticket data into DB_Ticket struct. If this is a new ticket, fields will populated with default values
+    Ok(DB_Ticket {
+        ticket_id: ticket_json["ID"].as_i64().unwrap_or(0) as i32,
+        parent_id: ticket_json["ParentID"].as_i64().unwrap_or(0) as i32,
+        has_been_viewed: orig_viewed,
+        type_name: ticket_json["TypeName"].as_str().unwrap_or("").to_string(),
+        type_category_name: ticket_json["TypeCategoryName"].as_str().unwrap_or("").to_string(),
+        title: ticket_json["Title"].as_str().unwrap_or("").to_string(),
+        account_name: ticket_json["AccountName"].as_str().unwrap_or("").to_string(),
+        status_name: ticket_json["StatusName"].as_str().unwrap_or("").to_string(),
+        service_name: ticket_json["ServiceName"].as_str().unwrap_or("").to_string(),
+        priority_name: ticket_json["PriorityName"].as_str().unwrap_or("").to_string(),
+        created_date: ticket_json["CreatedDate"].as_str().unwrap_or("").to_string(),
+        created_full_name: ticket_json["CreatedFullName"].as_str().unwrap_or("").to_string(),
+        modified_date: ticket_json["ModifiedDate"].as_str().unwrap_or("").to_string(),
+        modified_full_name: ticket_json["ModifiedFullName"].as_str().unwrap_or("").to_string(),
+        requestor_name: ticket_json["RequestorName"].as_str().unwrap_or("").to_string(),
+        requestor_first_name: ticket_json["RequestorFirstName"].as_str().unwrap_or("").to_string(),
+        requestor_email: ticket_json["RequestorEmail"].as_str().unwrap_or("").to_string(),
+        requestor_phone: ticket_json["RequestorPhone"].as_str().unwrap_or("").to_string(),
+        days_old: ticket_json["DaysOld"].as_i64().unwrap_or(0) as i16,
+        responsible_full_name: ticket_json["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
+        responsible_group_name: ticket_json["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
+        comment_count,
+
+        old_type_name, old_type_category_name, old_title,
+        old_account_name, old_status_name, old_service_name,
+        old_priority_name, old_modified_date, old_modified_full_name,
+        old_responsible_full_name, old_responsible_group_name, 
+        old_comment_count,
+    })
 }
 
 async fn fetch_tdx_ticket_description(database: &mut Database, req: &API, ticket_id: i32) -> Result<String, String> {
@@ -3192,36 +3624,7 @@ async fn fetch_tdx_ticket_description(database: &mut Database, req: &API, ticket
 
     // Try fetching a new tdx token and try again if Unauthorized
     if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
-        warn!("Ticket description fetch failure was due to an unauthorized response, fetching new token and trying again...");
-
-        // Grab new TDX Token
-        let _ = fetch_tdx_token(database, req).await;
-
-        // Get the TDX API token from database
-        let tdx_token = match database.get_key("tdx_api") {
-            Ok(t) => t,
-            Err(e) => return Err(format!("Failed to get TDX API token while fetching ticket description: {}", e)),
-        };
-
-        // Make the request to TDX API
-        let retry_resp = match req
-            .build()
-            .method("GET")
-            .endpoint(&url)
-            .header("Authorization", &tdx_token.val)
-            .header("Accept", "application/json")
-            .send()
-            .await {
-                Ok(r) => r,
-                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
-            };
-
-        if !retry_resp.status.is_success() {
-            return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
-        } else {
-            warn!("Successfully recovered new TDX Token & fetched new description data");
-            resp = retry_resp;
-        }
+        resp = retry_tdx_token(database, req, "GET", &url, None).await?;
     }
 
     // Parse the response body
@@ -3260,41 +3663,12 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &API, ticket_id: i3
         .send()
         .await {
             Ok(r) => r,
-            Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
+            Err(e) => return Err(format!("Failed to fetch ticket feed from TDX: {}", e))
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
     if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
-        warn!("Ticket feed fetch failed due to an unauthorized response, fetching new token and trying again...");
-
-        // Grab new TDX Token
-        let _ = fetch_tdx_token(database, req).await;
-
-        // Get the TDX API token from database
-        let tdx_token = match database.get_key("tdx_api") {
-            Ok(t) => t,
-            Err(e) => return Err(format!("Failed to get TDX API token while fetching ticket feed: {}", e)),
-        };
-
-        // Make the request to TDX API
-        let retry_resp = match req
-            .build()
-            .method("GET")
-            .endpoint(&url)
-            .header("Authorization", &tdx_token.val)
-            .header("Accept", "application/json")
-            .send()
-            .await {
-                Ok(r) => r,
-                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e)) 
-            };
-
-        if !retry_resp.status.is_success() {
-            return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
-        } else {
-            warn!("Successfully recovered new TDX Token & fetched new feed data");
-            resp = retry_resp;
-        }
+        resp = retry_tdx_token(database, req, "GET", &url, None).await?;
     }
 
     // Parse the response body
@@ -3354,7 +3728,6 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &API, ticket_id: i3
     Ok(output_json)
 }
 
-
 async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64) -> Result<(Vec<String>, Vec<String>, Vec<String>), String> {
     // Construct the API URL to fetch feed replies
     let url = format!(
@@ -3378,51 +3751,20 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64
         .send()
         .await {
             Ok(r) => r,
-            Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
+            Err(e) => return Err(format!("Failed to fetch ticket feed from TDX: {}", e))
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
     if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
-        warn!("Ticket replies fetch failed due to an unauthorized response, fetching new token and trying again...");
-
-        // Grab new TDX Token
-        let _ = fetch_tdx_token(database, req).await;
-
-        // Get the TDX API token from database
-        let tdx_token = match database.get_key("tdx_api") {
-            Ok(t) => t,
-            Err(e) => return Err(format!("Failed to get TDX API token while fetching ticket feed: {}", e)),
-        };
-
-        // Make the request to TDX API
-        let retry_resp = match req
-            .build()
-            .method("GET")
-            .endpoint(&url)
-            .header("Authorization", &tdx_token.val)
-            .header("Accept", "application/json")
-            .send()
-            .await {
-                Ok(r) => r,
-                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
-            };
-
-        if !retry_resp.status.is_success() {
-            return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
-        } else {
-            warn!("Successfully recovered new TDX Token & fetched new feed data");
-            resp = retry_resp;
-        }
+        resp = retry_tdx_token(database, req, "GET", &url, None).await?;
     }
 
     // Parse the response body
     let replies_json: Value = serde_json::from_str(&resp.body)
         .map_err(|e| format!("Failed to parse ticket replies JSON: {}", e))?;
-
     let replies_array = replies_json.get("Replies")
         .and_then(|v| v.as_array())
         .map_or(&[][..], |v| v);
-
 
     let created_by: Vec<String> = replies_array.iter()
         .map(|reply| {
@@ -3449,9 +3791,20 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64
     Ok((created_by, replies_body, created_date))
 }
 
+async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_json: Value) -> Result<(), String> {
+    let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
+    info!("[Data] - Marking Ticket as False/True (Ticket ID: {})", id);
 
-async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
-    let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/search";
+    let parent_id = body_json["ParentID"].as_i64().unwrap_or(-1) as i32;
+    let new_parent_id = match parent_id {
+        0 => 22873142,
+        22873142 => 22873186,
+        22873186 => 22873142,
+        invalid => return Err(format!("Invalid ParentID passed into toggle_mark_ticket_false: {}", invalid)),
+    };
+    body_json["ParentID"] = json!(new_parent_id);
+
+    let url = format!("https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/{}/children", new_parent_id);
 
     // Grab token from database
     let tdx_token = match database.get_key("tdx_api") {
@@ -3459,282 +3812,397 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
         Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e)),
     };
 
-    // If no tickets exist, perform a tickets fetch from Jan 1st, 2020 to now
-    if database.check_if_tickets_empty() {
-        warn!("[Data] - No tickets exist in Database. Pulling all tickets from Jan 1st, 2020...");
-
-        // Define search
-        let search_body = serde_json::json!({
-            "ModifiedDateFrom": "2020-01-01T00:00:00Z",
-            "ResponsibilityGroupIDs": [2742], // CTS Group ID
-            "MaxResults": 100000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
-        });
-        // Make the request
-        let resp_raw = req
-            .build()
-            .method("POST")
-            .endpoint(url)
-            .header("Authorization", &tdx_token.val)
-            .header("Content-Type", "application/json")
-            .body(search_body)
-            .timeout(Duration::from_secs(120))
-            .send()
-            .await;
-        
-        let resp = match resp_raw {
+    // Make the request
+    let mut resp = match req
+        .build()
+        .method("POST")
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Content-Type", "application/json")
+        .body([id].into())
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await {
             Ok(r) => r,
-            Err(e) => return Err(format!("Failed to fetch tickets: {}", e))
+            Err(e) => return Err(format!("Failed to update Ticket in TDX: {}", e))
         };
 
-        if !resp.status.is_success() {
-            return Err(format!("TDX API error: {}", resp.status));
-        }
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        resp = retry_tdx_token(database, req, "POST", &url, Some(body_json)).await?;
+    }
 
-        // Parse the response as JSON
-        let tickets_json: Vec<serde_json::Value> = 
-            serde_json::from_str(&resp.body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
-/* 
-        let resp = match &req.client {
-            SingleThread(_) => { return Err("Please dear God".to_string()); },
-            MultiThread(c) => c
-        }
-            .post(url)
-            .header("Authorization", &tdx_token.val)
-            .header("Content-Type", "application/json")
-            .body(search_body.to_string())
-            .send()
-            .await;
+    if !resp.status.is_success() {
+        return Err(format!("TDX API error: {}", resp.status));
+    }
 
-        let resp = match resp {
+    // Update DB with new ParentID
+    let _ = match database.update_ticket_parent_id(id, new_parent_id) {
+        Ok(v) => v,
+        Err(e) => {
+            return Err(format!("Failed to update DB Records for updated Ticket ParentID: {}", e));
+        }
+    };
+
+    info!("[Data] - Successfully updated ticket parent state (Ticket ID: {}, ParentID: {})", id, new_parent_id);
+
+    Ok(())
+}
+
+async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Value) -> Result<(), String> {
+    info!("[Data] - Sending Create Ticket Request to TDX");
+    
+    let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/";
+
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e)),
+    };
+
+    // Load ticket template from backend
+    let template_contents = match std::fs::read_to_string(TICKT_JSON) {
+        Ok(contents) => contents,
+        Err(e) => return Err(format!("Failed to read ticket template: {}", e)),
+    };
+
+    let mut ticket_json: Value = match serde_json::from_str(&template_contents) {
+        Ok(json) => json,
+        Err(e) => return Err(format!("Failed to parse ticket template JSON: {}", e)),
+    };
+
+    // Remove "_OperationType" field, it's purpose is for Bronson only, not for TDX
+    if let Value::Object(body) = &mut body_json {
+        body.remove("_OperationType");
+    }
+
+    // Aggregate incoming ticket data from front end into template
+    if let (Value::Object(template), Value::Object(body)) = (&mut ticket_json, &body_json) {
+        for (key, value) in body {
+            template.insert(key.to_string(), value.clone());
+        }
+    }
+
+    // Send ticket content and recieve the new ticket JSON as a verification response
+    let mut new_ticket_resp = match req
+        .build()
+        .method("POST")
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Content-Type", "application/json")
+        .body(ticket_json.clone())
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await {
             Ok(r) => r,
-            Err(e) => return Err(format!("Failed to fetch tickets: {}", e)),
+            Err(e) => return Err(format!("Failed to create Ticket in TDX: {}", e))
         };
 
-        if !resp.status().is_success() {
-            return Err(format!("TDX API error: {}", resp.status()));
-        }
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !new_ticket_resp.status.is_success() && new_ticket_resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        new_ticket_resp = retry_tdx_token(database, req, "POST", &url, Some(ticket_json.clone())).await?;
+    }
 
-        // Get the response body as text
-        let body = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
+    if !new_ticket_resp.status.is_success() {
+        return Err(format!("TDX API error: {}", new_ticket_resp.status));
+    }
 
-        // Parse the response as JSON
-        let tickets_json: Vec<serde_json::Value> = 
-            serde_json::from_str(&body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, body))?; */
-        
-        // Map to DB_Ticket and insert
-        for ticket_val in &tickets_json {
-            let ticket = DB_Ticket {
-                ticket_id: ticket_val["ID"].as_i64().unwrap_or(0) as i32,
-                parent_id: ticket_val["ParentID"].as_i64().unwrap_or(0) as i32,
-                has_been_viewed: true,
-                type_name: ticket_val["TypeName"].as_str().unwrap_or("").to_string(),
-                type_category_name: ticket_val["TypeCategoryName"].as_str().unwrap_or("").to_string(),
-                title: ticket_val["Title"].as_str().unwrap_or("").to_string(),
-                account_name: ticket_val["AccountName"].as_str().unwrap_or("").to_string(),
-                status_name: ticket_val["StatusName"].as_str().unwrap_or("").to_string(),
-                service_name: ticket_val["ServiceName"].as_str().unwrap_or("").to_string(),
-                priority_name: ticket_val["PriorityName"].as_str().unwrap_or("").to_string(),
-                created_date: ticket_val["CreatedDate"].as_str().unwrap_or("").to_string(),
-                created_full_name: ticket_val["CreatedFullName"].as_str().unwrap_or("").to_string(),
-                modified_date: ticket_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
-                modified_full_name: ticket_val["ModifiedFullName"].as_str().unwrap_or("").to_string(),
-                requestor_name: ticket_val["RequestorName"].as_str().unwrap_or("").to_string(),
-                requestor_email: ticket_val["RequestorEmail"].as_str().unwrap_or("").to_string(),
-                requestor_phone: ticket_val["RequestorPhone"].as_str().unwrap_or("").to_string(),
-                days_old: ticket_val["DaysOld"].as_i64().unwrap_or(0) as i16,
-                responsible_full_name: ticket_val["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
-                responsible_group_name: ticket_val["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
-                comment_count: 0 as i16,
+    // Convert New Ticket Response into JSON
+    let ticket_json: serde_json::Value = serde_json::from_str(&new_ticket_resp.body)
+        .map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, new_ticket_resp.body))?;
+    
+    info!("[Data] - Create Ticket Request was Successful (New Ticket ID: {})", ticket_json["ID"]);
 
-                old_type_name: "".to_string(),
-                old_type_category_name: "".to_string(),
-                old_title: "".to_string(),
-                old_account_name: "".to_string(),
-                old_status_name: "".to_string(),
-                old_service_name: "".to_string(),
-                old_priority_name: "".to_string(),
-                old_modified_date: "".to_string(),
-                old_modified_full_name: "".to_string(),
-                old_responsible_full_name: "".to_string(),
-                old_responsible_group_name: "".to_string(),
-                old_comment_count: 0 as i16,
-            };
+    // TODO:
+    // - Post the comment with new function call saying who performed what ticket actions (requires shibboleth to know who made the changes)
 
-            // Insert or update
+    Ok(())
+}
+
+async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -> Result<(), String> {
+    let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
+    info!("[Data] - Sending Edit Ticket Request to TDX (Ticket ID: {})", id);
+    
+    let url = format!("https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/{}", id);
+
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e)),
+    };
+
+    // Query TDX for the ticket we want to edit
+    let mut ticket_resp = match req
+        .build()
+        .method("GET")
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Content-Type", "application/json")
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch Ticket from TDX during update: {}", e))
+        };
+
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !ticket_resp.status.is_success() && ticket_resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        ticket_resp = retry_tdx_token(database, req, "GET", &url, None).await?;
+    }
+
+    if !ticket_resp.status.is_success() {
+        return Err(format!("TDX API error: {}", ticket_resp.status));
+    }
+
+    // Apply Ticket Edits
+    let mut revised_ticket: Value = serde_json::from_str(&ticket_resp.body)
+        .expect("TDX returned invalid JSON");
+
+    if let Some(status) = body_json.get("StatusName").and_then(|v| v.as_str()) {
+        let status_id = match fetch_status_id(database, &req, status).await {
+            Ok(v) => v,
+            Err(e) => return Err(format!("Failed to fetch StatusID from TDX: {}", e))
+        };
+        revised_ticket["StatusID"] = status_id.into();
+    }
+    if let Some(title) = body_json.get("Title").and_then(|v| v.as_str()) {
+        revised_ticket["Title"] = Value::String(title.trim().to_string());
+    }
+    if let Some(uid) = body_json.get("ResponsibleUid").and_then(|v| v.as_str()) {
+        revised_ticket["ResponsibleUid"] = Value::String(uid.into());
+    }
+
+    // Send updated ticket content and recieve the new ticket JSON as a verification response
+    let mut new_ticket_resp = match req
+        .build()
+        .method("POST")
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Content-Type", "application/json")
+        .body(revised_ticket.clone())
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to update Ticket in TDX: {}", e))
+        };
+
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !new_ticket_resp.status.is_success() && new_ticket_resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        new_ticket_resp = retry_tdx_token(database, req, "POST", &url, Some(revised_ticket)).await?;
+    }
+
+    if !new_ticket_resp.status.is_success() {
+        return Err(format!("TDX API error: {}", new_ticket_resp.status));
+    }
+
+    // Convert New Ticket Response into JSON
+    let tickets_json: serde_json::Value = serde_json::from_str(&new_ticket_resp.body)
+        .map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, new_ticket_resp.body))?;
+
+    // Update Ticket in DB
+    match serialize_ticket(database, tickets_json) {
+        Ok(ticket) => {
             if let Err(e) = database.update_ticket(&ticket) {
-                warn!("Failed to insert ticket {}: {}", ticket.ticket_id, e);
+                error!("Failed to insert/update ticket {}: {}", ticket.ticket_id, e);
             }
         }
+        Err(e) => error!("Failed to process ticket: {}", e)
+    }
 
-        // Double check tickets exist in database, but this should not be necessary
-        if database.check_if_tickets_empty() {
-            return Err("Failed to insert tickets into database".to_string());
-        }
-    } else { // Tickets table not empty, only update more recent tickets
-        // Look in database for most recent Ticket and look at its date
-        let latest_ticket = match database.get_latest_ticket() {
-            Ok(t) => t,
-            Err(e) => return Err(format!("Failed to get latest ticket: {}", e)),
+    // TODO:
+    // - Post the comment with new function call saying who performed what ticket actions (requires shibboleth to know who made the changes)
+
+    info!("[Data] - Edit Ticket Request was Successful (Ticket ID: {})", id);
+    Ok(())
+}
+
+async fn post_comment(database: &mut Database, req: &API, body_json: Value) -> Result<(), String> {
+    let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
+    info!("[Data] - Sending Commenting Request to TDX (Ticket ID: {})", id);
+    
+    let url = format!("https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/{}/feed", id);
+    
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e)),
+    };
+
+    // Remove ticket ID, which is not a valid field for the body
+    let mut comment = body_json.clone();
+    if let Some(obj) = comment.as_object_mut() {
+        obj.remove("ID");
+    }
+
+    // Add RichHtml Tag
+    if let Some(obj) = comment.as_object_mut() {
+        obj.insert("IsRichHtml".to_string(), Value::Bool(true));
+    }
+
+    // Query TDX for the ticket we want to edit
+    let mut ticket_resp = match req
+        .build()
+        .method("POST")
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Content-Type", "application/json")
+        .body(comment.clone())
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch Ticket from TDX during update: {}", e))
         };
-        
-        let latest_ticket_date = latest_ticket.created_date[..10].to_string(); // Truncate to YYYY-MM-DD
 
-        // Calculate date 6 months back
-        let latest_date = chrono::NaiveDate::parse_from_str(&latest_ticket_date, "%Y-%m-%d").unwrap();
-        let from_date = latest_date.checked_sub_months(chrono::Months::new(6)).unwrap().format("%Y-%m-%dT00:00:00Z").to_string();
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !ticket_resp.status.is_success() && ticket_resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        ticket_resp = retry_tdx_token(database, req, "GET", &url, Some(comment)).await?;
+    }
 
-        // Define search
-        let search_body = serde_json::json!({
-            "ModifiedDateFrom": from_date,
-            "MaxResults": 10000,
-            "ResponsibilityGroupIDs": [2742]
-        });
+    if !ticket_resp.status.is_success() {
+        return Err(format!("TDX API error: {}", ticket_resp.status));
+    }
 
-        // Make the request to TDX API
-        let mut resp = match req
-            .build()
-            .method("POST")
-            .endpoint(url)
-            .header("Authorization", &tdx_token.val)
-            .header("Content-Type", "application/json")
-            .body(search_body.clone())
-            .timeout(Duration::from_secs(120))
-            .send()
-            .await {
-                Ok(r) => r,
-                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
-            };
+    info!("[Data] - Commenting Request was Successful (Ticket ID: {})", id);
+    Ok(())
+}
 
-        // Try fetching a new tdx token and try again if Unauthorized
-        if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
-            warn!("Ticket data fetch failure was due to an unauthorized response, fetching new token and trying again...");
+async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) -> Result<i32, String> {
+    let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/statuses/search";
 
-            // Grab new TDX Token
-            let _ = fetch_tdx_token(database, req).await;
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e))
+    };
 
-            // Get the TDX API token from database
-            let tdx_token = match database.get_key("tdx_api") {
-                Ok(t) => t,
-                Err(e) => return Err(format!("Failed to get TDX API token while fetching ticket data: {}", e)),
-            };
+    // Define search
+    let search_body = serde_json::json!({
+        "IsActive": true
+    });
 
-            // Make the request to TDX API
-            let retry_resp_raw = req
-                .build()
-                .method("POST")
-                .endpoint(url)
-                .header("Authorization", &tdx_token.val)
-                .header("Content-Type", "application/json")
-                .body(search_body)
-                .send()
-                .await;
-                
-            let retry_resp = match retry_resp_raw {
-                Ok(r) => r,
-                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
-            };
+    // Query TDX for status IDs
+    let mut resp = match req
+        .build()
+        .method("POST")
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Content-Type", "application/json")
+        .body(search_body.clone().into())
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch StatusIDs from TDX: {}", e))
+        };
 
-            if !retry_resp.status.is_success() {
-                return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
-            } else {
-                warn!("Successfully recovered new TDX Token & fetched new ticket data");
-                resp = retry_resp;
-            }
-        }
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        resp = retry_tdx_token(database, req, "POST", &url, Some(search_body)).await?;
+    }
+    
+    if !resp.status.is_success() {
+        return Err(format!("TDX API error: {}", resp.status));
+    }
 
-        // Get the response body as text and convert to JSON
-        let tickets_json: Vec<serde_json::Value> = serde_json::from_str(&resp.body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
+    // Find matching status name
+    let statuses: Value = serde_json::from_str(&resp.body)
+        .map_err(|e| format!("Failed to parse TDX status response: {}", e))?;
 
-
-        // Map to DB_Ticket and update
-        for ticket_val in &tickets_json {
-            // If it exists, get original ticket from database
-            let id = ticket_val["ID"].as_i64().unwrap_or(0) as i32;
-
-            // Try to fetch ticket from DB
-            let orig_viewed = match database.get_ticket(id) {
-                Ok(Some(ticket)) => ticket.has_been_viewed,
-                Ok(None) => false,
-                Err(e) => {
-                    error!("DB error fetching ticket {}: {}", id, e);
-                    false
+    if let Some(statuses) = statuses.as_array() {
+        for status in statuses {
+            if status["Name"].as_str() == Some(status_name) {
+                if let Some(id) = status["ID"].as_i64() {
+                    return Ok(id as i32);
                 }
-            };
-
-            // Get old ticket if it exists (new tickets won't and default to empty string)
-            let old_ticket = database.get_ticket(ticket_val["ID"].as_i64().unwrap_or(0) as i32).unwrap_or(None);
-
-            let (
-                old_type_name, old_type_category_name, old_title,
-                old_account_name, old_status_name, old_service_name,
-                old_priority_name, old_modified_date, old_modified_full_name,
-                old_responsible_full_name, old_responsible_group_name,
-
-                comment_count, old_comment_count
-            ) = match old_ticket {
-                Some(t) => (
-                    t.type_name, t.type_category_name, t.title,
-                    t.account_name, t.status_name, t.service_name,
-                    t.priority_name, t.modified_date, t.modified_full_name,
-                    t.responsible_full_name, t.responsible_group_name,
-
-                    t.comment_count, t.old_comment_count
-                ),
-                None => (
-                    String::new(), String::new(), String::new(),
-                    String::new(), String::new(), String::new(),
-                    String::new(), String::new(), String::new(),
-                    String::new(), String::new(), 
-                    
-                    0_i16, 0_i16,
-                ),
-            };
-
-            let ticket = DB_Ticket {
-                ticket_id: ticket_val["ID"].as_i64().unwrap_or(0) as i32,
-                parent_id: ticket_val["ParentID"].as_i64().unwrap_or(0) as i32,
-                has_been_viewed: orig_viewed,
-                type_name: ticket_val["TypeName"].as_str().unwrap_or("").to_string(),
-                type_category_name: ticket_val["TypeCategoryName"].as_str().unwrap_or("").to_string(),
-                title: ticket_val["Title"].as_str().unwrap_or("").to_string(),
-                account_name: ticket_val["AccountName"].as_str().unwrap_or("").to_string(),
-                status_name: ticket_val["StatusName"].as_str().unwrap_or("").to_string(),
-                service_name: ticket_val["ServiceName"].as_str().unwrap_or("").to_string(),
-                priority_name: ticket_val["PriorityName"].as_str().unwrap_or("").to_string(),
-                created_date: ticket_val["CreatedDate"].as_str().unwrap_or("").to_string(),
-                created_full_name: ticket_val["CreatedFullName"].as_str().unwrap_or("").to_string(),
-                modified_date: ticket_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
-                modified_full_name: ticket_val["ModifiedFullName"].as_str().unwrap_or("").to_string(),
-                requestor_name: ticket_val["RequestorName"].as_str().unwrap_or("").to_string(),
-                requestor_email: ticket_val["RequestorEmail"].as_str().unwrap_or("").to_string(),
-                requestor_phone: ticket_val["RequestorPhone"].as_str().unwrap_or("").to_string(),
-                days_old: ticket_val["DaysOld"].as_i64().unwrap_or(0) as i16,
-                responsible_full_name: ticket_val["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
-                responsible_group_name: ticket_val["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
-                comment_count,
-
-                old_type_name,
-                old_type_category_name,
-                old_title,
-                old_account_name,
-                old_status_name,
-                old_service_name,
-                old_priority_name,
-                old_modified_date,
-                old_modified_full_name,
-                old_responsible_full_name,
-                old_responsible_group_name,
-                old_comment_count,
-            };
-
-            // Insert or update
-            if let Err(e) = database.update_ticket(&ticket) {
-                error!("Failed to insert ticket {}: {}", ticket.ticket_id, e);
             }
         }
     }
 
-    return Ok(());
+    Err(format!("Could not find StatusID for status '{}'", status_name))
+}
+
+async fn get_tdx_user(database: &mut Database, req: &API, username: &str) -> Result<Value, String> {
+    let url = format!("https://uwyo.teamdynamix.com/TDWebApi/api/people/getuid/{}{}", username, "@uwyo.edu");
+
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e))
+    };
+
+    // Query TDX for User ID
+    let mut resp = match req
+        .build()
+        .method("GET")
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Content-Type", "application/json")
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch User ID from TDX: {}", e))
+        };
+
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        resp = retry_tdx_token(database, req, "GET", &url, None).await?;
+    }
+
+    // User ID wasn't found, return 0 as the ID (ID NOT FOUND)
+    if resp.status == reqwest::StatusCode::NOT_FOUND {
+        return Ok(Value::Number(0.into()));
+    }
+
+    if !resp.status.is_success() {
+        return Err(format!("TDX API error: {}", resp.status));
+    }
+
+    // Parse Response
+    let user_id: Value = serde_json::from_str(&resp.body)
+        .map_err(|e| format!("Failed to parse TDX status response: {}", e))?;
+
+    // Default to blank if there is no user ID
+    let mut full_name = String::new();
+
+    if user_id.to_string() != 0.to_string() {
+        let second_url = format!("https://uwyo.teamdynamix.com/TDWebApi/api/people/{}", user_id.to_string().trim_matches('"'));
+        let mut second_resp = match req
+            .build()
+            .method("GET")
+            .endpoint(&second_url)
+            .header("Authorization", &tdx_token.val)
+            .header("Content-Type", "application/json")
+            .timeout(Duration::from_secs(15))
+            .send()
+            .await {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch User Information from TDX: {}", e)),
+            };
+
+            // Try fetching a new TDX token and try again if Unauthorized
+        if !second_resp.status.is_success() && second_resp.status == reqwest::StatusCode::UNAUTHORIZED {
+            second_resp = retry_tdx_token(database, req, "GET", &second_url, None).await?;
+        }
+
+        if !second_resp.status.is_success() {
+            return Err(format!("TDX API error: {}", second_resp.status));
+        }
+
+        let user_info: Value = serde_json::from_str(&second_resp.body)
+            .map_err(|e| format!("Failed to parse TDX user information: {}", e))?;
+
+        full_name = user_info["FullName"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
+
+    }
+
+    // Return both values
+    Ok(json!({"UID": user_id, "FullName": full_name}))
 }
 
 /*
@@ -3834,7 +4302,7 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
         info!("[Data] - Pulled all TDX projects from Jan 1st, 2020");
     } else { // Projects table not empty, only update more recent projects
         // Look in database for most recent Project and look at its date
-        let latest_project = match database.get_latest_project() {
+        let _ = match database.get_latest_project() {
             Ok(p) => p,
             Err(e) => return Err(format!("Failed to get latest project: {}", e)),
         };
@@ -4180,9 +4648,9 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
     let future_notes_val = optional_data.get("an_notesForFuture").unwrap_or(&serde_json::Value::Null);
     let roomcheck_notes_val = optional_data.get("an_ticketAndRoomCheckNotes").unwrap_or(&serde_json::Value::Null);
 
-    let mut latex_accomplishments = make_list(accomplishments_val, "Accomplishments");
+    let latex_accomplishments = make_list(accomplishments_val, "Accomplishments");
     let mut latex_future_notes = make_list(future_notes_val, "Notes for the Future");
-    let mut latex_roomcheck_tickets_notes = make_list(roomcheck_notes_val, "Notes");
+    let latex_roomcheck_tickets_notes = make_list(roomcheck_notes_val, "Notes");
 
     if latex_future_notes != "" {
         latex_future_notes += r#"

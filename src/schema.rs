@@ -89,6 +89,7 @@ pub mod bronson {
             modified_date -> Text,
             modified_full_name -> Text,
             requestor_name -> Text,
+            requestor_first_name -> Text,
             requestor_email -> Text,
             requestor_phone -> Text,
             days_old -> Int2,
