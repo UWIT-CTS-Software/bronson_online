@@ -12,3 +12,4 @@ DAILYLOG.md
 .env
 *.tar
 /data/backup.json
+/data/wiki_articles/*

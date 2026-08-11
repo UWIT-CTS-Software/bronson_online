@@ -1777,13 +1777,13 @@ pub struct CFMRequestFile {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct CFMTreeNode {
+pub struct TreeNode {
     pub name: String,
     pub file_path: String,
-    pub children: Option<Vec<CFMTreeNode>>, // can be null (None)
+    pub children: Option<Vec<TreeNode>>, // can be null (None)
 }
 
-impl CFMTreeNode {
+impl TreeNode {
     pub fn new() -> Self {
         Self {
             name: String::new(),
@@ -1800,7 +1800,7 @@ impl CFMTreeNode {
         }
     }
 
-    pub fn push(&mut self, child: CFMTreeNode) {
+    pub fn push(&mut self, child: TreeNode) {
         match &mut self.children {
             Some(children) => children.push(child),
             None => {
@@ -1892,13 +1892,14 @@ pub static CAMPUS_STR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.
 pub static ALIAS_JSON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/alias_table.json");
 pub static TICKT_JSON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/create_ticket_template.json");
 pub static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
-pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/md");
+pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/wiki_articles/");
 pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/roomConfig_agg.csv");
 pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.csv");
 pub static LOG       : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/output.log");
 pub static LOGIN_XML : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/dummy_login.xml");
 pub static STATUS_200: &str = "HTTP/1.1 200 OK";
 pub static STATUS_303: &str = "HTTP/1.1 303 See Other";
+pub static STATUS_400: &str = "HTTP/1.1 400 Bad Request";
 pub static STATUS_401: &str = "HTTP/1.1 401 Unauthorized";
 pub static STATUS_404: &str = "HTTP/1.1 404 Not Found";
 pub static STATUS_500: &str = "HTTP/1.1 500 Internal Server Error";

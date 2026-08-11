@@ -28,7 +28,8 @@ CamCode
     - get_dir_contents(path: &str) -> Vec<String>
     - get_origin(req: Request) -> String
 -- Handlers -----------------------------
-    - get_cfm_file(body: Vec<u8>) -> String
+    - get_file(body: Vec<u8>, root: &str) -> String
+    - get_file(body: Vec<u8>, root: &str) -> String
 
 Tickex
     - fetch_tdx_token(database: &mut Database, req: &Client) -> Result<(), String>
@@ -45,11 +46,11 @@ use server_lib::{
     BUFF_SIZE, 
     ThreadPool, ThreadSchedule, TaskSchedule, PingRequest, 
     Building, 
-    CFMRequestFile, CFMTreeNode,
+    CFMRequestFile, TreeNode,
     jp::{ ping_this, },
     API, APIClient::{ MultiThread, SingleThread, },
     TICKT_JSON, CFM_DIR, WIKI_DIR, /* LOG, */
-    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_401, STATUS_404, STATUS_500, 
+    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_400, STATUS_401, STATUS_404, STATUS_500, 
     SCHD_ERR, DASH_ERR, LDRB_ERR, SPRS_ERR, 
     Database, Terminal, 
     models::{
@@ -65,17 +66,19 @@ use std::{
     io::{ prelude::*, Read, stdout, },
     net::{ TcpListener, IpAddr, Ipv4Addr, },
     fs::{
-        read_dir, metadata,
+        read_dir, metadata, write, remove_file, remove_dir, create_dir,
         File, 
     },
     path::Path,
+    path::PathBuf,
     time::{ Duration, /* SystemTime */},
     string::{ String, },
     sync::{Arc, /*Mutex,*/ RwLock,
         atomic::{AtomicBool, Ordering}},
     clone::{ Clone, },
     option::{ Option, },
-    collections::{ HashMap, },
+    collections::{ HashMap, HashSet },
+
 };
 use reqwest::{
     Client,
@@ -85,12 +88,15 @@ use log::{ debug, info, warn, error, }; // trace, };
 use cookie::{ /* Cookie, */ CookieJar, /* Key, */ };
 use local_ip_address::{ local_ip, };
 use serde_json::{ json, Value, };
+use serde::Deserialize;
 use regex::Regex;
 use chrono::{ Datelike, offset::Local, Weekday, DateTime, TimeDelta, Utc };
 use urlencoding::decode;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
+use base64::{Engine as _, engine::general_purpose};
+use base64::decode as b64decode;
 
 extern crate serde;
 extern crate serde_xml_rs;
@@ -468,10 +474,23 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
                 },
                 "cfmTree"         => {
                     info!("[Data] - Building CFM Tree");
-                    let _ = match cfm_build_tree(&mut database) {
-                        Ok(_)     =>  info!("[Data] - CFM Tree Build Complete"),
-                        Err(m)    => error!("[Data] - CFM Tree Build FAILED: {}", m)
+                    let mut cfm_blacklist = HashSet::new(); 
+                    cfm_blacklist.insert("txt");
+                    cfm_blacklist.insert("xlsx");
+
+                    let json_return = match build_tree(CFM_DIR, cfm_blacklist) {
+                        Ok(j)     =>  j,
+                        Err(m)    => {error!("[Data] - Tree Build FAILED: {}", m); json!([]).to_string() }
                     };
+
+                    match database.update_data(&DB_DataElement {
+                        key: String::from("cfm_tree"),
+                        val: json_return,
+                    }) {
+                        Ok(_) => {}
+                        Err(e) => error!("Failed to update database: {}", e),
+                    }
+                    
                 },
                 "tdxToken"        => {
                     info!("[Data] - Pulling New TDX Token");
@@ -1961,7 +1980,7 @@ async fn handle_connection(
                 .send_contents(contents)
         },
         "POST /cfm_file HTTP/1.1" => {
-            let contents = get_cfm_file(req.body);
+            let contents = get_file(req.body, CFM_DIR);
             let mut f = match File::open(&contents) {
                 Ok(file) => file,
                 Err(e) => {
@@ -1996,6 +2015,254 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_contents(contents)
         },
+
+        "POST /w_build_tree HTTP/1.1" => {
+            let contents = w_tree();
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
+        },
+
+        "POST /w_file HTTP/1.1" => {
+            let contents = get_file(req.body, WIKI_DIR);
+            let mut f = match File::open(&contents) {
+                Ok(file) => file,
+                Err(e) => {
+                    error!("Unable to open file {}: {}", &contents, e);
+                    return Response::new()
+                            .status(STATUS_500)
+                            .send_contents(format!("File not found: {}", &contents).into())
+                            .build();
+                }
+            };
+            
+            let mut file_buffer = Vec::new();
+            match f.read_to_end(&mut file_buffer) {
+                Ok(_) => (),
+                Err(e) => error!("Unable to read to end of file: {}", e)
+            };
+
+            // Extract just the filename from the full path
+            let filename_only = contents.split('/').last().unwrap_or("file");
+            let filename = format!("attachment; filename={}", filename_only);
+
+            Response::new()
+                    .status(STATUS_200)
+                    .insert_header("Content-Type", "application/zip")
+                    .insert_header("Content-Disposition", &filename)
+                    .send_contents(file_buffer)
+            
+        },
+        "POST /w_upload-json HTTP/1.1" => {
+            #[derive(Deserialize)]
+            struct UploadFile{
+                filename: String, 
+                parentPath: String, 
+                fileblob: String, //base64
+            }
+            //req.body was comming in as &Vec<u8>
+
+            let body_to_string = match String::from_utf8(req.body.clone()) {
+                 Ok(s) => s,
+                Err(e) => {
+                     error!("Invalid UTF-8 recived: {}", e);
+                    return Response::new()
+                         .status(STATUS_400)
+                         .send_contents(format!("Invalid UTF-8: {}", e).into())
+                         .build();
+
+                }
+            };
+
+            let fileObj: UploadFile = match serde_json::from_str(&body_to_string){
+                Ok(obj) => obj,
+                Err(e) => {
+                    error!("Invalid JSON recived: {}", e);
+                    return Response::new()
+                    .status(STATUS_400)
+                    .insert_header("Content-Type", "application/json")
+                    .send_contents(json!({  
+                            "response": "Unauthorized"
+                        }).to_string().into())
+                    .build();
+
+                }
+            };
+
+            let decode_bytes = match b64decode(&fileObj.fileblob) {
+                Ok(bytes) => bytes, 
+                Err(e) => {
+                    error!("Invalid base64: {}", e); 
+                     return Response::new()
+                         .status(STATUS_400)
+                         .insert_header("Content-Type", "application/json")
+                          .send_contents(json!({ 
+                            "response": "Unauthorized"
+                        }).to_string().into())
+                        .build();
+                }
+            };
+
+            let wiki_dirs = WIKI_DIR;
+            let relative_path = fileObj.parentPath.to_string() + &fileObj.filename;
+            let full_path = wiki_dirs.to_string() + (&relative_path);
+            let full_path_buf = PathBuf::from(full_path.clone());
+
+            let write_file = write(&full_path_buf, decode_bytes);
+            if write_file.is_err() {
+                let e = write_file.unwrap_err();
+                error!("Failed to write file: {}", e);
+                return Response::new()
+                    .status(STATUS_500)
+                    .send_contents(format!("Write error: {}", e).into())
+                    .build();
+            }
+
+            let response_json = serde_json::json!({
+                "status": "ok",
+                "saved_to": full_path_buf.to_string_lossy()
+            });
+
+            Response::new()
+                .status(STATUS_200)
+                .insert_header("Content-Type", "application/json")
+                .send_contents(response_json.to_string().into())
+        },
+
+        "POST /w_upload_folder HTTP/1.1" => {
+              #[derive(Deserialize)]
+            struct UploadDir {
+                filename: String, 
+                parentPath: String, 
+            }
+            //req.body was comming in as &Vec<u8>
+
+            let body_to_string = match String::from_utf8(req.body.clone()) {
+                 Ok(s) => s,
+                Err(e) => {
+                     error!("Invalid UTF-8 recived: {}", e);
+                    return Response::new()
+                         .status(STATUS_400)
+                         .send_contents(format!("Invalid UTF-8: {}", e).into())
+                         .build();
+
+                }
+            };
+
+            let folderObj: UploadDir = match serde_json::from_str(&body_to_string){
+                Ok(obj) => obj,
+                Err(e) => {
+                    error!("Invalid JSON recived: {}", e);
+                    return Response::new()
+                    .status(STATUS_400)
+                    .insert_header("Content-Type", "application/json")
+                    .send_contents(json!({  
+                            "response": "Unauthorized"
+                        }).to_string().into())
+                    .build();
+                }
+            };
+
+            let wiki_dirs = WIKI_DIR;
+            let relative_path = folderObj.parentPath.to_string() + &folderObj.filename;
+            let full_path = wiki_dirs.to_string() + (&relative_path);
+            let full_path_buf = PathBuf::from(full_path.clone());
+
+
+            let create_dir = create_dir(&full_path_buf);
+            if create_dir.is_err() {
+                let e = create_dir.unwrap_err();
+                error!("Failed to create dir: {}", e);
+                return Response::new()
+                    .status(STATUS_500)
+                    .send_contents(format!("Error: {}", e).into())
+                    .build();
+            }
+
+            let response_json = serde_json::json!({
+                "status": "ok",
+                "saved_to": full_path_buf.to_string_lossy()
+            });
+
+            Response::new()
+                .status(STATUS_200)
+                .insert_header("Content-Type", "application/json")
+                .send_contents(response_json.to_string().into())
+        },
+
+          
+
+
+        "DELETE /w_delete HTTP/1.1" => {
+            #[derive(Deserialize)]
+            struct FilePath {
+                filepath: String
+            }
+              let body_to_string = match String::from_utf8(req.body.clone()) {
+                 Ok(s) => s,
+                Err(e) => {
+                     error!("Invalid UTF-8 recived: {}", e);
+                    return Response::new()
+                         .status(STATUS_400)
+                         .send_contents(format!("Invalid UTF-8: {}", e).into())
+                         .build();
+
+                }
+            };
+
+
+            let received_path: FilePath = match serde_json::from_str(&body_to_string.clone()){
+                Ok(obj) => obj,
+                Err(e) => {
+                    error!("Invalid JSON recived: {}", e);
+                    return Response::new()
+                    .status(STATUS_400)
+                    .insert_header("Content-Type", "application/json")
+                    .send_contents(json!({  
+                            "response": "Unauthorized"
+                        }).to_string().into())
+                    .build();
+
+                }
+            };
+
+            let wiki_dirs = WIKI_DIR;
+            let relative_path = received_path.filepath.to_string();
+            let full_path = wiki_dirs.to_string() + (&relative_path);
+            let full_path_buf = PathBuf::from(full_path.clone());
+            if full_path_buf.is_dir(){
+                let delete_dir = remove_dir(&full_path_buf);
+                if delete_dir.is_err() {
+                    let e = delete_dir.unwrap_err();
+                    error!("Failed to delete directory: {}", e);
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents(format!("Delete error: {}", e).into())
+                        .build();
+                }
+             } else {
+                let delete_file = remove_file(&full_path_buf);
+                if delete_file.is_err() {
+                    let e = delete_file.unwrap_err();
+                    error!("Failed to delete file: {}", e);
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents(format!("Delete error: {}", e).into())
+                        .build();
+                    }
+                 }
+
+             let response_json = serde_json::json!({
+                "status": "ok",
+             });
+
+            Response::new()
+                .status(STATUS_200)
+                .insert_header("Content-Type", "application/json")
+                .send_contents(response_json.to_string().into())
+
+        }, 
+
         // Ticket Description
         start_line if start_line.starts_with("GET /ticket/description/") && start_line.ends_with(" HTTP/1.1") => {
             let ticket_id_str = start_line
@@ -2760,71 +3027,73 @@ fn get_dir_contents(path: &str) -> Vec<String> {
   _/                
 */
 
-// cfm_build_tree() - build virtual tree of files and directories and store in database as JSON
-fn cfm_build_tree(database: &mut Database) -> Result<(), String> {
-    let mut tree_root: CFMTreeNode = CFMTreeNode::with_name_path("CamCode", CFM_DIR);
+// build_tree() - build virtual tree of files and directories and store in database as JSON
+fn build_tree(root: &str, blacklist: HashSet<&str>) -> Result<String, String> {
+    let mut tree_root: TreeNode = TreeNode::with_name_path("Root", "./");
 
-    let cfm_dirs = get_dir_contents(CFM_DIR);
-    for item in cfm_dirs.iter() {
+    let dirs = get_dir_contents(root);
+    for item in dirs.iter() {
         // Ignore files with '_' and '.' prefix & other specific files
         // Skip hidden/system files
         if let Some(file_name) = Path::new(item).file_name().and_then(|s| s.to_str()) {
-            if file_name.starts_with('_') || file_name.starts_with('.') || 
-               file_name.ends_with(".xlsx") || file_name.starts_with("README") ||
-               file_name.ends_with(".txt") {
+             let extension = file_name.rsplit('.').next().unwrap_or("");
+            if file_name.starts_with('_') || file_name.starts_with('.') || blacklist.contains(extension) {
                 continue;
             }
+            
         }
-        tree_root.push(build_cfm_subtree(item));
+        let relative_path = item.replace(root, "./");
+        tree_root.push(build_subtree(&relative_path, root, blacklist.clone()));
+         
     }
-
+    
     let json_return = json!({
         "tree": tree_root
     });
 
-    match database.update_data(&DB_DataElement {
-        key: String::from("cfm_tree"),
-        val: json_return.to_string(),
-    }) {
-        Ok(_) => {}
-        Err(e) => return Err(format!("Failed to update database: {}", e)),
-    }
+    info!("[Data] - CFM Tree Build Complete");
 
-    Ok(())
+    Ok(json_return.to_string())
 }
-fn build_cfm_subtree(path: &str) -> CFMTreeNode {
+
+
+fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
     use std::path::Path;
 
-    let name = Path::new(path)
+    let name = Path::new(&(root.to_string() + path))
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or("")
         .to_string();
-
-    let mut node = if is_this_dir(path) {
+        
+    let mut node = if is_this_dir(&(root.to_string() + path)) {
         // Folder: children starts as empty vec
-        CFMTreeNode::with_name_path(name, path.to_string())
+        TreeNode::with_name_path(name, path.to_string())
     } else {
         // File / leaf: children = None
-        CFMTreeNode {
+        TreeNode {
             name,
             file_path: path.to_string(),
             children: None,
         }
-    };
 
-    if is_this_dir(path) {
-        let path_contents = get_dir_contents(path);
+   };
+
+    if is_this_dir(&(root.to_string() + path)) {
+        let path_contents = get_dir_contents(&(root.to_string() + path));
         for entry in path_contents.iter() {
             // Skip hidden/system files
             if let Some(file_name) = Path::new(entry).file_name().and_then(|s| s.to_str()) {
-                if file_name.starts_with('_') || file_name.starts_with('.') || 
-                   file_name.ends_with(".xlsx") || file_name.starts_with("README") ||
-                   file_name.ends_with(".txt") {
+
+                let extension = file_name.rsplit('.').next().unwrap_or("");
+                if file_name.starts_with('_') || file_name.starts_with('.') || blacklist.contains(extension) {
                     continue;
                 }
+               
             }
-            node.push(build_cfm_subtree(entry));
+
+            let relative_path = entry.replace(root, "./");
+            node.push(build_subtree(&relative_path, root, blacklist.clone()));
         }
     }
 
@@ -2832,23 +3101,21 @@ fn build_cfm_subtree(path: &str) -> CFMTreeNode {
 }
 
 
-// get_cfm_file() - sends the selected file to the client
+// get_file() - sends the selected file to the client
 // TODO:
 //    [ ] - store selected file as bytes ?
 //    [ ] - send in json as usual ?
-fn get_cfm_file(body: Vec<u8>) -> String {
-    let tmp = String::from_utf8(body).expect("CamCode Err, invalid UTF-8");
+fn get_file(body: Vec<u8>, root: &str) -> String {
+    let tmp = String::from_utf8(body).expect("Err, invalid UTF-8");
     //
     let cfmr_f: CFMRequestFile = serde_json::from_str(&tmp)
-        .expect("CamCode Err, Failed to grab file");
-
-    // Strip virtual root if present
+        .expect("Err, Failed to grab file");
     let filename = cfmr_f
         .filename
-        .strip_prefix("CamCode/")
+        .strip_prefix("Root/")
         .unwrap_or(&cfmr_f.filename);
 
-    let mut path_raw = String::from(CFM_DIR);
+    let mut path_raw = String::from(root);
     path_raw.push('/');
     path_raw.push_str(filename);
 
@@ -3779,28 +4046,56 @@ $$  /   \$$ |$$ |$$ | \$$\ $$ |
 \__/     \__|\__|\__|  \__|\__|
 */
 
+
+
 fn w_build_articles() -> Vec<u8> {
-    // Vars
-    let mut article_vec: Vec<String> = Vec::new();
+    let mut article_names_vec: Vec<String> = Vec::new();
+    let mut article_contents_vec: Vec<String> = Vec::new();
 
     // Check for CFM_Code Directory
     if dir_exists(WIKI_DIR) {
         // Error handling
     }
-    let cfm_dirs = get_dir_contents(WIKI_DIR);
-    // iterate over cfm_dirs and snip ../CFM_Code/
-    // DO NOT INCLUDE DIRS w/ '_'
+
+    let wiki_dirs = get_dir_contents(WIKI_DIR);
+
     let cut_index = WIKI_DIR.len();
-    for (_, &ref item) in cfm_dirs.iter().enumerate() {
-        article_vec.push((&item[(cut_index + 1)..]).to_string());
+    for (_, &ref item) in wiki_dirs.iter().enumerate() {
+        // Open and read the file in as base64 
+        let raw_contents: Vec<u8> = std::fs::read(item).expect("Failed to read wiki article file");
+        let contents = general_purpose::STANDARD.encode(raw_contents);
+
+        //let contents: String = std::fs::read_to_string(item).expect("Failed to read wiki article file");
+
+        article_names_vec.push((&item[(cut_index + 1)..]).to_string());
+        article_contents_vec.push(contents);
     };
     
-    let json_return = json!({
-        "names": article_vec
-    });
+    // Build JSON
+    use serde_json::{Value, Map};
+    let mut articles = Map::new();
+    for (name, content) in article_names_vec.iter().zip(article_contents_vec.iter()) {
+        articles.insert(name.clone(), Value::String(content.clone()));
+    }
+
+    let json_return = Value::Object(articles);
 
     return json_return.to_string().into();
+
+    
 }
+
+fn w_tree() -> Vec<u8>  {
+    let mut wiki_blacklist = HashSet::new();
+    let json_return = match build_tree(WIKI_DIR, wiki_blacklist) {
+       Ok(j)     =>  j,
+       Err(m)    => {error!("[Data] - Tree Build FAILED: {}", m); json!([]).to_string() }
+     };
+    return json_return.to_string().into();
+}
+
+
+
 
 /*
 $$$$$$$$\                                $$\                     $$\ 
