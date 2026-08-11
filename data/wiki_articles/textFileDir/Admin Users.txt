@@ -1,0 +1,30 @@
+// TODO: Format the below article so it will store as json/markdown and be read into the wiki
+// TODO: Add screenshots
+// TODO:    Ensure that ONLY admin users can see this wiki page
+
+
+Admin Users
+
+
+You have been granted elevated permissions and have access to the admin side of Bronson - here's what's included.
+
+
+Terminal
+At the bottom of the screen, you will notice a large terminal window. As of right now, this is unused and is a placeholder for future development...
+You can hide/show this terminal window by pressing the Bronson logo in the top left, and pressing "Hide Terminal" to minimize the window.
+
+
+Tickex
+You now have access to a new button, the "Dismiss All" Button. 
+This button will dismiss all tickets that are highlighted in yellow.
+Please note: this action is a global action and will reflect for all users. Only use it if you know what you're doing with it.
+
+
+Admin Tools
+Near the top right of the screen, you'll notice a new tool tab which includes the new tools
+- Message Editor: Where you can edit the current message displayed on the dashboard for all technicians.
+- Schedule Editor: Where an admin can add/remove/adjust the schedules of individual student technicians.
+- Database Editor: This editor controls properties of individual rooms on campus that Bronson tracks. Device counts, general pool rooms, room check periods, and offline rooms.
+- Alias Editor: Naming across different web apps has been a problem. Here Bronson can assimilate naming conventions across LSM, 25Live, and other services linked to Bronson.
+- Diagnostics: 
+- Thread Editor: Bronson automatically runs tools independently of eachother (things like checkerboard, tickex, jacknet, etc...). Here you can adjust how often the run, and can even request a tool to run right now.

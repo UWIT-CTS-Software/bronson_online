@@ -1,0 +1,24 @@
+// TODO: Format the below article so it will store as json/markdown and be read into the wiki
+// TODO: Add screenshots
+
+
+Tickex
+A ticket tool that grabs CTS tickets from TeamDynamix and displays them in Bronson.
+Tickex is accurate up to one minute, so tickets appear in realtime.
+
+You can sort by date modified, date created, or the status of the ticket.
+There's a search bar that will query ticket details (like keywords in the title, description, ID, and more).
+
+Seperated into three boards (that can have overlapping tickets), 
+the new board displays tickets with the status "New" and any tickets that were opened in the past 2 weeks.
+The catch all board is all open CTS tickets.
+And the closed board is all tickets that have been closed/resolved by CTS.
+
+Clicking on a ticket will open the ticket details popup where you can find more information about the ticket.
+If the ticket has changes, the ticket will show you what changed in a little "What Changed" window.
+
+If a ticket is highlighted in yellow, this means the ticket has not been viewed by a technician and needs attention.
+
+Note: There are future plans to be able to interact with the ticket natively within Bronson, but for now
+this is a read-only application. To make changes/updates to a ticket, you must go to TeamDynamix 
+(which you can find some handy button littered around Tickex to help with this).

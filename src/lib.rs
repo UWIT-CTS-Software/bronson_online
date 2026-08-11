@@ -1315,7 +1315,7 @@ impl Response {
 		self.status = String::from(status);
 
 		self
-	}
+	} 
 
 	pub fn insert_header(mut self, header: &str, value: &str) -> Response {
 		self.headers.insert(String::from(header), String::from(value));
@@ -1413,7 +1413,7 @@ impl Response {
 #[derive(Debug, Clone)]
 pub enum APIClient {
 	SingleThread(Arc<std::sync::RwLock<reqwest::Client>>),
-	MultiThread(reqwest::Client)
+	MultiThread(reqwest::Client),
 }
 
 #[derive(Debug, Clone)]
@@ -1572,7 +1572,7 @@ impl<B: std::clone::Clone> APIEndpoint<B>  {
 
 		let client = match &self.client {
 			APIClient::SingleThread(c) => method(c.write().unwrap().clone(), url.to_string()),
-			APIClient::MultiThread(c)  => method(c.clone(),                  url.to_string())
+			APIClient::MultiThread(c)  => method(c.clone(),                  url.to_string()),
 		};
 
 		let send = data_endpoint(client.timeout(self.timeout)
@@ -1834,13 +1834,13 @@ pub struct CFMRequestFile {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct CFMTreeNode {
+pub struct TreeNode {
     pub name: String,
     pub file_path: String,
-    pub children: Option<Vec<CFMTreeNode>>, // can be null (None)
+    pub children: Option<Vec<TreeNode>>, // can be null (None)
 }
 
-impl CFMTreeNode {
+impl TreeNode {
     pub fn new() -> Self {
         Self {
             name: String::new(),
@@ -1857,7 +1857,7 @@ impl CFMTreeNode {
         }
     }
 
-    pub fn push(&mut self, child: CFMTreeNode) {
+    pub fn push(&mut self, child: TreeNode) {
         match &mut self.children {
             Some(children) => children.push(child),
             None => {
@@ -1956,6 +1956,7 @@ pub static LOG       : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/output.log")
 pub static LOGIN_XML : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/dummy_login.xml");
 pub static STATUS_200: &str = "HTTP/1.1 200 OK";
 pub static STATUS_303: &str = "HTTP/1.1 303 See Other";
+pub static STATUS_400: &str = "HTTP/1.1 400 Bad Request";
 pub static STATUS_401: &str = "HTTP/1.1 401 Unauthorized";
 pub static STATUS_404: &str = "HTTP/1.1 404 Not Found";
 pub static STATUS_500: &str = "HTTP/1.1 500 Internal Server Error";

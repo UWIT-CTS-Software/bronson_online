@@ -1,0 +1,14 @@
+// TODO: Format the below article so it will store as json/markdown and be read into the wiki
+// TODO: Add screenshots
+
+
+JackNet
+A tool for pinging devices across campus and getting their status.
+
+You can choose queries by building and select a device type you want to ping.
+
+The console output will display the Hostname of each device and its IP if available.
+
+If JackNet returns an IP, it will display as green.
+If it doesn't, it will display red.
+If that device doesn't actually exist in our records, it will not have a color.

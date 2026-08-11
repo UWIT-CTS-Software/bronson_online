@@ -1,0 +1,13 @@
+// TODO: Format the below article so it will store as json/markdown and be read into the wiki
+// TODO: Add screenshots
+
+
+Checkerboard
+A dynamically-tracked room list that shows what rooms have been checked or are offline.
+Seperated by zones, Checkerboard looks through LSM and gathers what rooms have been checked within a certain period of time.
+
+If a room needs to be checked, then it will display red. 
+If it has been checked, it will be green. 
+And if it is offline, then it will dsiplay grey.
+
+You can filter for rooms that still need to be checked so you don't have to look at all of the rooms on campus at once.

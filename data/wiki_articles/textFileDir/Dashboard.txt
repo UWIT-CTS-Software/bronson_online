@@ -1,0 +1,33 @@
+// TODO: Format the below article so it will store as json/markdown and be read into the wiki
+// TODO: Add screenshots
+
+
+Dashboard
+
+
+An overview of the various services that Bronson has to offer. 
+Lot's of quick lookup information, and some nice-to-know information as well.
+
+
+Checkerboard Zone Overview
+Progress bars of rooms that have been "recently checked" (see CheckerBoard for more info).
+
+
+Messages
+A "message of the day" system that allows Bronson admins to display messages to all technicians.
+
+
+Room Check Leaderboards
+Room check insights where you can see how many rooms a tech has checked within the past 7, 30, and 90 days.
+
+
+Schedule
+A quick overview of technician schedules, including a tab that shows your current weekly schedule. To change your schedule, contact a system admin.
+
+
+PC Spares
+A tracker of where all the CTS spare PCs are on campus.
+
+
+New CTS Tickets
+New tickets that have been pulled from TeamDynamix. Try to keep this list as small as possible!

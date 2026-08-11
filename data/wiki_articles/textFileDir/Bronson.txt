@@ -1,0 +1,29 @@
+// TODO: Format the below article so it will store as json/markdown and be read into the wiki
+// TODO: Add screenshots
+
+Welcome to Bronson!
+
+
+Bronson is your all-in-one suite for your common needs as a CTS technician.
+Here you can find most of the tools that you need all in one tool - keep an eye on updates as we are constantly updating Bronson!
+
+
+By clicking the logo in the top-left, this will bring up a quick access menu.
+
+
+Help / Wiki
+A link to this wiki page!
+
+
+Report Bug
+If you discover a bug while using Bronson, or would just like to request a new feature you'd like to see in Bronson,
+you can send a request directly to us through this submission portal.
+
+
+Sites
+Quick links to our most commonly used websites.
+- TimeClock: For clocking in/out
+- LSM: Our inventory/room checking system
+- TeamDynamix: Where our support request tickets live
+- 25Live: A master schedule of all the spaces on campus
+- Campus Map: For if you ever need to find a space on campus
