@@ -120,9 +120,9 @@ CREATE TABLE IF NOT EXISTS bronson.tickets (
     CHECK (length(type_category_name) <= 51),
     CHECK (length(title) <= 201),
     CHECK (length(account_name) <= 128),
-    CHECK (length(status_name) <= 32),
+    CHECK (length(status_name) <= 64),
     CHECK (length(service_name) <= 64),
-    CHECK (length(priority_name) <= 16),
+    CHECK (length(priority_name) <= 64),
     CHECK (length(created_date) <= 32),
     CHECK (length(created_full_name) <= 128),
     CHECK (length(modified_date) <= 32),
@@ -138,13 +138,41 @@ CREATE TABLE IF NOT EXISTS bronson.tickets (
     CHECK (length(old_type_category_name) <= 51),
     CHECK (length(old_title) <= 201),
     CHECK (length(old_account_name) <= 128),
-    CHECK (length(old_status_name) <= 32),
+    CHECK (length(old_status_name) <= 64),
     CHECK (length(old_service_name) <= 64),
     CHECK (length(old_priority_name) <= 16),
     CHECK (length(old_modified_date) <= 32),
     CHECK (length(old_modified_full_name) <= 128),
     CHECK (length(old_responsible_full_name) <= 128),
     CHECK (length(old_responsible_group_name) <= 128)
+);
+
+CREATE TABLE IF NOT EXISTS bronson.projects (
+    project_id          INTEGER     PRIMARY KEY,
+    created_date        TEXT        NOT NULL,
+    modified_date       TEXT        NOT NULL,
+    name                TEXT        NOT NULL,
+    description         TEXT        NOT NULL,
+    is_active           BOOLEAN     NOT NULL,
+    type_id             INTEGER     NOT NULL,
+    percent_complete    SMALLINT    NOT NULL,
+    status_name         TEXT        NOT NULL,
+    status_comments     TEXT        NOT NULL,
+    start_date          TEXT        NOT NULL,
+    end_date            TEXT        NOT NULL,
+    health              TEXT        NOT NULL,
+
+    is_hidden           BOOLEAN     NOT NULL,
+    
+    CHECK (length(created_date) <= 32),
+    CHECK (length(modified_date) <= 32),
+    CHECK (length(name) <= 201),
+    CHECK (length(description) <= 2001),
+    CHECK (length(status_name) <= 32),
+    CHECK (length(status_comments) <= 10001),
+    CHECK (length(start_date) <= 32),
+    CHECK (length(end_date) <= 32),
+    CHECK (length(health) <= 201)
 );
 
 /* CREATE TABLE IF NOT EXISTS bronson.api_schedule {

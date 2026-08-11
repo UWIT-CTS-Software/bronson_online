@@ -76,11 +76,12 @@ use crate::schema::bronson::{
 	keys::dsl::*,
 	data::dsl::*,
 	tickets::dsl::*,
+	projects::dsl::*,
 };
 use crate::models::{
 	DB_Hostname, DB_IpAddress,
 	DB_Room, DB_Building, DB_User, DB_Key, DB_DataElement,
-	DeviceType, DB_Ticket,
+	DeviceType, DB_Ticket, DB_Project
 };
 
 trait FnBox {
@@ -988,7 +989,7 @@ impl Database {
 
 		tickets
 			.select(DB_Ticket::as_select())
-			.order(created_date.desc())
+			.order(crate::schema::bronson::tickets::dsl::created_date.desc())
 			.first(&mut conn)
 	}
 
@@ -1102,6 +1103,84 @@ impl Database {
 		diesel::delete(tickets)
 			.filter(ticket_id.eq(id_value))
 			.returning(DB_Ticket::as_returning())
+			.get_result(&mut conn)
+	}
+
+	pub fn get_project(&mut self, id_value: i32) -> Result<Option<DB_Project>, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		projects
+			.select(DB_Project::as_select())
+			.filter(project_id.eq(id_value))
+			.first(&mut conn)
+			.optional()
+	}
+
+	pub fn get_latest_project(&mut self) -> Result<DB_Project, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		projects
+			.select(DB_Project::as_select())
+			.order(crate::schema::bronson::projects::dsl::created_date.desc())
+			.first(&mut conn)
+	}
+
+	pub fn get_all_projects(&mut self) -> Result<Vec<DB_Project>, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		projects
+			.select(DB_Project::as_select())
+			.load::<DB_Project>(&mut conn)
+	}
+	
+	pub fn check_if_projects_empty(&mut self) -> bool {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		projects
+			.count()
+			.get_result::<i64>(&mut conn)
+			.unwrap() == 0
+	}
+
+	pub fn update_project(&mut self, element: &DB_Project) -> Result<DB_Project, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		diesel::insert_into(projects)
+			.values(element)
+			.on_conflict(project_id)
+			.do_update()
+			.set(element)
+			.returning(DB_Project::as_returning())
+			.get_result(&mut conn)
+	}
+
+	pub fn update_project_hidden(&mut self, id: i32, new_bool: bool) -> Result<Option<DB_Project>, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		// Try to fetch the project first
+		let project_opt = projects
+			.filter(project_id.eq(id))
+			.first::<DB_Project>(&mut conn)
+			.optional()?;
+
+		// If not found, quietly return
+		let Some(_) = project_opt else { return Ok(None); };
+
+		// Update the flag
+		let updated = diesel::update(projects.filter(project_id.eq(id)))
+			.set(is_hidden.eq(new_bool))
+			.returning(DB_Project::as_returning())
+			.get_result::<DB_Project>(&mut conn)?;
+
+		Ok(Some(updated))
+	}
+	
+	pub fn delete_project(&mut self, id_value: i32) -> Result<DB_Project, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		diesel::delete(projects)
+			.filter(project_id.eq(id_value))
+			.returning(DB_Project::as_returning())
 			.get_result(&mut conn)
 	}
 }
@@ -1258,7 +1337,7 @@ impl Response {
 		self.status = String::from(status);
 
 		self
-	}
+	} 
 
 	pub fn insert_header(mut self, header: &str, value: &str) -> Response {
 		self.headers.insert(String::from(header), String::from(value));
@@ -1356,7 +1435,7 @@ impl Response {
 #[derive(Debug, Clone)]
 pub enum APIClient {
 	SingleThread(Arc<std::sync::RwLock<reqwest::Client>>),
-	MultiThread(reqwest::Client)
+	MultiThread(reqwest::Client),
 }
 
 #[derive(Debug, Clone)]
@@ -1515,7 +1594,7 @@ impl<B: std::clone::Clone> APIEndpoint<B>  {
 
 		let client = match &self.client {
 			APIClient::SingleThread(c) => method(c.write().unwrap().clone(), url.to_string()),
-			APIClient::MultiThread(c)  => method(c.clone(),                  url.to_string())
+			APIClient::MultiThread(c)  => method(c.clone(),                  url.to_string()),
 		};
 
 		let send = data_endpoint(client.timeout(self.timeout)
@@ -1893,6 +1972,7 @@ pub static ALIAS_JSON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/alias_t
 pub static TICKT_JSON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/create_ticket_template.json");
 pub static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code");
 pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/wiki_articles/");
+pub static TEMP_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/generated_files/temp");
 pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/roomConfig_agg.csv");
 pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.csv");
 pub static LOG       : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/output.log");
@@ -1905,5 +1985,5 @@ pub static STATUS_404: &str = "HTTP/1.1 404 Not Found";
 pub static STATUS_500: &str = "HTTP/1.1 500 Internal Server Error";
 pub static SCHD_ERR  : &str = "{\n\t\"No Tech Found\":{\"Name\":\"None\",\"Assignment\":\"N/A\",\"Schedule\":{\"Monday\":\"NA\",\"Tuesday\":\"NA\",\"Wednesday\":\"NA\",\"Thursday\":\"NA\",\"Friday\":\"NA\"}}}";
 pub static DASH_ERR  : &str = "No dashboard found. Please contact an administrator.";
-pub static LDRB_ERR  : &str = "{\"7days\":[{\"Count\":0, \"Name\":\"N/A\"}],\"30days\":[{\"Count\":0, \"Name\":\"N/A\"}],\"90days\":[{\"Count\":0, \"Name\":\"N/A\"}]}";
+pub static LDRB_ERR  : &str = "{\"7days\":[{\"Count\":0, \"Name\":\"N/A\"}],\"30days\":[{\"Count\":0, \"Name\":\"N/A\"}],\"90days\":[{\"Count\":0, \"Name\":\"N/A\"}],\"365days\":[{\"Count\":0, \"Name\":\"N/A\"}]}";
 pub static SPRS_ERR  : &str = "{\"spares\":[{\"Asset Tag\":\"NOTFOUND\",\"Catalog Item\":{\"fullTitle\":\"N/A\",\"id\":0},\"Last Updated\":\"0000-00-00T00:00:00Z\",\"Location\":{\"id\":0,\"name\":\"NOT FOUND\"},\"Serial Number\":\"N/A\",\"User\":{\"displayName\":\"N/A\",\"id\":0}}}";

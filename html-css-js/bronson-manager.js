@@ -767,11 +767,14 @@ function renderTimeIndicator() {
 
 // Leaderboard
 function setLeader(jsonValue) {
-    // button can be '90days','30days', and '7days'
+    // button can be '365days', '90days','30days', and '7days'
     let leader = JSON.parse(localStorage.getItem("leaderboard"))[`${jsonValue}`];
     // get button ID
     let buttonId = "";
     switch (jsonValue) {
+        case '365days':
+            buttonId = "YearButton";
+            break;
         case '90days':
             buttonId = "SemesterButton";
             break;
@@ -799,7 +802,8 @@ function setLeader(jsonValue) {
             let selectedButton = document.querySelector('.leader_selected');
             if (selectedButton) {
                 let jsonValue;
-                if (selectedButton.id === 'SemesterButton') jsonValue = '90days';
+                if (selectedButton.id === 'YearButton') jsonValue = '365days';
+                else if (selectedButton.id === 'SemesterButton') jsonValue = '90days';
                 else if (selectedButton.id === 'MonthButton') jsonValue = '30days';
                 else if (selectedButton.id === 'WeekButton') jsonValue = '7days';
                 setLeader(jsonValue);
@@ -1087,8 +1091,8 @@ function toggleAutoScroll() {
     const SCROLL_TIME = 60; // in seconds
 
     const scrollOrder = [
-        "DB", "DB_30Days", "DB_90Days", "DB_Spares", 
-        "CB_1", "CB_2", "CB_3", "CB_4", "TX"
+        "DB", "DB_30Days", "DB_90Days", "DB_365Days", "DB_Spares", 
+        "CB_1", "CB_2", "CB_3", "CB_4", "TX", "AN"
     ];
 
     const autoScrollButton = document.getElementById("auto_scroll_button");
@@ -1182,6 +1186,10 @@ async function executeScrollable(param) {
             setLeader('90days');
             window.scrollTo({ top: 0, behavior: 'smooth' });
             break;
+        case "DB_365Days":
+            setLeader('365days');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            break;
         case "DB_Spares":
             const sparesElement = document.getElementById("db_spare");
             if (sparesElement) sparesElement.scrollIntoView({ behavior: 'smooth' });
@@ -1200,6 +1208,9 @@ async function executeScrollable(param) {
             break;
         case "TX":
             await setTickex(); // Resets to top of page
+            break;
+        case "AN":
+            await setAnalytics(); // Resets to top of page
             break;
         default:
             console.warn("Auto Scroll: executeScrollable(): unknown param: ", param);

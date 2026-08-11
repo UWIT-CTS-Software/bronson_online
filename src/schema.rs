@@ -33,6 +33,25 @@ pub mod bronson {
     }
 
     diesel::table! {
+        bronson.projects (project_id) {
+            project_id -> Int4,
+            created_date -> Text,
+            modified_date -> Text,
+            name -> Text,
+            description -> Text,
+            is_active -> Bool,
+            type_id -> Int4,
+            percent_complete -> Int2,
+            status_name -> Text,
+            status_comments -> Text,
+            start_date -> Text,
+            end_date -> Text,
+            health -> Text,
+            is_hidden -> Bool,
+        }
+    }
+
+    diesel::table! {
         use diesel::sql_types::*;
         use super::sql_types::IpAddress;
 
@@ -105,6 +124,7 @@ pub mod bronson {
         buildings,
         data,
         keys,
+        projects,
         rooms,
         tickets,
         users,
