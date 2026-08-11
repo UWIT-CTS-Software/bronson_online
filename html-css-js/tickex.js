@@ -21,10 +21,12 @@ Notes:
 TOC:
     Helpers:
     - delay() : Simple delay/wait function
+    - decodeHtmlEntities() : Decode HTML entities into plain text
+    - scrubHtmlToText()    : Convert HTML snippets into readable text
 
     Write to TDX Functions (unimplemented for right now):
-    - takeIncident()    : Takes responsibility for a ticket
-    - markTicketFalse() : Marks a ticket as false
+    - takeResponsibility() : Takes responsibility for a ticket
+    - markTicketFalse()    : Marks a ticket as false
 
     Popups:
     - newTicketPopup()               : Opens the popup for the new ticket dialog
@@ -54,6 +56,9 @@ TOC:
 
     Cache Functions:
     - getTicketCache()      : Grabs the Ticket Cache
+    - getTickexSettings()   : Gets saved Tickex settings (with defaults)
+    - saveTickexSettings()  : Persists Tickex settings to sessionStorage
+    - updateTickexSetting() : Updates a single Tickex setting
     - getCachedTicketData() : Grabs a Specific Ticket from the Cache
     - setCachedTicketData() : Saves a Ticket to the Cache
     - removeFromCache()     : Removes a Ticket from the Cache 
@@ -65,7 +70,7 @@ TOC:
     - fetchTicketComments()         : Grab ticket Comments (feed) from backend
     - fetchCurrentUserPermissions() : Fetches the current user's permission level
     - checkUserExistsInDatabase()   : Fetches whether the current user exists within Database records
-    - fetchTDXUserID()              : Fetches the TDX user ID for the current user
+    - fetchTDXUser()                : Fetches the TDX user for the current user
     - updateTicketViewed()          : Update ticket's viewed status in backend/database
     - updateTicket()                : Send a request to TeamDynamix to Create/edit a Ticket
     - postComment()                 : Send a request to TeamDynamix to Post a Comment to a Ticket
@@ -86,14 +91,26 @@ TODO:
         - TDX sort of has an AI summary, but I want to post it in the comments
 */
 
+
+
+    /* -------------------- Global Definitions -------------------- */
+
+const DEFAULT_TICKEX_SETTINGS = {
+    newTicketMaxItems: 15,
+    catchAllMaxItems: 15,
+    closedMaxItems: 10,
+    sortBy: 'modified',
+};
+
+
+
     /* -------------------- Helpers -------------------- */
 
 // Simple delay/wait function
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 
-// Decode HTML entities and convert HTML to readable plain-text while
-// preserving sensible line breaks (handles &nbsp; and common block tags).
+// Convert HTML entities like &amp; and &nbsp; into plain text.
 function decodeHtmlEntities(input) {
     try {
         const txt = document.createElement('textarea');
@@ -104,6 +121,7 @@ function decodeHtmlEntities(input) {
     }
 }
 
+// Convert a snippet of HTML into readable plain text, preserving line breaks.
 function scrubHtmlToText(html) {
     if (!html) return "";
     // First decode entities like &nbsp; &amp; etc.
@@ -222,14 +240,9 @@ function newTicketPopup() {
 }
 // Looks at new ticket popup and sends request to create ticket
 async function createTicket(container) {
-    // Disable Button while loading
-    const button  = document.getElementById('tx_createTicketButton');
-    button.disabled = true;
-    button.textContent = "Creating..."  
-
     // Verify user is authorized to create tickets
-    const userID = await fetchTDXUserID();
-    const isAuthorized = userID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.UID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
     if (!isAuthorized) {
         console.error("User is not authorized to create this ticket.");
         alert("You are not authorized to create this ticket. Please contact an admin for assistance.");
@@ -261,6 +274,11 @@ async function createTicket(container) {
 
     // Stops here if any required fields are empty
     if (!canContinue) return;
+
+    // Disable Button while loading
+    const button  = document.getElementById('tx_createTicketButton');
+    button.disabled = true;
+    button.textContent = "Creating..."  
 
     // Package data and send to backend
     const jsonBody = {
@@ -342,14 +360,9 @@ async function editTicketPopup(ticketID) {
 }
 // Looks at edit ticket popup and sends request to edit ticket
 async function applyChanges(ticketID) {
-    // Disable Button while loading
-    const button  = document.getElementById('tx_applyChangesButton');
-    button.disabled = true;
-    button.textContent = "Editting..."  
-
     // Verify user is authorized to edit tickets
-    const userID = await fetchTDXUserID();
-    const isAuthorized = userID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.ID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
     if (!isAuthorized) {
         console.error("User is not authorized to edit this ticket.");
         alert("You are not authorized to edit this ticket. Please contact an admin for assistance.");
@@ -385,6 +398,11 @@ async function applyChanges(ticketID) {
     // Stops here if any required fields are empty
     if (!canContinue) return;
 
+    // Disable Button while loading
+    const button  = document.getElementById('tx_applyChangesButton');
+    button.disabled = true;
+    button.textContent = "Editting..."  
+
     // Package data and send to backend
     const ticketBody = {
         "_OperationType": "EDIT", 
@@ -395,7 +413,7 @@ async function applyChanges(ticketID) {
     // Omit Status if it is not "New", "In Process", or "Closed"
     if (statusField.value.trim() !== "Other") ticketBody["StatusName"] = statusField.value.trim();
 
-    const userDisplayName = await fetchTDXUserDisplayName();
+    const userDisplayName = tdxUser.FullName;
     const c = "<b><i>This comment was made on behalf of " + userDisplayName + ":</i></b><br><br>" + commentsFields.value;
     const commentBody = {
         "ID": ticket.ID,
@@ -438,7 +456,8 @@ function newCommentDiolog(ticketID, commentButton) {
 }
 // Closes the new comment dialog
 async function closeCommentDialog(ticketID) {
-    const isAuthorized = await fetchTDXUserID() != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.UID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
     if (event) event.stopPropagation();
 
     const dialog = document.getElementById("tx_newCommentDialogBox");
@@ -448,14 +467,9 @@ async function closeCommentDialog(ticketID) {
 }
 // Looks at comment dialog and sends request to comment
 async function comment(ticketID) {
-    // Disable Button while loading
-    const button  = document.getElementById('tx_commentButton');
-    button.disabled = true;
-    button.textContent = "Sending Comment..." ;
-
     // Verify user is authorized to post comments
-    const userID = await fetchTDXUserID();
-    const isAuthorized = userID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.UID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
     if (!isAuthorized) {
         console.error("User is not authorized to post comments.");
         alert("You are not authorized to post comments. Please contact an admin for assistance.");
@@ -482,8 +496,13 @@ async function comment(ticketID) {
     // Stops here if any required fields are empty
     if (!canContinue) return;
 
+    // Disable Button while loading
+    const button  = document.getElementById('tx_commentButton');
+    button.disabled = true;
+    button.textContent = "Sending Comment..." ;
+
     // Package data and send to backend
-    const userDisplayName = await fetchTDXUserDisplayName();
+    const userDisplayName = tdxUser.FullName;
     const c = "<b><i>This comment was made on behalf of " + userDisplayName + ":</i></b><br><br>" + commentsFields.value;
     const commentBody = {
         "ID": ticket.ID,
@@ -503,7 +522,8 @@ async function toggleEmailRequestor(type, ticketID) {
     const ticket = window.ticketById?.get(ticketID);
     if (!ticket) console.error("Failed to search for Ticket when attempting to Edit Ticket");
 
-    const userDisplayName = await fetchTDXUserDisplayName();
+    const tdxUser = await fetchTDXUser();
+    const userDisplayName = tdxUser.FullName;
     const privateCommentsPreview = `Enter your private comments...
     
 Notes you make here will NOT be sent to the Requestor unless the the checkbox is checked.
@@ -666,7 +686,8 @@ async function showTicket(ticket) {
     }
 
     const isMobile = localStorage.getItem("isMobile") === "true";
-    const isAuthorized = await fetchTDXUserID() != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.UID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
 
     let ticketPopupContainer = document.querySelector('.tx_ticketPopupContainer');
     if (!ticketPopupContainer) {
@@ -713,23 +734,23 @@ async function showTicket(ticket) {
     const container = document.querySelector('.tx_container');
     const isCommentsShown = container?.classList.contains('commentsShown');
     const commentsHTML = `
-            <div class="tx_popupComments ${isMobile ? "mobile" : ""}" style="${isCommentsShown ? "" : "display:none;"}">
-                <span>Comments:</span>
-                <div class="tx_commentWrapper">
-                    <div class="tx_commentList">
-                        <div class="tx_comment">
-                            <br>
-                            <p class="tx_comment_header">
-                                <strong class="tx_strong">Loading comments...</strong>
-                            </p>
-                            <br>
-                        </div>
+        <div class="tx_popupComments ${isMobile ? "mobile" : ""}" style="${isCommentsShown ? "" : "display:none;"}">
+            <span>Comments:</span>
+            <div class="tx_commentWrapper">
+                <div class="tx_commentList">
+                    <div class="tx_comment">
+                        <br>
+                        <p class="tx_comment_header">
+                            <strong class="tx_strong">Loading comments...</strong>
+                        </p>
+                        <br>
                     </div>
                 </div>
-                <hr class="tx_popupCommentsHR">
-                ${isAuthorized ? `<button id="tx_newCommentButton" onClick="newCommentDiolog(${ticket.ID}, this)">Post New Comment</button>` : ""}
             </div>
-        `;
+            <hr class="tx_popupCommentsHR">
+            ${isAuthorized ? `<button id="tx_newCommentButton" onClick="newCommentDiolog(${ticket.ID}, this)">Post New Comment</button>` : ""}
+        </div>
+    `;
 
     async function updateDescription() {
         const descriptionElement = ticketPopupContainer.querySelector('.tx_Description');
@@ -767,12 +788,12 @@ async function showTicket(ticket) {
                 reply = scrubHtmlToText(reply);
 
                 repliesRows += `
-                <div class="tx_reply">
-                    <p class="tx_reply_person">
-                        <strong class="tx_strong">${c.created_by[j]}, ${c.created_date[j]}</strong>
-                    </p>
-                    <p class="tx_reply_body">${reply}</p>
-                </div>
+                    <div class="tx_reply">
+                        <p class="tx_reply_person">
+                            <strong class="tx_strong">${c.created_by[j]}, ${c.created_date[j]}</strong>
+                        </p>
+                        <p class="tx_reply_body">${reply}</p>
+                    </div>
                 `;
             }
 
@@ -816,16 +837,6 @@ async function showTicket(ticket) {
         ticket.has_been_viewed = true;
         
         // Grab old ticket info. Compares what changed. (Field: Old info => New info)
-        //  - TypeName ("General Classroom Issue" or similar)
-        //  - TypeCategoryName ("Instructional Technology & Classroom Support" or similar)
-        //  - Title
-        //  - AccountName (Department Name)
-        //  - StatusName (New, In Process, etc...)
-        //  - ServiceName ("I need help with my classroom" or similar)
-        //  - PriorityName (High, Medium, Low, Not Specified)
-        //  - ResponsibilityFullName (Tech's name)
-        //  - ResponsibilityGropuName (CTS)
-        //  - comment_count (how many comments/replies are on the ticket)
         let whatChangedRows = "";
         if (ticket.old_type_name != ticket.TypeName && ticket.old_type_name !== "")
             whatChangedRows += `<p>Type: ${ticket.old_type_name} => ${ticket.TypeName}</p>`;
@@ -1001,41 +1012,41 @@ function toggleComments(ticketID) {
                             let reply = c.replies[j] || "";
                             reply = scrubHtmlToText(reply);
                             repliesRows += `
-                <div class="tx_reply">
-                    <p class="tx_reply_person">
-                        <strong class="tx_strong">${c.created_by[j]}, ${c.created_date[j]}</strong>
-                    </p>
-                    <p class="tx_reply_body">${reply}</p>
-                </div>
-                `;
+                                <div class="tx_reply">
+                                    <p class="tx_reply_person">
+                                        <strong class="tx_strong">${c.created_by[j]}, ${c.created_date[j]}</strong>
+                                    </p>
+                                    <p class="tx_reply_body">${reply}</p>
+                                </div>
+                            `;
                         }
                         let repliesHTML = `
-                <p class="tx_reply_header">
-                    <strong class="tx_strong">Replies:</strong>
-                    ${repliesRows}
-                </p>
-            `;
+                            <p class="tx_reply_header">
+                                <strong class="tx_strong">Replies:</strong>
+                                ${repliesRows}
+                            </p>
+                        `;
                         builtComments += `
-                <div class="tx_comment">
-                    <p class="tx_comment_header">
-                        <strong class="tx_strong">${c.commenter}</strong> - ${formattedDate}
-                    </p>
-                    <p class="tx_comment_body">${commentBody}</p>
-                    <div class="tx_replies">${c.replies_count ? repliesHTML : "" }</div>
-                    <p class="tx_comment_seperator"></p>
-                </div>
-            `;
+                            <div class="tx_comment">
+                                <p class="tx_comment_header">
+                                    <strong class="tx_strong">${c.commenter}</strong> - ${formattedDate}
+                                </p>
+                                <p class="tx_comment_body">${commentBody}</p>
+                                <div class="tx_replies">${c.replies_count ? repliesHTML : "" }</div>
+                                <p class="tx_comment_seperator"></p>
+                            </div>
+                        `;
                     }
                     if (comments.length == 0) {
                         builtComments = `
-                <div class="tx_comment">
-                    <br>
-                        <p class="tx_comment_header">
-                            <strong class="tx_strong">No Comments Exist for this Ticket</strong>
-                        </p>
-                    <br>
-                </div>
-            `;
+                            <div class="tx_comment">
+                                <br>
+                                    <p class="tx_comment_header">
+                                        <strong class="tx_strong">No Comments Exist for this Ticket</strong>
+                                    </p>
+                                <br>
+                            </div>
+                        `;
                     }
                     commentsList.innerHTML = builtComments;
                 });
@@ -1406,13 +1417,6 @@ function getTicketCache() {
     }
 }
 
-const DEFAULT_TICKEX_SETTINGS = {
-    newTicketMaxItems: 15,
-    catchAllMaxItems: 15,
-    closedMaxItems: 10,
-    sortBy: 'modified',
-};
-
 function getTickexSettings() {
     try {
         const settings = JSON.parse(sessionStorage.getItem('tickex_settings')) || {};
@@ -1578,7 +1582,7 @@ async function checkUserExistsInDatabase() {
 }
 
 // Fetches the TDX user ID for the current user
-async function fetchTDXUserID() {
+async function fetchTDXUser() {
     try {
         const response = await fetch('/currentUser/fetchTDXUser');
         if (!response.ok) {
@@ -1587,27 +1591,10 @@ async function fetchTDXUserID() {
         }
 
         const data = await response.json();
-        return data.UID || 0;
+        return data || {"UID": 0, "FullName": ""};
     } catch (error) {
         console.error("Error fetching current user ID:", error);
         return "FAILED_TO_FETCH_TDX_USER_ID";
-    }
-}
-
-// Fetches the TDX Display Name for the current user
-async function fetchTDXUserDisplayName() {
-    try {
-        const response = await fetch('/currentUser/fetchTDXUser');
-        if (!response.ok) {
-            console.error("Failed to fetch current user display name");
-            return "FAILED_TO_FETCH_TDX_USER_DISPLAY_NAME";
-        }
-
-        const data = await response.json();
-        return data.FullName || "";
-    } catch (error) {
-        console.error("Error fetching current user display name:", error);
-        return "FAILED_TO_FETCH_TDX_USER_DISPLAY_NAME";
     }
 }
 
@@ -1628,7 +1615,8 @@ async function updateTicketViewed(ticketID, viewed) {
 
 // Send a request to TeamDynamix to Create/edit a Ticket
 async function updateTicket(body) {
-    const isAuthorized = await fetchTDXUserID() != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.UID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
     if (!isAuthorized) return;
 
     try {
@@ -1646,7 +1634,8 @@ async function updateTicket(body) {
 
 // Send a request to TeamDynamix to Post a Comment to a Ticket
 async function postComment(body) {
-    const isAuthorized = await fetchTDXUserID() != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.UID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
     if (!isAuthorized) return;
 
     try {
@@ -1664,7 +1653,8 @@ async function postComment(body) {
 
 // Send a request to TeamDynamix to mark at Ticket as a True/False Ticket
 async function updateFalseStatus(jsonBody) {
-    const isAuthorized = await fetchTDXUserID() != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.UID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
     if (!isAuthorized) return;
 
     try {
@@ -1738,7 +1728,8 @@ async function setTickex(openTicketByID = -1) {
     /* -------------------- Tickex Page -------------------- */
 
     const isAdmin = await fetchCurrentUserPermissions()  >= 6;
-    const isAuthorized = await fetchTDXUserID() != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase()); 
+    const tdxUser = await fetchTDXUser();
+    const isAuthorized = tdxUser.UID != 0 && (await fetchCurrentUserPermissions() > 3 || !await checkUserExistsInDatabase());
 
     // Display loading message while fetching tickets
     let loadingMessage = document.createElement("div");
@@ -1912,7 +1903,8 @@ async function setTickex(openTicketByID = -1) {
                         }
                     </select></div>
                 </div>
-            </div></fieldset>
+            </div>
+        </fieldset>
     `;
 
     let catchAll = document.createElement("div");
@@ -1953,7 +1945,8 @@ async function setTickex(openTicketByID = -1) {
                         }
                     </select></div>
                 </div>
-            </div></fieldset>
+            </div>
+        </fieldset>
     `;
 
     let closedTickets = document.createElement("div");
@@ -2025,9 +2018,9 @@ async function setTickex(openTicketByID = -1) {
                                                             t.StatusName != 'Resolved' && 
                                                             t.StatusName != 'Cancelled');
                     const closedTickets = newTickets.filter(t => !oldTickets.has(t.ModifiedDate) && 
-                                                                (t.StatusName == "Closed" || 
-                                                                t.StatusName == 'Resolved' || 
-                                                                t.StatusName == 'Cancelled'));
+                                                            (t.StatusName == "Closed" || 
+                                                            t.StatusName == 'Resolved' || 
+                                                            t.StatusName == 'Cancelled'));
 
                     // New tickets found
                     if (actuallyNew.length > 0) {
@@ -2045,7 +2038,6 @@ async function setTickex(openTicketByID = -1) {
                         const txButton = document.getElementById("TXButton");
                         if (!(txButton && txButton.classList.contains("selected"))) 
                             stashTickexResponse(actuallyNew); // User is NOT on Tickex, stash the response and strobe the tab
-
                     }
 
                     // Prevent Search Task Disruption
@@ -2085,5 +2077,4 @@ async function setTickex(openTicketByID = -1) {
     }
 
     await Promise.resolve();
-    return;
 }
