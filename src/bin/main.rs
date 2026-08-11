@@ -14,10 +14,12 @@ Backend
 
 JackNet
     - execute_ping(body: Vec<u8>) -> String
+    - write_doubleOK(path: &str, name: String) -> std::io::Result<()>
 
 ChkrBrd
     - construct_headers(call_type: &str, database: &mut Database) -> HeaderMap
     - check_schedule(room: Room) -> String
+    - check_period_to_delta(period: i16) -> TimeDelta
     - check_lsm(room: Room) -> String
 
 CamCode
@@ -36,7 +38,8 @@ Tickex
     - run_tickex(database: &mut Database, req: &Client) -> Result<(), String>
 
 Wiki
-    - w_build_articles() -> String
+    - w_build_articles() -> Vec<u8>
+    - w_tree() -> Vec<u8> 
 */
 
 // dependencies
@@ -62,11 +65,11 @@ use futures_util::future::FutureExt;
 use getopts::Options;
 use std::{
     str, env,
-    io::{ prelude::*, Read, stdout, },
+    io::{ prelude::*, Read, stdout, Write },
     net::{ TcpListener, IpAddr, Ipv4Addr, },
     fs::{
         read_dir, metadata, write, remove_file, remove_dir, create_dir,
-        File, 
+        File, OpenOptions, 
     },
     path::Path,
     path::PathBuf,
@@ -2552,6 +2555,7 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 
  - ping_response()
  - execute_ping()
+ - write_doubleOK()
  - ping_room()
  - execute_ping_st()
  - ping_room_st()
@@ -2621,32 +2625,47 @@ async fn execute_ping(database: &mut Database) {
 
 fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
     let mut pinged_hns: Vec<Option<DB_IpAddress>> = Vec::new();
+
     for net in net_elements {
         let hn_string: String = net.as_ref().unwrap().hostname.to_string();
         pinged_hns.push(Some(
             match ping_this(&hn_string) {
-                Ok(ip) => DB_IpAddress {
+                Ok(ip) => {
+             
+                DB_IpAddress {
                     hostname: net.clone().unwrap().hostname,
                     ip: ip,
                     last_ping: String::from(format!("{}", chrono::Utc::now())),
                     alert: 0,
                     error_message: String::new()
+                }}, // Upon first instance of error ping again
+                _ => { 
+                   
+                    match ping_this(&hn_string) {
+                        Ok(ip) => {
+                        DB_IpAddress {
+                            hostname: net.clone().unwrap().hostname,
+                            ip: ip,
+                            last_ping: String::from(format!("{}", chrono::Utc::now())),
+                            alert: 0,
+                            error_message: String::new()
+                        }},
+                        Err(m)      => {
+                            debug!("PIN_ERR: {} failed: {}", net.clone().unwrap().hostname.to_string(), m);
+                            DB_IpAddress {
+                                hostname: net.clone().unwrap().hostname,
+                                ip: String::from("x"),
+                                last_ping: String::from(format!("{}", chrono::Utc::now())),
+                                alert: net.clone().unwrap().alert + 1,
+                                error_message: String::from(m)
+                            }
+                        }
+                    } 
+
                 },
-                Err(m)      => {
-                    debug!("PIN_ERR: {} failed: {}", net.clone().unwrap().hostname.to_string(), m);
-                    
-                    DB_IpAddress {
-                        hostname: net.clone().unwrap().hostname,
-                        ip: String::from("x"),
-                        last_ping: String::from(format!("{}", chrono::Utc::now())),
-                        alert: net.clone().unwrap().alert + 1,
-                        error_message: String::from(m)
-                    }
-                }
             }
         ))
-    }
-
+    };
     return pinged_hns;
 }
 

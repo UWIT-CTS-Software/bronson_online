@@ -14,7 +14,9 @@ Data
     - setCSVExport(hns, ips, rms)
     - getSelectedDevices()
     - getSelDevNames(binaryDevList)
+    - getSelDevTypes(binaryDevList)
     - getSelectedBuilding()
+    - devTypeToName(devType)
     - pad(n, width, z)
 Export
     - runExport()
@@ -30,6 +32,8 @@ HTML
     - closeVisTab(tabID)
     - minimizeVisTab(tabID)
     - genTileID(building)
+    - stringToArray(string)
+    - appendString(arr, string)
     - postJNVis(hns, ips, building, totalDevices, totalNotFound, devicesNames)
     - setJackNet()
  
