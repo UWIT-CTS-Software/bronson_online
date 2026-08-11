@@ -57,7 +57,7 @@ use server_lib::{
     Database, Terminal, 
     models::{
         DB_Room, DB_Building, DB_User, DB_DataElement,
-        DB_IpAddress, DB_Key, DB_Ticket
+        DB_IpAddress, DB_Key, DB_Ticket, DB_Project
     },
     LoginSuccess, 
 };
@@ -79,6 +79,7 @@ use std::{
         atomic::{AtomicBool, Ordering}},
     clone::{ Clone, },
     option::{ Option, },
+    process::Command,
     collections::{ HashMap, HashSet },
 
 };
@@ -97,6 +98,7 @@ use urlencoding::decode;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
+use tera::{Tera, Context, Delimiters};
 use base64::{Engine as _, engine::general_purpose};
 // use base64::decode as b64decode;
 
@@ -384,6 +386,15 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
     // Database Init
     let mut database = Database::new();
 
+    // ------------ DELETE LATER ------------
+    // let example_json = json!({
+    //     "an_accomplishments": [],
+    //     "an_notesForFuture": [],
+    //     "an_ticketAndRoomCheckNotes": []
+    // });
+    // export_to_pdf(&mut database, 0, example_json).await.unwrap();
+    // --------------------------------------
+
     match collegenet_login(&mut database).await {
         Ok(v)  => { println!("{:?}", v); },
         Err(m) => { error!("25L_ERR: {}", m); }
@@ -522,7 +533,6 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
         // Sleep for a short duration to prevent busy-waiting
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
-    return;
 }
 
 #[tokio::main]
@@ -612,6 +622,11 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_file("html-css-js/tickex.js")
         },
+        "GET /analytics.js HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file("html-css-js/analytics.js")
+        },
         "GET /jacknet.js HTTP/1.1" => {
             Response::new()
                     .status(STATUS_200)
@@ -657,6 +672,12 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_file(user_homepage)
                     .insert_onload("setTickex()")
+        },
+        "GET /analytics HTTP/1.1" => {
+            Response::new()
+                    .status(STATUS_200)
+                    .send_file(user_homepage)
+                    .insert_onload("setAnalytics()")
         },
         "GET /jacknet HTTP/1.1" => {
             Response::new()
@@ -851,6 +872,7 @@ async fn handle_connection(
             let tickets: Vec<Value> = db_tickets.into_iter().map(|t| {
                 json!({
                     "ID": t.ticket_id,
+                    "ParentID": t.parent_id,
                     "has_been_viewed": t.has_been_viewed,
                     "Title": t.title,
                     "StatusName": t.status_name,
@@ -916,6 +938,118 @@ async fn handle_connection(
 
                 Err(e) => {
                     error!("Failed to update ticket viewed: {}", e);
+                    Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Error".into())
+                }
+            }
+        },
+        "GET /projects HTTP/1.1" => {
+            if database.check_if_projects_empty() {
+                match fetch_projects(&mut database, &tdx_client).await {
+                    Ok(()) => (),
+                    Err(e) => error!("Failed to populate projects: {}", e),
+                }
+            }
+
+            let db_projects = match database.get_all_projects() {
+                Ok(p) => p,
+                Err(e) => {
+                    error!("Failed to get projects: {}", e);
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("[]".into())
+                        .build();
+                }
+            };
+            let projects: Vec<Value> = db_projects.into_iter().map(|t| {
+                json!({
+                    "ID": t.project_id,
+                    "CreatedDate": t.created_date,
+                    "ModifiedDate": t.modified_date,
+                    "Name": t.name,
+                    "Description": t.description,
+                    "IsActive": t.is_active,
+                    "TypeID": t.type_id,
+                    "PercentComplete": t.percent_complete,
+                    "StatusName": t.status_name,
+                    "StatusComments": t.status_comments,
+                    "StartDate": t.start_date,
+                    "EndDate": t.end_date,
+                    "HealthDescription": t.health,
+
+                    "is_hidden": t.is_hidden,
+                })
+            }).collect();
+
+            let contents = serde_json::to_string(&projects).unwrap().into();
+            Response::new()
+                .status(STATUS_200)
+                .send_contents(contents)
+        },
+        "POST /analytics/export HTTP/1.1" => {
+            // Parse JSON body
+            let body_json: Value = match serde_json::from_slice(&req.body) {
+                Ok(v) => v,
+                Err(_) => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Invalid JSON".into())
+                        .build();
+                }
+            };
+
+            let time_period = body_json["timePeriod"].as_i64().unwrap_or(0) as i16;
+            let optional_data = body_json["optionalData"].clone();
+
+            match export_to_pdf(&mut database, time_period, optional_data).await {
+                Ok(()) => (),
+                Err(e) => {
+                    error!("Failed to export PDF: {}", e);
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Failed to generate PDF".into())
+                        .build();
+                }
+            }
+
+            let report_path = format!("{}/report.pdf", TEMP_DIR);
+            if !dir_exists(report_path.as_str()) {
+                return Response::new()
+                    .status(STATUS_500)
+                    .send_contents("Report PDF file not found".into())
+                    .build();
+            }
+
+            let _ = cleanup_temp_dir().await;
+
+            Response::new()
+                .status(STATUS_200)
+                .send_file(report_path.as_str())
+        },
+        "POST /update/projects/hidden HTTP/1.1" => {
+            // Parse JSON body
+            let body_json: Value = match serde_json::from_slice(&req.body) {
+                Ok(v) => v,
+                Err(_) => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Invalid JSON".into())
+                        .build();
+                }
+            };
+
+            let id = body_json["id"].as_i64().unwrap_or(-1) as i32;
+            let is_hidden = body_json["is_hidden"].as_bool().unwrap_or(false);
+
+            // Update DB
+            match database.update_project_hidden(id, is_hidden) {
+                Ok(_) => Response::new()
+                    .status(STATUS_200)
+                    .send_contents("Updated".into()),
+
+                Err(e) => {
+                    error!("Failed to update project hidden: {}", e);
                     Response::new()
                         .status(STATUS_500)
                         .send_contents("Error".into())
@@ -2157,6 +2291,7 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
     let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
     let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
     let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
+    let url_365_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last365days%22%7D";
 
     let v_7_days: Value = match serde_json::from_str(req
         .build()
@@ -2200,6 +2335,20 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
                 Err(_) => json!({"data": []})
         };
 
+    let v_365_days: Value = match serde_json::from_str(req
+        .build()
+        .method("GET")
+        .endpoint(url_365_days)
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .expect("Unable to make lsm_365_days API call")
+        .body
+        .as_str()) {
+                Ok(v)  => v,
+                Err(_) => json!({"data": []})
+        };
+
     let data_7_days: Vec<Value> = match v_7_days["data"].as_array() {
         Some(data) => data.clone(),
         None => Vec::<Value>::new()
@@ -2212,18 +2361,22 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
         Some(data) => data.clone(),
         None => Vec::<Value>::new()
     };
+    let data_365_days: Vec<Value> = match v_365_days["data"].as_array() {
+        Some(data) => data.clone(),
+        None => Vec::<Value>::new()
+    };
 
     let contents = json!({
         "7days": data_7_days,
         "30days": data_30_days,
-        "90days": data_90_days
+        "90days": data_90_days,
+        "365days": data_365_days
     }).to_string().into();
 
     let _ = database.update_data(&DB_DataElement {
         key: String::from("lsm_leaderboard"),
         val: String::from_utf8(contents).expect("Unable to parse LSM Return"),
     });
-    return;
 }
 
 async fn update_lsm_spares(database: &mut Database, req: &API) {
@@ -2253,7 +2406,6 @@ async fn update_lsm_spares(database: &mut Database, req: &API) {
         key: String::from("lsm_spares"),
         val: String::from_utf8(contents).expect("Unable to parse LSM Return"),
     });
-    return;
 }
 
 // Unsure if this is worth implementing...
@@ -2287,7 +2439,6 @@ async fn update_lsm_data(_database: &mut Database, _req: &API) {
     //         };
     //     }
     // }
-    return;
 }
 
 async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), String> {
@@ -2623,7 +2774,6 @@ async fn execute_ping(database: &mut Database) {
             });
         }
     }
-    return;
 }
 
 fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
@@ -3317,7 +3467,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
         let search_body = serde_json::json!({
             "ModifiedDateFrom": "2020-01-01T00:00:00Z",
             "ResponsibilityGroupIDs": [2742], // CTS Group ID
-            "MaxResults": 5000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
+            "MaxResults": 100000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
         });
         // Make the request
         let resp_raw = req
@@ -3375,6 +3525,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
         for ticket_val in &tickets_json {
             let ticket = DB_Ticket {
                 ticket_id: ticket_val["ID"].as_i64().unwrap_or(0) as i32,
+                parent_id: ticket_val["ParentID"].as_i64().unwrap_or(0) as i32,
                 has_been_viewed: true,
                 type_name: ticket_val["TypeName"].as_str().unwrap_or("").to_string(),
                 type_category_name: ticket_val["TypeCategoryName"].as_str().unwrap_or("").to_string(),
@@ -3541,6 +3692,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
 
             let ticket = DB_Ticket {
                 ticket_id: ticket_val["ID"].as_i64().unwrap_or(0) as i32,
+                parent_id: ticket_val["ParentID"].as_i64().unwrap_or(0) as i32,
                 has_been_viewed: orig_viewed,
                 type_name: ticket_val["TypeName"].as_str().unwrap_or("").to_string(),
                 type_category_name: ticket_val["TypeCategoryName"].as_str().unwrap_or("").to_string(),
@@ -3585,6 +3737,681 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
     return Ok(());
 }
 
+/*
+ $$$$$$\                      $$\             $$\     $$\                     
+$$  __$$\                     $$ |            $$ |    \__|                    
+$$ /  $$ |$$$$$$$\   $$$$$$\  $$ |$$\   $$\ $$$$$$\   $$\  $$$$$$$\  $$$$$$$\ 
+$$$$$$$$ |$$  __$$\  \____$$\ $$ |$$ |  $$ |\_$$  _|  $$ |$$  _____|$$  _____|
+$$  __$$ |$$ |  $$ | $$$$$$$ |$$ |$$ |  $$ |  $$ |    $$ |$$ /      \$$$$$$\  
+$$ |  $$ |$$ |  $$ |$$  __$$ |$$ |$$ |  $$ |  $$ |$$\ $$ |$$ |       \____$$\ 
+$$ |  $$ |$$ |  $$ |\$$$$$$$ |$$ |\$$$$$$$ |  \$$$$  |$$ |\$$$$$$$\ $$$$$$$  |
+\__|  \__|\__|  \__| \_______|\__| \____$$ |   \____/ \__| \_______|\_______/ 
+                                  $$\   $$ |                                  
+                                  \$$$$$$  |                                  
+                                   \______/                                   
+*/
+
+async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String> {
+    let url = "https://uwyo.teamdynamix.com/TDWebApi/api/3444/projects/search";
+
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e)),
+    };
+
+    // If no projects exist, perform a projects fetch from Jan 1st, 2020 to now
+    if database.check_if_projects_empty() {
+        // Define search
+        let search_body = serde_json::json!({
+            "ModifiedDateFrom": "2020-01-01T00:00:00Z",
+            "TypeID": 42460
+        });
+        // Make the request
+        let resp_raw = req
+            .build()
+            .method("POST")
+            .endpoint(url)
+            .header("Authorization", &tdx_token.val)
+            .header("Content-Type", "application/json")
+            .body(search_body)
+            .timeout(Duration::from_secs(120))
+            .send()
+            .await;
+        
+        let resp = match resp_raw {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch projects: {}", e))
+        };
+
+        if !resp.status.is_success() {
+            return Err(format!("TDX API error: {}", resp.status));
+        }
+
+        // Parse the response as JSON
+        let parsed_projects: serde_json::Value = serde_json::from_str(&resp.body)
+            .map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
+        let projects_json: Vec<serde_json::Value> = match parsed_projects.as_array() {
+            Some(items) => items.clone(),
+            None => parsed_projects
+                .get("Items")
+                .and_then(serde_json::Value::as_array)
+                .cloned()
+                .ok_or_else(|| format!("Expected project array in response body: {}", resp.body))?,
+        };
+
+        // Map to DB_Project and insert
+        for project_val in &projects_json {
+            let project = DB_Project {
+                project_id: project_val["ID"].as_i64().unwrap_or(0) as i32,
+                created_date: project_val["CreatedDate"].as_str().unwrap_or("").to_string(),
+                modified_date: project_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
+                name: project_val["Name"].as_str().unwrap_or("").to_string(),
+                description: project_val["Description"].as_str().unwrap_or("").to_string(),
+                is_active: project_val["IsActive"].as_bool().unwrap_or(true),
+                type_id: project_val["TypeID"].as_i64().unwrap_or(0) as i32,
+                percent_complete: project_val["PercentComplete"].as_i64().unwrap_or(-1) as i16,
+                status_name: project_val["StatusName"].as_str().unwrap_or("").to_string(),
+                status_comments: project_val["StatusComments"].as_str().unwrap_or("").to_string(),
+                start_date: project_val["StartDate"].as_str().unwrap_or("").to_string(),
+                end_date: project_val["EndDate"].as_str().unwrap_or("").to_string(),
+                health: project_val["HealthDescription"].as_str().unwrap_or("").to_string(),
+
+                is_hidden: project_val["is_hidden"].as_bool().unwrap_or(false),
+            };
+
+            // Insert or update
+            if let Err(e) = database.update_project(&project) {
+                warn!("Failed to insert project {}: {}", project.project_id, e);
+            }
+        }
+
+        // Double check projects exist in database, but this should not be necessary
+        if database.check_if_projects_empty() {
+            return Err("Failed to insert projects into database".to_string());
+        }
+
+        info!("[Data] - Pulled all TDX projects from Jan 1st, 2020");
+    } else { // Projects table not empty, only update more recent projects
+        // Look in database for most recent Project and look at its date
+        let latest_project = match database.get_latest_project() {
+            Ok(p) => p,
+            Err(e) => return Err(format!("Failed to get latest project: {}", e)),
+        };
+
+        // Define search
+        let search_body = serde_json::json!({
+            "MaxResults": 10000,
+            "TypeID": 42460
+        });
+
+        // Make the request to TDX API
+        let mut resp = match req
+            .build()
+            .method("POST")
+            .endpoint(url)
+            .header("Authorization", &tdx_token.val)
+            .header("Content-Type", "application/json")
+            .body(search_body.clone())
+            .send()
+            .await {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch project from TDX: {}", e))
+            };
+
+        // Try fetching a new tdx token and try again if Unauthorized
+        if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+            warn!("Project data fetch failure was due to an unauthorized response, fetching new token and trying again...");
+
+            // Grab new TDX Token
+            let _ = fetch_tdx_token(database, req).await;
+
+            // Get the TDX API token from database
+            let tdx_token = match database.get_key("tdx_api") {
+                Ok(t) => t,
+                Err(e) => return Err(format!("Failed to get TDX API token while fetching project data: {}", e)),
+            };
+
+            // Make the request to TDX API
+            let retry_resp_raw = req
+                .build()
+                .method("POST")
+                .endpoint(url)
+                .header("Authorization", &tdx_token.val)
+                .header("Content-Type", "application/json")
+                .body(search_body)
+                .send()
+                .await;
+                
+            let retry_resp = match retry_resp_raw {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch project from TDX: {}", e))
+            };
+
+            if !retry_resp.status.is_success() {
+                return Err(format!("TDX API error: {} - {}", retry_resp.status, retry_resp.status.canonical_reason().unwrap_or("Unknown")));
+            } else {
+                warn!("Successfully recovered new TDX Token & fetched new project data");
+                resp = retry_resp;
+            }
+        }
+
+        // Get the response body as text and convert to JSON
+        let parsed_projects: serde_json::Value = serde_json::from_str(&resp.body)
+            .map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
+        let projects_json: Vec<serde_json::Value> = match parsed_projects.as_array() {
+            Some(items) => items.clone(),
+            None => parsed_projects
+                .get("Items")
+                .and_then(serde_json::Value::as_array)
+                .cloned()
+                .ok_or_else(|| format!("Expected project array in response body: {}", resp.body))?,
+        };
+
+        // Map to DB_Project and update
+        for project_val in &projects_json {
+            // If it exists, get original project from database
+            let id = project_val["ID"].as_i64().unwrap_or(0) as i32;
+
+            let project = DB_Project {
+                project_id: id,
+                created_date: project_val["CreatedDate"].as_str().unwrap_or("").to_string(),
+                modified_date: project_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
+                name: project_val["Name"].as_str().unwrap_or("").to_string(),
+                description: project_val["Description"].as_str().unwrap_or("").to_string(),
+                is_active: project_val["IsActive"].as_bool().unwrap_or(true),
+                type_id: project_val["TypeID"].as_i64().unwrap_or(0) as i32,
+                percent_complete: project_val["PercentComplete"].as_i64().unwrap_or(-1) as i16,
+                status_name: project_val["StatusName"].as_str().unwrap_or("").to_string(),
+                status_comments: project_val["StatusComments"].as_str().unwrap_or("").to_string(),
+                start_date: project_val["StartDate"].as_str().unwrap_or("").to_string(),
+                end_date: project_val["EndDate"].as_str().unwrap_or("").to_string(),
+                health: project_val["HealthDescription"].as_str().unwrap_or("").to_string(),
+                
+                is_hidden: project_val["is_hidden"].as_bool().unwrap_or(false),
+            };
+
+            // Insert or update
+            if let Err(e) = database.update_project(&project) {
+                error!("Failed to insert project {}: {}", project.project_id, e);
+            }
+        }
+    }
+
+    return Ok(());
+}
+
+async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data: serde_json::Value) -> Result<(), String> {
+    // Helper: get date range based on time_period
+    let get_date_range = |period: i16| -> (DateTime<Utc>, DateTime<Utc>) {
+        let now = Utc::now();
+        let start = match period {
+            0 => now - TimeDelta::days(7),
+            1 => now - TimeDelta::days(30),
+            2 => now - TimeDelta::days(90),
+            3 => now - TimeDelta::days(365),
+            4 => {
+                // all-time: use Jan 1, 2020
+                DateTime::parse_from_rfc3339("2020-01-01T00:00:00+00:00")
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .unwrap_or_else(|_| now - TimeDelta::days(365 * 100))
+            }
+            _ => now - TimeDelta::days(7), // default to 7 days
+        };
+        return (start, now);
+    };
+
+    // Helper: check if date string is within range
+    let is_date_in_range = |date_str: &str, start: DateTime<Utc>, end: DateTime<Utc>| -> bool {
+        if let Ok(date) = DateTime::parse_from_rfc3339(date_str) {
+            let date_utc = date.with_timezone(&Utc);
+            return date_utc >= start && date_utc <= end;
+        } else {
+            return false;
+        }
+    };
+
+    // Helper: extract building code from ticket title
+    let extract_building = |title: &str| -> Option<String> {
+        let re = Regex::new(r"^\s*([A-Za-z]{2,4}(?:\s+[A-Za-z]{2,4})?)\s+(\d{1,4})").unwrap();
+        re.captures(title).map(|caps| {
+            let mut building = caps[1].to_uppercase().trim().to_string();
+            
+            // Normalize building codes (old_code -> new_code)
+            let normalizations: std::collections::HashMap<&str, &str> = [
+                ("ST", "STEM"), ("ENZI", "STEM"), ("ENZI STEM", "STEM"),
+                ("ENG", "EN"), ("ESB", "ES"), ("SIB", "SI"), ("COE", "CL"), 
+                ("CIC", "CI"), ("BCPA", "PA"), ("BE", "BH"),
+            ].iter().cloned().collect();
+            
+            if let Some(&normalized) = normalizations.get(building.as_str()) {
+                building = normalized.to_string();
+            }
+            return building;
+        })
+    };
+
+    // Helper: extract hour from date string
+    let extract_hour = |date_str: &str| -> Option<i32> {
+        if let Ok(date) = DateTime::parse_from_rfc3339(date_str) {
+            let date_local = date.with_timezone(&Local);
+            let hour = date_local.format("%H").to_string().parse::<i32>().ok()?;
+            return Some(hour);
+        } else {
+            return None;
+        }
+    };
+
+    // Create new Tera and reset delims that won't conflict with LaTeX syntax
+    let mut tera = Tera::default();
+    tera.set_delimiters(Delimiters {
+        block_start: "[%".into(),
+        block_end: "%]".into(),
+        variable_start: "[[".into(),
+        variable_end: "]]".into(),
+        comment_start: "[#".into(),
+        comment_end: "#]".into(),
+    }).map_err(|e| format!("Failed to set Tera Delimiters: {}", e))?;
+
+    // Gather the data for the report
+    let (start_date, end_date) = get_date_range(time_period);
+    let all_tickets = database.get_all_tickets().map_err(|e| format!("Failed to fetch tickets: {}", e))?;
+
+    let mut tickets_created = 0;
+    let mut tickets_closed = 0;
+    let mut current_open_tickets = 0;
+    let mut false_tickets = 0;
+    let mut tickets_from_room_checks = 0;
+    let mut wycast_event_tickets = 0;
+    let mut pc_related_tickets = 0;
+    let mut building_counts: std::collections::HashMap<String, i32> = std::collections::HashMap::new();
+    let mut hour_counts: Vec<i32> = vec![0; 14]; // 7am-7pm (13 slots) + "Other"
+
+    // Process tickets
+    for ticket in &all_tickets {
+        // Count open tickets (all-time, not time period-specific)
+        let is_open = matches!(
+            ticket.status_name.as_str(),
+            "New" | "In Process" | "On Hold"
+        );
+        if is_open {
+            current_open_tickets += 1;
+        }
+
+        // These represent tickets created within the time period and are currently closed/false tickets
+        if is_date_in_range(&ticket.created_date, start_date, end_date) {
+            tickets_created += 1;
+
+            // Closed status
+            let is_closed = matches!(
+                ticket.status_name.as_str(),
+                "Closed" | "Completed" | "Resolved" | "Cancelled" | "Closed using Remote Support Tool"
+            );
+            if is_closed {
+                tickets_closed += 1;
+            }
+            // Room check tickets
+            if Regex::new(r"(?i)room check$").unwrap().is_match(&ticket.title) {
+                tickets_from_room_checks += 1;
+            }
+            // WyoCast/Event tickets
+            if Regex::new(r"(?i)\b(wyocast|event|zoom|tutorial)\b").unwrap().is_match(&ticket.title) {
+                wycast_event_tickets += 1;
+            }
+            // PC-related tickets
+            if Regex::new(r"(?i)\b(pc|computer|laptop|lptp)\b").unwrap().is_match(&ticket.title) {
+                pc_related_tickets += 1;
+            }
+            // False tickets
+            if ticket.parent_id == 22873142 {
+                false_tickets += 1;
+            }
+
+            let title = ticket.title.trim();
+            if let Some(building) = extract_building(title) {
+                *building_counts.entry(building).or_insert(0) += 1;
+            }
+
+            if let Some(hour) = extract_hour(&ticket.created_date) {
+                if hour >= 7 && hour <= 19 {
+                    hour_counts[(hour - 7) as usize] += 1;
+                } else {
+                    hour_counts[13] += 1; // "Other"
+                }
+            }
+        }
+    }
+
+    // Get leaderboard data for room checks performed
+    let room_checks_performed = match database.get_data("lsm_leaderboard") {
+        Ok(leaderboard_data) => {
+            // Parse JSON and sum up room checks for the appropriate time period
+            if let Ok(leaderboard_json) = serde_json::from_str::<Value>(&leaderboard_data.val) {
+                let period_key = match time_period {
+                    0 => "7days",
+                    1 => "30days",
+                    2 => "90days",
+                    3 | 4 => "365days",
+                    _ => "7days",
+                };
+                
+                if let Some(period_data) = leaderboard_json.get(period_key).and_then(|v| v.as_array()) {
+                    period_data.iter()
+                        .filter_map(|item| item.get("Count").and_then(|c| c.as_i64()))
+                        .sum::<i64>() as i32
+                } else {
+                    0
+                }
+            } else {
+                0
+            }
+        }
+        Err(_) => 0,
+    };
+
+    // Sort buildings by count and get top 10
+    let mut sorted_buildings: Vec<_> = building_counts.into_iter().collect();
+    sorted_buildings.sort_by(|a, b| b.1.cmp(&a.1));
+    let top_10_buildings: Vec<String> = sorted_buildings.iter().take(10).map(|(k, _)| k.clone()).collect();
+    let top_10_counts: Vec<i32> = sorted_buildings.iter().take(10).map(|(_, v)| *v).collect();
+
+        // Build the latex
+    // Helper: escape common LaTeX special characters to avoid compilation errors
+    let escape_latex = |s: &str| -> String {
+        let mut out = s.replace("\\", "\\textbackslash{}");
+        let reps = [
+            ("%", "\\%"), ("&", "\\&"), ("$", "\\$"), ("#", "\\#"),
+            ("_", "\\_"), ("{", "\\{"), ("}", "\\}"), ("~", "\\textasciitilde{}"),
+            ("^", "\\textasciicircum{}"),
+        ];
+        for (f, t) in reps.iter() {
+            out = out.replace(f, t);
+        }
+        return out;
+    };
+
+    // Helper: create a simple section with an itemize list from a JSON array value
+    let make_list = |v: &serde_json::Value, title: &str| -> String {
+        if !v.is_array() {
+            return String::new();
+        }
+        let arr = v.as_array().unwrap();
+        if arr.is_empty() {
+            return String::new();
+        }
+
+        let esc_title = "\\huge\n".to_owned() + &escape_latex(title);
+        
+        let mut s = format!("\\begin{{quote}}\n\\section*{{{}}}\n\\begin{{itemize}}\n\\large", esc_title);
+        for item in arr.iter() {
+            let item_str = match item.as_str() {
+                Some(st) => st.to_string(),
+                None => item.to_string(),
+            };
+            s.push_str(&format!("  \\item {}\n", escape_latex(&item_str)));
+        }
+
+        s.push_str("\\end{itemize}\n\\end{quote}\n");
+        return s;
+    };
+
+    // Convert hour counts to LaTeX coordinates format
+    let hour_labels = vec!["7am", "8am", "9am", "10am", "11am", "12pm", "1pm", "2pm", "3pm", "4pm", "5pm", "6pm", "7pm", "Other"];
+    let mut building_latex_coords = String::new();
+    let mut hour_latex_coords = String::new();
+
+    for (i, building) in top_10_buildings.iter().enumerate() {
+        if i > 0 {
+            building_latex_coords.push(' ');
+        }
+        building_latex_coords.push_str(&format!("({},{}) ", building.to_string(), top_10_counts[i]));
+    }
+
+    for (i, (label, count)) in hour_labels.iter().zip(hour_counts.iter()).enumerate() {
+        if i > 0 {
+            hour_latex_coords.push(' ');
+        }
+        hour_latex_coords.push_str(&format!("({},{}) ", label, count));
+    }
+
+
+    // Build Notes
+    let accomplishments_val = optional_data.get("an_accomplishments").unwrap_or(&serde_json::Value::Null);
+    let future_notes_val = optional_data.get("an_notesForFuture").unwrap_or(&serde_json::Value::Null);
+    let roomcheck_notes_val = optional_data.get("an_ticketAndRoomCheckNotes").unwrap_or(&serde_json::Value::Null);
+
+    let mut latex_accomplishments = make_list(accomplishments_val, "Accomplishments");
+    let mut latex_future_notes = make_list(future_notes_val, "Notes for the Future");
+    let mut latex_roomcheck_tickets_notes = make_list(roomcheck_notes_val, "Notes");
+
+    if latex_future_notes != "" {
+        latex_future_notes += r#"
+            \newpage
+            \maketitle
+            \thispagestyle{empty} % Remove page number from page
+        "#;
+    }
+
+    // Master LaTeX
+    let latex_template = r#"
+        \documentclass{article}
+
+        % Required LaTeX packages
+        \usepackage{pdflscape}
+        \usepackage{pgfplots}
+        \usepackage{tikz}
+        \usepackage{titling}
+        \usepackage[T1]{fontenc}
+        \usepackage{helvet}
+        \renewcommand{\familydefault}{\sfdefault}
+
+        \begin{document}
+         \begin{landscape} % Orient the page in landscape mode
+ 
+         \title{\textbf{\huge CTS Analytics - [[ time_frame ]]}}
+         \author{} % Leave blank
+         \date{} % Leave blank
+ 
+         \Large
+         \setlength{\droptitle}{-5.5cm}
+ 
+         \maketitle
+         \thispagestyle{empty} % Remove page number from page
+ 
+          \begin{flushleft}
+  
+  
+                % First Page
+    
+            [[ accomplishments ]] % Accomplishment Notes
+            [[ future_notes ]] % Notes for the Future
+    
+    
+                % Second Page
+
+            % Overview Table
+            \vspace{-2.25cm}
+            \begin{center}
+            \begin{tabular}{ c|c|c|c } 
+                {\small Tickets Created}                 & {\small Tickets Closed}                 & {\small Current Open Tickets}                 & {\small False Tickets}                \\ 
+                {\LARGE \textbf{[[ tickets_created ]]}}  & {\LARGE \textbf{[[ tickets_closed ]]}}  & {\LARGE \textbf{[[ current_open_tickets ]]}}  & {\LARGE \textbf{[[ false_tickets ]]}} \\ 
+                {\small Last sss: ddd}                     & {\small Last sss: ddd}                    & {\small Last sss: ddd}                          & {}                                    \\
+            \hline
+                {\small Room Checks Performed}                 & {\small Tickets from Room Checks}                 & {\small WyoCast / Event Tickets}              & {\small PC Related Tickets}                \\ 
+                {\LARGE \textbf{[[ room_checks_performed ]]}}  & {\LARGE \textbf{[[ tickets_from_room_checks ]]}}  & {\Large \textbf{[[ wycast_event_tickets ]]}}  & {\Large \textbf{[[ pc_related_tickets ]]}} \\ 
+                {\small Last sss: ddd}                           & {}                                                & {}                                            & {}                                         \\ 
+            \end{tabular}
+            \end{center}
+    
+            % Bar Graphs
+            \begin{figure}[htbp]
+                \begin{minipage}{0.48\textwidth}
+                    \centering
+                    \pgfplotsset{width=8.5cm,compat=1.18}
+                    \begin{tikzpicture}[scale=1.0]
+                    \begin{axis}[
+                        title={Ticket Count by Building (Top 10)},
+                        ybar,
+                        enlargelimits=0.15,
+                        legend style={at={(0.5,-0.2)},
+                        anchor=north,legend columns=-1},
+                        symbolic x coords={[[ building_x_coords ]]},
+                        xtick={[[ building_x_coords ]]},
+                        nodes near coords,
+                        nodes near coords align={vertical},
+                        x tick label style={rotate=90,anchor=east},
+                        x post scale=1.3,
+                        y post scale=0.65,
+                    ]
+                    \addplot[fill=yellow!50!white, draw=yellow!80!black] coordinates {[[ building_coords ]]};
+                    \end{axis}
+                    \end{tikzpicture}
+                \end{minipage}
+                \hspace{0.33\textwidth}
+                \begin{minipage}{0.48\textwidth}
+                    \centering
+                    \pgfplotsset{width=8.5cm,compat=1.18}
+                    \begin{tikzpicture}[scale=1.0]
+                    \begin{axis}[
+                        title={Ticket Count by Hour},
+                        ybar,
+                        enlargelimits=0.15,
+                        legend style={at={(0.5,-0.2)},
+                        anchor=north,legend columns=-1},
+                        symbolic x coords={7am,8am,9am,10am,11am,12pm,1pm,2pm,3pm,4pm,5pm,6pm,7pm,Other},
+                        xtick={7am,8am,9am,10am,11am,12pm,1pm,2pm,3pm,4pm,5pm,6pm,7pm,Other},
+                        nodes near coords,
+                        nodes near coords align={vertical},
+                        x tick label style={rotate=90,anchor=east},
+                        x post scale=1.3,
+                        y post scale=0.65,
+                    ]
+                    \addplot[fill=yellow!50!white, draw=yellow!80!black] coordinates {[[ hour_coords ]]};
+                    \end{axis}
+                    \end{tikzpicture}
+                \end{minipage}
+            \end{figure}
+
+            \vspace{-1.0cm}
+            [[ notes ]] % Ticket & Room Check Notes
+  
+  
+          \end{flushleft}
+         \end{landscape}
+        \end{document}
+    "#;
+    match tera.add_raw_template("report.tex", latex_template) {
+        Ok(r) => r,
+        Err(e) => return Err(format!("Failed to add LaTeX template: {}", e))
+    }
+
+    // Sub in values
+    let time_frame_label = match time_period {
+        0 => "Last 7 Days",
+        1 => "Last 30 Days",
+        2 => "Last 90 Days",
+        3 => "Last 365 Days",
+        4 => "All Time",
+        _ => "Last 7 Days",
+    };
+
+    // Format building x coordinates for LaTeX
+    let building_x_coords = top_10_buildings.join(",");
+
+    let mut context = Context::new();
+    context.insert("time_frame", time_frame_label);
+    context.insert("accomplishments", &latex_accomplishments);
+    context.insert("future_notes", &latex_future_notes);
+    context.insert("tickets_created", &tickets_created);
+    context.insert("tickets_closed", &tickets_closed);
+    context.insert("current_open_tickets", &current_open_tickets);
+    context.insert("false_tickets", &false_tickets);
+    context.insert("room_checks_performed", &room_checks_performed);
+    context.insert("tickets_from_room_checks", &tickets_from_room_checks);
+    context.insert("wycast_event_tickets", &wycast_event_tickets);
+    context.insert("pc_related_tickets", &pc_related_tickets);
+    context.insert("notes", &latex_roomcheck_tickets_notes);
+    context.insert("building_coords", &building_latex_coords);
+    context.insert("building_x_coords", &building_x_coords);
+    context.insert("hour_coords", &hour_latex_coords);
+
+
+        // Render
+    // Register the template
+    match tera.add_raw_template("report.tex", latex_template) {
+        Ok(_) => (),
+        Err(e) => return Err(format!("Failed to add LaTeX template: {}", e)),
+    }
+    // Render the template
+    let rendered_tex = match tera.render("report.tex", &context) {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to render LaTeX template: {}", e)),
+    };
+
+    // Write report.tex
+    let temp_dir = Path::new(TEMP_DIR);
+    let tex_path = temp_dir.join("report.tex");
+    match std::fs::write(&tex_path, rendered_tex) {
+        Ok(_) => (),
+        Err(e) => return Err(format!("Failed to write report.tex: {}", e)),
+    }
+
+    // Run pdflatex (silently, unless error) in the temp directory
+    let status = match Command::new("pdflatex")
+        .current_dir(temp_dir)
+        .arg("-interaction=nonstopmode")
+        .arg("-halt-on-error")
+        .arg("report.tex")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+    {
+        Ok(s) => s,
+        Err(e) => return Err(format!("Failed to execute pdflatex: {}", e)),
+    };
+
+    if !status.success() {
+        return Err("pdflatex failed to compile report.tex".to_string());
+    }
+
+    info!("[Data] - Analytics PDF successfully generated!");
+    return Ok(());
+}
+
+async fn cleanup_temp_dir() -> Result<(), String> {
+    if !dir_exists(TEMP_DIR) {
+        return Err(format!("Missing Temp Directory: ./generated_files/temp does not exist"));
+    }
+
+    let entries = match std::fs::read_dir(TEMP_DIR) {
+        Ok(entries) => entries,
+        Err(e) => return Err(format!("Failed to read temp directory '{}': {}", TEMP_DIR, e))
+    };
+
+    for entry in entries {
+        // Skip the generated .pdf
+        if let Ok(entry) = &entry {
+            if entry.path().ends_with("report.pdf") {
+                continue;
+            }
+        }
+
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(e) => return Err(format!("Failed to access temp directory entry: {}", e))
+        };
+
+        let path = entry.path();
+
+        if path.is_file() {
+            if let Err(e) = std::fs::remove_file(&path) {
+                return Err(format!("Failed to delete temporary file '{}': {}", path.display(), e))
+            }
+        }
+    }
+
+    return Ok(());
+}
 
 /*
 $$\      $$\ $$\ $$\       $$\ 

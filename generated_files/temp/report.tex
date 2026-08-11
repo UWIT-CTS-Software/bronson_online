@@ -1,0 +1,107 @@
+
+        \documentclass{article}
+
+        % Required LaTeX packages
+        \usepackage{pdflscape}
+        \usepackage{pgfplots}
+        \usepackage{tikz}
+        \usepackage{titling}
+        \usepackage[T1]{fontenc}
+        \usepackage{helvet}
+        \renewcommand{\familydefault}{\sfdefault}
+
+        \begin{document}
+         \begin{landscape} % Orient the page in landscape mode
+ 
+         \title{\textbf{\huge CTS Analytics - Last 7 Days}}
+         \author{} % Leave blank
+         \date{} % Leave blank
+ 
+         \Large
+         \setlength{\droptitle}{-5.5cm}
+ 
+         \maketitle
+         \thispagestyle{empty} % Remove page number from page
+ 
+          \begin{flushleft}
+  
+  
+                % First Page
+    
+             % Accomplishment Notes
+             % Notes for the Future
+    
+    
+                % Second Page
+
+            % Overview Table
+            \vspace{-2.25cm}
+            \begin{center}
+            \begin{tabular}{ c|c|c|c } 
+                {\small Tickets Created}                 & {\small Tickets Closed}                 & {\small Current Open Tickets}                 & {\small False Tickets}                \\ 
+                {\LARGE \textbf{12}}  & {\LARGE \textbf{10}}  & {\LARGE \textbf{176}}  & {\LARGE \textbf{0}} \\ 
+                {\small Last sss: ddd}                     & {\small Last sss: ddd}                    & {\small Last sss: ddd}                          & {}                                    \\
+            \hline
+                {\small Room Checks Performed}                 & {\small Tickets from Room Checks}                 & {\small WyoCast / Event Tickets}              & {\small PC Related Tickets}                \\ 
+                {\LARGE \textbf{40}}  & {\LARGE \textbf{0}}  & {\Large \textbf{1}}  & {\Large \textbf{0}} \\ 
+                {\small Last sss: ddd}                           & {}                                                & {}                                            & {}                                         \\ 
+            \end{tabular}
+            \end{center}
+    
+            % Bar Graphs
+            \begin{figure}[htbp]
+                \begin{minipage}{0.48\textwidth}
+                    \centering
+                    \pgfplotsset{width=8.5cm,compat=1.18}
+                    \begin{tikzpicture}[scale=1.0]
+                    \begin{axis}[
+                        title={Ticket Count by Building (Top 10)},
+                        ybar,
+                        enlargelimits=0.15,
+                        legend style={at={(0.5,-0.2)},
+                        anchor=north,legend columns=-1},
+                        symbolic x coords={BU},
+                        xtick={BU},
+                        nodes near coords,
+                        nodes near coords align={vertical},
+                        x tick label style={rotate=90,anchor=east},
+                        x post scale=1.3,
+                        y post scale=0.65,
+                    ]
+                    \addplot[fill=yellow!50!white, draw=yellow!80!black] coordinates {(BU,2) };
+                    \end{axis}
+                    \end{tikzpicture}
+                \end{minipage}
+                \hspace{0.33\textwidth}
+                \begin{minipage}{0.48\textwidth}
+                    \centering
+                    \pgfplotsset{width=8.5cm,compat=1.18}
+                    \begin{tikzpicture}[scale=1.0]
+                    \begin{axis}[
+                        title={Ticket Count by Hour},
+                        ybar,
+                        enlargelimits=0.15,
+                        legend style={at={(0.5,-0.2)},
+                        anchor=north,legend columns=-1},
+                        symbolic x coords={7am,8am,9am,10am,11am,12pm,1pm,2pm,3pm,4pm,5pm,6pm,7pm,Other},
+                        xtick={7am,8am,9am,10am,11am,12pm,1pm,2pm,3pm,4pm,5pm,6pm,7pm,Other},
+                        nodes near coords,
+                        nodes near coords align={vertical},
+                        x tick label style={rotate=90,anchor=east},
+                        x post scale=1.3,
+                        y post scale=0.65,
+                    ]
+                    \addplot[fill=yellow!50!white, draw=yellow!80!black] coordinates {(7am,0)  (8am,0)  (9am,2)  (10am,2)  (11am,0)  (12pm,0)  (1pm,1)  (2pm,3)  (3pm,3)  (4pm,1)  (5pm,0)  (6pm,0)  (7pm,0)  (Other,0) };
+                    \end{axis}
+                    \end{tikzpicture}
+                \end{minipage}
+            \end{figure}
+
+            \vspace{-1.0cm}
+             % Ticket & Room Check Notes
+  
+  
+          \end{flushleft}
+         \end{landscape}
+        \end{document}
+    
