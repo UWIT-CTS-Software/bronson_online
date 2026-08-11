@@ -539,7 +539,7 @@ Classroom Technology Services (CTS)
 async function dismissAll(confirmed) {
     // Dismiss Popup
     const dismissAllPopupContainer = document.querySelector('.tx_dismissAllPopupContainer');
-    if (!dismissAllPopupContainer) {
+    if (!dismissAllPopupContainer) { 
         console.error("Dismiss All Popup container not found");
         return;
     }
@@ -709,13 +709,11 @@ async function showTicket(ticket) {
         ticket.RequestorPhone = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
 
 
-    // Set the HTML for comments section
-    let commentsHTML = "";
+    // Set the HTML for comments section. Always render it so toggle can show/hide without rebuilding.
     const container = document.querySelector('.tx_container');
     const isCommentsShown = container?.classList.contains('commentsShown');
-    if (isCommentsShown) {
-        commentsHTML = `
-            <div class="tx_popupComments ${isMobile ? "mobile" : ""}">
+    const commentsHTML = `
+            <div class="tx_popupComments ${isMobile ? "mobile" : ""}" style="${isCommentsShown ? "" : "display:none;"}">
                 <span>Comments:</span>
                 <div class="tx_commentWrapper">
                     <div class="tx_commentList">
@@ -732,7 +730,6 @@ async function showTicket(ticket) {
                 ${isAuthorized ? `<button id="tx_newCommentButton" onClick="newCommentDiolog(${ticket.ID}, this)">Post New Comment</button>` : ""}
             </div>
         `;
-    }
 
     async function updateDescription() {
         const descriptionElement = ticketPopupContainer.querySelector('.tx_Description');
@@ -931,7 +928,7 @@ async function showTicket(ticket) {
                     <p class="tx_popup_contact tx_textwrap">Contact: ${ticket.RequestorEmail || "Email Not Provided"} || ${ticket.RequestorPhone || "Phone Not Provided"}</p>
                     <p class="tx_popup_Responsible tx_textwrap${isMobile ? "mobile_tx_button" : ""}">Responsible: ${ticket.ResponsibleFullName || `UNASSIGNED ${isAuthorized ? `<button ${isMobile ? "class=mobile_tx_button" : ""} onClick='takeResponsibility()' disabled>Take Incident</button>` : ""}`} || ${ticket.ResponsibleGroupName || ""}</p>
                     <p class="tx_Description">Loading description...</p>
-                    ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">Show Comments</button>`}
+                    ${isMobile ? "" : `<button class="popup_commentsButton" onClick="toggleComments(${ticket.ID})">${isCommentsShown ? 'Hide Comments' : 'Show Comments'}</button>`}
                     ${isAuthorized ? `<button class="popup_editTicket" onClick="editTicketPopup(${ticket.ID})">Edit Ticket</button>` : ""}
                 </div>
                 ${sideContent ? `<div class="tx_sideContent">${sideContent}</div>` : ''}
@@ -976,17 +973,80 @@ function toggleDetails(ticketID) {
 // Toggles the comments box in the popup
 function toggleComments(ticketID) {
     const container = document.querySelector('.tx_container');
-    if (!container) return;
+    const ticketPopupContainer = document.querySelector('.tx_ticketPopupContainer.tx_popupActive');
+    if (!container || !ticketPopupContainer) return;
 
-    const isCommentsShown = container.classList.contains('commentsShown');
-    if (isCommentsShown) 
-        container.classList.remove('commentsShown');
-    else 
+    const commentsSection = ticketPopupContainer.querySelector('.tx_popupComments');
+    const commentsButton = ticketPopupContainer.querySelector('.popup_commentsButton');
+    const isCommentsShown = !container.classList.contains('commentsShown');
+
+    if (isCommentsShown) {
         container.classList.add('commentsShown');
-    
-    // O(1) lookup via ticketById map
-    const ticket = window.ticketById?.get(ticketID);
-    if (ticket) showTicketPopup(ticket);
+        if (commentsSection) {
+            commentsSection.style.display = '';
+            const commentsList = commentsSection.querySelector('.tx_commentList');
+            if (commentsList) {
+                fetchTicketComments(ticketID).then(comments => {
+                    let builtComments = "";
+                    for (let i = 0; i < comments.length; i++) {
+                        const c = comments[i];
+                        let formattedDate = "";
+                        if (c.date != "") formattedDate = new Date(c.date).toLocaleString();
+                        for (let j = 0; j < (c.created_date || []).length; j++) {
+                            c.created_date[j] = new Date(c.created_date[j]).toLocaleString();
+                        }
+                        let commentBody = scrubHtmlToText(c.comment || "");
+                        let repliesRows = "";
+                        for (let j = 0; j < (c.replies_count || 0); j++) {
+                            let reply = c.replies[j] || "";
+                            reply = scrubHtmlToText(reply);
+                            repliesRows += `
+                <div class="tx_reply">
+                    <p class="tx_reply_person">
+                        <strong class="tx_strong">${c.created_by[j]}, ${c.created_date[j]}</strong>
+                    </p>
+                    <p class="tx_reply_body">${reply}</p>
+                </div>
+                `;
+                        }
+                        let repliesHTML = `
+                <p class="tx_reply_header">
+                    <strong class="tx_strong">Replies:</strong>
+                    ${repliesRows}
+                </p>
+            `;
+                        builtComments += `
+                <div class="tx_comment">
+                    <p class="tx_comment_header">
+                        <strong class="tx_strong">${c.commenter}</strong> - ${formattedDate}
+                    </p>
+                    <p class="tx_comment_body">${commentBody}</p>
+                    <div class="tx_replies">${c.replies_count ? repliesHTML : "" }</div>
+                    <p class="tx_comment_seperator"></p>
+                </div>
+            `;
+                    }
+                    if (comments.length == 0) {
+                        builtComments = `
+                <div class="tx_comment">
+                    <br>
+                        <p class="tx_comment_header">
+                            <strong class="tx_strong">No Comments Exist for this Ticket</strong>
+                        </p>
+                    <br>
+                </div>
+            `;
+                    }
+                    commentsList.innerHTML = builtComments;
+                });
+            }
+        }
+        if (commentsButton) commentsButton.textContent = 'Hide Comments';
+    } else {
+        container.classList.remove('commentsShown');
+        if (commentsSection) commentsSection.style.display = 'none';
+        if (commentsButton) commentsButton.textContent = 'Show Comments';
+    }
 }
 
 // Hides the current popup
@@ -1527,7 +1587,6 @@ async function fetchTDXUserID() {
         }
 
         const data = await response.json();
-        console.log(data);
         return data.UID || 0;
     } catch (error) {
         console.error("Error fetching current user ID:", error);
@@ -1545,7 +1604,6 @@ async function fetchTDXUserDisplayName() {
         }
 
         const data = await response.json();
-        console.log(data);
         return data.FullName || "";
     } catch (error) {
         console.error("Error fetching current user display name:", error);

@@ -1724,6 +1724,10 @@ td.mobile_th {
   appearance: textfield; 
 }
 
+#tx_editTicketEmailCheckbox {
+    margin-left: 10px;
+}
+
 .tx_ticketContainer button {
     background-color: #ecc865;
     padding-inline: 4px;
