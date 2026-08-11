@@ -1,0 +1,1704 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<r25:reservations xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:xl="http://www.w3.org/1999/xlink"
+                  xmlns:r25="http://www.collegenet.com/r25"
+                  pubdate="2026-08-11T09:57:49-06:00"
+                  engine="accl">
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14027567">
+      <r25:reservation_id>14027567</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T00:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T00:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T00:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T23:59:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T23:59:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-07-07T13:17:35-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T23:59:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=711954">711954</r25:event_id>
+      <r25:event_locator>2026-ADQWKP</r25:event_locator>
+      <r25:event_name>BLOCK - Construction (Jen Coast)</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Special Event</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name/>
+      <r25:profile_id>1021460</r25:profile_id>
+      <r25:profile_name>Rsrv_1021460</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>jmartin</r25:last_mod_user>
+      <r25:last_mod_dt>2026-07-07T13:20:06-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+      <r25:space_reservation xl:href="space.xml?space_id=247">
+         <r25:space_id>247</r25:space_id>
+         <r25:space_name>LS 191</r25:space_name>
+         <r25:formal_name>Brown Seminar LS 191</r25:formal_name>
+         <r25:building_name/>
+         <r25:actual_count/>
+         <r25:layout_id>41</r25:layout_id>
+         <r25:layout_name>Classroom</r25:layout_name>
+         <r25:default_layout_capacity>20</r25:default_layout_capacity>
+         <r25:selected_layout_capacity>20</r25:selected_layout_capacity>
+         <r25:shared>F</r25:shared>
+         <r25:space_instruction_id/>
+         <r25:space_instructions/>
+         <r25:space_status>ASSIGNED</r25:space_status>
+      </r25:space_reservation>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14033028">
+      <r25:reservation_id>14033028</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T00:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T00:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T00:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T23:59:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T23:59:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-07-20T12:54:37-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T23:59:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=712087">712087</r25:event_id>
+      <r25:event_locator>2026-ADQWRX</r25:event_locator>
+      <r25:event_name>Geology Museum Event</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Special Event</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1021607</r25:profile_id>
+      <r25:profile_name>Rsrv_1021607</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>aohlsch1</r25:last_mod_user>
+      <r25:last_mod_dt>2026-07-20T12:56:17-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14011321">
+      <r25:reservation_id>14011321</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T07:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T07:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T07:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T08:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T08:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-05-12T10:20:54-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T08:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=711200">711200</r25:event_id>
+      <r25:event_locator>2026-ADQTRR</r25:event_locator>
+      <r25:event_name>Coworking Space</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Educational Event</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1020365</r25:profile_id>
+      <r25:profile_name>Rsrv_1020365</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>lpaesbar</r25:last_mod_user>
+      <r25:last_mod_dt>2026-05-12T10:34:57-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=13800125">
+      <r25:reservation_id>13800125</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T07:30:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T07:30:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T07:30:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T17:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T17:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T17:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702138">702138</r25:event_id>
+      <r25:event_locator>2025-ADPVDD</r25:event_locator>
+      <r25:event_name>EE 4800 01 31944</r25:event_name>
+      <r25:event_title>Problems In: Internship</r25:event_title>
+      <r25:event_type_name>Independent Study</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1010317</r25:profile_id>
+      <r25:profile_name>MTWRF 0730-1700 CLAS 05/26</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>10</r25:expected_count>
+      <r25:registered_count>0</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>CNETADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2025-12-04T14:36:33-07:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+      <r25:space_reservation xl:href="space.xml?space_id=259">
+         <r25:space_id>259</r25:space_id>
+         <r25:space_name>EN 3108</r25:space_name>
+         <r25:formal_name>Classroom EN 3108</r25:formal_name>
+         <r25:building_name/>
+         <r25:actual_count>10</r25:actual_count>
+         <r25:layout_id>41</r25:layout_id>
+         <r25:layout_name>Classroom</r25:layout_name>
+         <r25:default_layout_capacity>14</r25:default_layout_capacity>
+         <r25:selected_layout_capacity>14</r25:selected_layout_capacity>
+         <r25:shared>F</r25:shared>
+         <r25:space_instruction_id/>
+         <r25:space_instructions/>
+         <r25:space_status>ASSIGNED</r25:space_status>
+      </r25:space_reservation>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=13800293">
+      <r25:reservation_id>13800293</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T08:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T08:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T08:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T08:50:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T08:50:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T08:50:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702146">702146</r25:event_id>
+      <r25:event_locator>2025-ADPVDN</r25:event_locator>
+      <r25:event_name>EE 4800 02 32418</r25:event_name>
+      <r25:event_title>Problems In: Embedded Systems</r25:event_title>
+      <r25:event_type_name>Independent Study</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1010325</r25:profile_id>
+      <r25:profile_name>MTWRF 0800-0850 CLAS 05/26</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>10</r25:expected_count>
+      <r25:registered_count>0</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>CNETADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2025-12-04T14:36:33-07:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+      <r25:space_reservation xl:href="space.xml?space_id=261">
+         <r25:space_id>261</r25:space_id>
+         <r25:space_name>EN 3109</r25:space_name>
+         <r25:formal_name>Classroom EN 3109</r25:formal_name>
+         <r25:building_name/>
+         <r25:actual_count>10</r25:actual_count>
+         <r25:layout_id>41</r25:layout_id>
+         <r25:layout_name>Classroom</r25:layout_name>
+         <r25:default_layout_capacity>14</r25:default_layout_capacity>
+         <r25:selected_layout_capacity>14</r25:selected_layout_capacity>
+         <r25:shared>F</r25:shared>
+         <r25:space_instruction_id/>
+         <r25:space_instructions/>
+         <r25:space_status>ASSIGNED</r25:space_status>
+      </r25:space_reservation>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=13799993">
+      <r25:reservation_id>13799993</r25:reservation_id>
+      <r25:reservation_state>99</r25:reservation_state>
+      <r25:reservation_state_name>Cancelled</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T08:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T08:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T08:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T17:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T17:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T17:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702134">702134</r25:event_id>
+      <r25:event_locator>2025-ADPVCZ</r25:event_locator>
+      <r25:event_name>LAW 6850 01 30808</r25:event_name>
+      <r25:event_title>Tp: Summer Trial</r25:event_title>
+      <r25:event_type_name>Lecture</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1010313</r25:profile_id>
+      <r25:profile_name>MTWRF 0800-1700 CLAS 05/26</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>24</r25:expected_count>
+      <r25:registered_count>0</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>LYNXADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2025-12-04T14:36:33-07:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14033461">
+      <r25:reservation_id>14033461</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T08:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T08:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T08:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T17:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T17:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-07-21T12:51:40-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T17:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=712117">712117</r25:event_id>
+      <r25:event_locator>2026-ADQWTJ</r25:event_locator>
+      <r25:event_name>RA Training</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Special Event</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1021637</r25:profile_id>
+      <r25:profile_name>Rsrv_1021637</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>aohlsch1</r25:last_mod_user>
+      <r25:last_mod_dt>2026-07-21T13:02:17-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+      <r25:space_reservation xl:href="space.xml?space_id=1095">
+         <r25:space_id>1095</r25:space_id>
+         <r25:space_name>BU 8</r25:space_name>
+         <r25:formal_name>Business BU 8</r25:formal_name>
+         <r25:building_name/>
+         <r25:actual_count/>
+         <r25:layout_id>41</r25:layout_id>
+         <r25:layout_name>Classroom</r25:layout_name>
+         <r25:default_layout_capacity>40</r25:default_layout_capacity>
+         <r25:selected_layout_capacity>40</r25:selected_layout_capacity>
+         <r25:shared>F</r25:shared>
+         <r25:space_instruction_id/>
+         <r25:space_instructions/>
+         <r25:space_status>ASSIGNED</r25:space_status>
+      </r25:space_reservation>
+      <r25:space_reservation xl:href="space.xml?space_id=1096">
+         <r25:space_id>1096</r25:space_id>
+         <r25:space_name>BU 9</r25:space_name>
+         <r25:formal_name>Business BU 9</r25:formal_name>
+         <r25:building_name/>
+         <r25:actual_count/>
+         <r25:layout_id>41</r25:layout_id>
+         <r25:layout_name>Classroom</r25:layout_name>
+         <r25:default_layout_capacity>40</r25:default_layout_capacity>
+         <r25:selected_layout_capacity>40</r25:selected_layout_capacity>
+         <r25:shared>F</r25:shared>
+         <r25:space_instruction_id/>
+         <r25:space_instructions/>
+         <r25:space_status>ASSIGNED</r25:space_status>
+      </r25:space_reservation>
+      <r25:space_reservation xl:href="space.xml?space_id=1097">
+         <r25:space_id>1097</r25:space_id>
+         <r25:space_name>BU 10</r25:space_name>
+         <r25:formal_name>Business BU 10</r25:formal_name>
+         <r25:building_name/>
+         <r25:actual_count/>
+         <r25:layout_id>41</r25:layout_id>
+         <r25:layout_name>Classroom</r25:layout_name>
+         <r25:default_layout_capacity>40</r25:default_layout_capacity>
+         <r25:selected_layout_capacity>40</r25:selected_layout_capacity>
+         <r25:shared>F</r25:shared>
+         <r25:space_instruction_id/>
+         <r25:space_instructions/>
+         <r25:space_status>ASSIGNED</r25:space_status>
+      </r25:space_reservation>
+      <r25:space_reservation xl:href="space.xml?space_id=1098">
+         <r25:space_id>1098</r25:space_id>
+         <r25:space_name>BU 23</r25:space_name>
+         <r25:formal_name>Business BU 23</r25:formal_name>
+         <r25:building_name/>
+         <r25:actual_count/>
+         <r25:layout_id>41</r25:layout_id>
+         <r25:layout_name>Classroom</r25:layout_name>
+         <r25:default_layout_capacity>40</r25:default_layout_capacity>
+         <r25:selected_layout_capacity>40</r25:selected_layout_capacity>
+         <r25:shared>F</r25:shared>
+         <r25:space_instruction_id/>
+         <r25:space_instructions/>
+         <r25:space_status>ASSIGNED</r25:space_status>
+      </r25:space_reservation>
+      <r25:space_reservation xl:href="space.xml?space_id=1099">
+         <r25:space_id>1099</r25:space_id>
+         <r25:space_name>BU 24</r25:space_name>
+         <r25:formal_name>Business BU 24</r25:formal_name>
+         <r25:building_name/>
+         <r25:actual_count/>
+         <r25:layout_id>41</r25:layout_id>
+         <r25:layout_name>Classroom</r25:layout_name>
+         <r25:default_layout_capacity>40</r25:default_layout_capacity>
+         <r25:selected_layout_capacity>40</r25:selected_layout_capacity>
+         <r25:shared>F</r25:shared>
+         <r25:space_instruction_id/>
+         <r25:space_instructions/>
+         <r25:space_status>ASSIGNED</r25:space_status>
+      </r25:space_reservation>
+      <r25:space_reservation xl:href="space.xml?space_id=1106">
+         <r25:space_id>1106</r25:space_id>
+         <r25:space_name>BU 21</r25:space_name>
+         <r25:formal_name>Business BU 21</r25:formal_name>
+         <r25:building_name/>
+         <r25:actual_count/>
+         <r25:layout_id>41</r25:layout_id>
+         <r25:layout_name>Classroom</r25:layout_name>
+         <r25:default_layout_capacity>64</r25:default_layout_capacity>
+         <r25:selected_layout_capacity>64</r25:selected_layout_capacity>
+         <r25:shared>F</r25:shared>
+         <r25:space_instruction_id/>
+         <r25:space_instructions/>
+         <r25:space_status>ASSIGNED</r25:space_status>
+      </r25:space_reservation>
+      <r25:space_reservation xl:href="space.xml?space_id=1111">
+         <r25:space_id>1111</r25:space_id>
+         <r25:space_name>BU AUD</r25:space_name>
+         <r25:formal_name>Business Scarlett Auditorium BU 57</r25:formal_name>
+         <r25:building_name/>
+         <r25:actual_count/>
+         <r25:layout_id>41</r25:layout_id>
+         <r25:layout_name>Classroom</r25:layout_name>
+         <r25:default_layout_capacity>150</r25:default_layout_capacity>
+         <r25:selected_layout_capacity>150</r25:selected_layout_capacity>
+         <r25:shared>F</r25:shared>
+         <r25:space_instruction_id/>
+         <r25:space_instructions/>
+         <r25:space_status>ASSIGNED</r25:space_status>
+      </r25:space_reservation>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14020612">
+      <r25:reservation_id>14020612</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T08:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T08:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T08:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T17:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T17:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-06-03T08:46:49-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T17:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=711569">711569</r25:event_id>
+      <r25:event_locator>2026-ADQVNG</r25:event_locator>
+      <r25:event_name>Staff Senate</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Hoteling</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1020760</r25:profile_id>
+      <r25:profile_name>Rsrv_1020760</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>klang</r25:last_mod_user>
+      <r25:last_mod_dt>2026-06-03T08:49:06-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14043682">
+      <r25:reservation_id>14043682</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T08:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T08:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T08:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T17:30:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T17:30:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-07-16T16:28:32-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T17:30:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=712061">712061</r25:event_id>
+      <r25:event_locator>2026-ADQWQR</r25:event_locator>
+      <r25:event_name>Mary Garland Fellowship research project</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Educational Event</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1021575</r25:profile_id>
+      <r25:profile_name>Rsrv_1021575</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>jorr2</r25:last_mod_user>
+      <r25:last_mod_dt>2026-08-04T13:03:49-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14012711">
+      <r25:reservation_id>14012711</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T08:30:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T08:30:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T08:30:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T10:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T10:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-05-14T15:10:14-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T10:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=711294">711294</r25:event_id>
+      <r25:event_locator>2026-ADQTXD</r25:event_locator>
+      <r25:event_name>Drop-In Meditation</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Meeting</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1020454</r25:profile_id>
+      <r25:profile_name>Rsrv_1020454</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>5</r25:expected_count>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>sarahc</r25:last_mod_user>
+      <r25:last_mod_dt>2026-05-19T13:10:30-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14012584">
+      <r25:reservation_id>14012584</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T08:45:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T08:45:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T08:45:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T09:45:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T09:45:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-05-14T11:02:29-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T09:45:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=711273">711273</r25:event_id>
+      <r25:event_locator>2026-ADQTWD</r25:event_locator>
+      <r25:event_name>Meditation</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Outdoor</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1020433</r25:profile_id>
+      <r25:profile_name>Rsrv_1020433</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>aohlsch1</r25:last_mod_user>
+      <r25:last_mod_dt>2026-05-14T11:51:22-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14045130">
+      <r25:reservation_id>14045130</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T09:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T09:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T09:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T10:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T10:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-08-05T14:19:42-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T10:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=712363">712363</r25:event_id>
+      <r25:event_locator>2026-ADQXJB</r25:event_locator>
+      <r25:event_name>Listening Session discussion</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Meeting</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1021909</r25:profile_id>
+      <r25:profile_name>Rsrv_1021909</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>cbrome</r25:last_mod_user>
+      <r25:last_mod_dt>2026-08-05T14:20:15-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=13950335">
+      <r25:reservation_id>13950335</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T09:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T09:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T09:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T11:05:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T11:05:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T11:05:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702132">702132</r25:event_id>
+      <r25:event_locator>2025-ADPVCW</r25:event_locator>
+      <r25:event_name>STEP 1101 01 30779</r25:event_name>
+      <r25:event_title>FYS: Academic &amp; Career Success</r25:event_title>
+      <r25:event_type_name>Lecture</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1010311</r25:profile_id>
+      <r25:profile_name>MTWRF 0900-1105 CLAS 07/20</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>18</r25:expected_count>
+      <r25:registered_count>16</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>LYNXADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2026-02-25T10:36:34-07:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+      <r25:space_reservation xl:href="space.xml?space_id=1102">
+         <r25:space_id>1102</r25:space_id>
+         <r25:space_name>BU 208</r25:space_name>
+         <r25:formal_name>Business BU 208</r25:formal_name>
+         <r25:building_name/>
+         <r25:actual_count/>
+         <r25:layout_id>41</r25:layout_id>
+         <r25:layout_name>Classroom</r25:layout_name>
+         <r25:default_layout_capacity>40</r25:default_layout_capacity>
+         <r25:selected_layout_capacity>40</r25:selected_layout_capacity>
+         <r25:shared>F</r25:shared>
+         <r25:space_instruction_id/>
+         <r25:space_instructions/>
+         <r25:space_status>ASSIGNED</r25:space_status>
+      </r25:space_reservation>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14009461">
+      <r25:reservation_id>14009461</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T09:10:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T09:10:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T09:10:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T10:25:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T10:25:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T10:25:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702125">702125</r25:event_id>
+      <r25:event_locator>2025-ADPVCN</r25:event_locator>
+      <r25:event_name>MATH 1405 80 30714</r25:event_name>
+      <r25:event_title>Trigonometry</r25:event_title>
+      <r25:event_type_name>Lecture</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1010304</r25:profile_id>
+      <r25:profile_name>MTWRF 0910-1025 RMTW 07/06</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>30</r25:expected_count>
+      <r25:registered_count>18</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>LYNXADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2026-05-11T09:33:34-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=13986067">
+      <r25:reservation_id>13986067</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T09:10:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T09:10:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T09:10:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T10:25:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T10:25:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T10:25:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702130">702130</r25:event_id>
+      <r25:event_locator>2025-ADPVCT</r25:event_locator>
+      <r25:event_name>MATH 2310 80 30723</r25:event_name>
+      <r25:event_title>Applied Diff Equa I</r25:event_title>
+      <r25:event_type_name>Lecture</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1010309</r25:profile_id>
+      <r25:profile_name>MTWRF 0910-1025 RMTW 07/06</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>30</r25:expected_count>
+      <r25:registered_count>18</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>LYNXADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2026-04-02T12:17:33-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14024403">
+      <r25:reservation_id>14024403</r25:reservation_id>
+      <r25:reservation_state>99</r25:reservation_state>
+      <r25:reservation_state_name>Cancelled</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T09:10:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T09:10:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T09:10:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T10:50:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T10:50:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T10:50:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702154">702154</r25:event_id>
+      <r25:event_locator>2025-ADPVDX</r25:event_locator>
+      <r25:event_name>PHYS 1120 01 32595</r25:event_name>
+      <r25:event_title>Gen Physics II</r25:event_title>
+      <r25:event_type_name>Lecture</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1010333</r25:profile_id>
+      <r25:profile_name>MTWRF 0910-1050 CLAS 07/06</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>32</r25:expected_count>
+      <r25:registered_count>4</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>LYNXADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2026-06-22T15:25:35-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=13986097">
+      <r25:reservation_id>13986097</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T09:10:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T09:10:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T09:10:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T11:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T11:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T11:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702131">702131</r25:event_id>
+      <r25:event_locator>2025-ADPVCV</r25:event_locator>
+      <r25:event_name>MATH 2355 80 30725</r25:event_name>
+      <r25:event_title>Math Apps for Bus</r25:event_title>
+      <r25:event_type_name>Lecture</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1010310</r25:profile_id>
+      <r25:profile_name>MTWRF 0910-1100 RMTW 07/06</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>30</r25:expected_count>
+      <r25:registered_count>18</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>LYNXADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2026-04-02T12:17:33-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14027302">
+      <r25:reservation_id>14027302</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T09:35:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T09:35:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T09:35:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T10:50:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T10:50:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T10:50:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702135">702135</r25:event_id>
+      <r25:event_locator>2025-ADPVDA</r25:event_locator>
+      <r25:event_name>UWYO 9990 01 30842</r25:event_name>
+      <r25:event_title>Test Course 1</r25:event_title>
+      <r25:event_type_name>Lecture</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1010314</r25:profile_id>
+      <r25:profile_name>TR 0935-1050 CLAS 05/26</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>999</r25:expected_count>
+      <r25:registered_count>0</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>LYNXADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2026-07-06T17:10:34-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14019230">
+      <r25:reservation_id>14019230</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T10:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T10:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T10:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T11:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T11:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-05-29T14:09:06-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T11:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=711516">711516</r25:event_id>
+      <r25:event_locator>2026-ADQVKS</r25:event_locator>
+      <r25:event_name>Anderson Group Meetings</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Meeting</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1020699</r25:profile_id>
+      <r25:profile_name>Rsrv_1020699</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>acamp3</r25:last_mod_user>
+      <r25:last_mod_dt>2026-05-29T14:11:12-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14013566">
+      <r25:reservation_id>14013566</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T10:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T10:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T10:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T11:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T11:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-05-15T11:48:52-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T11:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=711310">711310</r25:event_id>
+      <r25:event_locator>2026-ADQTXX</r25:event_locator>
+      <r25:event_name>Fitness Class - Yoga</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Fitness Class</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1020471</r25:profile_id>
+      <r25:profile_name>Rsrv_1020471</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>20</r25:expected_count>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>sarahc</r25:last_mod_user>
+      <r25:last_mod_dt>2026-05-19T13:10:43-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14048350">
+      <r25:reservation_id>14048350</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T10:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T10:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T10:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T12:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T12:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-08-10T13:31:50-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T12:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=712446">712446</r25:event_id>
+      <r25:event_locator>2026-ADQXNA</r25:event_locator>
+      <r25:event_name>Emily Leinen Basic Beginnings</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Special Event</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1022119</r25:profile_id>
+      <r25:profile_name>Rsrv_1022119</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>rovani</r25:last_mod_user>
+      <r25:last_mod_dt>2026-08-10T13:33:00-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14023661">
+      <r25:reservation_id>14023661</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T10:15:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T10:15:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T10:15:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T14:30:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T14:30:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-06-12T15:54:40-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T14:30:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=711699">711699</r25:event_id>
+      <r25:event_locator>2026-ADQVVL</r25:event_locator>
+      <r25:event_name>Admissions Presentation</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Special Event</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id xl:href="organization.xml?organization_id=2573">2573</r25:organization_id>
+      <r25:organization_name>Campus Visitor Center</r25:organization_name>
+      <r25:profile_id>1020894</r25:profile_id>
+      <r25:profile_name>Rsrv_1020894</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>aohlsch1</r25:last_mod_user>
+      <r25:last_mod_dt>2026-06-12T15:56:41-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+      <r25:space_reservation xl:href="space.xml?space_id=161">
+         <r25:space_id>161</r25:space_id>
+         <r25:space_name>CR 214</r25:space_name>
+         <r25:formal_name>Classroom CR 214</r25:formal_name>
+         <r25:building_name>Classroom</r25:building_name>
+         <r25:actual_count/>
+         <r25:layout_id>41</r25:layout_id>
+         <r25:layout_name>Classroom</r25:layout_name>
+         <r25:default_layout_capacity>102</r25:default_layout_capacity>
+         <r25:selected_layout_capacity>102</r25:selected_layout_capacity>
+         <r25:shared>F</r25:shared>
+         <r25:space_instruction_id/>
+         <r25:space_instructions/>
+         <r25:space_status>ASSIGNED</r25:space_status>
+      </r25:space_reservation>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=13997345">
+      <r25:reservation_id>13997345</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T10:35:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T10:35:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T10:35:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T12:10:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T12:10:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T12:10:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702181">702181</r25:event_id>
+      <r25:event_locator>2025-ADPVGF</r25:event_locator>
+      <r25:event_name>EAP 3050 01 33302</r25:event_name>
+      <r25:event_title>Adv Academic Writing Int'l</r25:event_title>
+      <r25:event_type_name>Lecture</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1019268</r25:profile_id>
+      <r25:profile_name>MTWR 1035-1210 CLAS 07/06</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>10</r25:expected_count>
+      <r25:registered_count>7</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>LYNXADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2026-04-16T16:53:34-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+      <r25:space_reservation xl:href="space.xml?space_id=1100">
+         <r25:space_id>1100</r25:space_id>
+         <r25:space_name>BU 110</r25:space_name>
+         <r25:formal_name>Business BU 110</r25:formal_name>
+         <r25:building_name/>
+         <r25:actual_count/>
+         <r25:layout_id>41</r25:layout_id>
+         <r25:layout_name>Classroom</r25:layout_name>
+         <r25:default_layout_capacity>40</r25:default_layout_capacity>
+         <r25:selected_layout_capacity>40</r25:selected_layout_capacity>
+         <r25:shared>F</r25:shared>
+         <r25:space_instruction_id/>
+         <r25:space_instructions/>
+         <r25:space_status>ASSIGNED</r25:space_status>
+      </r25:space_reservation>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14009491">
+      <r25:reservation_id>14009491</r25:reservation_id>
+      <r25:reservation_state>99</r25:reservation_state>
+      <r25:reservation_state_name>Cancelled</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T10:35:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T10:35:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T10:35:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T12:25:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T12:25:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-03-11T11:34:32-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T12:25:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=707592">707592</r25:event_id>
+      <r25:event_locator>2026-ADQKMW</r25:event_locator>
+      <r25:event_name>MATH 2205 81 33538</r25:event_name>
+      <r25:event_title>Calculus II</r25:event_title>
+      <r25:event_type_name>Lecture</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1016648</r25:profile_id>
+      <r25:profile_name>MTWRF 1035-1225 RMTW 07/06</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>0</r25:expected_count>
+      <r25:registered_count>0</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>LYNXADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2026-05-11T09:33:34-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=13985979">
+      <r25:reservation_id>13985979</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T10:35:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T10:35:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T10:35:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T12:25:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T12:25:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T12:25:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702128">702128</r25:event_id>
+      <r25:event_locator>2025-ADPVCR</r25:event_locator>
+      <r25:event_name>MATH 2210 80 30721</r25:event_name>
+      <r25:event_title>Calculus III</r25:event_title>
+      <r25:event_type_name>Lecture</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1010307</r25:profile_id>
+      <r25:profile_name>MTWRF 1035-1225 RMTW 07/06</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>30</r25:expected_count>
+      <r25:registered_count>18</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>LYNXADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2026-04-02T12:16:34-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14021560">
+      <r25:reservation_id>14021560</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T11:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T11:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T11:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T12:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T12:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-06-04T14:18:49-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T12:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=711589">711589</r25:event_id>
+      <r25:event_locator>2026-ADQVPF</r25:event_locator>
+      <r25:event_name>Neuro Suminar</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Special Event</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1020780</r25:profile_id>
+      <r25:profile_name>Rsrv_1020780</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>aohlsch1</r25:last_mod_user>
+      <r25:last_mod_dt>2026-06-04T14:22:31-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+      <r25:space_reservation xl:href="space.xml?space_id=151">
+         <r25:space_id>151</r25:space_id>
+         <r25:space_name>CR 118</r25:space_name>
+         <r25:formal_name>Classroom CR 118</r25:formal_name>
+         <r25:building_name>Classroom</r25:building_name>
+         <r25:actual_count/>
+         <r25:layout_id>41</r25:layout_id>
+         <r25:layout_name>Classroom</r25:layout_name>
+         <r25:default_layout_capacity>50</r25:default_layout_capacity>
+         <r25:selected_layout_capacity>50</r25:selected_layout_capacity>
+         <r25:shared>F</r25:shared>
+         <r25:space_instruction_id/>
+         <r25:space_instructions/>
+         <r25:space_status>ASSIGNED</r25:space_status>
+      </r25:space_reservation>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14012684">
+      <r25:reservation_id>14012684</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T11:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T11:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T11:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T12:45:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T12:45:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T12:45:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702186">702186</r25:event_id>
+      <r25:event_locator>2025-ADPVGL</r25:event_locator>
+      <r25:event_name>PHYS 2320 80 33503</r25:event_name>
+      <r25:event_title>Modern Physics</r25:event_title>
+      <r25:event_type_name>Lecture</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1010386</r25:profile_id>
+      <r25:profile_name>MTWR 1100-1245 CLAS 07/06</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>35</r25:expected_count>
+      <r25:registered_count>3</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>LYNXADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2026-05-14T13:38:33-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+      <r25:space_reservation xl:href="space.xml?space_id=456">
+         <r25:space_id>456</r25:space_id>
+         <r25:space_name>PS 234</r25:space_name>
+         <r25:formal_name>Seminar Room PS 234</r25:formal_name>
+         <r25:building_name/>
+         <r25:actual_count>35</r25:actual_count>
+         <r25:layout_id/>
+         <r25:layout_name/>
+         <r25:default_layout_capacity>36</r25:default_layout_capacity>
+         <r25:selected_layout_capacity>36</r25:selected_layout_capacity>
+         <r25:shared>F</r25:shared>
+         <r25:space_instruction_id/>
+         <r25:space_instructions/>
+         <r25:space_status>ASSIGNED</r25:space_status>
+      </r25:space_reservation>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=13964133">
+      <r25:reservation_id>13964133</r25:reservation_id>
+      <r25:reservation_state>99</r25:reservation_state>
+      <r25:reservation_state_name>Cancelled</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T11:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T11:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T11:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T12:50:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T12:50:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T12:50:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702155">702155</r25:event_id>
+      <r25:event_locator>2025-ADPVDZ</r25:event_locator>
+      <r25:event_name>PHYS 1120 10 32597</r25:event_name>
+      <r25:event_title>Laboratory</r25:event_title>
+      <r25:event_type_name>Lab</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1010334</r25:profile_id>
+      <r25:profile_name>TWR 1100-1250 CLAS 07/07</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>32</r25:expected_count>
+      <r25:registered_count>0</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>LYNXADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2026-03-04T12:30:36-07:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14014326">
+      <r25:reservation_id>14014326</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T11:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T11:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T11:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T15:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T15:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-05-18T09:23:17-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T15:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=711323">711323</r25:event_id>
+      <r25:event_locator>2026-ADQTZN</r25:event_locator>
+      <r25:event_name>Coworking Space</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Educational Event</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1020489</r25:profile_id>
+      <r25:profile_name>Rsrv_1020489</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>lpaesbar</r25:last_mod_user>
+      <r25:last_mod_dt>2026-05-18T09:26:40-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14013558">
+      <r25:reservation_id>14013558</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T12:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T12:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T12:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T13:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T13:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-05-15T11:44:27-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T13:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=711309">711309</r25:event_id>
+      <r25:event_locator>2026-ADQTXW</r25:event_locator>
+      <r25:event_name>Fitness Class - TBT &amp; Faculty/Staff</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Fitness Class</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1020470</r25:profile_id>
+      <r25:profile_name>Rsrv_1020470</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>16</r25:expected_count>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>sarahc</r25:last_mod_user>
+      <r25:last_mod_dt>2026-05-19T13:10:34-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14016957">
+      <r25:reservation_id>14016957</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T12:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T12:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T12:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T14:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T14:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-05-21T11:17:43-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T14:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=711381">711381</r25:event_id>
+      <r25:event_locator>2026-ADQVCH</r25:event_locator>
+      <r25:event_name>IM Drop in Pickleball</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Team Competition</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1020555</r25:profile_id>
+      <r25:profile_name>Rsrv_1020555</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>0</r25:expected_count>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>sarahc</r25:last_mod_user>
+      <r25:last_mod_dt>2026-05-22T09:33:20-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=13801001">
+      <r25:reservation_id>13801001</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T12:10:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T12:10:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T12:10:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T14:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T14:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T14:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702182">702182</r25:event_id>
+      <r25:event_locator>2025-ADPVGG</r25:event_locator>
+      <r25:event_name>CHEM 2000 01 33379</r25:event_name>
+      <r25:event_title>Sp Topics in Lab</r25:event_title>
+      <r25:event_type_name>Practicum</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1010382</r25:profile_id>
+      <r25:profile_name>MTWRF 1210-1400 CLAS 07/06</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>1</r25:expected_count>
+      <r25:registered_count>0</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>CNETADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2025-12-04T14:36:33-07:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14037414">
+      <r25:reservation_id>14037414</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T12:30:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T12:30:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T12:30:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T14:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T14:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-07-28T08:25:33-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T14:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=712214">712214</r25:event_id>
+      <r25:event_locator>2026-ADQWZZ</r25:event_locator>
+      <r25:event_name>Suyama Group Meeting</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Meeting</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1021745</r25:profile_id>
+      <r25:profile_name>Rsrv_1021745</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>acamp3</r25:last_mod_user>
+      <r25:last_mod_dt>2026-07-28T08:26:39-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14021869">
+      <r25:reservation_id>14021869</r25:reservation_id>
+      <r25:reservation_state>99</r25:reservation_state>
+      <r25:reservation_state_name>Cancelled</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T12:30:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T12:30:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T12:30:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T14:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T14:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-05-19T08:38:52-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T14:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=692827">692827</r25:event_id>
+      <r25:event_locator>2025-ADNVAT</r25:event_locator>
+      <r25:event_name>Suyama Group Meeting</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Meeting</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1000143</r25:profile_id>
+      <r25:profile_name>Rsrv_1000143</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>0</r25:expected_count>
+      <r25:registered_count>0</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>acamp3</r25:last_mod_user>
+      <r25:last_mod_dt>2026-07-28T08:24:34-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=13859685">
+      <r25:reservation_id>13859685</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T12:30:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T12:30:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T12:30:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T16:30:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T16:30:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T16:30:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702147">702147</r25:event_id>
+      <r25:event_locator>2025-ADPVDP</r25:event_locator>
+      <r25:event_name>HM 6710 01 32421</r25:event_name>
+      <r25:event_title>Fund. Medical Sci. &amp; Research</r25:event_title>
+      <r25:event_type_name>Lecture</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1011788</r25:profile_id>
+      <r25:profile_name>MTWRF 1230-1630 CLAS 07/23</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>20</r25:expected_count>
+      <r25:registered_count>20</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>LYNXADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2026-01-26T09:48:33-07:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14046841">
+      <r25:reservation_id>14046841</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T13:30:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T13:30:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T13:30:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T14:30:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T14:30:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-08-07T09:23:23-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T14:30:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=712400">712400</r25:event_id>
+      <r25:event_locator>2026-ADQXKV</r25:event_locator>
+      <r25:event_name>NPLD Meeting</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Class</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1022065</r25:profile_id>
+      <r25:profile_name>Rsrv_1022065</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>edalessa@uwyo.edu</r25:last_mod_user>
+      <r25:last_mod_dt>2026-08-07T09:24:00-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14036383">
+      <r25:reservation_id>14036383</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T14:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T14:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T14:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T15:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T15:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-07-27T09:27:08-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T15:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=712173">712173</r25:event_id>
+      <r25:event_locator>2026-ADQWXA</r25:event_locator>
+      <r25:event_name>BI Staff Meeting</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Meeting</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1021704</r25:profile_id>
+      <r25:profile_name>Rsrv_1021704</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>ebentley</r25:last_mod_user>
+      <r25:last_mod_dt>2026-07-27T09:28:09-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14024712">
+      <r25:reservation_id>14024712</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T14:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T14:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T14:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T16:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T16:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T16:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702161">702161</r25:event_id>
+      <r25:event_locator>2025-ADPVFG</r25:event_locator>
+      <r25:event_name>UWYO 4900 01 32627</r25:event_name>
+      <r25:event_title>McNair Research and Prep</r25:event_title>
+      <r25:event_type_name>Lecture</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1010340</r25:profile_id>
+      <r25:profile_name>TWR 1400-1600 CLAS 06/23</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>18</r25:expected_count>
+      <r25:registered_count>7</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>LYNXADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2026-06-24T09:10:33-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=13982849">
+      <r25:reservation_id>13982849</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T14:30:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T14:30:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T14:30:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T16:35:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T16:35:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T16:35:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702141">702141</r25:event_id>
+      <r25:event_locator>2025-ADPVDH</r25:event_locator>
+      <r25:event_name>MATH 1080 01 32167</r25:event_name>
+      <r25:event_title>Bridge Program Math</r25:event_title>
+      <r25:event_type_name>Lecture</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1010320</r25:profile_id>
+      <r25:profile_name>MTWRF 1430-1635 CLAS 07/20</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>30</r25:expected_count>
+      <r25:registered_count>16</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>LYNXADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2026-03-30T12:57:35-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+      <r25:space_reservation xl:href="space.xml?space_id=914">
+         <r25:space_id>914</r25:space_id>
+         <r25:space_name>EA 229</r25:space_name>
+         <r25:formal_name>Classroom EA 229 - McMurry Room</r25:formal_name>
+         <r25:building_name/>
+         <r25:actual_count/>
+         <r25:layout_id>41</r25:layout_id>
+         <r25:layout_name>Classroom</r25:layout_name>
+         <r25:default_layout_capacity>30</r25:default_layout_capacity>
+         <r25:selected_layout_capacity>30</r25:selected_layout_capacity>
+         <r25:shared>F</r25:shared>
+         <r25:space_instruction_id/>
+         <r25:space_instructions/>
+         <r25:space_status>ASSIGNED</r25:space_status>
+      </r25:space_reservation>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14037965">
+      <r25:reservation_id>14037965</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T15:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T15:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T15:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T16:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T16:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-07-28T15:02:15-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T16:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=712233">712233</r25:event_id>
+      <r25:event_locator>2026-ADQXAW</r25:event_locator>
+      <r25:event_name>Prospective Student Visit Jody Speight</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Meeting</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1021766</r25:profile_id>
+      <r25:profile_name>Rsrv_1021766</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>acamp3</r25:last_mod_user>
+      <r25:last_mod_dt>2026-07-28T15:02:34-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14045612">
+      <r25:reservation_id>14045612</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T15:15:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T15:15:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T15:15:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T16:15:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T16:15:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-08-06T09:02:07-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T16:15:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=712376">712376</r25:event_id>
+      <r25:event_locator>2026-ADQXJR</r25:event_locator>
+      <r25:event_name>Deans/Staff check-in</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Meeting</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1021923</r25:profile_id>
+      <r25:profile_name>Rsrv_1021923</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>cbrome</r25:last_mod_user>
+      <r25:last_mod_dt>2026-08-06T09:02:33-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14013655">
+      <r25:reservation_id>14013655</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T17:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T17:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T17:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T18:30:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T18:30:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-05-15T11:53:49-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T18:30:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=711312">711312</r25:event_id>
+      <r25:event_locator>2026-ADQTZA</r25:event_locator>
+      <r25:event_name>Fitness Class - Cycling</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Fitness Class</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1020473</r25:profile_id>
+      <r25:profile_name>Rsrv_1020473</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>20</r25:expected_count>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>sarahc</r25:last_mod_user>
+      <r25:last_mod_dt>2026-05-19T13:10:53-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=13929824">
+      <r25:reservation_id>13929824</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T17:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T17:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T17:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T18:30:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T18:30:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-02-18T15:54:05-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T18:30:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=706682">706682</r25:event_id>
+      <r25:event_locator>2026-ADQHLN</r25:event_locator>
+      <r25:event_name>Nordic Ski- Bodywork</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Meeting</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1015709</r25:profile_id>
+      <r25:profile_name>Rsrv_1015709</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>cgarris5</r25:last_mod_user>
+      <r25:last_mod_dt>2026-02-18T15:56:29-07:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14010922">
+      <r25:reservation_id>14010922</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T17:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T17:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T17:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T21:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T21:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-05-12T10:28:57-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T21:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=711203">711203</r25:event_id>
+      <r25:event_locator>2026-ADQTRV</r25:event_locator>
+      <r25:event_name>Coworking Space</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Educational Event</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1020368</r25:profile_id>
+      <r25:profile_name>Rsrv_1020368</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count/>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>lpaesbar</r25:last_mod_user>
+      <r25:last_mod_dt>2026-05-12T10:30:07-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14013688">
+      <r25:reservation_id>14013688</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T17:30:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T17:30:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T17:30:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T18:30:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T18:30:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-05-15T11:54:59-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T18:30:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=711313">711313</r25:event_id>
+      <r25:event_locator>2026-ADQTZB</r25:event_locator>
+      <r25:event_name>Fitness Class - Zumba</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Fitness Class</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1020474</r25:profile_id>
+      <r25:profile_name>Rsrv_1020474</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>20</r25:expected_count>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>sarahc</r25:last_mod_user>
+      <r25:last_mod_dt>2026-05-19T13:12:57-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=14017579">
+      <r25:reservation_id>14017579</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T17:30:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T17:30:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T17:30:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T18:45:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T18:45:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2026-05-26T09:56:20-06:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T18:45:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=711415">711415</r25:event_id>
+      <r25:event_locator>2026-ADQVDX</r25:event_locator>
+      <r25:event_name>Fitness Class - Pilates</r25:event_name>
+      <r25:event_title/>
+      <r25:event_type_name>Fitness Class</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1020597</r25:profile_id>
+      <r25:profile_name>Rsrv_1020597</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>20</r25:expected_count>
+      <r25:registered_count/>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>sarahc</r25:last_mod_user>
+      <r25:last_mod_dt>2026-05-26T09:59:50-06:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+   <r25:reservation xl:href="reservation.xml?rsrv_id=13801285">
+      <r25:reservation_id>13801285</r25:reservation_id>
+      <r25:reservation_state>1</r25:reservation_state>
+      <r25:reservation_state_name>Standard</r25:reservation_state_name>
+      <r25:reservation_start_dt>2026-08-11T18:00:00-06:00</r25:reservation_start_dt>
+      <r25:pre_event_dt>2026-08-11T18:00:00-06:00</r25:pre_event_dt>
+      <r25:event_start_dt>2026-08-11T18:00:00-06:00</r25:event_start_dt>
+      <r25:event_end_dt>2026-08-11T19:00:00-06:00</r25:event_end_dt>
+      <r25:post_event_dt>2026-08-11T19:00:00-06:00</r25:post_event_dt>
+      <r25:event_creation_dt>2025-12-04T14:36:33-07:00</r25:event_creation_dt>
+      <r25:reservation_end_dt>2026-08-11T19:00:00-06:00</r25:reservation_end_dt>
+      <r25:event_id xl:href="event.xml?event_id=702148">702148</r25:event_id>
+      <r25:event_locator>2025-ADPVDQ</r25:event_locator>
+      <r25:event_name>LS 2400 81 32548</r25:event_name>
+      <r25:event_title>Basic Geodesy for Surveyors</r25:event_title>
+      <r25:event_type_name>Lecture</r25:event_type_name>
+      <r25:event_type_class/>
+      <r25:organization_id/>
+      <r25:organization_name>(Private)</r25:organization_name>
+      <r25:profile_id>1010327</r25:profile_id>
+      <r25:profile_name>T 1800-1900 CLAS 05/26</r25:profile_name>
+      <r25:profile_description/>
+      <r25:expected_count>30</r25:expected_count>
+      <r25:registered_count>22</r25:registered_count>
+      <r25:registration_url/>
+      <r25:registration_label/>
+      <r25:last_mod_user>LYNXADMIN</r25:last_mod_user>
+      <r25:last_mod_dt>2025-12-05T10:20:31-07:00</r25:last_mod_dt>
+      <r25:reservation_comment_id/>
+      <r25:reservation_comments/>
+   </r25:reservation>
+</r25:reservations>

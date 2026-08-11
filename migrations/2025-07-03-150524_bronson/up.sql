@@ -157,7 +157,7 @@ CREATE TABLE IF NOT EXISTS bronson.reservations (
     start_dt TIMESTAMPTZ NOT NULL,
     end_dt TIMESTAMPTZ NOT NULL,
     event_name TEXT NOT NULL,
-    event_space_id BIGINT
+    event_space_id BIGINT[]
 );
 
 /* CREATE TABLE IF NOT EXISTS bronson.api_schedule {

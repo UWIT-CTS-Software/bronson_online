@@ -1311,7 +1311,7 @@ impl Database {
 
 		reservations
 			.select(DB_Reservation::as_select())
-			.filter(event_space_id.eq(cn_id))
+			.filter(event_space_id.contains(vec![cn_id]))
 			.filter(end_dt.gt(Local::now()))
 			.first(&mut conn)
 			.optional()
@@ -2109,7 +2109,7 @@ pub struct Reservation {
 	#[serde(rename="r25:event_name")]
 	pub event_name: String,
 	#[serde(rename="r25:space_reservation")]
-	pub space: Option<Space>
+	pub space: Option<Vec<Option<Space>>>
 }
 
 #[derive(Debug, Deserialize, Clone)]
