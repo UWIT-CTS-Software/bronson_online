@@ -296,7 +296,7 @@ pub struct DB_Reservation {
     pub start_dt: DateTime<Local>,
     pub end_dt: DateTime<Local>,
     pub event_name: String,
-    pub event_space_id: Option<Vec<Option<i64>>>
+    pub event_space_id: Option<i64>
 }
 
 /* #[allow(non_camel_case_types)]

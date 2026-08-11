@@ -39,7 +39,7 @@ pub mod bronson {
             start_dt -> Timestamptz,
             end_dt -> Timestamptz,
             event_name -> Text,
-            event_space_id -> Nullable<Array<Nullable<Int8>>>,
+            event_space_id -> Nullable<Int8>,
         }
     }
 

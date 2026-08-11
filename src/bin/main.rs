@@ -102,6 +102,7 @@ use base64::decode as b64decode;
 
 extern crate serde;
 extern crate serde_xml_rs;
+use base64::{Engine as _, engine::general_purpose};
 // ----------------------------------------------------------------------------
 static JN_THREAD: AtomicBool = AtomicBool::new(false);
 pub const MIGRATIONS : EmbeddedMigrations = embed_migrations!();
@@ -4842,7 +4843,7 @@ async fn store_collegenet_reservations(database: &mut Database, cn_client: &Arc<
     
     let reservations: Reservations = match serde_xml_rs::from_str(&reservations_body) {
         Ok(rs) => rs,
-        Err(m) => { return Err(format!("Unable to parse xml from str: {}", m)); }
+        Err(m) => { return Err(m.to_string()); }
     };
 
     for reservation in reservations.reservations {
@@ -4852,23 +4853,12 @@ async fn store_collegenet_reservations(database: &mut Database, cn_client: &Arc<
             end_dt: reservation.end_dt,
             event_name: reservation.event_name,
             event_space_id: match reservation.space {
-                Some(ev) => {
-                    let mut ret_vec: Vec<Option<i64>> = Vec::new();
-
-                    for e in ev {
-                        match e {
-                            Some(space) => { ret_vec.push(Some(space.space_id)); },
-                            None     => ()
-                        }
-                    }
-
-                    Some(ret_vec)
-                },
+                Some(e) => Some(e.space_id),
                 None    => None
             }
         }) {
             Ok(_) => (),
-            Err(m) => { return Err(format!("Unable to update database: {}", m)); }
+            Err(m) => { return Err(m.to_string()); }
         };
     }
 
