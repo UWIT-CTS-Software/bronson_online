@@ -14,7 +14,6 @@ Backend
 
 JackNet
     - execute_ping(body: Vec<u8>) -> String
-    - write_doubleOK(path: &str, name: String) -> std::io::Result<()>
 
 ChkrBrd
     - construct_headers(call_type: &str, database: &mut Database) -> HeaderMap
@@ -408,7 +407,7 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
     let mut database = Database::new();
 
     match collegenet_login(&cn_api).await {
-        Ok(v)  => { println!("{:?}", v); },
+        Ok(v)  => { debug!("{:?}", v); },
         Err(m) => { error!("25L_ERR: {}", m); }
     };
 
@@ -464,7 +463,7 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
                 },
                 "lsmData"         => {
                     info!("[Data] - Pulling LSM Inventory Information");
-                    println!("MAYBE TODO: Get Diagnostic Information from LSM");
+                    info!("MAYBE TODO: Get Diagnostic Information from LSM");
                     //update_lsm_data(&mut database, Arc::clone(&lsm_request)).await;
                     info!("[Data] - Completed LSM Inventory Data Retreieval");
                 },
@@ -1390,7 +1389,6 @@ async fn handle_connection(
                                         .build();
                     }
                 };
-                //println!("DEBUG Existing DB_Room (Pre-Update) -> \n {:?}", new_db_room);
                 // Update General Pool Status
                 new_db_room.gp = match new_values[6] { 
                     1 => true,
@@ -1419,7 +1417,6 @@ async fn handle_connection(
                 // Update Ping Data in room
                 new_db_room.ping_data = ping_vec;
                 // Update Database
-                //println!("DEBUG Updating DB_Room -> \n {:?}", new_db_room);
                 let _ = database.update_room(&new_db_room);
 
                 Response::new()
@@ -1661,7 +1658,6 @@ async fn handle_connection(
                         .unwrap()
                         .to_string()
                         .replace("\"","");
-                    //println!("{}", room_name.len());
                     if hostname_exception != "" {
                         debug!("[Alias] - Hostname Exception: \n {} at {}", hostname_exception, room_name);
                         let mut room : DB_Room = match database.get_room_by_name(&room_name) {
@@ -1733,7 +1729,6 @@ async fn handle_connection(
                             .hostname.room = room_name.clone();
                     }
                     room.ping_data = pd;
-                    //println!("Reset room {}:\n{:?}", &room_name, &room);
                     let _ = database.update_room(&room);
                 }
                 debug!("[Alias] - Reverting Alias Change for target_rooms, {:?}", &target_rooms);
@@ -2474,7 +2469,6 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
     // Iterate over each.
     for building in buildings {
         debug!("[Checkerboard] - Processing Building: {:?}", building.1.abbrev);
-        //println!("{:?}", building);
         let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last90days%22%2CParentLocation%3A%22{}%22%7D", building.1.lsm_name.as_str());
         // Get Alias Table, to swap incoming room_names from LSM with
         //   Bronson friendly naming. We filter Alias Table to only contain
@@ -2558,7 +2552,6 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
             for i in 0..num_entries {
                 let mut check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
                 // Look to see if check["LocationName"] is in the alias_obj, replace it if so.
-                //println!("Current Check: {:?}", &check);
                 for tuple in &alias_vec {
                     if tuple.1 == check["LocationName"].as_str().unwrap() {
                         debug!("[Checkerboard Alias] Room - {:?} to be replaced with {:?}", check["LocationName"].as_str().unwrap(), tuple.0);
@@ -2774,7 +2767,6 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 
  - ping_response()
  - execute_ping()
- - write_doubleOK()
  - ping_room()
  - execute_ping_st()
  - ping_room_st()
@@ -2782,7 +2774,6 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 */
 
 fn ping_response(tmp: String, mut database: Database) -> Vec<u8> {
-    //println!("{}", tmp);
     let pr: PingRequest = serde_json::from_str(&tmp)
         .expect("Fatal Error: Unable to parse ping request");
 
@@ -2808,17 +2799,6 @@ execute_ping()
 NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
       CAMPUS_STR -> "html-css-js/campus.json"
 */
-
-fn write_doubleOK(path: &str) -> std::io::Result<()> {
-    let mut f = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)?;
-    let ts = chrono::Utc::now().to_rfc3339();
-    writeln!(f, "+ {}", ts)?;
-    //writeln!(f, "* {}", ts)?;
-    Ok(())
-}
 
 // call ping_this executible here
 async fn execute_ping(database: &mut Database) {
@@ -2859,7 +2839,7 @@ fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress
         let hn_string: String = net.as_ref().unwrap().hostname.to_string();
         pinged_hns.push(Some(
             match ping_this(&hn_string) {
-                Ok(ip) => { //println!("Got Here01");
+                Ok(ip) => {
                 DB_IpAddress {
                     hostname: net.clone().unwrap().hostname,
                     ip: ip,
@@ -2870,20 +2850,18 @@ fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress
                 _ => { 
                    
                     match ping_this(&hn_string) {
-                        Ok(ip) => {//println!("Got Here02");\
-                        if let Err(e) = write_doubleOK("double_ping.log") {
-                            debug!("Failed to write to log")
-                        }
-                        DB_IpAddress {
-                            hostname: net.clone().unwrap().hostname,
-                            ip: ip,
-                            last_ping: String::from(format!("{}", chrono::Utc::now())),
-                            alert: 0,
-                            error_message: String::new()
-                        }},
+                        Ok(ip) => {
+                            DB_IpAddress {
+                                hostname: net.clone().unwrap().hostname,
+                                ip: ip,
+                                last_ping: String::from(format!("{}", chrono::Utc::now())),
+                                alert: 0,
+                                error_message: String::new()
+                            }
+                        },
                         Err(m)      => {
                             debug!("PIN_ERR: {} failed: {}", net.clone().unwrap().hostname.to_string(), m);
-                             //println!("Got Here03");
+                            
                             DB_IpAddress {
                                 hostname: net.clone().unwrap().hostname,
                                 ip: String::from("x"),
@@ -3048,7 +3026,6 @@ fn dir_exists(path: &str) -> bool {
 }
 
 fn is_this_dir(path: &str) -> bool {
-    println!("{:?}", path);
     return metadata(path).unwrap().is_dir();
 }
 
@@ -3113,7 +3090,7 @@ fn build_tree(root: &str, blacklist: HashSet<&str>) -> Result<String, String> {
 fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
     use std::path::Path;
 
-    let name = Path::new(&(WIKI_DIR.to_string() + path))
+    let name = Path::new(&(root.to_string() + path))
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or("")
@@ -3132,8 +3109,8 @@ fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
 
    };
 
-    if is_this_dir(&(WIKI_DIR.to_string() + path)) {
-        let path_contents = get_dir_contents(&(WIKI_DIR.to_string() + path));
+    if is_this_dir(&(root.to_string() + path)) {
+        let path_contents = get_dir_contents(&(root.to_string() + path));
         for entry in path_contents.iter() {
             // Skip hidden/system files
             if let Some(file_name) = Path::new(entry).file_name().and_then(|s| s.to_str()) {
@@ -4861,7 +4838,15 @@ async fn store_collegenet_reservations(database: &mut Database, cn_client: &Arc<
             end_dt: reservation.end_dt,
             event_name: reservation.event_name,
             event_space_id: match reservation.space {
-                Some(e) => Some(e.space_id),
+                Some(ev) => {
+                    let mut ret_vec: Vec<Option<i64>> = Vec::new();
+
+                    for e in ev {
+                        ret_vec.push(Some(e.space_id));
+                    }
+
+                    Some(ret_vec)
+                },
                 None    => None
             }
         }) {
