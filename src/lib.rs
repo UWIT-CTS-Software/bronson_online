@@ -1012,6 +1012,7 @@ impl Database {
 	}
 
 	pub fn get_rooms_by_parent_id(&mut self, bldg_id: i64) -> Result<Vec<DB_Room>, DieselError> {
+		use crate::schema::bronson::rooms::dsl::parent_id;
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
 		let ret_vec = rooms
@@ -1236,6 +1237,7 @@ impl Database {
 
 
 	pub fn update_ticket_parent_id(&mut self, id: i32, new_parent_id: i32) -> Result<Option<DB_Ticket>, DieselError> {
+		use crate::schema::bronson::tickets::dsl::parent_id;
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
 		// Try to fetch the ticket first
@@ -1316,18 +1318,6 @@ impl Database {
 			.filter(end_dt.gt(Local::now()))
 			.first(&mut conn)
 			.optional()
-	}
-
-	pub fn update_reservation(&mut self, res: &DB_Reservation) -> Result<DB_Reservation, DieselError> {
-		let mut conn = self.pool.get().expect("Failed to get DB Connection");
-
-		diesel::insert_into(reservations)
-			.values(res)
-			.on_conflict(reservation_id)
-			.do_update()
-			.set(res)
-			.returning(DB_Reservation::as_returning())
-			.get_result(&mut conn)
 	}
 
 	pub fn update_reservation(&mut self, res: &DB_Reservation) -> Result<DB_Reservation, DieselError> {
@@ -2215,8 +2205,10 @@ pub static TSCH_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/techSch
 pub static BLDG_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/buildings.json");
 pub static CAMPUS_STR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.json");
 pub static ALIAS_JSON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/alias_table.json");
+pub static TICKT_JSON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/create_ticket_template.json");
 pub static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code/");
 pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/wiki_articles/");
+pub static TEMP_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/generated_files/temp");
 pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/roomConfig_agg.csv");
 pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.csv");
 pub static LOG       : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/output.log");

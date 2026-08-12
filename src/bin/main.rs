@@ -50,15 +50,14 @@ use server_lib::{
     ThreadPool, ThreadSchedule, TaskSchedule, PingRequest, 
     Building, 
     CFMRequestFile, TreeNode,
-    CFMRequestFile, TreeNode,
     jp::{ ping_this, },
     API, APIClient::{ MultiThread, SingleThread, },
-    CFM_DIR, WIKI_DIR, /* LOG, */
+    CFM_DIR, WIKI_DIR, /* LOG, */ TEMP_DIR, TICKT_JSON, 
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_400, STATUS_401, STATUS_404, STATUS_500, 
     SCHD_ERR, DASH_ERR, LDRB_ERR, SPRS_ERR, 
     Database, Terminal, 
     models::{
-        DB_Room, DB_Building, DB_User, DB_DataElement,
+        DB_Room, DB_Building, DB_User, DB_DataElement, DB_Project, 
         DB_IpAddress, DB_Key, DB_Ticket, DB_Reservation
     },
     LoginSuccess, Reservations, 
@@ -71,7 +70,7 @@ use std::{
     net::{ TcpListener, IpAddr, Ipv4Addr, },
     fs::{
         read_dir, metadata, write, remove_file, remove_dir, create_dir,
-        File, 
+        File,  OpenOptions,
     },
     path::Path,
     path::PathBuf,
@@ -81,6 +80,7 @@ use std::{
         atomic::{AtomicBool, Ordering}},
     clone::{ Clone, },
     option::{ Option, },
+    process::Command,
     collections::{ HashMap, HashSet },
 
 };
@@ -98,12 +98,12 @@ use urlencoding::decode;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
+use tera::{Tera, Context, Delimiters};
 use base64::{Engine as _, engine::general_purpose};
 use base64::decode as b64decode;
 
 extern crate serde;
 extern crate serde_xml_rs;
-use base64::{Engine as _, engine::general_purpose};
 // ----------------------------------------------------------------------------
 static JN_THREAD: AtomicBool = AtomicBool::new(false);
 pub const MIGRATIONS : EmbeddedMigrations = embed_migrations!();
@@ -3297,7 +3297,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
         let search_body = serde_json::json!({
             "ModifiedDateFrom": "2020-01-01T00:00:00Z",
             "ResponsibilityGroupIDs": [2742], // CTS Group ID
-            "MaxResults": 5000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
+            "MaxResults": 100000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
         });
         // Make the request
         let mut resp = match req
@@ -3693,29 +3693,17 @@ async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_j
         Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e)),
     };
 
-    // If no tickets exist, perform a tickets fetch from Jan 1st, 2020 to now
-    if database.check_if_tickets_empty() {
-        warn!("[Data] - No tickets exist in Database. Pulling all tickets from Jan 1st, 2020...");
-
-        // Define search
-        let search_body = serde_json::json!({
-            "ModifiedDateFrom": "2020-01-01T00:00:00Z",
-            "ResponsibilityGroupIDs": [2742], // CTS Group ID
-            "MaxResults": 5000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
-        });
-        // Make the request
-        let resp_raw = req
-            .build()
-            .method("POST")
-            .endpoint(url)
-            .header("Authorization", &tdx_token.val)
-            .header("Content-Type", "application/json")
-            .body(search_body)
-            .timeout(Duration::from_secs(120))
-            .send()
-            .await;
-        
-        let resp = match resp_raw {
+    // Make the request
+    let mut resp = match req
+        .build()
+        .method("POST")
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Content-Type", "application/json")
+        .body([id].into())
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await {
             Ok(r) => r,
             Err(e) => return Err(format!("Failed to update Ticket in TDX: {}", e))
         };
@@ -3800,34 +3788,11 @@ async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Va
         return Err(format!("TDX API error: {}", new_ticket_resp.status));
     }
 
-        // Parse the response as JSON
-        let tickets_json: Vec<serde_json::Value> = 
-            serde_json::from_str(&body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, body))?; */
-        
-        // Map to DB_Ticket and insert
-        for ticket_val in &tickets_json {
-            let ticket = DB_Ticket {
-                ticket_id: ticket_val["ID"].as_i64().unwrap_or(0) as i32,
-                parent_id: ticket_val["ParentID"].as_i64().unwrap_or(0) as i32,
-                has_been_viewed: true,
-                type_name: ticket_val["TypeName"].as_str().unwrap_or("").to_string(),
-                type_category_name: ticket_val["TypeCategoryName"].as_str().unwrap_or("").to_string(),
-                title: ticket_val["Title"].as_str().unwrap_or("").to_string(),
-                account_name: ticket_val["AccountName"].as_str().unwrap_or("").to_string(),
-                status_name: ticket_val["StatusName"].as_str().unwrap_or("").to_string(),
-                service_name: ticket_val["ServiceName"].as_str().unwrap_or("").to_string(),
-                priority_name: ticket_val["PriorityName"].as_str().unwrap_or("").to_string(),
-                created_date: ticket_val["CreatedDate"].as_str().unwrap_or("").to_string(),
-                created_full_name: ticket_val["CreatedFullName"].as_str().unwrap_or("").to_string(),
-                modified_date: ticket_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
-                modified_full_name: ticket_val["ModifiedFullName"].as_str().unwrap_or("").to_string(),
-                requestor_name: ticket_val["RequestorName"].as_str().unwrap_or("").to_string(),
-                requestor_email: ticket_val["RequestorEmail"].as_str().unwrap_or("").to_string(),
-                requestor_phone: ticket_val["RequestorPhone"].as_str().unwrap_or("").to_string(),
-                days_old: ticket_val["DaysOld"].as_i64().unwrap_or(0) as i16,
-                responsible_full_name: ticket_val["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
-                responsible_group_name: ticket_val["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
-                comment_count: 0 as i16,
+    // Convert New Ticket Response into JSON
+    let ticket_json: serde_json::Value = serde_json::from_str(&new_ticket_resp.body)
+        .map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, new_ticket_resp.body))?;
+    
+    info!("[Data] - Create Ticket Request was Successful (New Ticket ID: {})", ticket_json["ID"]);
 
     // TODO:
     // - Post the comment with new function call saying who performed what ticket actions (requires shibboleth to know who made the changes)
@@ -3980,20 +3945,9 @@ async fn post_comment(database: &mut Database, req: &API, body_json: Value) -> R
         return Err(format!("TDX API error: {}", ticket_resp.status));
     }
 
-        // Make the request to TDX API
-        let mut resp = match req
-            .build()
-            .method("POST")
-            .endpoint(url)
-            .header("Authorization", &tdx_token.val)
-            .header("Content-Type", "application/json")
-            .body(search_body.clone())
-            .timeout(Duration::from_secs(120))
-            .send()
-            .await {
-                Ok(r) => r,
-                Err(e) => return Err(format!("Failed to fetch ticket from TDX: {}", e))
-            };
+    info!("[Data] - Commenting Request was Successful (Ticket ID: {})", id);
+    Ok(())
+}
 
 async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) -> Result<i32, String> {
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/statuses/search";
@@ -4043,82 +3997,93 @@ async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) 
                 if let Some(id) = status["ID"].as_i64() {
                     return Ok(id as i32);
                 }
-            };
-
-            // Get old ticket if it exists (new tickets won't and default to empty string)
-            let old_ticket = database.get_ticket(ticket_val["ID"].as_i64().unwrap_or(0) as i32).unwrap_or(None);
-
-            let (
-                old_type_name, old_type_category_name, old_title,
-                old_account_name, old_status_name, old_service_name,
-                old_priority_name, old_modified_date, old_modified_full_name,
-                old_responsible_full_name, old_responsible_group_name,
-
-                comment_count, old_comment_count
-            ) = match old_ticket {
-                Some(t) => (
-                    t.type_name, t.type_category_name, t.title,
-                    t.account_name, t.status_name, t.service_name,
-                    t.priority_name, t.modified_date, t.modified_full_name,
-                    t.responsible_full_name, t.responsible_group_name,
-
-                    t.comment_count, t.old_comment_count
-                ),
-                None => (
-                    String::new(), String::new(), String::new(),
-                    String::new(), String::new(), String::new(),
-                    String::new(), String::new(), String::new(),
-                    String::new(), String::new(), 
-                    
-                    0_i16, 0_i16,
-                ),
-            };
-
-            let ticket = DB_Ticket {
-                ticket_id: ticket_val["ID"].as_i64().unwrap_or(0) as i32,
-                parent_id: ticket_val["ParentID"].as_i64().unwrap_or(0) as i32,
-                has_been_viewed: orig_viewed,
-                type_name: ticket_val["TypeName"].as_str().unwrap_or("").to_string(),
-                type_category_name: ticket_val["TypeCategoryName"].as_str().unwrap_or("").to_string(),
-                title: ticket_val["Title"].as_str().unwrap_or("").to_string(),
-                account_name: ticket_val["AccountName"].as_str().unwrap_or("").to_string(),
-                status_name: ticket_val["StatusName"].as_str().unwrap_or("").to_string(),
-                service_name: ticket_val["ServiceName"].as_str().unwrap_or("").to_string(),
-                priority_name: ticket_val["PriorityName"].as_str().unwrap_or("").to_string(),
-                created_date: ticket_val["CreatedDate"].as_str().unwrap_or("").to_string(),
-                created_full_name: ticket_val["CreatedFullName"].as_str().unwrap_or("").to_string(),
-                modified_date: ticket_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
-                modified_full_name: ticket_val["ModifiedFullName"].as_str().unwrap_or("").to_string(),
-                requestor_name: ticket_val["RequestorName"].as_str().unwrap_or("").to_string(),
-                requestor_email: ticket_val["RequestorEmail"].as_str().unwrap_or("").to_string(),
-                requestor_phone: ticket_val["RequestorPhone"].as_str().unwrap_or("").to_string(),
-                days_old: ticket_val["DaysOld"].as_i64().unwrap_or(0) as i16,
-                responsible_full_name: ticket_val["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
-                responsible_group_name: ticket_val["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
-                comment_count,
-
-                old_type_name,
-                old_type_category_name,
-                old_title,
-                old_account_name,
-                old_status_name,
-                old_service_name,
-                old_priority_name,
-                old_modified_date,
-                old_modified_full_name,
-                old_responsible_full_name,
-                old_responsible_group_name,
-                old_comment_count,
-            };
-
-            // Insert or update
-            if let Err(e) = database.update_ticket(&ticket) {
-                error!("Failed to insert ticket {}: {}", ticket.ticket_id, e);
             }
         }
     }
 
     Err(format!("Could not find StatusID for status '{}'", status_name))
+}
+
+async fn get_tdx_user(database: &mut Database, req: &API, username: &str) -> Result<Value, String> {
+    let url = format!("https://uwyo.teamdynamix.com/TDWebApi/api/people/getuid/{}{}", username, "@uwyo.edu");
+
+    // Grab token from database
+    let tdx_token = match database.get_key("tdx_api") {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to get TDX API key from database: {}", e))
+    };
+
+    // Query TDX for User ID
+    let mut resp = match req
+        .build()
+        .method("GET")
+        .endpoint(&url)
+        .header("Authorization", &tdx_token.val)
+        .header("Content-Type", "application/json")
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Failed to fetch User ID from TDX: {}", e))
+        };
+
+    // Try fetching a new tdx token and try again if Unauthorized
+    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        resp = retry_tdx_token(database, req, "GET", &url, None).await?;
+    }
+
+    // User ID wasn't found, return 0 as the ID (ID NOT FOUND)
+    if resp.status == reqwest::StatusCode::NOT_FOUND {
+        return Ok(Value::Number(0.into()));
+    }
+
+    if !resp.status.is_success() {
+        return Err(format!("TDX API error: {}", resp.status));
+    }
+
+    // Parse Response
+    let user_id: Value = serde_json::from_str(&resp.body)
+        .map_err(|e| format!("Failed to parse TDX status response: {}", e))?;
+
+    // Default to blank if there is no user ID
+    let mut full_name = String::new();
+
+    if user_id.to_string() != 0.to_string() {
+        let second_url = format!("https://uwyo.teamdynamix.com/TDWebApi/api/people/{}", user_id.to_string().trim_matches('"'));
+        let mut second_resp = match req
+            .build()
+            .method("GET")
+            .endpoint(&second_url)
+            .header("Authorization", &tdx_token.val)
+            .header("Content-Type", "application/json")
+            .timeout(Duration::from_secs(15))
+            .send()
+            .await {
+                Ok(r) => r,
+                Err(e) => return Err(format!("Failed to fetch User Information from TDX: {}", e)),
+            };
+
+            // Try fetching a new TDX token and try again if Unauthorized
+        if !second_resp.status.is_success() && second_resp.status == reqwest::StatusCode::UNAUTHORIZED {
+            second_resp = retry_tdx_token(database, req, "GET", &second_url, None).await?;
+        }
+
+        if !second_resp.status.is_success() {
+            return Err(format!("TDX API error: {}", second_resp.status));
+        }
+
+        let user_info: Value = serde_json::from_str(&second_resp.body)
+            .map_err(|e| format!("Failed to parse TDX user information: {}", e))?;
+
+        full_name = user_info["FullName"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
+
+    }
+
+    // Return both values
+    Ok(json!({"UID": user_id, "FullName": full_name}))
 }
 
 /*
@@ -4149,8 +4114,7 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
         // Define search
         let search_body = serde_json::json!({
             "ModifiedDateFrom": "2020-01-01T00:00:00Z",
-            "ResponsibilityGroupIDs": [2742], // CTS Group ID
-            "MaxResults": 100000  // TDX times out at around 200,000, CTS tickets don't reach this high anyway
+            "TypeID": 42460
         });
         // Make the request
         let resp_raw = req
@@ -4159,7 +4123,6 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
             .endpoint(url)
             .header("Authorization", &tdx_token.val)
             .header("Content-Type", "application/json")
-            .timeout(Duration::from_secs(120))
             .body(search_body)
             .timeout(Duration::from_secs(120))
             .send()
@@ -4175,46 +4138,35 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
         }
 
         // Parse the response as JSON
-        let tickets_json: Vec<serde_json::Value> = 
-            serde_json::from_str(&resp.body).map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
+        let parsed_projects: serde_json::Value = serde_json::from_str(&resp.body)
+            .map_err(|e| format!("Failed to parse JSON: {} | Body: {}", e, resp.body))?;
+        let projects_json: Vec<serde_json::Value> = match parsed_projects.as_array() {
+            Some(items) => items.clone(),
+            None => parsed_projects
+                .get("Items")
+                .and_then(serde_json::Value::as_array)
+                .cloned()
+                .ok_or_else(|| format!("Expected project array in response body: {}", resp.body))?,
+        };
 
-        
-        // Map to DB_Ticket and insert
-        for ticket_val in &tickets_json {
-            let ticket = DB_Ticket {
-                ticket_id: ticket_val["ID"].as_i64().unwrap_or(0) as i32,
-                has_been_viewed: true,
-                type_name: ticket_val["TypeName"].as_str().unwrap_or("").to_string(),
-                type_category_name: ticket_val["TypeCategoryName"].as_str().unwrap_or("").to_string(),
-                title: ticket_val["Title"].as_str().unwrap_or("").to_string(),
-                account_name: ticket_val["AccountName"].as_str().unwrap_or("").to_string(),
-                status_name: ticket_val["StatusName"].as_str().unwrap_or("").to_string(),
-                service_name: ticket_val["ServiceName"].as_str().unwrap_or("").to_string(),
-                priority_name: ticket_val["PriorityName"].as_str().unwrap_or("").to_string(),
-                created_date: ticket_val["CreatedDate"].as_str().unwrap_or("").to_string(),
-                created_full_name: ticket_val["CreatedFullName"].as_str().unwrap_or("").to_string(),
-                modified_date: ticket_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
-                modified_full_name: ticket_val["ModifiedFullName"].as_str().unwrap_or("").to_string(),
-                requestor_name: ticket_val["RequestorName"].as_str().unwrap_or("").to_string(),
-                requestor_email: ticket_val["RequestorEmail"].as_str().unwrap_or("").to_string(),
-                requestor_phone: ticket_val["RequestorPhone"].as_str().unwrap_or("").to_string(),
-                days_old: ticket_val["DaysOld"].as_i64().unwrap_or(0) as i16,
-                responsible_full_name: ticket_val["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
-                responsible_group_name: ticket_val["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
-                comment_count: 0 as i16,
+        // Map to DB_Project and insert
+        for project_val in &projects_json {
+            let project = DB_Project {
+                project_id: project_val["ID"].as_i64().unwrap_or(0) as i32,
+                created_date: project_val["CreatedDate"].as_str().unwrap_or("").to_string(),
+                modified_date: project_val["ModifiedDate"].as_str().unwrap_or("").to_string(),
+                name: project_val["Name"].as_str().unwrap_or("").to_string(),
+                description: project_val["Description"].as_str().unwrap_or("").to_string(),
+                is_active: project_val["IsActive"].as_bool().unwrap_or(true),
+                type_id: project_val["TypeID"].as_i64().unwrap_or(0) as i32,
+                percent_complete: project_val["PercentComplete"].as_i64().unwrap_or(-1) as i16,
+                status_name: project_val["StatusName"].as_str().unwrap_or("").to_string(),
+                status_comments: project_val["StatusComments"].as_str().unwrap_or("").to_string(),
+                start_date: project_val["StartDate"].as_str().unwrap_or("").to_string(),
+                end_date: project_val["EndDate"].as_str().unwrap_or("").to_string(),
+                health: project_val["HealthDescription"].as_str().unwrap_or("").to_string(),
 
-                old_type_name: "".to_string(),
-                old_type_category_name: "".to_string(),
-                old_title: "".to_string(),
-                old_account_name: "".to_string(),
-                old_status_name: "".to_string(),
-                old_service_name: "".to_string(),
-                old_priority_name: "".to_string(),
-                old_modified_date: "".to_string(),
-                old_modified_full_name: "".to_string(),
-                old_responsible_full_name: "".to_string(),
-                old_responsible_group_name: "".to_string(),
-                old_comment_count: 0 as i16,
+                is_hidden: project_val["is_hidden"].as_bool().unwrap_or(false),
             };
 
             // Insert or update
@@ -4231,7 +4183,7 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
         info!("[Data] - Pulled all TDX projects from Jan 1st, 2020");
     } else { // Projects table not empty, only update more recent projects
         // Look in database for most recent Project and look at its date
-        let latest_project = match database.get_latest_project() {
+        let _ = match database.get_latest_project() {
             Ok(p) => p,
             Err(e) => return Err(format!("Failed to get latest project: {}", e)),
         };
@@ -4339,6 +4291,66 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
 }
 
 async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data: serde_json::Value) -> Result<(), String> {
+    // Helper: get date range based on time_period
+    let get_date_range = |period: i16| -> (DateTime<Utc>, DateTime<Utc>) {
+        let now = Utc::now();
+        let start = match period {
+            0 => now - TimeDelta::days(7),
+            1 => now - TimeDelta::days(30),
+            2 => now - TimeDelta::days(90),
+            3 => now - TimeDelta::days(365),
+            4 => {
+                // all-time: use Jan 1, 2020
+                DateTime::parse_from_rfc3339("2020-01-01T00:00:00+00:00")
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .unwrap_or_else(|_| now - TimeDelta::days(365 * 100))
+            }
+            _ => now - TimeDelta::days(7), // default to 7 days
+        };
+        return (start, now);
+    };
+
+    // Helper: check if date string is within range
+    let is_date_in_range = |date_str: &str, start: DateTime<Utc>, end: DateTime<Utc>| -> bool {
+        if let Ok(date) = DateTime::parse_from_rfc3339(date_str) {
+            let date_utc = date.with_timezone(&Utc);
+            return date_utc >= start && date_utc <= end;
+        } else {
+            return false;
+        }
+    };
+
+    // Helper: extract building code from ticket title
+    let extract_building = |title: &str| -> Option<String> {
+        let re = Regex::new(r"^\s*([A-Za-z]{2,4}(?:\s+[A-Za-z]{2,4})?)\s+(\d{1,4})").unwrap();
+        re.captures(title).map(|caps| {
+            let mut building = caps[1].to_uppercase().trim().to_string();
+            
+            // Normalize building codes (old_code -> new_code)
+            let normalizations: std::collections::HashMap<&str, &str> = [
+                ("ST", "STEM"), ("ENZI", "STEM"), ("ENZI STEM", "STEM"),
+                ("ENG", "EN"), ("ESB", "ES"), ("SIB", "SI"), ("COE", "CL"), 
+                ("CIC", "CI"), ("BCPA", "PA"), ("BE", "BH"),
+            ].iter().cloned().collect();
+            
+            if let Some(&normalized) = normalizations.get(building.as_str()) {
+                building = normalized.to_string();
+            }
+            return building;
+        })
+    };
+
+    // Helper: extract hour from date string
+    let extract_hour = |date_str: &str| -> Option<i32> {
+        if let Ok(date) = DateTime::parse_from_rfc3339(date_str) {
+            let date_local = date.with_timezone(&Local);
+            let hour = date_local.format("%H").to_string().parse::<i32>().ok()?;
+            return Some(hour);
+        } else {
+            return None;
+        }
+    };
+
     // Create new Tera and reset delims that won't conflict with LaTeX syntax
     let mut tera = Tera::default();
     tera.set_delimiters(Delimiters {
@@ -4350,17 +4362,291 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
         comment_end: "#]".into(),
     }).map_err(|e| format!("Failed to set Tera Delimiters: {}", e))?;
 
-    // Build the latex
+    // Gather the data for the report
+    let (start_date, end_date) = get_date_range(time_period);
+    let all_tickets = database.get_all_tickets().map_err(|e| format!("Failed to fetch tickets: {}", e))?;
+
+    let mut tickets_created = 0;
+    let mut tickets_closed = 0;
+    let mut current_open_tickets = 0;
+    let mut false_tickets = 0;
+    let mut tickets_from_room_checks = 0;
+    let mut wycast_event_tickets = 0;
+    let mut pc_related_tickets = 0;
+    let mut building_counts: std::collections::HashMap<String, i32> = std::collections::HashMap::new();
+    let mut hour_counts: Vec<i32> = vec![0; 14]; // 7am-7pm (13 slots) + "Other"
+
+    // Process tickets
+    for ticket in &all_tickets {
+        // Count open tickets (all-time, not time period-specific)
+        let is_open = matches!(
+            ticket.status_name.as_str(),
+            "New" | "In Process" | "On Hold"
+        );
+        if is_open {
+            current_open_tickets += 1;
+        }
+
+        // These represent tickets created within the time period and are currently closed/false tickets
+        if is_date_in_range(&ticket.created_date, start_date, end_date) {
+            tickets_created += 1;
+
+            // Closed status
+            let is_closed = matches!(
+                ticket.status_name.as_str(),
+                "Closed" | "Completed" | "Resolved" | "Cancelled" | "Closed using Remote Support Tool"
+            );
+            if is_closed {
+                tickets_closed += 1;
+            }
+            // Room check tickets
+            if Regex::new(r"(?i)room check$").unwrap().is_match(&ticket.title) {
+                tickets_from_room_checks += 1;
+            }
+            // WyoCast/Event tickets
+            if Regex::new(r"(?i)\b(wyocast|event|zoom|tutorial)\b").unwrap().is_match(&ticket.title) {
+                wycast_event_tickets += 1;
+            }
+            // PC-related tickets
+            if Regex::new(r"(?i)\b(pc|computer|laptop|lptp)\b").unwrap().is_match(&ticket.title) {
+                pc_related_tickets += 1;
+            }
+            // False tickets
+            if ticket.parent_id == 22873142 {
+                false_tickets += 1;
+            }
+
+            let title = ticket.title.trim();
+            if let Some(building) = extract_building(title) {
+                *building_counts.entry(building).or_insert(0) += 1;
+            }
+
+            if let Some(hour) = extract_hour(&ticket.created_date) {
+                if hour >= 7 && hour <= 19 {
+                    hour_counts[(hour - 7) as usize] += 1;
+                } else {
+                    hour_counts[13] += 1; // "Other"
+                }
+            }
+        }
+    }
+
+    // Get leaderboard data for room checks performed
+    let room_checks_performed = match database.get_data("lsm_leaderboard") {
+        Ok(leaderboard_data) => {
+            // Parse JSON and sum up room checks for the appropriate time period
+            if let Ok(leaderboard_json) = serde_json::from_str::<Value>(&leaderboard_data.val) {
+                let period_key = match time_period {
+                    0 => "7days",
+                    1 => "30days",
+                    2 => "90days",
+                    3 | 4 => "365days",
+                    _ => "7days",
+                };
+                
+                if let Some(period_data) = leaderboard_json.get(period_key).and_then(|v| v.as_array()) {
+                    period_data.iter()
+                        .filter_map(|item| item.get("Count").and_then(|c| c.as_i64()))
+                        .sum::<i64>() as i32
+                } else {
+                    0
+                }
+            } else {
+                0
+            }
+        }
+        Err(_) => 0,
+    };
+
+    // Sort buildings by count and get top 10
+    let mut sorted_buildings: Vec<_> = building_counts.into_iter().collect();
+    sorted_buildings.sort_by(|a, b| b.1.cmp(&a.1));
+    let top_10_buildings: Vec<String> = sorted_buildings.iter().take(10).map(|(k, _)| k.clone()).collect();
+    let top_10_counts: Vec<i32> = sorted_buildings.iter().take(10).map(|(_, v)| *v).collect();
+
+        // Build the latex
+    // Helper: escape common LaTeX special characters to avoid compilation errors
+    let escape_latex = |s: &str| -> String {
+        let mut out = s.replace("\\", "\\textbackslash{}");
+        let reps = [
+            ("%", "\\%"), ("&", "\\&"), ("$", "\\$"), ("#", "\\#"),
+            ("_", "\\_"), ("{", "\\{"), ("}", "\\}"), ("~", "\\textasciitilde{}"),
+            ("^", "\\textasciicircum{}"),
+        ];
+        for (f, t) in reps.iter() {
+            out = out.replace(f, t);
+        }
+        return out;
+    };
+
+    // Helper: create a simple section with an itemize list from a JSON array value
+    let make_list = |v: &serde_json::Value, title: &str| -> String {
+        if !v.is_array() {
+            return String::new();
+        }
+        let arr = v.as_array().unwrap();
+        if arr.is_empty() {
+            return String::new();
+        }
+
+        let esc_title = "\\huge\n".to_owned() + &escape_latex(title);
+        
+        let mut s = format!("\\begin{{quote}}\n\\section*{{{}}}\n\\begin{{itemize}}\n\\large", esc_title);
+        for item in arr.iter() {
+            let item_str = match item.as_str() {
+                Some(st) => st.to_string(),
+                None => item.to_string(),
+            };
+            s.push_str(&format!("  \\item {}\n", escape_latex(&item_str)));
+        }
+
+        s.push_str("\\end{itemize}\n\\end{quote}\n");
+        return s;
+    };
+
+    // Convert hour counts to LaTeX coordinates format
+    let hour_labels = vec!["7am", "8am", "9am", "10am", "11am", "12pm", "1pm", "2pm", "3pm", "4pm", "5pm", "6pm", "7pm", "Other"];
+    let mut building_latex_coords = String::new();
+    let mut hour_latex_coords = String::new();
+
+    for (i, building) in top_10_buildings.iter().enumerate() {
+        if i > 0 {
+            building_latex_coords.push(' ');
+        }
+        building_latex_coords.push_str(&format!("({},{}) ", building.to_string(), top_10_counts[i]));
+    }
+
+    for (i, (label, count)) in hour_labels.iter().zip(hour_counts.iter()).enumerate() {
+        if i > 0 {
+            hour_latex_coords.push(' ');
+        }
+        hour_latex_coords.push_str(&format!("({},{}) ", label, count));
+    }
+
+
+    // Build Notes
+    let accomplishments_val = optional_data.get("an_accomplishments").unwrap_or(&serde_json::Value::Null);
+    let future_notes_val = optional_data.get("an_notesForFuture").unwrap_or(&serde_json::Value::Null);
+    let roomcheck_notes_val = optional_data.get("an_ticketAndRoomCheckNotes").unwrap_or(&serde_json::Value::Null);
+
+    let latex_accomplishments = make_list(accomplishments_val, "Accomplishments");
+    let mut latex_future_notes = make_list(future_notes_val, "Notes for the Future");
+    let latex_roomcheck_tickets_notes = make_list(roomcheck_notes_val, "Notes");
+
+    if latex_future_notes != "" {
+        latex_future_notes += r#"
+            \newpage
+            \maketitle
+            \thispagestyle{empty} % Remove page number from page
+        "#;
+    }
+
+    // Master LaTeX
     let latex_template = r#"
         \documentclass{article}
-        \begin{document}
-        \title{[[ title ]]}
-        \author{[[ author ]]}
-        \date{\today}
-        \maketitle
 
-        \section{Introduction}
-        Hello [[ name ]], this document was generated using Rust, Tera, and LaTeX.
+        % Required LaTeX packages
+        \usepackage{pdflscape}
+        \usepackage{pgfplots}
+        \usepackage{tikz}
+        \usepackage{titling}
+        \usepackage[T1]{fontenc}
+        \usepackage{helvet}
+        \renewcommand{\familydefault}{\sfdefault}
+
+        \begin{document}
+         \begin{landscape} % Orient the page in landscape mode
+ 
+         \title{\textbf{\huge CTS Analytics - [[ time_frame ]]}}
+         \author{} % Leave blank
+         \date{} % Leave blank
+ 
+         \Large
+         \setlength{\droptitle}{-5.5cm}
+ 
+         \maketitle
+         \thispagestyle{empty} % Remove page number from page
+ 
+          \begin{flushleft}
+  
+  
+                % First Page
+    
+            [[ accomplishments ]] % Accomplishment Notes
+            [[ future_notes ]] % Notes for the Future
+    
+    
+                % Second Page
+
+            % Overview Table
+            \vspace{-2.25cm}
+            \begin{center}
+            \begin{tabular}{ c|c|c|c } 
+                {\small Tickets Created}                 & {\small Tickets Closed}                 & {\small Current Open Tickets}                 & {\small False Tickets}                \\ 
+                {\LARGE \textbf{[[ tickets_created ]]}}  & {\LARGE \textbf{[[ tickets_closed ]]}}  & {\LARGE \textbf{[[ current_open_tickets ]]}}  & {\LARGE \textbf{[[ false_tickets ]]}} \\ 
+                {\small Last sss: ddd}                     & {\small Last sss: ddd}                    & {\small Last sss: ddd}                          & {}                                    \\
+            \hline
+                {\small Room Checks Performed}                 & {\small Tickets from Room Checks}                 & {\small WyoCast / Event Tickets}              & {\small PC Related Tickets}                \\ 
+                {\LARGE \textbf{[[ room_checks_performed ]]}}  & {\LARGE \textbf{[[ tickets_from_room_checks ]]}}  & {\Large \textbf{[[ wycast_event_tickets ]]}}  & {\Large \textbf{[[ pc_related_tickets ]]}} \\ 
+                {\small Last sss: ddd}                           & {}                                                & {}                                            & {}                                         \\ 
+            \end{tabular}
+            \end{center}
+    
+            % Bar Graphs
+            \begin{figure}[htbp]
+                \begin{minipage}{0.48\textwidth}
+                    \centering
+                    \pgfplotsset{width=8.5cm,compat=1.18}
+                    \begin{tikzpicture}[scale=1.0]
+                    \begin{axis}[
+                        title={Ticket Count by Building (Top 10)},
+                        ybar,
+                        enlargelimits=0.15,
+                        legend style={at={(0.5,-0.2)},
+                        anchor=north,legend columns=-1},
+                        symbolic x coords={[[ building_x_coords ]]},
+                        xtick={[[ building_x_coords ]]},
+                        nodes near coords,
+                        nodes near coords align={vertical},
+                        x tick label style={rotate=90,anchor=east},
+                        x post scale=1.3,
+                        y post scale=0.65,
+                    ]
+                    \addplot[fill=yellow!50!white, draw=yellow!80!black] coordinates {[[ building_coords ]]};
+                    \end{axis}
+                    \end{tikzpicture}
+                \end{minipage}
+                \hspace{0.33\textwidth}
+                \begin{minipage}{0.48\textwidth}
+                    \centering
+                    \pgfplotsset{width=8.5cm,compat=1.18}
+                    \begin{tikzpicture}[scale=1.0]
+                    \begin{axis}[
+                        title={Ticket Count by Hour},
+                        ybar,
+                        enlargelimits=0.15,
+                        legend style={at={(0.5,-0.2)},
+                        anchor=north,legend columns=-1},
+                        symbolic x coords={7am,8am,9am,10am,11am,12pm,1pm,2pm,3pm,4pm,5pm,6pm,7pm,Other},
+                        xtick={7am,8am,9am,10am,11am,12pm,1pm,2pm,3pm,4pm,5pm,6pm,7pm,Other},
+                        nodes near coords,
+                        nodes near coords align={vertical},
+                        x tick label style={rotate=90,anchor=east},
+                        x post scale=1.3,
+                        y post scale=0.65,
+                    ]
+                    \addplot[fill=yellow!50!white, draw=yellow!80!black] coordinates {[[ hour_coords ]]};
+                    \end{axis}
+                    \end{tikzpicture}
+                \end{minipage}
+            \end{figure}
+
+            \vspace{-1.0cm}
+            [[ notes ]] % Ticket & Room Check Notes
+  
+  
+          \end{flushleft}
+         \end{landscape}
         \end{document}
     "#;
     match tera.add_raw_template("report.tex", latex_template) {
@@ -4369,38 +4655,64 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
     }
 
     // Sub in values
+    let time_frame_label = match time_period {
+        0 => "Last 7 Days",
+        1 => "Last 30 Days",
+        2 => "Last 90 Days",
+        3 => "Last 365 Days",
+        4 => "All Time",
+        _ => "Last 7 Days",
+    };
+
+    // Format building x coordinates for LaTeX
+    let building_x_coords = top_10_buildings.join(",");
+
     let mut context = Context::new();
-    context.insert("title", "Automated Report");
-    context.insert("author", "Rust Application");
-    context.insert("name", "Ferris");
+    context.insert("time_frame", time_frame_label);
+    context.insert("accomplishments", &latex_accomplishments);
+    context.insert("future_notes", &latex_future_notes);
+    context.insert("tickets_created", &tickets_created);
+    context.insert("tickets_closed", &tickets_closed);
+    context.insert("current_open_tickets", &current_open_tickets);
+    context.insert("false_tickets", &false_tickets);
+    context.insert("room_checks_performed", &room_checks_performed);
+    context.insert("tickets_from_room_checks", &tickets_from_room_checks);
+    context.insert("wycast_event_tickets", &wycast_event_tickets);
+    context.insert("pc_related_tickets", &pc_related_tickets);
+    context.insert("notes", &latex_roomcheck_tickets_notes);
+    context.insert("building_coords", &building_latex_coords);
+    context.insert("building_x_coords", &building_x_coords);
+    context.insert("hour_coords", &hour_latex_coords);
 
-    // Render to string
-    let temp_dir = Path::new(TEMP_DIR);
-    let tex_path = temp_dir.join("report.tex");
 
-    // Register template
+        // Render
+    // Register the template
     match tera.add_raw_template("report.tex", latex_template) {
         Ok(_) => (),
         Err(e) => return Err(format!("Failed to add LaTeX template: {}", e)),
     }
-
-    // Render template
+    // Render the template
     let rendered_tex = match tera.render("report.tex", &context) {
         Ok(t) => t,
         Err(e) => return Err(format!("Failed to render LaTeX template: {}", e)),
     };
 
     // Write report.tex
+    let temp_dir = Path::new(TEMP_DIR);
+    let tex_path = temp_dir.join("report.tex");
     match std::fs::write(&tex_path, rendered_tex) {
         Ok(_) => (),
         Err(e) => return Err(format!("Failed to write report.tex: {}", e)),
     }
 
-    // Run pdflatex in the temp directory
+    // Run pdflatex (silently, unless error) in the temp directory
     let status = match Command::new("pdflatex")
         .current_dir(temp_dir)
         .arg("-interaction=nonstopmode")
+        .arg("-halt-on-error")
         .arg("report.tex")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .status()
     {
         Ok(s) => s,

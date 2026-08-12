@@ -34,16 +34,6 @@ pub mod bronson {
     }
 
     diesel::table! {
-        bronson.reservations (reservation_id) {
-            reservation_id -> Int8,
-            start_dt -> Timestamptz,
-            end_dt -> Timestamptz,
-            event_name -> Text,
-            event_space_id -> Nullable<Int8>,
-        }
-    }
-
-    diesel::table! {
         bronson.projects (project_id) {
             project_id -> Int4,
             created_date -> Text,
@@ -63,6 +53,16 @@ pub mod bronson {
     }
 
     diesel::table! {
+        bronson.reservations (reservation_id) {
+            reservation_id -> Int8,
+            start_dt -> Timestamptz,
+            end_dt -> Timestamptz,
+            event_name -> Text,
+            event_space_id -> Nullable<Int8>,
+        }
+    }
+
+    diesel::table! {
         use diesel::sql_types::*;
         use super::sql_types::IpAddress;
 
@@ -75,6 +75,7 @@ pub mod bronson {
             checked -> Timestamptz,
             needs_checked -> Bool,
             gp -> Bool,
+            check_period -> Int2,
             offln -> Bool,
             onln -> Timestamptz,
             available -> Bool,
@@ -134,8 +135,8 @@ pub mod bronson {
         buildings,
         data,
         keys,
-        reservations,
         projects,
+        reservations,
         rooms,
         tickets,
         users,
