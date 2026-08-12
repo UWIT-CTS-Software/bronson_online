@@ -17,7 +17,6 @@ async function setWiki() {
 
 
     const isMobile = localStorage.getItem("isMobile") === "true";
-    console.log(isMobile);
 
 
     menuItems.forEach(function(menuItem) {
@@ -136,15 +135,6 @@ async function setWiki() {
 
      renderToC(treeJSON); 
 
-
-    // const isAuthorized = await fetchCurrentUserPermissions() >= 6; // Is a boolean
-    // // const adminOnlyHTML = isAuthorized ? `
-    // //     <div>
-    // //         your content here
-    // //     </div>
-    // // ` : ""; // If not authorized, return nothing
-
-    // console.log(isAuthorized);
    
 }
 
@@ -542,7 +532,7 @@ async function submitFolder(){
             },
             body: JSON.stringify(folder_obj)
         })
-        .then(response => console.log("item added"))
+        .then(response =>{})
         .catch(error => console.log("Error", error));
         hideDirPopup();
         setWiki()
@@ -569,7 +559,7 @@ async function submitDelete(){
         },
         body: JSON.stringify(filePath)
     })
-    .then(response => console.log("item deleted"))
+    .then(response => {})
     .catch(error => console.log("Error", error));
     hideDeletePopup()
     setWiki()
