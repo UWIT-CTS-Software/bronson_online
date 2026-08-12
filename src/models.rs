@@ -5,6 +5,7 @@ use crate::schema::bronson::{
     rooms,
     keys,
     tickets,
+    reservations,
     projects,
     sql_types::{
         IpAddress,
@@ -15,7 +16,7 @@ use serde::{
     Serialize,
     Deserialize,
 };
-use::chrono::{ DateTime, Utc };
+use chrono::{ DateTime, Local, };
 use diesel::{
     prelude::*,
     pg::{
@@ -25,7 +26,7 @@ use diesel::{
     sql_types::{
         Integer,
         Text,
-        Record,
+        Record
     },
     serialize,
     serialize::{
@@ -184,6 +185,7 @@ impl FromSql<IpAddress, Pg> for DB_IpAddress {
 pub struct DB_Building {
     pub abbrev: String,
     pub name: String,
+    pub building_id: i64,
     pub lsm_name: String,
     pub zone: i16,
     pub checked_rooms: i16,
@@ -192,21 +194,24 @@ pub struct DB_Building {
 
 
 #[allow(non_camel_case_types)]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Queryable, Selectable, Insertable, AsChangeset)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Queryable, Selectable, Insertable, AsChangeset, Default)]
+#[diesel(sql_type = Timestamptz)]
 #[diesel(table_name = rooms)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct DB_Room {
     pub abbrev: String,
     pub name: String,
-    pub collegenet_id: Option<i16>,
-    pub checked: String,
+    pub room_id: i64,
+    pub parent_id: i64,
+    pub collegenet_id: Option<i64>,
+    pub checked: DateTime<Local>,
     pub needs_checked: bool,
     pub gp: bool,
     pub check_period: i16,
     pub offln: bool,
-    pub onln: String,
+    pub onln: DateTime<Local>,
     pub available: bool,
-    pub until: String,
+    pub until: DateTime<Local>,
     pub ping_data: Vec<Option<DB_IpAddress>>,
     pub schedule: Vec<Option<String>>,
 }
@@ -279,6 +284,19 @@ pub struct DB_Ticket {
     pub old_responsible_full_name: String,
     pub old_responsible_group_name: String,
     pub old_comment_count: i16,
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable, AsChangeset, Default)]
+#[diesel(sql_type = Timestamptz)]
+#[diesel(table_name = reservations)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct DB_Reservation {
+    pub reservation_id: i64,
+    pub start_dt: DateTime<Local>,
+    pub end_dt: DateTime<Local>,
+    pub event_name: String,
+    pub event_space_id: Option<Vec<Option<i64>>>
 }
 
 #[allow(non_camel_case_types)]

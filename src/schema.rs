@@ -8,9 +8,10 @@ pub mod bronson {
     }
 
     diesel::table! {
-        bronson.buildings (abbrev) {
+        bronson.buildings (building_id) {
             abbrev -> Text,
             name -> Text,
+            building_id -> Int8,
             lsm_name -> Text,
             zone -> Int2,
             total_rooms -> Int2,
@@ -52,21 +53,33 @@ pub mod bronson {
     }
 
     diesel::table! {
+        bronson.reservations (reservation_id) {
+            reservation_id -> Int8,
+            start_dt -> Timestamptz,
+            end_dt -> Timestamptz,
+            event_name -> Text,
+            event_space_id -> Nullable<Array<Nullable<Int8>>>,
+        }
+    }
+
+    diesel::table! {
         use diesel::sql_types::*;
         use super::sql_types::IpAddress;
 
-        bronson.rooms (name) {
+        bronson.rooms (room_id) {
             abbrev -> Text,
             name -> Text,
-            collegenet_id -> Nullable<Int2>,
-            checked -> Text,
+            room_id -> Int8,
+            parent_id -> Int8,
+            collegenet_id -> Nullable<Int8>,
+            checked -> Timestamptz,
             needs_checked -> Bool,
             gp -> Bool,
             check_period -> Int2,
             offln -> Bool,
-            onln -> Text,
+            onln -> Timestamptz,
             available -> Bool,
-            until -> Text,
+            until -> Timestamptz,
             ping_data -> Array<Nullable<IpAddress>>,
             schedule -> Array<Nullable<Text>>,
         }
@@ -118,13 +131,12 @@ pub mod bronson {
         }
     }
 
-    diesel::joinable!(rooms -> buildings (abbrev));
-
     diesel::allow_tables_to_appear_in_same_query!(
         buildings,
         data,
         keys,
         projects,
+        reservations,
         rooms,
         tickets,
         users,
