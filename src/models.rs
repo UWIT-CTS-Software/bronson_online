@@ -299,18 +299,6 @@ pub struct DB_Reservation {
     pub event_space_id: Option<i64>
 }
 
-#[allow(non_camel_case_types)]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable, AsChangeset, Default)]
-#[diesel(table_name = projects)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct DB_Reservation {
-    pub reservation_id: i64,
-    pub start_dt: DateTime<Local>,
-    pub end_dt: DateTime<Local>,
-    pub event_name: String,
-    pub event_space_id: Option<i64>
-}
-
 /* #[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable)]
 #[diseel(table_name = api_schedule)]
