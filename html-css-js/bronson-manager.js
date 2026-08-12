@@ -839,7 +839,7 @@ function setLeader(jsonValue) {
         if (col2.length > COL2_WIDTH) {
             col2 = col2.slice(0, COL2_WIDTH - 4) + "...:";
         } else {
-            col2 = col2.padEnd(COL2_WIDTH + 2, " ");
+            col2 = col2.padEnd(COL2_WIDTH + -1, " ");
         }
 
         leaderString += col1 + col2 + col3 + "\n";
