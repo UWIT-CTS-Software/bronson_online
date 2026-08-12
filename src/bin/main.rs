@@ -65,11 +65,11 @@ use futures_util::future::FutureExt;
 use getopts::Options;
 use std::{
     str, env,
-    io::{ prelude::*, Read, stdout, Write },
+    io::{ Read, stdout, Write },
     net::{ TcpListener, IpAddr, Ipv4Addr, },
     fs::{
         read_dir, metadata, write, remove_file, remove_dir, create_dir,
-        File,  OpenOptions,
+        File, 
     },
     path::Path,
     path::PathBuf,
@@ -99,7 +99,6 @@ use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
 use tera::{Tera, Context, Delimiters};
 use base64::{Engine as _, engine::general_purpose};
-use base64::decode as b64decode;
 
 extern crate serde;
 extern crate serde_xml_rs;
@@ -1108,46 +1107,42 @@ async fn handle_connection(
                 }
             }
         },
-        "GET /projects HTTP/1.1" => {
-            if database.check_if_projects_empty() {
-                match fetch_projects(&mut database, &tdx_client).await {
-                    Ok(()) => (),
-                    Err(e) => error!("Failed to populate projects: {}", e),
+        "POST /update/ticket/markFalse HTTP/1.1" => {
+            // Parse JSON body
+            let body_json: Value = match serde_json::from_slice(&req.body) {
+                Ok(v) => v,
+                Err(_) => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Invalid JSON".into())
+                        .build();
                 }
+            };
+
+            // If ParentID is not one of these three, return error
+            let parent_id = body_json["ParentID"].as_i64().unwrap_or(-1) as i32;
+            if parent_id != 22873142 && parent_id != 22873186 && parent_id != 0 {
+                return Response::new()
+                    .status(STATUS_500)
+                    .send_contents("Invalid ParentID Passed as Argument".into())
+                    .build();
             }
 
-            let db_projects = match database.get_all_projects() {
-                Ok(p) => p,
+            // Mark the ticket as false
+            let _ = match toggle_mark_ticket_false(&mut database, &tdx_client, body_json).await {
+                Ok(v) => v,
                 Err(e) => {
-                    error!("Failed to get projects: {}", e);
+                    error!("Failed to mark Ticket as false: {}", e);
                     return Response::new()
                         .status(STATUS_500)
                         .send_contents("[]".into())
                         .build();
                 }
             };
-            let projects: Vec<Value> = db_projects.into_iter().map(|t| {
-                json!({
-                    "ID": t.project_id,
-                    "CreatedDate": t.created_date,
-                    "ModifiedDate": t.modified_date,
-                    "Name": t.name,
-                    "Description": t.description,
-                    "IsActive": t.is_active,
-                    "TypeID": t.type_id,
-                    "PercentComplete": t.percent_complete,
-                    "StatusName": t.status_name,
-                    "StatusComments": t.status_comments,
-                    "StartDate": t.start_date,
-                    "EndDate": t.end_date,
-                    "HealthDescription": t.health,
-                })
-            }).collect();
 
-            let contents = serde_json::to_string(&projects).unwrap().into();
             Response::new()
                 .status(STATUS_200)
-                .send_contents(contents)
+                .send_contents("".into())
         },
         "GET /projects HTTP/1.1" => {
             if database.check_if_projects_empty() {

@@ -43,15 +43,13 @@ use std::{
 	},
 	fmt::{ Debug, Display, Formatter, Result as FmtResult, },
 	collections::HashMap,
-	fs::{ read, read_to_string, File, },
-	io::{ Write, },
+	fs::{ read, read_to_string, },
 	error::Error,
 	time::Duration,
 	clone::Clone,
 };
 use reqwest::header::{ HeaderMap, IntoHeaderName };
 use cookie::{ CookieJar, Key, };
-use csv::Reader;
 use log::{ warn, error, info, debug };
 use regex::bytes::Regex as RegBytes;
 use regex::Regex;
@@ -263,7 +261,7 @@ impl Database {
 		}
 	}
 
-	pub async fn init(&mut self, tdx_client: Arc<API>, lsm_client: Arc<API>) -> Option<()> {
+	pub async fn init(&mut self, _tdx_client: Arc<API>, lsm_client: Arc<API>) -> Option<()> {
 		info!("[Data] Initializing database...");
 		info!("[Data] Fetching buildings...");
 		let buildings_body = match lsm_client
@@ -2149,7 +2147,7 @@ pub struct LoginSuccess {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-struct Login {
+pub struct Login {
 	#[serde(rename="r25:message")]
 	pub message: String,
 	#[serde(rename="r25:success")]
@@ -2200,19 +2198,12 @@ pub struct Space {
 }
 
 pub static BUFF_SIZE : usize = 4096;
-pub static BACKUP    : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/backup.json");
 pub static TSCH_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/techSchedule.json");
-pub static BLDG_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/buildings.json");
-pub static CAMPUS_STR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.json");
-pub static ALIAS_JSON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/alias_table.json");
 pub static TICKT_JSON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/create_ticket_template.json");
 pub static CFM_DIR   : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/CFM_Code/");
 pub static WIKI_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/wiki_articles/");
-pub static TEMP_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/generated_files/temp");
-pub static ROOM_CSV  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/roomConfig_agg.csv");
-pub static CAMPUS_CSV: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/campus.csv");
+pub static TEMP_DIR  : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/generated_files/temp/");
 pub static LOG       : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/output.log");
-pub static LOGIN_XML : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/dummy_login.xml");
 pub static STATUS_200: &str = "HTTP/1.1 200 OK";
 pub static STATUS_303: &str = "HTTP/1.1 303 See Other";
 pub static STATUS_400: &str = "HTTP/1.1 400 Bad Request";

@@ -16,7 +16,7 @@ use serde::{
     Serialize,
     Deserialize,
 };
-use chrono::{ DateTime, Utc, Local, };
+use chrono::{ DateTime, Local, };
 use diesel::{
     prelude::*,
     pg::{
@@ -26,8 +26,7 @@ use diesel::{
     sql_types::{
         Integer,
         Text,
-        Record,
-        Timestamptz
+        Record
     },
     serialize,
     serialize::{

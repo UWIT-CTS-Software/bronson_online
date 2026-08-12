@@ -38,7 +38,6 @@ opt-level = 0
 debug = true
 split-debuginfo = '...'
 strip = "none"
-debug-assertion = true
 overflow-checks = true
 lto = false
 panic = 'unwind'
