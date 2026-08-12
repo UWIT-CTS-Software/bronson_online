@@ -152,7 +152,7 @@ async function getTocHTML() {
             </ul>
         </fieldset>`;
 
-        if(isFile) { // Child is null
+    if(isFile) { // Child is null
         buttonHTML = deleteButton(node);
         retHTML = ` 
           <div id ='${node.name}' data-isOpen="false">
@@ -161,35 +161,33 @@ async function getTocHTML() {
         `;
         return retHTML; 
 
-        } else if (node.children.length  === 0) {
-             addButtonHTML = addFileButton(node);
-             deleteButtonHTML = deleteButton(node);
-             addFolderButtonHTML = addFolderButton(node);
-             retHTML =  `
-                <div id="${node.name}" data-isOpen="false" class="toc-folder"><p class="toc-item"
-                onClick="clickableFiles('${node.file_path}')"
-                data-path="${node.file_path}">${node.name} ${(true) ? addButtonHTML + deleteButtonHTML + addFolderButtonHTML : " "}</p>
-                <div class="toc-children" style="margin-left: 20px; display:none;">${childHTML}</div>
-                </div>
-            `;
-            return retHTML; 
-            
-        }else { // Directory with contents
-            for (let child of node.children) {
-                childHTML += dfs(child)
-            }
-            buttonHTML = addFileButton(node) + addFolderButton(node);
+    } else if (node.children.length  === 0) {
+            addButtonHTML = addFileButton(node);
+            deleteButtonHTML = deleteButton(node);
+            addFolderButtonHTML = addFolderButton(node);
             retHTML =  `
-                <div id="${node.name}" data-isOpen="false" class="toc-folder"><p class="toc-item"
-                onClick="clickableFiles('${node.file_path}')"
-                data-path="${node.file_path}">${node.name}${(true) ?  buttonHTML : " "}</p>
-                <div class="toc-children" style="margin-left: 20px; display:none;">${childHTML}</div>
-                </div>
-            `;
-            return retHTML; 
+            <div id="${node.name}" data-isOpen="false" class="toc-folder"><p class="toc-item"
+            onClick="clickableFiles('${node.file_path}')"
+            data-path="${node.file_path}">${node.name} ${(true) ? addButtonHTML + deleteButtonHTML + addFolderButtonHTML : " "}</p>
+            <div class="toc-children" style="margin-left: 20px; display:none;">${childHTML}</div>
+            </div>
+        `;
+        return retHTML; 
+        
+    }else { // Directory with contents
+        for (let child of node.children) {
+            childHTML += dfs(child)
         }
+        buttonHTML = addFileButton(node) + addFolderButton(node);
+        retHTML =  `
+            <div id="${node.name}" data-isOpen="false" class="toc-folder"><p class="toc-item"
+            onClick="clickableFiles('${node.file_path}')"
+            data-path="${node.file_path}">${node.name}${(true) ?  buttonHTML : " "}</p>
+            <div class="toc-children" style="margin-left: 20px; display:none;">${childHTML}</div>
+            </div>
+        `;
+        return retHTML; 
     }
-
 }
 
 
