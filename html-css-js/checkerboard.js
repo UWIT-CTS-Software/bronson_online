@@ -112,15 +112,15 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 
 // We are currently not formatting the time in a good way, ie: 1900 is the displayed
 // time on checkerboard, so we need to have some way to make it nice.
-function FourDigitToTimeFormat(unformattedTime) {
-    let hours = unformattedTime.slice(0,2);
-    let minutes = unformattedTime.slice(2,4);
-    //console.log(hours, minutes);
-    if (hours == "TO" || hours == "00") {
-        return "TOMORROW";
+function FourDigitToTimeFormat(timestamp) {
+    let date = new Date(timestamp);
+    let now = new Date(Date.now());
+    if (((date.getMonth() * 100) + (date.getDate())) > ((now.getMonth() * 100) + (now.getDate()))) {
+        date.setHours(23);
+        date.setMinutes(59);
     }
-    hours = Number(hours);
-    minutes = Number(minutes);
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
     let suffix = " AM";
     if (hours >= 12) {
         suffix = " PM";
