@@ -164,28 +164,10 @@ async function exportButton() {
         optionalData[sectionId] = notes;
     });
 
-    // Handle custom date range
-    if (timePeriod === 5) {
-        const customRange = getCustomDateRange();
-        if (!customRange) {
-            alert("Please enter valid custom dates before exporting.");
-            return;
-        }
-        optionalData.custom_start_date = customRange.startDate.toISOString().split('T')[0];
-        optionalData.custom_end_date = customRange.endDate.toISOString().split('T')[0];
-    }
-
-    const exportButton = document.getElementById("an_exportToPDFButton");
-    exportButton.disabled = true;
-    exportButton.textContent = "Generating PDF...";
+    // TODO: Disable "Export to PDF" button while action in progress
 
     const pdfBlob = await fetchExportedPDF(timePeriod, optionalData);
-    if (!pdfBlob) {
-        alert("Failed to generate PDF.");
-        exportButton.disabled = false;
-        exportButton.textContent = "Export to PDF";
-        return;
-    }
+    if (!pdfBlob) return; // TODO: Alert then Re-enable button
 
     let reportPeriod = "ERROR";
     if (timePeriod === 0) reportPeriod = "Week";
@@ -204,8 +186,7 @@ async function exportButton() {
     a.click();
     URL.revokeObjectURL(url);
 
-    exportButton.disabled = false;
-    exportButton.textContent = "Export to PDF";
+    // TODO: Re-enable button
 
     showSettings();
 }
