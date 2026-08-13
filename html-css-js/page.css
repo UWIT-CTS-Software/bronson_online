@@ -2208,52 +2208,9 @@ td.mobile_th {
     min-width: 150px;
 }
 
-.tx_ticketPopupContainer .tx_whatChangedBox {
-    max-width: 401px;
-    min-width: 301px;
-    width: fit-content;
-    height: fit-content;
-    border: 3px solid rgb(224, 193, 108);
-    background: rgb(60, 60, 60);
-    border-radius: 6px;
-    margin: 0 10px 10px 10px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-}
-
-.tx_whatChangedBox span {
-    color: rgb(118, 66, 28);
-    background-color: rgb(224, 193, 108);
-    font-family: "Contrail One", sans-serif;
-    font-size: 18pt;
-    font-weight: 400;
-    font-style: normal;
-    text-align: left;
-    padding: 0px 10px 0px 10px;
-    margin: 0px 0px;
-    border-radius: 0px 0px 6px 0px;
-    max-width: 90%;
-    display: inline-block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.tx_whatChangedBox p {
-    text-align: left;
-    white-space: normal;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 0px 8px;
-}
-
 .popup_closeButton {
     float: right;
     margin: 3px;
-}
-
-.popup_dismissChanges {
-    float: right;
-    margin: 5px;
 }
 
 .popup_linkToTicket {

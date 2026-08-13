@@ -271,18 +271,6 @@ pub struct DB_Ticket {
     pub responsible_full_name: String,
     pub responsible_group_name: String,
     pub comment_count: i16,
-
-    pub old_type_name: String,
-    pub old_type_category_name: String,
-    pub old_title: String,
-    pub old_account_name: String,
-    pub old_status_name: String,
-    pub old_service_name: String,
-    pub old_priority_name: String,
-    pub old_modified_date: String,
-    pub old_modified_full_name: String,
-    pub old_responsible_full_name: String,
-    pub old_responsible_group_name: String,
     pub old_comment_count: i16,
 }
 

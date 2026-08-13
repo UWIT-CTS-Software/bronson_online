@@ -933,19 +933,6 @@ async fn handle_connection(
                     "ModifiedDate": t.modified_date,
                     "ModifiedFullName": t.modified_full_name,
                     "comment_count": t.comment_count,
-
-
-                    "old_type_name": t.old_type_name,
-                    "old_type_category_name": t.old_type_category_name,
-                    "old_title": t.old_title,
-                    "old_account_name": t.old_account_name,
-                    "old_status_name": t.old_status_name,
-                    "old_service_name": t.old_service_name,
-                    "old_priority_name": t.old_priority_name,
-                    "old_modified_date": t.old_modified_date,
-                    "old_modified_full_name": t.old_modified_full_name,
-                    "old_responsible_full_name": t.old_responsible_full_name,
-                    "old_responsible_group_name": t.old_responsible_group_name,
                     "old_comment_count": t.old_comment_count,
                 })
             }).collect();
@@ -3205,30 +3192,9 @@ fn serialize_ticket(database: &mut Database, ticket_json: serde_json::Value) -> 
 
     // Get old ticket if it exists (new tickets won't have one and defaults to empty string)
     let old_ticket = database.get_ticket(ticket_json["ID"].as_i64().unwrap_or(0) as i32).unwrap_or(None);
-    let (
-        old_type_name, old_type_category_name, old_title,
-        old_account_name, old_status_name, old_service_name,
-        old_priority_name, old_modified_date, old_modified_full_name,
-        old_responsible_full_name, old_responsible_group_name,
-
-        comment_count, old_comment_count
-    ) = match old_ticket {
-        Some(t) => (
-            t.type_name, t.type_category_name, t.title,
-            t.account_name, t.status_name, t.service_name,
-            t.priority_name, t.modified_date, t.modified_full_name,
-            t.responsible_full_name, t.responsible_group_name,
-
-            t.comment_count, t.old_comment_count
-        ),
-        None => (
-            String::new(), String::new(), String::new(),
-            String::new(), String::new(), String::new(),
-            String::new(), String::new(), String::new(),
-            String::new(), String::new(), 
-            
-            0_i16, 0_i16,
-        ),
+    let (comment_count, old_comment_count) = match old_ticket {
+        Some(t) => (t.comment_count, t.old_comment_count),
+        None => (0_i16, 0_i16),
     };
 
     // Serialize Ticket data into DB_Ticket struct. If this is a new ticket, fields will populated with default values
@@ -3254,12 +3220,7 @@ fn serialize_ticket(database: &mut Database, ticket_json: serde_json::Value) -> 
         days_old: ticket_json["DaysOld"].as_i64().unwrap_or(0) as i16,
         responsible_full_name: ticket_json["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
         responsible_group_name: ticket_json["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
-        comment_count,
-
-        old_type_name, old_type_category_name, old_title,
-        old_account_name, old_status_name, old_service_name,
-        old_priority_name, old_modified_date, old_modified_full_name,
-        old_responsible_full_name, old_responsible_group_name, 
+        comment_count, 
         old_comment_count,
     })
 }
@@ -4710,7 +4671,6 @@ async fn collegenet_login(cn_client: &Arc<API>) -> Result<LoginSuccess, String> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use server_lib::models::DB_Key;
 
     #[test]
     fn test_pad_zero() {

@@ -39,7 +39,6 @@ TOC:
     - toggleEmailRequestor()         : Toggles html that indicates whether the requestor will be emailed
     - dismissAll()                   : Clear all ticket rows of unread notifications
     - dismissAllPopup()              : Shows the "Dismiss All" confirmation popup
-    - dismissChanges()               : Dismisses the "What Changed" box in the popup
     - showTicketPopup()              : Shows the popup with relavent ticket info
     - showTicketPopupFromDashboard() : Shows popup from dashboard - opens Tickex first, then shows the popup
     - showTicket()                   : Shows the ticket popup
@@ -607,20 +606,6 @@ function dismissAllPopup() {
     document.body.classList.add('tx_no-scroll');
 }
 
-// Dismisses the "What Changed" box in the popup
-function dismissChanges(ticketID, event) {
-    if (event) event.stopPropagation();
-    
-    const ticketPopupContainer = document.querySelector('.tx_ticketPopupContainer.tx_popupActive');
-    if (!ticketPopupContainer) return;
-
-    // Remove the "What Changed" box
-    const whatChangedBox = ticketPopupContainer.querySelector('.tx_whatChangedBox');
-    if (whatChangedBox) whatChangedBox.remove();
-
-    updateTicketViewed(ticketID, true);
-}
-
 // Shows the popup with relavent ticket info
 function showTicketPopup(ticket, element) {
     // Change cursor to loading
@@ -704,8 +689,6 @@ async function showTicket(ticket) {
     // Shorten ResponsibleGroupName field to CTS if it's the correct string
     if (ticket.ResponsibleGroupName === "Classroom Technology Support (CTS)") 
         ticket.ResponsibleGroupName = "CTS";
-    if (ticket.old_responsible_group_name === "Classroom Technology Support (CTS)") 
-        ticket.old_responsible_group_name = "CTS";
 
     // Fix Phone Number Format => (XXX) YYY-ZZZZ
     const raw = ticket.RequestorPhone;
@@ -815,53 +798,10 @@ async function showTicket(ticket) {
         commentsList.innerHTML = builtComments;
     }
 
-    // Set the HTML for what changed, if anything changed
-    let whatChangedHTML = "";
-    if (!ticket.has_been_viewed) {
-        ticket.has_been_viewed = true;
-        
-        // Grab old ticket info. Compares what changed. (Field: Old info => New info)
-        let whatChangedRows = "";
-        if (ticket.old_type_name != ticket.TypeName && ticket.old_type_name !== "")
-            whatChangedRows += `<p>Type: ${ticket.old_type_name} => ${ticket.TypeName}</p>`;
-        if (ticket.old_type_category_name != ticket.TypeCategoryName && ticket.old_type_category_name !== "")
-            whatChangedRows += `<p>Type Category: ${ticket.old_type_category_name} => ${ticket.TypeCategoryName}</p>`;
-        if (ticket.old_title != ticket.Title  && ticket.old_title !== "")
-            whatChangedRows += `<p>Title: ${ticket.old_title} => ${ticket.Title}</p>`;
-        if (ticket.old_account_name != ticket.AccountName  && ticket.old_account_name !== "")
-            whatChangedRows += `<p>Account: ${ticket.old_account_name} => ${ticket.AccountName}</p>`;
-        if (ticket.old_status_name != ticket.StatusName  && ticket.old_status_name !== "")
-            whatChangedRows += `<p>Status: ${ticket.old_status_name} => ${ticket.StatusName}</p>`;
-        if (ticket.old_service_name != ticket.ServiceName  && ticket.old_service_name !== "")
-            whatChangedRows += `<p>Service: ${ticket.old_service_name} => ${ticket.ServiceName}</p>`;
-        if (ticket.old_priority_name != ticket.PriorityName  && ticket.old_priority_name !== "")
-            whatChangedRows += `<p>Priority: ${ticket.old_priority_name} => ${ticket.PriorityName}</p>`;
-        if (ticket.old_responsible_full_name != ticket.ResponsibleFullName  && ticket.old_responsible_full_name !== "")
-            whatChangedRows += `<p>Responsible: ${ticket.old_responsible_full_name} => ${ticket.ResponsibleFullName}</p>`;
-        if (ticket.old_responsible_group_name != ticket.ResponsibleGroupName  && ticket.old_responsible_group_name !== "")
-            whatChangedRows += `<p>Responsible Group: ${ticket.old_responsible_group_name} => ${ticket.ResponsibleGroupName}</p>`;
-        if (ticket.old_comment_count != ticket.comment_count || ticket.comment_count !== 0)
-            whatChangedRows += `<p>New Comments have been added!</p>`;
-
-        // Brand new ticket if no old info exists
-        if (ticket.old_title === "") whatChangedRows = `<p>This is a Brand-New Ticket!</p>`;
-
-        whatChangedHTML = `
-            <div class="tx_whatChangedBox">
-                <span>What Changed:</span>
-                <button class="popup_dismissChanges" onclick="dismissChanges(${ticket.ID}, event)">Dismiss</button>
-                ${whatChangedRows}
-                <p>Last Modified: ${ticket.ModifiedDate || ""} by ${ticket.ModifiedFullName || ""}</p>
-            </div>
-        `;
-    }
-
     // Set Popup HTML
     let sideContent = "";
     if (container.classList.contains('commentsShown'))
         sideContent += commentsHTML;
-    if (whatChangedHTML && !isMobile)
-        sideContent += whatChangedHTML;
     
     if (ticketPopupContainer.classList.contains('detailsShown')) { // Details Shown
         ticketPopupContainer.innerHTML = `
@@ -1094,7 +1034,7 @@ function initializeListeners() {
 
         const ticketPopupContainer = document.querySelector('.tx_ticketPopupContainer.tx_popupActive');
         if (ticketPopupContainer) {
-            // Check if clicked element is within popupBox, comments, or whatChangedBox
+            // Check if clicked element is within popupBox or comments
             const clickedInPopupBox = e.target.closest('.tx_popupBox');
             const clickedInSideContent = e.target.closest('.tx_sideContent');
             
