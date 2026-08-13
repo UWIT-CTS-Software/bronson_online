@@ -961,14 +961,13 @@ progress::-webkit-progress-bar {
     background-color: rgb(50, 50, 50);
     grid-column: 2 / 3;
     grid-row: 1;
-    max-height: 400px;
-    overflow-y: scroll;
     /* float: center; */
 }
 
-/* .cb_legend {
+.cb_legend {
+    max-height: 400px;
     overflow-y: scroll;
-} */
+}
 
 .cb_buttonRow {
     background-color: rgb(50, 50, 50);
