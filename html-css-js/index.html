@@ -33,7 +33,7 @@
     const hb_modal = document.getElementById('hb_menu');
     const br_modal = document.getElementById('bug_report_modal');
     const hb_button = document.getElementById('hb_button');
-
+  
     // setInterval timers for ticket fetching
     localStorage.setItem("isDBTicketIntervalSet", false);
     localStorage.setItem("isTXTicketIntervalSet", false);
@@ -47,6 +47,14 @@
         menu.classList.add("showMenu");
       }
     }
+
+    document.addEventListener('dblclick', (event) => {
+      const isInModal = event.target.closest('#hb_menu')
+      if(!isInModal) {
+        toggleHBMenu();
+      }
+    });
+
 
     /* setDashboard()
           Places the dashboard page, pretty baren at the moment.
