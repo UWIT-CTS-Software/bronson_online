@@ -3102,7 +3102,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
             };
 
         // Try fetching a new tdx token and try again if Unauthorized
-        if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        if resp.status == reqwest::StatusCode::UNAUTHORIZED {
             resp = retry_tdx_token(database, req, "POST", &url, Some(search_body)).await?;
         }
 
@@ -3166,7 +3166,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
             };
 
         // Try fetching a new tdx token and try again if Unauthorized
-        if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        if resp.status == reqwest::StatusCode::UNAUTHORIZED {
             resp = retry_tdx_token(database, req, "POST", &url, Some(search_body)).await?;
         }
 
@@ -3291,7 +3291,7 @@ async fn fetch_tdx_ticket_description(database: &mut Database, req: &API, ticket
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
-    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+    if resp.status == reqwest::StatusCode::UNAUTHORIZED {
         resp = retry_tdx_token(database, req, "GET", &url, None).await?;
     }
 
@@ -3335,7 +3335,7 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &API, ticket_id: i3
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
-    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+    if resp.status == reqwest::StatusCode::UNAUTHORIZED {
         resp = retry_tdx_token(database, req, "GET", &url, None).await?;
     }
 
@@ -3423,7 +3423,7 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
-    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+    if resp.status == reqwest::StatusCode::UNAUTHORIZED {
         resp = retry_tdx_token(database, req, "GET", &url, None).await?;
     }
 
@@ -3496,7 +3496,7 @@ async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_j
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
-    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+    if resp.status == reqwest::StatusCode::UNAUTHORIZED {
         resp = retry_tdx_token(database, req, "POST", &url, Some(body_json)).await?;
     }
 
@@ -3770,7 +3770,7 @@ async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) 
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
-    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+    if resp.status == reqwest::StatusCode::UNAUTHORIZED {
         resp = retry_tdx_token(database, req, "POST", &url, Some(search_body)).await?;
     }
     
@@ -3819,7 +3819,7 @@ async fn get_tdx_user(database: &mut Database, req: &API, username: &str) -> Res
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
-    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+    if resp.status == reqwest::StatusCode::UNAUTHORIZED {
         resp = retry_tdx_token(database, req, "GET", &url, None).await?;
     }
 
@@ -4000,7 +4000,7 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
             };
 
         // Try fetching a new tdx token and try again if Unauthorized
-        if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        if resp.status == reqwest::StatusCode::UNAUTHORIZED {
             warn!("Project data fetch failure was due to an unauthorized response, fetching new token and trying again...");
 
             // Grab new TDX Token
