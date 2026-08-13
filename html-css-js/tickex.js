@@ -94,6 +94,7 @@ TODO:
 
     /* -------------------- Global Definitions -------------------- */
 
+// Default ticket settings upon page loadup
 const DEFAULT_TICKEX_SETTINGS = {
     newTicketMaxItems: 15,
     catchAllMaxItems: 15,
@@ -101,7 +102,13 @@ const DEFAULT_TICKEX_SETTINGS = {
     sortBy: 'modified',
 };
 
+// IDs of tickets that will not display onto Tickex
+const TICKETID_BLACKLIST = [
+    22873142, 22873186
+];
 
+// Stores up to 100 ticket description for every ticket
+const MAX_DESC_CACHE = 100;
 
     /* -------------------- Helpers -------------------- */
 
@@ -1264,9 +1271,6 @@ function initBoard() {
     let newCount = 0, catchAllCount = 0, closedCount = 0;
     for (let ticket of window.currentTickets) {
         // Hard-coded blacklist for tickets that we don't want showing up in Tickex
-        const TICKETID_BLACKLIST = [
-            22873142, 22873186
-        ];
         if (TICKETID_BLACKLIST.includes(ticket.ID)) continue;
 
         let highlightClass = ticket.has_been_viewed ? '' : 'tx_highlight_row';
@@ -1373,9 +1377,6 @@ function getCachedTicketData(ticketID, type) {
 
 // Saves a Ticket to the Cache
 function setCachedTicketData(ticketID, type, value) {
-    // Stores 50 tickets, comments & description for every ticket
-    const MAX_CACHED = 100;
-
     const cache = getTicketCache();
     const key = `${ticketID}_${type}`;
     
@@ -1387,7 +1388,7 @@ function setCachedTicketData(ticketID, type, value) {
     cache.order.push(key);
 
     // Evict oldest if exceeds max
-    while (cache.order.length > MAX_CACHED) {
+    while (cache.order.length > MAX_DESC_CACHE) {
         const oldest = cache.order.shift();
         delete cache.data[oldest];
     }
