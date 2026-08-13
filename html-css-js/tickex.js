@@ -575,8 +575,9 @@ async function dismissAll(confirmed) {
         clearInterval(ellipsisInterval);
         button.textContent = "Dismiss All";
         button.disabled = false;
-        document.body.classList.remove('tx_no-scroll');
     }
+
+    document.body.classList.remove('tx_no-scroll');
 }
 // Shows the "Dismiss All" confirmation popup
 function dismissAllPopup() {
