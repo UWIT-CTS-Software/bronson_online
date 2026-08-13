@@ -408,7 +408,7 @@ async function applyChanges(ticketID) {
         "_OperationType": "EDIT", 
         "ID": ticketID,
         "Title": titleField.value.trim(),
-        "ResponsibleUid": userID
+        "ResponsibleUid": tdxUser.ID
     };
     // Omit Status if it is not "New", "In Process", or "Closed"
     if (statusField.value.trim() !== "Other") ticketBody["StatusName"] = statusField.value.trim();
