@@ -552,13 +552,8 @@ async fn handle_connection(
 ) -> Option<Vec<u8>> {
     let mut user_homepage: &str = "html-css-js/login.html";
     if req.headers.contains_key("Cookie") {
-        let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
-        let username = match username_search.captures(&req.headers.get("Cookie").unwrap()) {
-            Some(uname) => uname,
-            None => panic!("Unable to capture username.")
-        };
-        //let mut database = arc_database.write().unwrap();
-        let user = match database.get_user(&username["username"]) {
+        let username = req.get_current_username();
+        let user = match database.get_user(&username) {
             Ok(u)  => u,
             Err(diesel::result::Error::NotFound) => {
                 DB_User{ username: String::new(), permissions: 5 }
@@ -837,25 +832,8 @@ async fn handle_connection(
                     .send_contents(contents)
         },
         "GET /currentUser HTTP/1.1" => { // OUTGOING, Current user info
-            // Extract username from cookie
-            let cookie = req.headers
-                .get("Cookie")
-                .cloned()
-                .unwrap_or(String::new());
-            let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
-            let username = match username_search.captures(&cookie) {
-                Some(caps) => caps["username"].to_string(),
-                None => {
-                    return Response::new()
-                        .status(STATUS_401)
-                        .send_contents(json!({
-                            "response": "Unauthorized"
-                        }).to_string().into())
-                        .build();
-                }
-            };
-
             // Fetch user from DB, default to standard user if not found
+            let username = req.get_current_username();
             let user = match database.get_user(&username) {
                 Ok(u) => u,
                 Err(e) => {
@@ -876,25 +854,8 @@ async fn handle_connection(
                 }).to_string().into())
         },
         "GET /currentUser/existsInDB HTTP/1.1" => {
-            // Extract username from cookie
-            let cookie = req.headers
-                .get("Cookie")
-                .cloned()
-                .unwrap_or(String::new());
-            let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
-            let username = match username_search.captures(&cookie) {
-                Some(caps) => caps["username"].to_string(),
-                None => {
-                    return Response::new()
-                        .status(STATUS_401)
-                        .send_contents(json!({
-                            "response": "Unauthorized"
-                        }).to_string().into())
-                        .build();
-                }
-            };
-
             // Fetch user from DB, default to standard user if not found
+            let username = req.get_current_username();
             let user_exists = match database.get_user(&username) {
                 Ok(_) => {
                     json!({
@@ -917,25 +878,8 @@ async fn handle_connection(
                 )
         },
         "GET /currentUser/fetchTDXUser HTTP/1.1" => {
-            // Extract username from cookie
-            let cookie = req.headers
-                .get("Cookie")
-                .cloned()
-                .unwrap_or(String::new());
-            let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
-            let username = match username_search.captures(&cookie) {
-                Some(caps) => caps["username"].to_string(),
-                None => {
-                    return Response::new()
-                        .status(STATUS_401)
-                        .send_contents(json!({
-                            "response": "Unauthorized"
-                        }).to_string().into())
-                        .build();
-                }
-            };
-
             // Query TDX for User ID using the username provided in the cookie
+            let username = req.get_current_username();
             let user = match get_tdx_user(&mut database, &tdx_client, &username.to_string()).await {
                 Ok(u) => u,
                 Err(_) => {
@@ -1028,7 +972,7 @@ async fn handle_connection(
             let operation_type = body_json["_OperationType"].as_str().unwrap_or("");
 
             let _ = match operation_type {
-                "CREATE" => create_tdx_ticket(&mut database, &tdx_client, body_json).await,
+                "CREATE" => create_tdx_ticket(&mut database, &tdx_client, body_json, req.get_current_username()).await,
                 "EDIT" => edit_tdx_ticket(&mut database, &tdx_client, body_json).await,
                 _ => {
                     return Response::new()
@@ -3575,7 +3519,7 @@ async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_j
     Ok(())
 }
 
-async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Value) -> Result<(), String> {
+async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Value, username: String) -> Result<(), String> {
     info!("[Data] - Sending Create Ticket Request to TDX");
     
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/";
@@ -3609,6 +3553,10 @@ async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Va
         }
     }
 
+    // Make RequestorUid the current signed in user & add it to json
+    let tdx_uid = get_tdx_user(database, req, &username).await?;
+    ticket_json["RequestorUid"] = tdx_uid["UID"].clone();
+    
     // Send ticket content and recieve the new ticket JSON as a verification response
     let mut new_ticket_resp = match req
         .build()

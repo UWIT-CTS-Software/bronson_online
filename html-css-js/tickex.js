@@ -212,20 +212,6 @@ function newTicketPopup() {
             <p class="tx_createTicketText">Description:</p>
             <textarea id="tx_createTicket_Description" class="tx_createTicketTextarea" rows="8" placeholder="Explain your Ticket... (This field is Required)"></textarea>
             <br class="tx_createTicketBr">
-            <div>
-                <label for="requestor">Requestor:</label>
-                <select name="requestor" id="tx_createTicket_Requestor">
-                    <option value="johndoe_ID">John Doe</option>
-                </select>
-            </div>
-            <br class="tx_createTicketBr">
-            <div>
-                <label for="created-by">Created By:</label>
-                <select name="created-by" id="tx_createTicket_CreatedBy">
-                    <option value="johndoe_ID">John Doe</option>
-                </select>
-            </div>
-            <br class="tx_createTicketBr">
             <button id="tx_createTicketButton" onClick="createTicket()">Create Ticket</button>
             <button class="cancelPopupButton" onClick="hideCurrentPopup()">Cancel</button>
         </div>
@@ -252,8 +238,6 @@ async function createTicket(container) {
     // Ensure required fields are filled out
     const titleField = document.getElementById("tx_createTicket_Title");
     const descriptionField = document.getElementById("tx_createTicket_Description");
-    const requestorField = document.getElementById("tx_createTicket_Requestor");
-    const createdByField = document.getElementById("tx_createTicket_CreatedBy");
 
     let canContinue = true;
 
@@ -284,9 +268,8 @@ async function createTicket(container) {
     const jsonBody = {
         "_OperationType": "CREATE", 
         "Title": titleField.value.trim(),
-        "Description": descriptionField.value.trim(),
-        "RequestorUid": userID
-        // CreatedBy field will be the current signed in user, done in backend
+        "Description": descriptionField.value.trim()
+        // Requestor field will be the current signed in user, done in backend
     };
 
     await updateTicket(jsonBody);
