@@ -52,7 +52,7 @@ use server_lib::{
     jp::{ ping_this, },
     API, APIClient::{ MultiThread, SingleThread, },
     CFM_DIR, WIKI_DIR, /* LOG, */ TEMP_DIR, TICKT_JSON, 
-    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_400, STATUS_401, STATUS_404, STATUS_500, 
+    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_400, STATUS_404, STATUS_500, 
     SCHD_ERR, DASH_ERR, LDRB_ERR, SPRS_ERR, 
     Database, Terminal, 
     models::{
@@ -586,10 +586,8 @@ async fn handle_connection(
     ];
     if !exemptions.contains(&req.start_line.as_str()) && !req.has_valid_cookie(&mut database) {
         return Response::new()
-            .status(STATUS_401)
-            .send_contents(
-                json!({"response":"Unauthorized"}).to_string().into()
-            )
+            .status(STATUS_200)
+            .send_file("html-css-js/login.html")
             .build();
     }
 
