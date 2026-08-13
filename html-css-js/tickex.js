@@ -874,7 +874,7 @@ async function showTicket(ticket) {
                     </div>
                     <div class="tx_adjacent">
                         <p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
-                        <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p>
+                        <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld}</p>
                     </div>
                     <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
                     ${isAuthorized ? `<button class="popup_falseTicketButton" onClick="markTicketFalse(${ticket.ID}, ${ticket.ParentID})">${ticket.ParentID == 22873142 ? "Mark Ticket as True" : "Mark Ticket as False"}</button>` : ""}
@@ -908,7 +908,7 @@ async function showTicket(ticket) {
                         <p class="tx_popup_StatusName">Status: ${ticket.StatusName || ""}</p>
                     </div>
                     <div class="tx_adjacent"><p class="tx_popup_PriorityName">Priority: ${ticket.PriorityName || ""}</p>
-                        <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld || ""}</p>
+                        <p class="tx_popup_DaysOld">Days Old: ${ticket.DaysOld}</p>
                     </div>
                     <p class="tx_popup_Title tx_textwrap">Title: ${ticket.Title || "No Title"}</p>
                     ${isAuthorized ? `<button class="popup_falseTicketButton" onClick="markTicketFalse(${ticket.ID}, ${ticket.ParentID})">${ticket.ParentID == 22873142 ? "Mark Ticket as True" : "Mark Ticket as False"}</button>` : ""}
