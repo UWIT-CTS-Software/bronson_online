@@ -577,6 +577,27 @@ async fn handle_connection(
             }
         }
     }
+    
+    // Global cookie validation with explicit exemptions
+    // This list of endpoints will NOT be cookie validated, and will be accessible to all users.
+    let exemptions = vec![
+        "GET / HTTP/1.1",
+        "GET /page.css HTTP/1.1",
+        "GET /login.html HTTP/1.1",
+        "GET /favicon.ico HTTP/1.1",
+        "GET /logo.png HTTP/1.1",
+        "GET /logo-2-line.png HTTP/1.1",
+        "POST / HTTP/1.1",
+    ];
+    if !exemptions.contains(&req.start_line.as_str()) && !req.has_valid_cookie(&mut database) {
+        return Response::new()
+            .status(STATUS_401)
+            .send_contents(
+                json!({"response":"Unauthorized"}).to_string().into()
+            )
+            .build();
+    }
+
     // Handle requests
     // ------------------------------------------------------------------------
     let res: Response = match req.start_line.as_str() {
@@ -816,153 +837,123 @@ async fn handle_connection(
                     .send_contents(contents)
         },
         "GET /currentUser HTTP/1.1" => { // OUTGOING, Current user info
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                    .status(STATUS_401)
-                    .send_contents(
-                        json!(
-                            {"response": "Unauthorized"}
-                        ).to_string().into()
-                    )
-            } else {
-                // Extract username from cookie
-                let cookie = req.headers
-                    .get("Cookie")
-                    .cloned()
-                    .unwrap_or(String::new());
-                let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
-                let username = match username_search.captures(&cookie) {
-                    Some(caps) => caps["username"].to_string(),
-                    None => {
-                        return Response::new()
-                            .status(STATUS_401)
-                            .send_contents(json!({
-                                "response": "Unauthorized"
-                            }).to_string().into())
-                            .build();
-                    }
-                };
+            // Extract username from cookie
+            let cookie = req.headers
+                .get("Cookie")
+                .cloned()
+                .unwrap_or(String::new());
+            let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
+            let username = match username_search.captures(&cookie) {
+                Some(caps) => caps["username"].to_string(),
+                None => {
+                    return Response::new()
+                        .status(STATUS_401)
+                        .send_contents(json!({
+                            "response": "Unauthorized"
+                        }).to_string().into())
+                        .build();
+                }
+            };
 
-                // Fetch user from DB, default to standard user if not found
-                let user = match database.get_user(&username) {
-                    Ok(u) => u,
-                    Err(e) => {
-                        error!("DB_ERR: {}", e);
-                        DB_User {
-                            username: username.clone(),
-                            permissions: 0, // standard user
-                        }
+            // Fetch user from DB, default to standard user if not found
+            let user = match database.get_user(&username) {
+                Ok(u) => u,
+                Err(e) => {
+                    error!("DB_ERR: {}", e);
+                    DB_User {
+                        username: username.clone(),
+                        permissions: 0, // standard user
                     }
-                };
+                }
+            };
 
-                // Return user info
-                Response::new()
-                    .status(STATUS_200)
-                    .send_contents(json!({
-                        "username": user.username,
-                        "permissions": user.permissions
-                    }).to_string().into())
-            }
+            // Return user info
+            Response::new()
+                .status(STATUS_200)
+                .send_contents(json!({
+                    "username": user.username,
+                    "permissions": user.permissions
+                }).to_string().into())
         },
         "GET /currentUser/existsInDB HTTP/1.1" => {
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                    .status(STATUS_401)
-                    .send_contents(
-                        json!(
-                            {"response": "Unauthorized"}
-                        ).to_string().into()
-                    )
-            } else {
-                // Extract username from cookie
-                let cookie = req.headers
-                    .get("Cookie")
-                    .cloned()
-                    .unwrap_or(String::new());
-                let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
-                let username = match username_search.captures(&cookie) {
-                    Some(caps) => caps["username"].to_string(),
-                    None => {
-                        return Response::new()
-                            .status(STATUS_401)
-                            .send_contents(json!({
-                                "response": "Unauthorized"
-                            }).to_string().into())
-                            .build();
-                    }
-                };
+            // Extract username from cookie
+            let cookie = req.headers
+                .get("Cookie")
+                .cloned()
+                .unwrap_or(String::new());
+            let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
+            let username = match username_search.captures(&cookie) {
+                Some(caps) => caps["username"].to_string(),
+                None => {
+                    return Response::new()
+                        .status(STATUS_401)
+                        .send_contents(json!({
+                            "response": "Unauthorized"
+                        }).to_string().into())
+                        .build();
+                }
+            };
 
-                // Fetch user from DB, default to standard user if not found
-                let user_exists = match database.get_user(&username) {
-                    Ok(_) => {
-                        json!({
-                            "response": true
-                        })
-                    },
-                    Err(e) => {
-                        error!("DB_ERR: {}", e);
-                        json!({
-                            "response": false
-                        })
-                    }
-                };
+            // Fetch user from DB, default to standard user if not found
+            let user_exists = match database.get_user(&username) {
+                Ok(_) => {
+                    json!({
+                        "response": true
+                    })
+                },
+                Err(e) => {
+                    error!("DB_ERR: {}", e);
+                    json!({
+                        "response": false
+                    })
+                }
+            };
 
-                // Return user info
-                Response::new()
-                    .status(STATUS_200)
-                    .send_contents(
-                        user_exists.to_string().into()
-                    )
-            }
+            // Return user info
+            Response::new()
+                .status(STATUS_200)
+                .send_contents(
+                    user_exists.to_string().into()
+                )
         },
         "GET /currentUser/fetchTDXUser HTTP/1.1" => {
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                    .status(STATUS_401)
-                    .send_contents(
-                        json!(
-                            {"response": "Unauthorized"}
-                        ).to_string().into()
-                    )
-            } else {
-                // Extract username from cookie
-                let cookie = req.headers
-                    .get("Cookie")
-                    .cloned()
-                    .unwrap_or(String::new());
-                let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
-                let username = match username_search.captures(&cookie) {
-                    Some(caps) => caps["username"].to_string(),
-                    None => {
-                        return Response::new()
-                            .status(STATUS_401)
-                            .send_contents(json!({
-                                "response": "Unauthorized"
-                            }).to_string().into())
-                            .build();
-                    }
-                };
+            // Extract username from cookie
+            let cookie = req.headers
+                .get("Cookie")
+                .cloned()
+                .unwrap_or(String::new());
+            let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
+            let username = match username_search.captures(&cookie) {
+                Some(caps) => caps["username"].to_string(),
+                None => {
+                    return Response::new()
+                        .status(STATUS_401)
+                        .send_contents(json!({
+                            "response": "Unauthorized"
+                        }).to_string().into())
+                        .build();
+                }
+            };
 
-                // Query TDX for User ID using the username provided in the cookie
-                let user = match get_tdx_user(&mut database, &tdx_client, &username.to_string()).await {
-                    Ok(u) => u,
-                    Err(_) => {
-                        return Response::new()
-                            .status(STATUS_500)
-                            .send_contents(json!({
-                                "response": "Failed to Fetch User ID from TDX"
-                            }).to_string().into())
-                            .build();
-                    }
-                };
+            // Query TDX for User ID using the username provided in the cookie
+            let user = match get_tdx_user(&mut database, &tdx_client, &username.to_string()).await {
+                Ok(u) => u,
+                Err(_) => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents(json!({
+                            "response": "Failed to Fetch User ID from TDX"
+                        }).to_string().into())
+                        .build();
+                }
+            };
 
-                // Return user info
-                Response::new()
-                    .status(STATUS_200)
-                    .send_contents(
-                        user.to_string().into()
-                    )
-            }
+            // Return user info
+            Response::new()
+                .status(STATUS_200)
+                .send_contents(
+                    user.to_string().into()
+                )
         },
         "GET /tickets HTTP/1.1" => { // OUTGOING, Tickets for Tickex
             let db_tickets = match database.get_all_tickets() {
@@ -1342,370 +1333,231 @@ async fn handle_connection(
                     .send_contents("".into())
         },
         "POST /update/database_room HTTP/1.1" => { // destination, newValue
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
-            } else {
-                // Parse Request Body
-                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-                let target_room: String = body_json["destination"]
+            // Parse Request Body
+            let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+            let target_room: String = body_json["destination"]
+                .as_str()
+                .unwrap()
+                .to_string();
+            let new_values: Vec<u8> = body_json["newValue"]
+                .as_array()
+                .map(|arr| {
+                    arr.iter()
+                        .map(|v| v.as_str().unwrap_or("0").parse().unwrap_or(0))
+                        .collect()
+                })
+                .unwrap();
+            // Extract the date separately as a string (last element)
+            let new_date: String = body_json["newValue"]
+                .as_array()
+                .and_then(|arr| arr.last())
+                .and_then(|v| v.as_str())
+                .unwrap_or("0")
+                .to_string();
+            debug!("[Admin Tools] - Updating Target Room:{}\n New Values: {:?}", target_room, new_values);
+            // Get Existing Room Record from database
+            let mut new_db_room : DB_Room = match database.get_room_by_name(&target_room) {
+                Ok(tr) => tr,
+                Err(m) => {
+                    error!("DB_ERR: {}", m);
+                    return Response::new()
+                                    .status(STATUS_500)
+                                    .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                    .build();
+                }
+            };
+            // Update General Pool Status
+            new_db_room.gp = match new_values[6] { 
+                1 => true,
+                0 => false,
+                _ => false,
+            };
+            new_db_room.check_period = new_values[7] as i16;
+            new_db_room.offln = match new_values[8] { 
+                1 => true,
+                0 => false,
+                _ => false,
+            };
+            new_db_room.onln = match new_date.parse::<DateTime<Local>>() {
+                Ok(t) => t,
+                Err(m) => {
+                    error!("Unable to parse new onln field from JSON: {}", m);
+                    return Response::new()
+                                    .status(STATUS_500)
+                                    .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                    .build();
+                }
+            };
+            // Build Updated Ping Data Vector
+            let hn_vec = Database::gen_hn(String::from(target_room), &new_values[0..6].to_vec()); // Only device fields
+            let ping_vec = Database::gen_ip(&hn_vec);
+            // Update Ping Data in room
+            new_db_room.ping_data = ping_vec;
+            // Update Database
+            let _ = database.update_room(&new_db_room);
+
+            Response::new()
+                .status(STATUS_200)
+                .send_contents("".into())
+        },
+        "POST /update/database_roomSchedule HTTP/1.1" => { // [Changes to make]
+            let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+            // Parse Request Body
+            let rooms = body_json["rooms"]
+                .as_array()
+                .unwrap();
+            // Iterate through rooms and update each one.
+            for room in rooms {
+                let target_room: String = room["name"]
                     .as_str()
                     .unwrap()
                     .to_string();
-                let new_values: Vec<u8> = body_json["newValue"]
+                let new_schedule: Vec<Option<String>> = room["schedule"]
                     .as_array()
                     .map(|arr| {
                         arr.iter()
-                            .map(|v| v.as_str().unwrap_or("0").parse().unwrap_or(0))
+                            .map(|v| v.as_str().map(|s| s.to_string()))
                             .collect()
                     })
                     .unwrap();
-                // Extract the date separately as a string (last element)
-                let new_date: String = body_json["newValue"]
-                    .as_array()
-                    .and_then(|arr| arr.last())
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("0")
-                    .to_string();
-                debug!("[Admin Tools] - Updating Target Room:{}\n New Values: {:?}", target_room, new_values);
                 // Get Existing Room Record from database
-                let mut new_db_room : DB_Room = match database.get_room_by_name(&target_room) {
-                    Ok(tr) => tr,
+                let mut new_db_room: DB_Room =  match database.get_room_by_name(&target_room) {
+                    Ok(r)  => r,
                     Err(m) => {
                         error!("DB_ERR: {}", m);
                         return Response::new()
-                                        .status(STATUS_500)
-                                        .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
-                                        .build();
+                                .status(STATUS_500)
+                                .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                .build();
                     }
                 };
-                // Update General Pool Status
-                new_db_room.gp = match new_values[6] { 
-                    1 => true,
-                    0 => false,
-                    _ => false,
-                };
-                new_db_room.check_period = new_values[7] as i16;
-                new_db_room.offln = match new_values[8] { 
-                    1 => true,
-                    0 => false,
-                    _ => false,
-                };
-                new_db_room.onln = match new_date.parse::<DateTime<Local>>() {
-                    Ok(t) => t,
-                    Err(m) => {
-                        error!("Unable to parse new onln field from JSON: {}", m);
-                        return Response::new()
-                                        .status(STATUS_500)
-                                        .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
-                                        .build();
-                    }
-                };
-                // Build Updated Ping Data Vector
-                let hn_vec = Database::gen_hn(String::from(target_room), &new_values[0..6].to_vec()); // Only device fields
-                let ping_vec = Database::gen_ip(&hn_vec);
-                // Update Ping Data in room
-                new_db_room.ping_data = ping_vec;
+                // Update Schedule
+                new_db_room.schedule = new_schedule.clone();
                 // Update Database
                 let _ = database.update_room(&new_db_room);
-
-                Response::new()
-                        .status(STATUS_200)
-                        .send_contents("".into())
+                debug!("[Admin Tools] - Updating Room: {} with Schedule:\n {:?}", target_room, new_schedule);
             }
-        },
-        "POST /update/database_roomSchedule HTTP/1.1" => { // [Changes to make]
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
-            } else {
-                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-                // Parse Request Body
-                let rooms = body_json["rooms"]
-                    .as_array()
-                    .unwrap();
-                // Iterate through rooms and update each one.
-                for room in rooms {
-                    let target_room: String = room["name"]
-                        .as_str()
-                        .unwrap()
-                        .to_string();
-                    let new_schedule: Vec<Option<String>> = room["schedule"]
-                        .as_array()
-                        .map(|arr| {
-                            arr.iter()
-                                .map(|v| v.as_str().map(|s| s.to_string()))
-                                .collect()
-                        })
-                        .unwrap();
-                    // Get Existing Room Record from database
-                    let mut new_db_room: DB_Room =  match database.get_room_by_name(&target_room) {
-                        Ok(r)  => r,
-                        Err(m) => {
-                            error!("DB_ERR: {}", m);
-                            return Response::new()
-                                    .status(STATUS_500)
-                                    .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
-                                    .build();
-                        }
-                    };
-                    // Update Schedule
-                    new_db_room.schedule = new_schedule.clone();
-                    // Update Database
-                    let _ = database.update_room(&new_db_room);
-                    debug!("[Admin Tools] - Updating Room: {} with Schedule:\n {:?}", target_room, new_schedule);
-                }
 
-                Response::new()
-                        .status(STATUS_200)
-                        .send_contents("Room Schedules in Database Updated".into())
-            }
+            Response::new()
+                .status(STATUS_200)
+                .send_contents("Room Schedules in Database Updated".into())
         },
         "POST /update/roomSchd/timestamps HTTP/1.1" => { // Updates the timestamps stored in DB_DataElement
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
-            } else {
-                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-                let timestamps: Vec<String> = body_json["timestamps"]
-                    .as_array()
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                            .collect()
-                    })
-                    .unwrap();
-                debug!("[Admin Tools] - Updating Timestamps:\n {:?}", timestamps);
-                // Create DB_DataElement and update database.
-                let new_timestamps = DB_DataElement {
-                    key: String::from("report_timestamps"),
-                    val: serde_json::to_string(&timestamps).unwrap()
-                };
-                // Uncomment when ready...
-                let _ = database.update_data(&new_timestamps);
-                Response::new()
-                        .status(STATUS_200)
-                        .send_contents("Successful Room Schedule Timestamps Update".into())
-            }
+            let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+            let timestamps: Vec<String> = body_json["timestamps"]
+                .as_array()
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect()
+                })
+                .unwrap();
+            debug!("[Admin Tools] - Updating Timestamps:\n {:?}", timestamps);
+            // Create DB_DataElement and update database.
+            let new_timestamps = DB_DataElement {
+                key: String::from("report_timestamps"),
+                val: serde_json::to_string(&timestamps).unwrap()
+            };
+            // Uncomment when ready...
+            let _ = database.update_data(&new_timestamps);
+            Response::new()
+                .status(STATUS_200)
+                .send_contents("Successful Room Schedule Timestamps Update".into())
         },
         "GET /roomSchd/timestamps HTTP/1.1" => { // Returns 25Live Report Dates
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
-            } else {
-                let timestamps = database.get_data("report_timestamps").unwrap_or( DB_DataElement {key:"report_timestamps".to_string(),val:"[\"Timestamp Not Found\"]".to_string()}).val;
-                debug!("Fetched Timestamps:\n {:?}", &timestamps);
-                let contents = json!({
-                    "timestamps": timestamps
-                }).to_string().into();
-                Response::new()
-                        .status(STATUS_200)
-                        .send_contents(contents)
-            }
+            let timestamps = database.get_data("report_timestamps").unwrap_or( DB_DataElement {key:"report_timestamps".to_string(),val:"[\"Timestamp Not Found\"]".to_string()}).val;
+            debug!("Fetched Timestamps:\n {:?}", &timestamps);
+            let contents = json!({
+                "timestamps": timestamps
+            }).to_string().into();
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
         },
         "GET /aliasTable HTTP/1.1" => {
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
-            } else {
-                let alias_table = database.get_data("alias_table")
-                    .unwrap_or(DB_DataElement {
-                        key: "alias_table".to_string(),
-                        val: "Alias Table has not been updated".to_string()
-                    })
-                    .val;
-                let contents = json!({
-                    "response": alias_table
-                }).to_string().into();
-                Response::new()
-                        .status(STATUS_200)
-                        .send_contents(contents)
-            }
+            let alias_table = database.get_data("alias_table")
+                .unwrap_or(DB_DataElement {
+                    key: "alias_table".to_string(),
+                    val: "Alias Table has not been updated".to_string()
+                })
+                .val;
+            let contents = json!({
+                "response": alias_table
+            }).to_string().into();
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
         },
         "GET /threadSchedule HTTP/1.1" => {
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
-            } else {
-                let ts = thread_schedule.read().unwrap();
-                let contents = json!({
-                    "response": ts.tasks
-                }).to_string().into();
-                Response::new()
-                        .status(STATUS_200)
-                        .send_contents(contents)
-            }
+            let ts = thread_schedule.read().unwrap();
+            let contents = json!({
+                "response": ts.tasks
+            }).to_string().into();
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents(contents)
         },
         "POST /resetThreadInterval HTTP/1.1" => {
-            if !req.has_valid_cookie(&mut database) {
+            let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+            let task_name: String = body_json["task_name"]
+                .as_str()
+                .unwrap()
+                .to_string();
+            debug!("[Admin Tools] - Updating ThreadSchedule Task: \"{}\" to run now", task_name);
+            if let Some(task) = thread_schedule.write().unwrap().tasks.get_mut(&task_name) {
+                task.timestamp = task.timestamp - Duration::from_secs(task.duration);
                 Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
+                        .status(STATUS_200)
+                        .send_contents("ThreadSchedule Updated".into())
             } else {
-                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-                let task_name: String = body_json["task_name"]
-                    .as_str()
-                    .unwrap()
-                    .to_string();
-                debug!("[Admin Tools] - Updating ThreadSchedule Task: \"{}\" to run now", task_name);
-                if let Some(task) = thread_schedule.write().unwrap().tasks.get_mut(&task_name) {
-                    task.timestamp = task.timestamp - Duration::from_secs(task.duration);
-                    Response::new()
-                            .status(STATUS_200)
-                            .send_contents("ThreadSchedule Updated".into())
-                } else {
-                    Response::new()
-                            .status(STATUS_500)
-                            .send_contents("Task Not Found".into())
-                }
+                Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Task Not Found".into())
             }
         },
         "POST /setThreadDuration HTTP/1.1" => {
-            if !req.has_valid_cookie(&mut database) {
+            let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+            let task_name: String = body_json["task"]
+                .as_str()
+                .unwrap()
+                .to_string();
+            let new_duration: String = body_json["new_duration"]
+                .as_str()
+                .unwrap()
+                .to_string();
+            debug!("[Admin Tools] - Updating ThreadSchedule Task Duration: \"{}\" to {}", task_name, new_duration);
+            //
+            if let Some(task) = thread_schedule.write().unwrap().tasks.get_mut(&task_name) {
+                task.duration = new_duration.parse().unwrap();
                 Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
+                        .status(STATUS_200)
+                        .send_contents("ThreadSchedule Duration Updated".into())
             } else {
-                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-                let task_name: String = body_json["task"]
-                    .as_str()
-                    .unwrap()
-                    .to_string();
-                let new_duration: String = body_json["new_duration"]
-                    .as_str()
-                    .unwrap()
-                    .to_string();
-                debug!("[Admin Tools] - Updating ThreadSchedule Task Duration: \"{}\" to {}", task_name, new_duration);
-                //
-                if let Some(task) = thread_schedule.write().unwrap().tasks.get_mut(&task_name) {
-                    task.duration = new_duration.parse().unwrap();
-                    Response::new()
-                            .status(STATUS_200)
-                            .send_contents("ThreadSchedule Duration Updated".into())
-                } else {
-                    Response::new()
-                            .status(STATUS_500)
-                            .send_contents("Task Not Found".into())
-                }
+                Response::new()
+                        .status(STATUS_500)
+                        .send_contents("Task Not Found".into())
             }
         },
         "POST /setAliasTable HTTP/1.1" => {
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
-            } else {
-                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-                // Parse Request Body
-                let alias_rooms = body_json["rooms"]
-                    .as_array()
-                    .unwrap();
-                //  Iterate through the rooms and find hostname exceptions,
-                for alias_record in alias_rooms.iter() {
-                    debug!("[Alias] - Record \n {}", alias_record);
-                    let hostname_exception = alias_record.get("hostnameException")
-                        .unwrap()
-                        .to_string()
-                        .replace("\"","");
-                    let room_name = alias_record.get("name")
-                        .unwrap()
-                        .to_string()
-                        .replace("\"","");
-                    if hostname_exception != "" {
-                        debug!("[Alias] - Hostname Exception: \n {} at {}", hostname_exception, room_name);
-                        let mut room : DB_Room = match database.get_room_by_name(&room_name) {
-                            Ok(r)  => r,
-                            Err(m) => {
-                                error!("DB_ERR: {}", m);
-                                return Response::new()
-                                        .status(STATUS_500)
-                                        .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
-                                        .build();
-                            }
-                        };
-                        let mut pd = room.ping_data.clone();
-                        for ping_record in &mut pd {
-                            ping_record
-                                .as_mut()
-                                .unwrap()
-                                .hostname.room = hostname_exception.clone();
-                        }
-                        room.ping_data = pd;
-                        let _ = database.update_room(&room);
-                    }
-                }
-                // Save Alias Table to database as dataElement
-                let alias_table = DB_DataElement {
-                    key: "alias_table".to_string(),
-                    val: String::from_utf8(req.body).expect("Unable to parse body contents")
-                };
-                let _ = database.update_data(&alias_table);
-
-                Response::new()
-                        .status(STATUS_200)
-                        .send_contents("Database Alias Table Updated".into())
-            }
-        },
-        "POST /resetAlias HTTP/1.1" => {
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
-            } else {
-                let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-                // Get List of Rooms from body_json
-                let target_rooms = body_json["rooms"]
-                    .as_array()
-                    .unwrap();
-                // Change ping_data.hostname.room to original name
-                for room in target_rooms.iter() {
-                    let mut room = match database.get_room_by_name(&room.to_string().replace("\"","")) {
+            let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+            // Parse Request Body
+            let alias_rooms = body_json["rooms"]
+                .as_array()
+                .unwrap();
+            //  Iterate through the rooms and find hostname exceptions,
+            for alias_record in alias_rooms.iter() {
+                debug!("[Alias] - Record \n {}", alias_record);
+                let hostname_exception = alias_record.get("hostnameException")
+                    .unwrap()
+                    .to_string()
+                    .replace("\"","");
+                let room_name = alias_record.get("name")
+                    .unwrap()
+                    .to_string()
+                    .replace("\"","");
+                if hostname_exception != "" {
+                    debug!("[Alias] - Hostname Exception: \n {} at {}", hostname_exception, room_name);
+                    let mut room : DB_Room = match database.get_room_by_name(&room_name) {
                         Ok(r)  => r,
                         Err(m) => {
                             error!("DB_ERR: {}", m);
@@ -1715,7 +1567,6 @@ async fn handle_connection(
                                     .build();
                         }
                     };
-                    let room_name = room.name.clone();
                     let mut pd = room.ping_data.clone();
                     for ping_record in &mut pd {
                         ping_record
@@ -1726,38 +1577,68 @@ async fn handle_connection(
                     room.ping_data = pd;
                     let _ = database.update_room(&room);
                 }
-                debug!("[Alias] - Reverting Alias Change for target_rooms, {:?}", &target_rooms);
-
-                Response::new()
-                        .status(STATUS_200)
-                        .send_contents("Reset Requested Rooms".into())
             }
+            // Save Alias Table to database as dataElement
+            let alias_table = DB_DataElement {
+                key: "alias_table".to_string(),
+                val: String::from_utf8(req.body).expect("Unable to parse body contents")
+            };
+            let _ = database.update_data(&alias_table);
+
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents("Database Alias Table Updated".into())
+        },
+        "POST /resetAlias HTTP/1.1" => {
+            let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
+            // Get List of Rooms from body_json
+            let target_rooms = body_json["rooms"]
+                .as_array()
+                .unwrap();
+            // Change ping_data.hostname.room to original name
+            for room in target_rooms.iter() {
+                let mut room = match database.get_room_by_name(&room.to_string().replace("\"","")) {
+                    Ok(r)  => r,
+                    Err(m) => {
+                        error!("DB_ERR: {}", m);
+                        return Response::new()
+                                .status(STATUS_500)
+                                .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                .build();
+                    }
+                };
+                let room_name = room.name.clone();
+                let mut pd = room.ping_data.clone();
+                for ping_record in &mut pd {
+                    ping_record
+                        .as_mut()
+                        .unwrap()
+                        .hostname.room = room_name.clone();
+                }
+                room.ping_data = pd;
+                let _ = database.update_room(&room);
+            }
+            debug!("[Alias] - Reverting Alias Change for target_rooms, {:?}", &target_rooms);
+
+            Response::new()
+                    .status(STATUS_200)
+                    .send_contents("Reset Requested Rooms".into())
         },
         // Terminal
         // --------------------------------------------------------------------
         "POST /terminal HTTP/1.1" => {
-            if !req.has_valid_cookie(&mut database) {
-                Response::new()
-                        .status(STATUS_401)
-                        .send_contents(
-                            json!(
-                                {"response": "Unauthorized"}
-                            ).to_string().into()
-                        )
-            } else {
-                match Terminal::execute(&req) {
-                    Ok(resp) => {
-                        resp
-                    },
-                    Err(e) => {
-                        Response::new()
-                                .status(STATUS_500)
-                                .send_contents(
-                                    json!(
-                                        {"response": format!("Internal error: {:?}", e)}
-                                    ).to_string().into()
-                                )
-                    }
+            match Terminal::execute(&req) {
+                Ok(resp) => {
+                    resp
+                },
+                Err(e) => {
+                    Response::new()
+                            .status(STATUS_500)
+                            .send_contents(
+                                json!(
+                                    {"response": format!("Internal error: {:?}", e)}
+                                ).to_string().into()
+                            )
                 }
             }
         },
@@ -2082,7 +1963,6 @@ async fn handle_connection(
                 .insert_header("Content-Type", "application/json")
                 .send_contents(response_json.to_string().into())
         },
-
         "POST /w_upload_folder HTTP/1.1" => {
               #[derive(Deserialize)]
             struct UploadDir {
@@ -2122,7 +2002,6 @@ async fn handle_connection(
             let full_path = wiki_dirs.to_string() + (&relative_path);
             let full_path_buf = PathBuf::from(full_path.clone());
 
-
             let create_dir = create_dir(&full_path_buf);
             if create_dir.is_err() {
                 let e = create_dir.unwrap_err();
@@ -2143,10 +2022,6 @@ async fn handle_connection(
                 .insert_header("Content-Type", "application/json")
                 .send_contents(response_json.to_string().into())
         },
-
-          
-
-
         "DELETE /w_delete HTTP/1.1" => {
             #[derive(Deserialize)]
             struct FilePath {
@@ -2163,7 +2038,6 @@ async fn handle_connection(
 
                 }
             };
-
 
             let received_path: FilePath = match serde_json::from_str(&body_to_string.clone()){
                 Ok(obj) => obj,
@@ -2194,7 +2068,7 @@ async fn handle_connection(
                         .send_contents(format!("Delete error: {}", e).into())
                         .build();
                 }
-             } else {
+            } else {
                 let delete_file = remove_file(&full_path_buf);
                 if delete_file.is_err() {
                     let e = delete_file.unwrap_err();
@@ -2216,7 +2090,6 @@ async fn handle_connection(
                 .send_contents(response_json.to_string().into())
 
         }, 
-
         // Ticket Description
         start_line if start_line.starts_with("GET /ticket/description/") && start_line.ends_with(" HTTP/1.1") => {
             let ticket_id_str = start_line
