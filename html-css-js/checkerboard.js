@@ -385,7 +385,30 @@ async function setChecker() {
     // map_select Section
     let map_select = document.createElement("div");
     map_select.classList.add('cb_mapSelect');
-    map_select.innerHTML = `
+
+    let building_checkboxes = `
+        <fieldset>
+            <legend ${isMobile ? "class='mobile_legend'": ""}>Buildings: </legend>
+    `;
+
+    let campus = JSON.parse(localStorage.getItem("campData"));
+    Object.keys(campus).forEach(bldg => {
+        building_checkboxes += `
+            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="${bldg}" name="cb_dev" value="${bldg}"/>
+            <label for="${bldg}" ${isMobile ? "class='mobile_font'" : ""}>
+                ${bldg}
+            </label>
+            <br>
+        `;
+    });
+
+    building_checkboxes += `
+        </fieldset>
+    `;
+
+    map_select.innerHTML = building_checkboxes;
+
+    /* map_select.innerHTML = `
         <fieldset>
             <legend ${isMobile ? "class='mobile_legend'" : ""}>Zones: </legend>
             <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type ="checkbox" id="1" name="cb_dev" value="zone1"/>
@@ -404,7 +427,7 @@ async function setChecker() {
             <label for="4" ${isMobile ? "class='mobile_font'" : ""}>
                 Zone 4</label>
             <br>
-        </fieldset>`;
+        </fieldset>`; */
 
     // Bottom Menu buttons
     // html options: menu
