@@ -4714,9 +4714,9 @@ mod tests {
 
     #[test]
     fn test_pad_zero() {
-        assert_eq!(pad_zero(String::from("123"), 4), String::from("0123"));
-        assert_eq!(pad_zero(String::from("123"), 3), String::from("123"));
-        assert_eq!(pad_zero(String::from("123"), 2), String::from("123"));
+        assert_eq!(_pad_zero(String::from("123"), 4), String::from("0123"));
+        assert_eq!(_pad_zero(String::from("123"), 3), String::from("123"));
+        assert_eq!(_pad_zero(String::from("123"), 2), String::from("123"));
     }
 
     #[test]
