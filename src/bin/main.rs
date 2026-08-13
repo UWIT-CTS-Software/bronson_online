@@ -1572,7 +1572,7 @@ async fn handle_connection(
                         ping_record
                             .as_mut()
                             .unwrap()
-                            .hostname.room = hostname_exception.clone();
+                            .hostname.room = room_name.clone();
                     }
                     room.ping_data = pd;
                     let _ = database.update_room(&room);
