@@ -162,8 +162,10 @@ async function exportButton() {
         optionalData[sectionId] = notes;
     });
 
+    // TODO: Disable "Export to PDF" button while action in progress
+
     const pdfBlob = await fetchExportedPDF(timePeriod, optionalData);
-    if (!pdfBlob) return;
+    if (!pdfBlob) return; // TODO: Alert then Re-enable button
 
     let reportPeriod = "ERROR";
     if (timePeriod === 0) reportPeriod = "Week";
@@ -180,10 +182,11 @@ async function exportButton() {
     a.href = url;
     a.download = filename;
     a.click();
-
     URL.revokeObjectURL(url);
-    
-    hidePopup();
+
+    // TODO: Re-enable button
+
+    showSettings();
 }
 
 // Generates the HTML for the time period radio buttons
@@ -1163,7 +1166,7 @@ async function setAnalytics() {
         <div id="an_techSelector">
             <strong>Choose a tech:</strong>
             <select name="techs" id="techs">
-                <option value="lfermeli" selected>Lexus Fermelia</option>
+                <option value="johndoe" selected>John Doe</option>
                 <option value="todo">TODO: Add Users via Shibboleth</option>
             </select>
             <hr>
