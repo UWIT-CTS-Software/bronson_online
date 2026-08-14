@@ -109,17 +109,6 @@ pub mod bronson {
             responsible_full_name -> Text,
             responsible_group_name -> Text,
             comment_count -> Int2,
-            old_type_name -> Text,
-            old_type_category_name -> Text,
-            old_title -> Text,
-            old_account_name -> Text,
-            old_status_name -> Text,
-            old_service_name -> Text,
-            old_priority_name -> Text,
-            old_modified_date -> Text,
-            old_modified_full_name -> Text,
-            old_responsible_full_name -> Text,
-            old_responsible_group_name -> Text,
             old_comment_count -> Int2,
         }
     }
