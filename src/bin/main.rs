@@ -4077,6 +4077,33 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
     // Helper: get date range based on time_period
     let get_date_range = |period: i16| -> (DateTime<Utc>, DateTime<Utc>) {
         let now = Utc::now();
+        
+        // Handle custom date range separately
+        if period == 5 {
+            if let Some(custom_start) = optional_data.get("custom_start_date").and_then(|v| v.as_str()) {
+                if let Ok(date) = chrono::NaiveDate::parse_from_str(custom_start, "%Y-%m-%d") {
+                    let start_dt = DateTime::<Utc>::from_naive_utc_and_offset(
+                        date.and_hms_opt(0, 0, 0).unwrap(),
+                        Utc
+                    );
+                    // Parse custom end date
+                    if let Some(custom_end) = optional_data.get("custom_end_date").and_then(|v| v.as_str()) {
+                        if let Ok(end_date) = chrono::NaiveDate::parse_from_str(custom_end, "%Y-%m-%d") {
+                            let end_dt = DateTime::<Utc>::from_naive_utc_and_offset(
+                                end_date.and_hms_opt(23, 59, 59).unwrap(),
+                                Utc
+                            );
+                            return (start_dt, end_dt);
+                        }
+                    }
+                    // If end date fails, use now as end
+                    return (start_dt, now);
+                }
+            }
+            // Fallback to 7 days if custom dates are not provided or invalid
+            return (now - TimeDelta::days(7), now);
+        }
+        
         let start = match period {
             0 => now - TimeDelta::days(7),
             1 => now - TimeDelta::days(30),
@@ -4340,7 +4367,7 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
         \begin{document}
          \begin{landscape} % Orient the page in landscape mode
  
-         \title{\textbf{\huge CTS Analytics - [[ time_frame ]]}}
+         \title{\textbf{\huge CTS Analytics: [[ time_frame ]]}}
          \author{} % Leave blank
          \date{} % Leave blank
  
@@ -4367,11 +4394,9 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
             \begin{tabular}{ c|c|c|c } 
                 {\small Tickets Created}                 & {\small Tickets Closed}                 & {\small Current Open Tickets}                 & {\small False Tickets}                \\ 
                 {\LARGE \textbf{[[ tickets_created ]]}}  & {\LARGE \textbf{[[ tickets_closed ]]}}  & {\LARGE \textbf{[[ current_open_tickets ]]}}  & {\LARGE \textbf{[[ false_tickets ]]}} \\ 
-                {\small Last sss: ddd}                     & {\small Last sss: ddd}                    & {\small Last sss: ddd}                          & {}                                    \\
             \hline
                 {\small Room Checks Performed}                 & {\small Tickets from Room Checks}                 & {\small WyoCast / Event Tickets}              & {\small PC Related Tickets}                \\ 
                 {\LARGE \textbf{[[ room_checks_performed ]]}}  & {\LARGE \textbf{[[ tickets_from_room_checks ]]}}  & {\Large \textbf{[[ wycast_event_tickets ]]}}  & {\Large \textbf{[[ pc_related_tickets ]]}} \\ 
-                {\small Last sss: ddd}                           & {}                                                & {}                                            & {}                                         \\ 
             \end{tabular}
             \end{center}
     
@@ -4439,19 +4464,39 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
 
     // Sub in values
     let time_frame_label = match time_period {
-        0 => "Last 7 Days",
-        1 => "Last 30 Days",
-        2 => "Last 90 Days",
-        3 => "Last 365 Days",
-        4 => "All Time",
-        _ => "Last 7 Days",
+        0 => "Last 7 Days".to_string(),
+        1 => "Last 30 Days".to_string(),
+        2 => "Last 90 Days".to_string(),
+        3 => "Last 365 Days".to_string(),
+        4 => "All Time".to_string(),
+        5 => {
+            // Custom date range: format the dates nicely
+            if let (Some(start_str), Some(end_str)) = (
+                optional_data.get("custom_start_date").and_then(|v| v.as_str()),
+                optional_data.get("custom_end_date").and_then(|v| v.as_str())
+            ) {
+                if let (Ok(start_date), Ok(end_date)) = (
+                    chrono::NaiveDate::parse_from_str(start_str, "%Y-%m-%d"),
+                    chrono::NaiveDate::parse_from_str(end_str, "%Y-%m-%d")
+                ) {
+                    let start_formatted = start_date.format("%B %d, %Y").to_string();
+                    let end_formatted = end_date.format("%B %d, %Y").to_string();
+                    format!("{} - {}", start_formatted, end_formatted)
+                } else {
+                    "Custom Date Range".to_string()
+                }
+            } else {
+                "Custom Date Range".to_string()
+            }
+        }
+        _ => "ERROR".to_string(),
     };
 
     // Format building x coordinates for LaTeX
     let building_x_coords = top_10_buildings.join(",");
 
     let mut context = Context::new();
-    context.insert("time_frame", time_frame_label);
+    context.insert("time_frame", &time_frame_label);
     context.insert("accomplishments", &latex_accomplishments);
     context.insert("future_notes", &latex_future_notes);
     context.insert("tickets_created", &tickets_created);
