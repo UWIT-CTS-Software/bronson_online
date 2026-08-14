@@ -52,7 +52,7 @@ use server_lib::{
     jp::{ ping_this, },
     API, APIClient::{ MultiThread, SingleThread, },
     CFM_DIR, WIKI_DIR, /* LOG, */ TEMP_DIR, TICKT_JSON, 
-    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_400, STATUS_401, STATUS_404, STATUS_500, 
+    Request, Response, STATUS_200, /* STATUS_303, */ STATUS_400, STATUS_404, STATUS_500, 
     SCHD_ERR, DASH_ERR, LDRB_ERR, SPRS_ERR, 
     Database, Terminal, 
     models::{
@@ -552,13 +552,8 @@ async fn handle_connection(
 ) -> Option<Vec<u8>> {
     let mut user_homepage: &str = "html-css-js/login.html";
     if req.headers.contains_key("Cookie") {
-        let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
-        let username = match username_search.captures(&req.headers.get("Cookie").unwrap()) {
-            Some(uname) => uname,
-            None => panic!("Unable to capture username.")
-        };
-        //let mut database = arc_database.write().unwrap();
-        let user = match database.get_user(&username["username"]) {
+        let username = req.get_current_username();
+        let user = match database.get_user(&username) {
             Ok(u)  => u,
             Err(diesel::result::Error::NotFound) => {
                 DB_User{ username: String::new(), permissions: 5 }
@@ -591,10 +586,8 @@ async fn handle_connection(
     ];
     if !exemptions.contains(&req.start_line.as_str()) && !req.has_valid_cookie(&mut database) {
         return Response::new()
-            .status(STATUS_401)
-            .send_contents(
-                json!({"response":"Unauthorized"}).to_string().into()
-            )
+            .status(STATUS_200)
+            .send_file("html-css-js/login.html")
             .build();
     }
 
@@ -837,25 +830,8 @@ async fn handle_connection(
                     .send_contents(contents)
         },
         "GET /currentUser HTTP/1.1" => { // OUTGOING, Current user info
-            // Extract username from cookie
-            let cookie = req.headers
-                .get("Cookie")
-                .cloned()
-                .unwrap_or(String::new());
-            let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
-            let username = match username_search.captures(&cookie) {
-                Some(caps) => caps["username"].to_string(),
-                None => {
-                    return Response::new()
-                        .status(STATUS_401)
-                        .send_contents(json!({
-                            "response": "Unauthorized"
-                        }).to_string().into())
-                        .build();
-                }
-            };
-
             // Fetch user from DB, default to standard user if not found
+            let username = req.get_current_username();
             let user = match database.get_user(&username) {
                 Ok(u) => u,
                 Err(e) => {
@@ -876,25 +852,8 @@ async fn handle_connection(
                 }).to_string().into())
         },
         "GET /currentUser/existsInDB HTTP/1.1" => {
-            // Extract username from cookie
-            let cookie = req.headers
-                .get("Cookie")
-                .cloned()
-                .unwrap_or(String::new());
-            let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
-            let username = match username_search.captures(&cookie) {
-                Some(caps) => caps["username"].to_string(),
-                None => {
-                    return Response::new()
-                        .status(STATUS_401)
-                        .send_contents(json!({
-                            "response": "Unauthorized"
-                        }).to_string().into())
-                        .build();
-                }
-            };
-
             // Fetch user from DB, default to standard user if not found
+            let username = req.get_current_username();
             let user_exists = match database.get_user(&username) {
                 Ok(_) => {
                     json!({
@@ -917,25 +876,8 @@ async fn handle_connection(
                 )
         },
         "GET /currentUser/fetchTDXUser HTTP/1.1" => {
-            // Extract username from cookie
-            let cookie = req.headers
-                .get("Cookie")
-                .cloned()
-                .unwrap_or(String::new());
-            let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
-            let username = match username_search.captures(&cookie) {
-                Some(caps) => caps["username"].to_string(),
-                None => {
-                    return Response::new()
-                        .status(STATUS_401)
-                        .send_contents(json!({
-                            "response": "Unauthorized"
-                        }).to_string().into())
-                        .build();
-                }
-            };
-
             // Query TDX for User ID using the username provided in the cookie
+            let username = req.get_current_username();
             let user = match get_tdx_user(&mut database, &tdx_client, &username.to_string()).await {
                 Ok(u) => u,
                 Err(_) => {
@@ -991,19 +933,6 @@ async fn handle_connection(
                     "ModifiedDate": t.modified_date,
                     "ModifiedFullName": t.modified_full_name,
                     "comment_count": t.comment_count,
-
-
-                    "old_type_name": t.old_type_name,
-                    "old_type_category_name": t.old_type_category_name,
-                    "old_title": t.old_title,
-                    "old_account_name": t.old_account_name,
-                    "old_status_name": t.old_status_name,
-                    "old_service_name": t.old_service_name,
-                    "old_priority_name": t.old_priority_name,
-                    "old_modified_date": t.old_modified_date,
-                    "old_modified_full_name": t.old_modified_full_name,
-                    "old_responsible_full_name": t.old_responsible_full_name,
-                    "old_responsible_group_name": t.old_responsible_group_name,
                     "old_comment_count": t.old_comment_count,
                 })
             }).collect();
@@ -1028,7 +957,7 @@ async fn handle_connection(
             let operation_type = body_json["_OperationType"].as_str().unwrap_or("");
 
             let _ = match operation_type {
-                "CREATE" => create_tdx_ticket(&mut database, &tdx_client, body_json).await,
+                "CREATE" => create_tdx_ticket(&mut database, &tdx_client, body_json, req.get_current_username()).await,
                 "EDIT" => edit_tdx_ticket(&mut database, &tdx_client, body_json).await,
                 _ => {
                     return Response::new()
@@ -1124,6 +1053,22 @@ async fn handle_connection(
                 Ok(v) => v,
                 Err(e) => {
                     error!("Failed to mark Ticket as false: {}", e);
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("[]".into())
+                        .build();
+                }
+            };
+
+            Response::new()
+                .status(STATUS_200)
+                .send_contents("".into())
+        },
+        "POST /update/ticket/dismissAll HTTP/1.1" => {
+            let _ = match dismiss_all_tickets(&mut database).await {
+                Ok(v) => v,
+                Err(e) => {
+                    error!("Failed to dismiss all tickets: {}", e);
                     return Response::new()
                         .status(STATUS_500)
                         .send_contents("[]".into())
@@ -3160,7 +3105,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
             };
 
         // Try fetching a new tdx token and try again if Unauthorized
-        if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        if resp.status == reqwest::StatusCode::UNAUTHORIZED {
             resp = retry_tdx_token(database, req, "POST", &url, Some(search_body)).await?;
         }
 
@@ -3224,7 +3169,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
             };
 
         // Try fetching a new tdx token and try again if Unauthorized
-        if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        if resp.status == reqwest::StatusCode::UNAUTHORIZED {
             resp = retry_tdx_token(database, req, "POST", &url, Some(search_body)).await?;
         }
 
@@ -3263,30 +3208,9 @@ fn serialize_ticket(database: &mut Database, ticket_json: serde_json::Value) -> 
 
     // Get old ticket if it exists (new tickets won't have one and defaults to empty string)
     let old_ticket = database.get_ticket(ticket_json["ID"].as_i64().unwrap_or(0) as i32).unwrap_or(None);
-    let (
-        old_type_name, old_type_category_name, old_title,
-        old_account_name, old_status_name, old_service_name,
-        old_priority_name, old_modified_date, old_modified_full_name,
-        old_responsible_full_name, old_responsible_group_name,
-
-        comment_count, old_comment_count
-    ) = match old_ticket {
-        Some(t) => (
-            t.type_name, t.type_category_name, t.title,
-            t.account_name, t.status_name, t.service_name,
-            t.priority_name, t.modified_date, t.modified_full_name,
-            t.responsible_full_name, t.responsible_group_name,
-
-            t.comment_count, t.old_comment_count
-        ),
-        None => (
-            String::new(), String::new(), String::new(),
-            String::new(), String::new(), String::new(),
-            String::new(), String::new(), String::new(),
-            String::new(), String::new(), 
-            
-            0_i16, 0_i16,
-        ),
+    let (comment_count, old_comment_count) = match old_ticket {
+        Some(t) => (t.comment_count, t.old_comment_count),
+        None => (0_i16, 0_i16),
     };
 
     // Serialize Ticket data into DB_Ticket struct. If this is a new ticket, fields will populated with default values
@@ -3312,12 +3236,7 @@ fn serialize_ticket(database: &mut Database, ticket_json: serde_json::Value) -> 
         days_old: ticket_json["DaysOld"].as_i64().unwrap_or(0) as i16,
         responsible_full_name: ticket_json["ResponsibleFullName"].as_str().unwrap_or("").to_string(),
         responsible_group_name: ticket_json["ResponsibleGroupName"].as_str().unwrap_or("").to_string(),
-        comment_count,
-
-        old_type_name, old_type_category_name, old_title,
-        old_account_name, old_status_name, old_service_name,
-        old_priority_name, old_modified_date, old_modified_full_name,
-        old_responsible_full_name, old_responsible_group_name, 
+        comment_count, 
         old_comment_count,
     })
 }
@@ -3349,7 +3268,7 @@ async fn fetch_tdx_ticket_description(database: &mut Database, req: &API, ticket
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
-    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+    if resp.status == reqwest::StatusCode::UNAUTHORIZED {
         resp = retry_tdx_token(database, req, "GET", &url, None).await?;
     }
 
@@ -3393,7 +3312,7 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &API, ticket_id: i3
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
-    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+    if resp.status == reqwest::StatusCode::UNAUTHORIZED {
         resp = retry_tdx_token(database, req, "GET", &url, None).await?;
     }
 
@@ -3481,7 +3400,7 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
-    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+    if resp.status == reqwest::StatusCode::UNAUTHORIZED {
         resp = retry_tdx_token(database, req, "GET", &url, None).await?;
     }
 
@@ -3554,7 +3473,7 @@ async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_j
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
-    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+    if resp.status == reqwest::StatusCode::UNAUTHORIZED {
         resp = retry_tdx_token(database, req, "POST", &url, Some(body_json)).await?;
     }
 
@@ -3575,7 +3494,22 @@ async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_j
     Ok(())
 }
 
-async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Value) -> Result<(), String> {
+async fn dismiss_all_tickets(database: &mut Database) -> Result<(), String> {
+    info!("[Data] - Dismissing all tickets notifications");
+
+    match database.mark_all_tickets_as_viewed() {
+        Ok(count) => {
+            info!("[Data] - Successfully dismissed {} ticket notifications", count);
+            Ok(())
+        }
+        Err(e) => {
+            error!("[Data] - Failed to mark all tickets as viewed: {}", e);
+            Err(format!("Failed to mark all tickets as viewed: {}", e))
+        }
+    }
+}
+
+async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Value, username: String) -> Result<(), String> {
     info!("[Data] - Sending Create Ticket Request to TDX");
     
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/";
@@ -3609,6 +3543,10 @@ async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Va
         }
     }
 
+    // Make RequestorUid the current signed in user & add it to json
+    let tdx_uid = get_tdx_user(database, req, &username).await?;
+    ticket_json["RequestorUid"] = tdx_uid["UID"].clone();
+    
     // Send ticket content and recieve the new ticket JSON as a verification response
     let mut new_ticket_resp = match req
         .build()
@@ -3824,7 +3762,7 @@ async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) 
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
-    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+    if resp.status == reqwest::StatusCode::UNAUTHORIZED {
         resp = retry_tdx_token(database, req, "POST", &url, Some(search_body)).await?;
     }
     
@@ -3873,7 +3811,7 @@ async fn get_tdx_user(database: &mut Database, req: &API, username: &str) -> Res
         };
 
     // Try fetching a new tdx token and try again if Unauthorized
-    if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+    if resp.status == reqwest::StatusCode::UNAUTHORIZED {
         resp = retry_tdx_token(database, req, "GET", &url, None).await?;
     }
 
@@ -4054,7 +3992,7 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
             };
 
         // Try fetching a new tdx token and try again if Unauthorized
-        if !resp.status.is_success() && resp.status == reqwest::StatusCode::UNAUTHORIZED {
+        if resp.status == reqwest::StatusCode::UNAUTHORIZED {
             warn!("Project data fetch failure was due to an unauthorized response, fetching new token and trying again...");
 
             // Grab new TDX Token
@@ -4764,13 +4702,12 @@ async fn collegenet_login(cn_client: &Arc<API>) -> Result<LoginSuccess, String> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use server_lib::models::DB_Key;
 
     #[test]
     fn test_pad_zero() {
-        assert_eq!(pad_zero(String::from("123"), 4), String::from("0123"));
-        assert_eq!(pad_zero(String::from("123"), 3), String::from("123"));
-        assert_eq!(pad_zero(String::from("123"), 2), String::from("123"));
+        assert_eq!(_pad_zero(String::from("123"), 4), String::from("0123"));
+        assert_eq!(_pad_zero(String::from("123"), 3), String::from("123"));
+        assert_eq!(_pad_zero(String::from("123"), 2), String::from("123"));
     }
 
     #[test]

@@ -1203,11 +1203,23 @@ impl Database {
 	pub fn update_ticket(&mut self, element: &DB_Ticket) -> Result<DB_Ticket, DieselError> {
 		let mut conn = self.pool.get().expect("Failed to get DB Connection");
 
+		// Check if ticket exists in database
+		let ticket_exists = self.get_ticket(element.ticket_id)?.is_some();
+		
+		// If ticket doesn't exist, set has_been_viewed to false
+		let element_to_insert = if !ticket_exists {
+			let mut new_element = element.clone();
+			new_element.has_been_viewed = false;
+			new_element
+		} else {
+			element.clone()
+		};
+
 		diesel::insert_into(tickets)
-			.values(element)
+			.values(&element_to_insert)
 			.on_conflict(ticket_id)
 			.do_update()
-			.set(element)
+			.set(&element_to_insert)
 			.returning(DB_Ticket::as_returning())
 			.get_result(&mut conn)
 	}
@@ -1295,6 +1307,14 @@ impl Database {
 			.filter(ticket_id.eq(id_value))
 			.returning(DB_Ticket::as_returning())
 			.get_result(&mut conn)
+	}
+
+	pub fn mark_all_tickets_as_viewed(&mut self) -> Result<usize, DieselError> {
+		let mut conn = self.pool.get().expect("Failed to get DB Connection");
+
+		diesel::update(tickets)
+			.set(has_been_viewed.eq(true))
+			.execute(&mut conn)
 	}
 
 	pub fn get_reservation(&mut self, res_id: i64) -> Result<Option<DB_Reservation>, DieselError> {
@@ -1520,7 +1540,7 @@ impl Request {
         };
         let user = match database.get_user(&uname["username"]) {
             Ok(u)  => u,
-            Err(_) => DB_User{ username: String::new(), permissions: 5 },
+            Err(_) => DB_User{ username: String::from(&uname["username"]), permissions: -1 },
         };
 
         let mut jar = CookieJar::new();
@@ -1532,6 +1552,20 @@ impl Request {
 		}
 
 		return true;
+	}
+
+	pub fn get_current_username(&mut self) -> String {
+		if !self.headers.contains_key("Cookie") {
+			return "".to_string();
+		}
+
+		let username_search = Regex::new("^[^=]*").unwrap();
+		let cookie = self.headers.get("Cookie").unwrap();
+		
+		match username_search.find(cookie) {
+			Some(matched) => matched.as_str().to_string(),
+			None => panic!("Unable to capture username.")
+		}
 	}
 }
 

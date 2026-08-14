@@ -108,18 +108,6 @@ CREATE TABLE IF NOT EXISTS bronson.tickets (
     responsible_full_name       TEXT        NOT NULL,
     responsible_group_name      TEXT        NOT NULL,
     comment_count               SMALLINT    NOT NULL,
-
-    old_type_name               TEXT        NOT NULL,
-    old_type_category_name      TEXT        NOT NULL,
-    old_title                   TEXT        NOT NULL,
-    old_account_name            TEXT        NOT NULL,
-    old_status_name             TEXT        NOT NULL,
-    old_service_name            TEXT        NOT NULL,
-    old_priority_name           TEXT        NOT NULL,
-    old_modified_date           TEXT        NOT NULL,
-    old_modified_full_name      TEXT        NOT NULL,
-    old_responsible_full_name   TEXT        NOT NULL,
-    old_responsible_group_name  TEXT        NOT NULL,
     old_comment_count           SMALLINT    NOT NULL,
 
     CHECK (length(type_name) <= 51),
@@ -137,19 +125,7 @@ CREATE TABLE IF NOT EXISTS bronson.tickets (
     CHECK (length(requestor_email) <= 64),
     CHECK (length(requestor_phone) <= 32),
     CHECK (length(responsible_full_name) <= 256),
-    CHECK (length(responsible_group_name) <= 128),
-
-    CHECK (length(old_type_name) <= 51),
-    CHECK (length(old_type_category_name) <= 51),
-    CHECK (length(old_title) <= 201),
-    CHECK (length(old_account_name) <= 128),
-    CHECK (length(old_status_name) <= 64),
-    CHECK (length(old_service_name) <= 64),
-    CHECK (length(old_priority_name) <= 16),
-    CHECK (length(old_modified_date) <= 32),
-    CHECK (length(old_modified_full_name) <= 256),
-    CHECK (length(old_responsible_full_name) <= 256),
-    CHECK (length(old_responsible_group_name) <= 128)
+    CHECK (length(responsible_group_name) <= 128)
 );
 
 CREATE TABLE IF NOT EXISTS bronson.reservations (
