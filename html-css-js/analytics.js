@@ -164,6 +164,17 @@ async function exportButton() {
         optionalData[sectionId] = notes;
     });
 
+    // Handle custom date range
+    if (timePeriod === 5) {
+        const customRange = getCustomDateRange();
+        if (!customRange) {
+            alert("Please enter valid custom dates before exporting.");
+            return;
+        }
+        optionalData.custom_start_date = customRange.startDate.toISOString().split('T')[0];
+        optionalData.custom_end_date = customRange.endDate.toISOString().split('T')[0];
+    }
+
     // TODO: Disable "Export to PDF" button while action in progress
 
     const pdfBlob = await fetchExportedPDF(timePeriod, optionalData);
@@ -284,11 +295,7 @@ function showExport() {
                 <button id="an_exportToPDFButton" onclick="exportButton()">Export to PDF</button>
                 <button onclick="showSettings()">Cancel</button>
             </div>
-            <p style="float: right; font-size: 10pt; margin-top: 6px;">
-                *Larger reports take longer to generate, up to 10 minutes. 
-                <br>
-                Do not close the browser while generating...
-            </p>
+            <p style="float: right; font-size: 10pt; margin-top: 6px;">*Larger reports take longer to generate</p>
         </fieldset>
     `;
 
