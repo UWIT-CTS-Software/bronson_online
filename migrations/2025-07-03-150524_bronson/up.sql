@@ -24,9 +24,10 @@ CREATE TYPE bronson.ip_address AS (
 );
 
 CREATE TABLE IF NOT EXISTS bronson.buildings (
-    abbrev        TEXT         PRIMARY KEY,
-    name          TEXT         NOT NULL,
-    lsm_name      TEXT         NOT NULL,
+    abbrev        TEXT         NOT NULL UNIQUE,
+    name          TEXT         NOT NULL UNIQUE,
+    building_id   BIGINT       PRIMARY KEY,
+    lsm_name      TEXT         NOT NULL UNIQUE,
     zone          SMALLINT     NOT NULL,
     total_rooms   SMALLINT     NOT NULL,
     checked_rooms SMALLINT     NOT NULL,
@@ -38,27 +39,33 @@ CREATE TABLE IF NOT EXISTS bronson.buildings (
 
 CREATE TABLE IF NOT EXISTS bronson.rooms (
     abbrev        TEXT         NOT NULL,
-    name          TEXT         PRIMARY KEY,
-    checked       TEXT         NOT NULL,
+    name          TEXT         NOT NULL UNIQUE,
+    room_id       BIGINT       PRIMARY KEY,
+    parent_id     BIGINT       NOT NULL,
+    collegenet_id BIGINT       UNIQUE  ,
+    checked       TIMESTAMPTZ  NOT NULL,
     needs_checked BOOLEAN      NOT NULL,
     gp            BOOLEAN      NOT NULL,
     check_period  SMALLINT     NOT NULL,
     offln         BOOLEAN      NOT NULL,
-    onln          TEXT         NOT NULL,
+    onln          TIMESTAMPTZ  NOT NULL,
     available     BOOLEAN      NOT NULL,
-    until         TEXT         NOT NULL,
+    until         TIMESTAMPTZ  NOT NULL,
     ping_data     bronson.ip_address[] NOT NULL,
     schedule      TEXT[]       NOT NULL,
 
     CHECK (length(abbrev) <= 5), 
-    CHECK (length(name) <= 10),
-    CHECK (length(checked) <= 21),
-    CHECK (length(onln) <= 11),
-    CHECK (length(until) <= 9),
+    CHECK (length(name) <= 32),
 
     CONSTRAINT fk_abbrev
       FOREIGN KEY (abbrev)
       REFERENCES bronson.buildings(abbrev)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE,
+
+    CONSTRAINT fk_bldg_id
+      FOREIGN KEY (parent_id)
+      REFERENCES bronson.buildings(building_id)
       ON DELETE CASCADE
       ON UPDATE CASCADE
 );
@@ -80,6 +87,7 @@ CREATE TABLE IF NOT EXISTS bronson.data (
 
 CREATE TABLE IF NOT EXISTS bronson.tickets (
     ticket_id                   INTEGER     PRIMARY KEY,
+    parent_id                   INTEGER     NOT NULL,
     has_been_viewed             BOOLEAN     NOT NULL,
     type_name                   TEXT        NOT NULL,
     type_category_name          TEXT        NOT NULL,
@@ -93,53 +101,74 @@ CREATE TABLE IF NOT EXISTS bronson.tickets (
     modified_date               TEXT        NOT NULL,
     modified_full_name          TEXT        NOT NULL,
     requestor_name              TEXT        NOT NULL,
+    requestor_first_name        TEXT        NOT NULL,
     requestor_email             TEXT        NOT NULL,
     requestor_phone             TEXT        NOT NULL,
     days_old                    SMALLINT    NOT NULL,
     responsible_full_name       TEXT        NOT NULL,
     responsible_group_name      TEXT        NOT NULL,
-    comment_count           SMALLINT    NOT NULL,
-
-    old_type_name               TEXT        NOT NULL,
-    old_type_category_name      TEXT        NOT NULL,
-    old_title                   TEXT        NOT NULL,
-    old_account_name            TEXT        NOT NULL,
-    old_status_name             TEXT        NOT NULL,
-    old_service_name            TEXT        NOT NULL,
-    old_priority_name           TEXT        NOT NULL,
-    old_modified_date           TEXT        NOT NULL,
-    old_modified_full_name      TEXT        NOT NULL,
-    old_responsible_full_name   TEXT        NOT NULL,
-    old_responsible_group_name  TEXT        NOT NULL,
+    comment_count               SMALLINT    NOT NULL,
     old_comment_count           SMALLINT    NOT NULL,
 
     CHECK (length(type_name) <= 51),
     CHECK (length(type_category_name) <= 51),
     CHECK (length(title) <= 201),
     CHECK (length(account_name) <= 128),
-    CHECK (length(status_name) <= 32),
+    CHECK (length(status_name) <= 64),
     CHECK (length(service_name) <= 64),
-    CHECK (length(priority_name) <= 16),
+    CHECK (length(priority_name) <= 64),
     CHECK (length(created_date) <= 32),
-    CHECK (length(created_full_name) <= 32),
+    CHECK (length(created_full_name) <= 256),
     CHECK (length(modified_date) <= 32),
-    CHECK (length(modified_full_name) <= 32),
-    CHECK (length(requestor_name) <= 64),
+    CHECK (length(modified_full_name) <= 128),
+    CHECK (length(requestor_name) <= 128),
     CHECK (length(requestor_email) <= 64),
     CHECK (length(requestor_phone) <= 32),
-    CHECK (length(responsible_full_name) <= 32),
-    CHECK (length(responsible_group_name) <= 128),
-
-    CHECK (length(old_type_name) <= 51),
-    CHECK (length(old_type_category_name) <= 51),
-    CHECK (length(old_title) <= 201),
-    CHECK (length(old_account_name) <= 128),
-    CHECK (length(old_status_name) <= 32),
-    CHECK (length(old_service_name) <= 64),
-    CHECK (length(old_priority_name) <= 16),
-    CHECK (length(old_modified_date) <= 32),
-    CHECK (length(old_modified_full_name) <= 32),
-    CHECK (length(old_responsible_full_name) <= 32),
-    CHECK (length(old_responsible_group_name) <= 128)
+    CHECK (length(responsible_full_name) <= 256),
+    CHECK (length(responsible_group_name) <= 128)
 );
 
+CREATE TABLE IF NOT EXISTS bronson.reservations (
+    reservation_id BIGINT PRIMARY KEY,
+    start_dt TIMESTAMPTZ NOT NULL,
+    end_dt TIMESTAMPTZ NOT NULL,
+    event_name TEXT NOT NULL,
+    event_space_id BIGINT[]
+);
+
+CREATE TABLE IF NOT EXISTS bronson.projects (
+    project_id          INTEGER     PRIMARY KEY,
+    created_date        TEXT        NOT NULL,
+    modified_date       TEXT        NOT NULL,
+    name                TEXT        NOT NULL,
+    description         TEXT        NOT NULL,
+    is_active           BOOLEAN     NOT NULL,
+    type_id             INTEGER     NOT NULL,
+    percent_complete    SMALLINT    NOT NULL,
+    status_name         TEXT        NOT NULL,
+    status_comments     TEXT        NOT NULL,
+    start_date          TEXT        NOT NULL,
+    end_date            TEXT        NOT NULL,
+    health              TEXT        NOT NULL,
+
+    is_hidden           BOOLEAN     NOT NULL,
+    
+    CHECK (length(created_date) <= 32),
+    CHECK (length(modified_date) <= 32),
+    CHECK (length(name) <= 201),
+    CHECK (length(description) <= 2001),
+    CHECK (length(status_name) <= 32),
+    CHECK (length(status_comments) <= 10001),
+    CHECK (length(start_date) <= 32),
+    CHECK (length(end_date) <= 32),
+    CHECK (length(health) <= 201)
+);
+
+/* CREATE TABLE IF NOT EXISTS bronson.api_schedule {
+    api_id TEXT PRIMARY KEY,
+    tstamp TIMESTAMPTZ NOT NULL,
+    duration INTEGER NOT NULL,
+
+    CHECK (duration >= 0)
+};
+ */

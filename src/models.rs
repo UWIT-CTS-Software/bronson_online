@@ -5,6 +5,8 @@ use crate::schema::bronson::{
     rooms,
     keys,
     tickets,
+    reservations,
+    projects,
     sql_types::{
         IpAddress,
     }
@@ -14,6 +16,7 @@ use serde::{
     Serialize,
     Deserialize,
 };
+use chrono::{ DateTime, Local, };
 use diesel::{
     prelude::*,
     pg::{
@@ -23,7 +26,7 @@ use diesel::{
     sql_types::{
         Integer,
         Text,
-        Record,
+        Record
     },
     serialize,
     serialize::{
@@ -182,6 +185,7 @@ impl FromSql<IpAddress, Pg> for DB_IpAddress {
 pub struct DB_Building {
     pub abbrev: String,
     pub name: String,
+    pub building_id: i64,
     pub lsm_name: String,
     pub zone: i16,
     pub checked_rooms: i16,
@@ -190,20 +194,24 @@ pub struct DB_Building {
 
 
 #[allow(non_camel_case_types)]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Queryable, Selectable, Insertable, AsChangeset)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Queryable, Selectable, Insertable, AsChangeset, Default)]
+#[diesel(sql_type = Timestamptz)]
 #[diesel(table_name = rooms)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct DB_Room {
     pub abbrev: String,
     pub name: String,
-    pub checked: String,
+    pub room_id: i64,
+    pub parent_id: i64,
+    pub collegenet_id: Option<i64>,
+    pub checked: DateTime<Local>,
     pub needs_checked: bool,
     pub gp: bool,
     pub check_period: i16,
     pub offln: bool,
-    pub onln: String,
+    pub onln: DateTime<Local>,
     pub available: bool,
-    pub until: String,
+    pub until: DateTime<Local>,
     pub ping_data: Vec<Option<DB_IpAddress>>,
     pub schedule: Vec<Option<String>>,
 }
@@ -237,11 +245,12 @@ pub struct DB_DataElement {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable, AsChangeset, Default)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable, AsChangeset, Default, Clone)]
 #[diesel(table_name = tickets)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct DB_Ticket {
     pub ticket_id: i32,
+    pub parent_id: i32,
     pub has_been_viewed: bool,
     pub type_name: String,              
     pub type_category_name: String,
@@ -255,23 +264,57 @@ pub struct DB_Ticket {
     pub modified_date: String,
     pub modified_full_name: String,
     pub requestor_name: String,
+    pub requestor_first_name: String,
     pub requestor_email: String,
     pub requestor_phone: String,
     pub days_old: i16,
     pub responsible_full_name: String,
     pub responsible_group_name: String,
     pub comment_count: i16,
-
-    pub old_type_name: String,
-    pub old_type_category_name: String,
-    pub old_title: String,
-    pub old_account_name: String,
-    pub old_status_name: String,
-    pub old_service_name: String,
-    pub old_priority_name: String,
-    pub old_modified_date: String,
-    pub old_modified_full_name: String,
-    pub old_responsible_full_name: String,
-    pub old_responsible_group_name: String,
     pub old_comment_count: i16,
 }
+
+#[allow(non_camel_case_types)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable, AsChangeset, Default)]
+#[diesel(sql_type = Timestamptz)]
+#[diesel(table_name = reservations)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct DB_Reservation {
+    pub reservation_id: i64,
+    pub start_dt: DateTime<Local>,
+    pub end_dt: DateTime<Local>,
+    pub event_name: String,
+    pub event_space_id: Option<Vec<Option<i64>>>
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable, AsChangeset, Default)]
+#[diesel(table_name = projects)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct DB_Project {
+    pub project_id: i32,
+    pub created_date: String,
+    pub modified_date: String,
+    pub name: String,
+    pub description: String,
+    pub is_active: bool,
+    pub type_id: i32,
+    pub percent_complete: i16,
+    pub status_name: String,
+    pub status_comments: String,
+    pub start_date: String,
+    pub end_date: String,
+    pub health: String,
+
+    pub is_hidden: bool,
+}
+
+/* #[allow(non_camel_case_types)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable)]
+#[diseel(table_name = api_schedule)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct DB_APISchedule {
+    pub api_id: String,
+    pub timestamp: DateTime<Utc>,
+    pub duration: i16
+} */

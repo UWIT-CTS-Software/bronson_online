@@ -181,7 +181,7 @@ function collapseAllFolders() {
     updateFileTreeDisplay();
 }
 
-let navStack = ["CamCode"]; // / CamCode / will always be root
+let navStack = ["Root"]; // / Root / will always be root
 cfmState.currentNavIndex = 0; 
 function navigateFolderHistory(direction=0) {
     if (direction === -1) { // traverse backwards in stack
@@ -222,7 +222,7 @@ function navigateFolderHistory(direction=0) {
 
     // Failsafe: Never let stack be empty
     if (navStack.length === 0) {
-        navStack.push("CamCode"); 
+        navStack.push("Root"); 
         cfmState.currentNavIndex = 0;
     }
 }
@@ -351,7 +351,7 @@ function searchTree(search="") {
         } else {
             for (let result of searchResults) {
                 let fullPath = result.path;
-                let displayPath = fullPath.startsWith('/CamCode/') ? fullPath.slice(9) : fullPath;
+                let displayPath = fullPath.startsWith('/Root/') ? fullPath.slice(9) : fullPath;
                 let targetPath = result.isFolder ? fullPath.slice(1) : fullPath.slice(1, fullPath.lastIndexOf('/'));
                 let displayText = displayPath;
                 if (displayPath.length > 30) {
@@ -400,9 +400,10 @@ async function initializeCFM() {
     if (searchBar) searchBar.value = ""; // clear
 
     cfmState.fullTree = await getCFMTree();
+   
     cfmState.currentNode = cfmState.fullTree;
     cfmState.currentPath = [cfmState.fullTree.name];
-    
+    console.log(cfmState.fullTree);
     updateFileTreeDisplay();
     updateFileContainer();
     updatePathTracker();

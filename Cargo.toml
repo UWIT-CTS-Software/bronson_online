@@ -22,10 +22,15 @@ cookie = { version = "0.18.1", features = ["signed"] }
 log = "0.4.27"
 fern = "0.7.1"
 humantime = "2.2.0"
-diesel = {version = "2.2.11", features = ["postgres", "r2d2"]}
+diesel = {version = "2.2.11", features = ["postgres", "r2d2", "chrono"]}
 dotenvy = "0.15"
 diesel_migrations = "2.2.0"
 futures-util = "0.3.31"
+base64 = "0.22.1"
+marked = "0.3.0"
+serde_derive = "1.0.228"
+serde-xml-rs = "0.8.2"
+tera = "2"
 
 # Default dev level options
 [profile.dev]
@@ -33,7 +38,6 @@ opt-level = 0
 debug = true
 split-debuginfo = '...'
 strip = "none"
-debug-assertion = true
 overflow-checks = true
 lto = false
 panic = 'unwind'

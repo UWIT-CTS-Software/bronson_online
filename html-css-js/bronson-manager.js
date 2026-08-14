@@ -32,7 +32,6 @@ TOC:
   Dashboard Helpers
     - initCheckerboardStorage()
     - dashCheckerboardHTML()
-    - dashCheckerboard()
     - setSchedule(buttonID)
     - setUserSchedule() ------------------------------------- DB_TODO / SSO
     - makeTechTableHeader(firstColumn)
@@ -116,7 +115,6 @@ async function initLocalStorage() {
     // Once data is loaded, set default tab selection
     if(document.title.includes("Dashboard")) {
         setDashboardDefaults();
-        dashCheckerboard(); // poplate cb_dash
         dashSpares(); // populate db_spares
         dashTickex();
     }
@@ -208,7 +206,6 @@ function setDashboardDefaults() {
     setSchedule(todayButton);
     // populate overview
     // let db_checker_obj = getElementsByClassName("db_checker")[0];
-    // db_checker_obj.innerHTML = dashCheckerboard();
     return;
 }
 
@@ -517,61 +514,26 @@ async function dashCheckerboardHTML() {
     let cb_dashDivHTML = `
     <fieldset>
         <legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}>
-            Checkerboard Zone Overview
+            Checkerboard Building Overview
         </legend>
-    <ul>
+    <ul class="dbCbProg">
     `;
-    for (item in object) {
-        if (object[item]["rooms"] != 0) {
-            let zoneNum = object[item]["zone"];
-            let checkedRooms = object[item]["checked"];
-            let totalRooms = object[item]["rooms"];
-            let percent = checkedRooms / totalRooms;
-            percent = String((100*percent).toFixed(5)).slice(0,5);
-            cb_dashDivHTML += `<li> 
-            <div style="display: inline;"><p class="db_cbZonep ${isMobile ? "mobile_font" : ""}">Zone ${zoneNum}: </p><p class="db_cbRoomCountp">${checkedRooms} / ${totalRooms}</p>
-            <label class="dbCbProgLabel ${isMobile ? "mobile_font" : ""}" for="${zoneNum}_prog"> ${percent}%</label>
-            <progress id="${zoneNum}_prog" value="${percent}" max="100"></progress></div>
-            </li>`;
-        }
-    }
+    let buildings = await getCampusData();
+    Object.entries(buildings).forEach(([bldg, bldg_info]) => {
+        let percent = bldg_info["checked_rooms"] / bldg_info["rooms"].length;
+        percent = String((Math.floor(10000*percent) / 100).toFixed(2)).padStart(5, "0");
+        cb_dashDivHTML += `
+            <li>
+                <div style="display:inline;"><p class="db_cbZonep ${isMobile ? "mobile_font" : "" }">${bldg}</p><p class="db_cbRoomCountp">${bldg_info["checked_rooms"]} / ${bldg_info["rooms"].length}</p>
+                <label class="dbCbProgLabel ${isMobile ? "mobile_font" : ""}" for="${bldg}_prog"> ${bldg_info["rooms"].length > 0 ? percent+"%" : "N/A" }</label>
+                <progress id="${bldg}_prog" value="${percent}" max="100"></progress>
+                </div>
+            </li>
+        `;
+    });
     cb_dashDivHTML += `</ul></fieldset>`;
     cb_dashDiv.innerHTML = cb_dashDivHTML;
     return cb_dashDiv;
-}
-
-// Parses CampusData for information. And places it in db_checker
-async function dashCheckerboard() {
-    let cb_dash = JSON.parse(sessionStorage.getItem("db_checker"));
-    let zoneObject = JSON.parse(localStorage.getItem("zoneData"));
-    let cbBuildingCounts = JSON.parse(sessionStorage.getItem("cbBuildingCounts")) || {};
-    //console.log(cb_dash);
-    // GET ZONE OBJ AND ITERATE OVER THAT AND USE THAT ARRAY TO GRAB
-    // ENTRIES OUT OF CAMPOBJECT
-    for (zone in zoneObject) {
-        let cr = 0; // Checked Rooms
-        let tr = 0; // Total Rooms
-        let bl = await getBuildingAbbrevsFromZone(zone);
-        for(bldg in bl) {
-            let building = await getBuilding(bl[bldg]);
-            // Use checked counts from checkerboard if available, otherwise use database
-            if (cbBuildingCounts[bl[bldg]] !== undefined) {
-                cr += cbBuildingCounts[bl[bldg]];
-            } else {
-                cr += building.checked_rooms;
-            }
-            tr += building.total_rooms;
-        }
-        // add to cb_dash
-        cb_dash[zone-1].checked = cr;
-        cb_dash[zone-1].rooms = tr;
-    }
-    //console.log(cb_dash);
-    // if good send to session storage
-    sessionStorage.setItem("db_checker", JSON.stringify(cb_dash));
-    let html_obj = document.getElementById("db_checker");
-    html_obj.replaceWith(await dashCheckerboardHTML());
-    return;
 }
 
 // Schedule
@@ -767,11 +729,14 @@ function renderTimeIndicator() {
 
 // Leaderboard
 function setLeader(jsonValue) {
-    // button can be '90days','30days', and '7days'
+    // button can be '365days', '90days','30days', and '7days'
     let leader = JSON.parse(localStorage.getItem("leaderboard"))[`${jsonValue}`];
     // get button ID
     let buttonId = "";
     switch (jsonValue) {
+        case '365days':
+            buttonId = "YearButton";
+            break;
         case '90days':
             buttonId = "SemesterButton";
             break;
@@ -790,7 +755,7 @@ function setLeader(jsonValue) {
     if (current.length != 0) {
         current[0].classList.remove("leader_selected");
     }
-    let newCurrent = document.getElementById(`${buttonId}`);
+    let newCurrent = document.getElementById(buttonId);
     newCurrent.classList.add("leader_selected");
 
     // Add resize listener if not already added
@@ -799,7 +764,8 @@ function setLeader(jsonValue) {
             let selectedButton = document.querySelector('.leader_selected');
             if (selectedButton) {
                 let jsonValue;
-                if (selectedButton.id === 'SemesterButton') jsonValue = '90days';
+                if (selectedButton.id === 'YearButton') jsonValue = '365days';
+                else if (selectedButton.id === 'SemesterButton') jsonValue = '90days';
                 else if (selectedButton.id === 'MonthButton') jsonValue = '30days';
                 else if (selectedButton.id === 'WeekButton') jsonValue = '7days';
                 setLeader(jsonValue);
@@ -835,7 +801,7 @@ function setLeader(jsonValue) {
         if (col2.length > COL2_WIDTH) {
             col2 = col2.slice(0, COL2_WIDTH - 4) + "...:";
         } else {
-            col2 = col2.padEnd(COL2_WIDTH + 2, " ");
+            col2 = col2.padEnd(COL2_WIDTH + -1, " ");
         }
 
         leaderString += col1 + col2 + col3 + "\n";
@@ -953,7 +919,7 @@ async function dashTickex() {
         for (let ticket of unrespondedTickets) {
             let highlightClass = ticket.has_been_viewed ? '' : 'tx_highlight_row';
             ticketRows += `
-                <tr class="tx_ticket dashboard ${highlightClass}" id="${ticket.ID}" onclick="showPopupFromDashboard(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
+                <tr class="tx_ticket dashboard ${highlightClass}" id="${ticket.ID}" onclick="showTicketPopupFromDashboard(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
                     <td>${ticket.Title}</td>
                     ${isMobile ? "" : `<td>${ticket.ID}</td>`}
                     ${isMobile ? "" : `<td>${ticket.StatusName}</td>`}
@@ -1087,8 +1053,8 @@ function toggleAutoScroll() {
     const SCROLL_TIME = 60; // in seconds
 
     const scrollOrder = [
-        "DB", "DB_30Days", "DB_90Days", "DB_Spares", 
-        "CB_1", "CB_2", "CB_3", "CB_4", "TX"
+        "DB", "DB_30Days", "DB_90Days", "DB_365Days", "DB_Spares", 
+        "CB_1", "CB_2", "CB_3", "CB_4", "TX", "AN"
     ];
 
     const autoScrollButton = document.getElementById("auto_scroll_button");
@@ -1182,6 +1148,10 @@ async function executeScrollable(param) {
             setLeader('90days');
             window.scrollTo({ top: 0, behavior: 'smooth' });
             break;
+        case "DB_365Days":
+            setLeader('365days');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            break;
         case "DB_Spares":
             const sparesElement = document.getElementById("db_spare");
             if (sparesElement) sparesElement.scrollIntoView({ behavior: 'smooth' });
@@ -1200,6 +1170,9 @@ async function executeScrollable(param) {
             break;
         case "TX":
             await setTickex(); // Resets to top of page
+            break;
+        case "AN":
+            await setAnalytics(); // Resets to top of page
             break;
         default:
             console.warn("Auto Scroll: executeScrollable(): unknown param: ", param);

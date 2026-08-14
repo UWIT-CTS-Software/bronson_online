@@ -40,11 +40,31 @@ ul {
     list-style-type: none;
 }
 
+h1 {
+    color: rgb(236, 200, 101);
+    text-align: center;
+    font-family: 'Lucida Sans', sans-serif;
+}
+
+hr {
+    border: none;
+    border-bottom: 1px inset rgb(106 86 18);
+    width: 100%;
+}
+
 p {
     color: rgb(236, 200, 101);
     text-align: center;
     font-family: 'Lucida Sans', sans-serif;
     font-size: medium;
+}
+
+hr {
+    display: block;
+    background-color: rgb(224, 193, 108);
+    width: 100%;
+    height: 1px;
+    border: none;
 }
 
 strong {
@@ -585,6 +605,11 @@ input:checked + .slider:before {
     padding: 0px 15px 0px 0px;
 }
 
+.dbCbProg {
+    overflow-y: scroll;
+    height: 250px;
+}
+
 .dbCbProgLabel {
     margin:0px 2%;
     vertical-align: middle;
@@ -734,7 +759,9 @@ progress::-webkit-progress-bar {
 .innerConsole {
     box-sizing: border-box;
     border:2px inset rgb(144, 118, 26);
-    border-radius: 5px 5px 15px 15px;
+    border-radius: 5px 5px 17px 17px;
+    margin-bottom: 1px;
+    height: 214px;
 }
 
 .cbDev {
@@ -942,6 +969,11 @@ progress::-webkit-progress-bar {
     grid-column: 2 / 3;
     grid-row: 1;
     /* float: center; */
+}
+
+.cb_legend {
+    max-height: 400px;
+    overflow-y: scroll;
 }
 
 .cb_buttonRow {
@@ -1492,6 +1524,20 @@ ol li::marker {
     grid-auto-rows: minmax(20px, auto);
 }
 
+.tx_addTicketButton {
+    grid-column: 2 / 3;
+    grid-row: 1 / 3;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.tx_addTicketButton button {
+    width: 35px;
+    height: 35px;
+    font-size: 18pt;
+}
+
 .tx_container.mobile {
     display: grid;
     grid-template-columns: repeat(100, 1fr);
@@ -1528,70 +1574,6 @@ ol li::marker {
 
 .tx_strong {
     font-size: 12pt;
-}
-
-.tx_newTicketsPopupActive {
-    max-width: 85%;
-    grid-column: 2 / 3;
-    grid-row: 1 / 3;
-    place-self: center;
-    font-size: small;
-    opacity: 100%;
-    transition: .2s ease;
-    pointer-events: none;
-    animation: flash 1.5s ease-in-out infinite;
-}
-.tx_newTicketsPopupActive.mobile {
-    grid-column: 76 / 101;
-    grid-row: 1;
-    width: 100%;
-    height: auto;
-    opacity: 100%;
-    transition: .2s ease;
-    pointer-events: none;
-    animation: flash 1.5s ease-in-out infinite;
-}
-@keyframes flash {
-    0% {
-        background-color: rgb(50, 50, 50);
-        border-radius: 15px;
-    }
-    50% {
-        background-color: rgb(80, 80, 80);
-        border-radius: 15px;
-    }
-    100% {
-        background-color: rgb(50, 50, 50);
-        border-radius: 15px;
-    }
-}
-
-.tx_newTicketsPopup {
-    max-width: 85%;
-    font-size: small;
-    grid-column: 2 / 3;
-    grid-row: 1 / 3;
-    place-self: center;
-    opacity: 0%;
-    transition: .2s ease;
-    pointer-events: none;
-}
-.tx_newTicketsPopup.mobile {
-    grid-column: 76 / 101;
-    grid-row: 1;
-    width: 100%;
-    height: auto;
-    opacity: 0%;
-    transition: .2s ease;
-    pointer-events: none;
-}
-
-.tx_newTicketsPopupActive legend {
-    font-size: 16px;
-}
-
-.tx_newTicketsPopup legend {
-    font-size: 16px;
 }
 
 .tx_dismissAllButton {
@@ -1645,24 +1627,6 @@ ol li::marker {
     background-color: rgba(236, 200, 101, 0.25);
     transition: background-color 0.5s ease;
 }
-
-.tx_ticket_closed_flash.dashboard {
-    /* No background flash on the Dashboard tab */
-    background-color: transparent !important;
-}
-.tx_ticket_closed_flash {
-    background-color: #2ed1299c;
-    animation: closedFlash 3s ease-out 2s forwards;
-}
-@keyframes closedFlash {
-    0% {
-        background-color: #2ed1299c;
-    }
-    100% {
-        background-color: transparent;
-    }
-}
-
 
 .tx_newTickets {
     background-color: rgb(50, 50, 50);
@@ -1766,6 +1730,10 @@ td.mobile_th {
   appearance: textfield; 
 }
 
+#tx_editTicketEmailCheckbox {
+    margin-left: 10px;
+}
+
 .tx_ticketContainer button {
     background-color: #ecc865;
     padding-inline: 4px;
@@ -1854,7 +1822,7 @@ td.mobile_th {
     transition: .2s ease;
 }
 
-.tx_dismissAllPopupContainer.popupActive {
+.tx_dismissAllPopupContainer.tx_popupActive {
     opacity: 1;
     pointer-events: auto;
     transition: .3s ease;
@@ -1872,15 +1840,15 @@ td.mobile_th {
 
 .dismissAllButtonConfirm {
     float: left;
-    margin: 0px 0px 3px 5px;
+    margin: 10px 0px 5px 7px;
 }
 
 .cancelPopupButton {
     float: right;
-    margin: 0px 5px 3px 0px;
+    margin: 10px 7px 5px 0px;
 }
 
-.tx_popupContainer {
+.tx_ticketPopupContainer {
     position: fixed;
     width: 100%;
     height: auto;
@@ -1898,7 +1866,7 @@ td.mobile_th {
     overflow-y: scroll;
 }
 
-.tx_popupContainer.popupActive {
+.tx_ticketPopupContainer.tx_popupActive {
     opacity: 1;
     pointer-events: auto;
     transition: .3s ease;
@@ -1908,7 +1876,7 @@ td.mobile_th {
     overflow: hidden;
 }
 
-.tx_popupContainer .tx_popupBox {
+.tx_ticketPopupContainer .tx_popupBox {
     width: 40%;
     height: fit-content;
     border: 3px solid rgb(224, 193, 108);
@@ -1917,6 +1885,157 @@ td.mobile_th {
     margin-top: 90px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
+
+.tx_createTicketText {
+    margin: 3px 0;
+}
+
+.tx_createTicketTextarea {
+    width: 98%;
+    margin: 5px;
+}
+
+.tx_textareaRequired {
+    border: 2px inset rgb(209, 23, 23);
+}
+
+.tx_textareaRequired::placeholder {
+    color: rgb(209, 23, 23);
+    opacity: 1;
+}
+
+.tx_createTicketBr {
+    margin: 4px 0;
+}
+
+.tx_newTicketPopupContainer {
+    position: fixed;
+    width: 100%;
+    height: auto;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    opacity: 0;
+    background-color: rgba(0,0,0,0.4);
+    pointer-events: none;
+    transition: .2s ease;
+}
+
+.tx_newTicketPopupContainer.tx_popupActive {
+    opacity: 1;
+    pointer-events: auto;
+    transition: .3s ease;
+}
+
+.tx_newTicketPopupContainer .tx_popupBox {
+    width: 500px;
+    height: fit-content;
+    max-height: 65%;
+    overflow-y: scroll;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 125px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.tx_editTicketPopupContainer {
+    position: fixed;
+    width: 100%;
+    height: auto;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    opacity: 0;
+    background-color: rgba(0,0,0,0.4);
+    pointer-events: none;
+    transition: .2s ease;
+}
+
+.tx_editTicketPopupContainer.tx_popupActive {
+    opacity: 1;
+    pointer-events: auto;
+    transition: .3s ease;
+}
+
+.tx_editTicketPopupContainer .tx_popupBox {
+    width: 500px;
+    height: fit-content;
+    max-height: 65%;
+    overflow-y: scroll;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 125px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+.tx_editTicketPopupContainer .tx_popupBox::-webkit-scrollbar {
+    display: block !important;
+    width: 8px;
+}
+.tx_editTicketPopupContainer .tx_popupBox::-webkit-scrollbar-thumb {
+    background: rgb(224, 193, 108);
+    border-radius: 4px;
+}
+.tx_editTicketPopupContainer .tx_popupBox::-webkit-scrollbar-track {
+    background: transparent;
+} 
+
+.tx_commentOnTicketPopupContainer {
+    position: fixed;
+    width: 100%;
+    height: auto;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    opacity: 0;
+    background-color: rgba(0,0,0,0.4);
+    pointer-events: none;
+    transition: .2s ease;
+}
+
+.tx_commentOnTicketPopupContainer.tx_popupActive {
+    opacity: 1;
+    pointer-events: auto;
+    transition: .3s ease;
+}
+
+.tx_commentOnTicketPopupContainer .tx_popupBox {
+    width: 500px;
+    height: fit-content;
+    max-height: 65%;
+    overflow-y: scroll;
+    border: 3px solid rgb(224, 193, 108);
+    background: rgb(60, 60, 60);
+    border-radius: 6px;
+    margin-top: 125px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+.tx_commentOnTicketPopupContainer .tx_popupBox::-webkit-scrollbar {
+    display: block !important;
+    width: 8px;
+}
+.tx_commentOnTicketPopupContainer .tx_popupBox::-webkit-scrollbar-thumb {
+    background: rgb(224, 193, 108);
+    border-radius: 4px;
+}
+.tx_commentOnTicketPopupContainer .tx_popupBox::-webkit-scrollbar-track {
+    background: transparent;
+} 
+
+
 .tx_popupBox.mobile {
     width: 551px;
     height: fit-content;
@@ -1949,9 +2068,18 @@ td.mobile_th {
 .tx_popupBox p {
     text-align: left;
     padding: 0px 8px;
-    white-space: nowrap;
+    /* white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
+    text-overflow: ellipsis; */
+}
+
+.tx_popupBox label {
+    margin: 5px;
+}
+
+.tx_popupBox select {
+    margin: 5px;
+    width: 97%;
 }
 
 .tx_popupWrapper {
@@ -1974,19 +2102,22 @@ td.mobile_th {
     margin-left: 5px;
 }
 
-.tx_popupContainer .tx_popupComments {
+.tx_popupComments {
+    display: flex;
+    flex-direction: column;
+    position: relative;
     max-width: 401px;
     min-width: 301px;
     width: fit-content;
-    max-height: 450px;
-    height: fit-content;
+    max-height: 500px;
+    height: 100%;
     border: 3px solid rgb(224, 193, 108);
     background: rgb(60, 60, 60);
     border-radius: 6px;
     margin-left: 10px;
     margin-bottom: 10px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    overflow-y: auto;
+    overflow-y: hidden;
 }
 .tx_popupComments.mobile {
     max-width: 401px;
@@ -1995,15 +2126,15 @@ td.mobile_th {
     scale: 135%;
 }
 
-.tx_popupComments::-webkit-scrollbar {
+.tx_commentWrapper::-webkit-scrollbar {
     display: block !important;
     width: 8px;
 }
-.tx_popupComments::-webkit-scrollbar-thumb {
+.tx_commentWrapper::-webkit-scrollbar-thumb {
     background: rgb(224, 193, 108);
     border-radius: 4px;
 }
-.tx_popupComments::-webkit-scrollbar-track {
+.tx_commentWrapper::-webkit-scrollbar-track {
     background: transparent;
 }
 
@@ -2018,58 +2149,51 @@ td.mobile_th {
     padding: 0px 10px 0 10px;
     margin: 0px 0px;
     border-radius: 0px 0px 6px 0px;
-    max-width: 90%;
+    max-width: 28%;
+    min-width: 110px;
     display: inline-block;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    flex-shrink: 0;
 }
 
 .tx_popupComments p {
     font-size: small;
     text-align: left;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     padding: 0px 8px;
 }
 
-.tx_popupContainer .tx_whatChangedBox {
-    max-width: 401px;
-    min-width: 301px;
-    width: fit-content;
-    height: fit-content;
-    border: 3px solid rgb(224, 193, 108);
-    background: rgb(60, 60, 60);
-    border-radius: 6px;
-    margin: 0 10px 10px 10px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+#tx_newCommentButton {
+    align-self: flex-end;
+    margin: 10px 7px 5px 0;
+    flex-shrink: 0;
 }
 
-.tx_whatChangedBox span {
-    color: rgb(118, 66, 28);
-    background-color: rgb(224, 193, 108);
-    font-family: "Contrail One", sans-serif;
-    font-size: 18pt;
-    font-weight: 400;
-    font-style: normal;
-    text-align: left;
-    padding: 0px 10px 0px 10px;
-    margin: 0px 0px;
-    border-radius: 0px 0px 6px 0px;
-    max-width: 90%;
-    display: inline-block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.tx_commentWrapper {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+.tx_popupCommentsHR {
+    margin: 0;
+    height: 2px;
 }
 
-.tx_whatChangedBox p {
-    text-align: left;
-    white-space: normal;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 0px 8px;
+.tx_commentList {
+    height: 100%;
+    overflow-y: auto;
+}
+
+.tx_newCommentDialog {
+    margin: 0;
+}
+
+.tx_newCommentDialog span {
+    margin-top: 0;
+    min-width: 150px;
 }
 
 .popup_closeButton {
@@ -2077,19 +2201,34 @@ td.mobile_th {
     margin: 3px;
 }
 
-.popup_dismissChanges {
-    float: right;
-    margin: 5px;
-}
-
 .popup_linkToTicket {
-    float: left;
-    margin: 0px 0px 5px 5px;
+    float: right;
+    margin: 0px 7px 5px 0px;
 }
 
 .popup_commentsButton {
-    float: left;
-    margin: 0px 0px 5px 7px;
+    float: right;
+    margin: 0px 7px 5px 0px;
+}
+
+#tx_emailCheckbox {
+    margin: 10px 0 0 10px;
+}
+
+#tx_applyChangesButton {
+    margin: 10px 0px 5px 7px
+}
+
+#tx_commentButton {
+    margin: 10px 0px 5px 7px
+}
+
+#tx_createTicketButton {
+    margin: 10px 0px 5px 7px;
+}
+
+.tx_comment {
+    margin: 8px 0 40px 0;
 }
 
 .tx_comment_header {
@@ -2141,14 +2280,14 @@ td.mobile_th {
     margin: 3px;
 }
 
-.popup_sendToASU {
-    float: right;
-    margin: 0px 7px 5px 0px;
+.popup_editTicket {
+    float: left;
+    margin: 0px 0px 5px 7px;
 }
 
-.popup_sendToHelpDesk {
-    float: right;
-    margin: 0px 7px 5px 0px;
+.popup_falseTicketButton {
+    float: left;
+    margin: 0px 0px 5px 7px;
 }
 
 .tx_adjacent {
@@ -2193,11 +2332,6 @@ p.tx_popup_DaysOld {
     margin-top: 20px;
 }
 
-p.tx_popup_Title {
-    border-bottom: 1px solid rgb(224, 193, 108);
-    padding-bottom: 15px;
-}
-
 p.tx_Description {
     max-height: 275px;
     white-space: pre-wrap;
@@ -2228,6 +2362,346 @@ p.tx_Description::-webkit-scrollbar-track {
 .tx_waiting-cursor {
     cursor: progress !important;
 }
+
+/*
+                       _       _   _            _     
+     /\               | |     | | (_)          (_)    
+    /  \   _ __   __ _| |_   _| |_ _  ___ ___   _ ___ 
+   / /\ \ | '_ \ / _` | | | | | __| |/ __/ __| | / __|
+  / ____ \| | | | (_| | | |_| | |_| | (__\__ \_| \__ \
+ /_/    \_\_| |_|\__,_|_|\__, |\__|_|\___|___(_) |___/
+                          __/ |               _/ |    
+                         |___/               |__/     
+*/
+
+.an_container {
+    background-color: rgb(50, 50, 50);
+    display: grid;
+    grid-template-columns: repeat(10,1fr);
+    grid-auto-rows: minmax(20px, auto);
+}
+
+.an_container h1 {
+    font-family: 'Optima', sans-serif;
+    margin: 0px 3px;
+}
+
+.an_loadingMessage {
+    background-color: rgb(50, 50, 50);
+    grid-column: 5 / 7;
+}
+.an_loadingMessage.mobile {
+    background-color: rgb(50, 50, 50);
+    grid-column: unset;
+    width: 120%;
+    margin-top: 25px;
+    margin-left: 25x;
+}
+
+.an_leftCol {
+    display: flex;
+    flex-direction: column;
+    grid-column: 2 / 5;
+}
+
+.an_rightCol {
+    display: flex;
+    flex-direction: column;
+    grid-column: 5 / 10;
+}
+
+.an_statsBox {
+    background-color: rgb(65, 65, 60);
+    border-radius: 7px;
+    box-shadow: 4px 4px 10px -2px;
+    margin: 5px;
+    padding: 3px 10px;
+    min-width: fit-content;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;   
+}
+
+.an_statsBox p {
+    margin: 5px !important;
+}
+
+.an_statsBox strong {
+    text-align: center;
+}
+
+#an_individualRoomcheckStats {
+    grid-column: 1 / 2;
+    grid-row: 4;
+    display: flex;
+    justify-content: center;
+}
+
+#an_individualTicketStats {
+    grid-column: 2 / 3;
+    grid-row: 4;
+    margin-bottom: 3px;
+    display: flex;
+    justify-content: center;
+}
+
+.an_individualsFieldset {
+    padding: 0px 15px;
+    min-width: 0;
+    min-height: 0;
+    overflow-x: hidden;
+}
+
+.an_individualsFieldset p {
+    justify-self: left;
+    margin: 4px 30px;
+}
+
+.an_individualsFieldset strong {
+    font-size: 21px;
+    margin: 0px 20px;
+    text-align: unset !important;
+}
+
+.an_individualsFieldset label {
+    margin: 4px 30px;
+}
+
+.an_individuals select {
+    width: fit-content;
+}
+
+.an_departmentFieldset {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 1rem;
+    row-gap: 0.75rem;
+    min-width: 0;
+    min-height: 0;
+    overflow-x: hidden;
+}
+
+#an_departmentTimePeriod {
+    grid-column: 1 / 3;
+    grid-row: 2;
+}
+
+.an_departmentFieldset hr {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    width: 100%;
+    border: none;
+    border-bottom: 1px inset rgb(106 86 18);
+    margin: 0.75rem 0;
+}
+
+#an_departmentRoomcheckStats {
+    grid-column: 1 / 2;
+    grid-row: 2;
+}
+
+#an_departmentTicketStats {
+    grid-column: 2 / 3;
+    grid-row: 2;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    height: fit-content;
+}
+
+#an_departmentGeneralStats {
+    grid-column: 1 / 3;
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: column;
+    max-height: 200px;
+}
+
+#an_statsLabel {
+    grid-column: 1 / 3; 
+    font-size: 20pt;
+}
+
+.an_departmentFieldset p {
+    justify-self: left;
+    margin: 4px 30px;
+}
+
+.an_departmentFieldset strong {
+    font-size: 21px;
+    margin: 0px 20px;
+}
+
+.an_departmentFieldset label {
+    margin: 4px 30px;
+}
+
+.an_department select {
+    width: fit-content;
+}
+
+.an_settingsFieldset {
+    min-width: 0;
+    min-height: 0;
+    overflow-x: hidden;
+}
+
+.an_adminProjectButtons {
+    float: right;
+    margin-bottom: 5px;
+}
+
+.an_hiddenRoomItem {
+    display: flex;
+    margin-left: 30px;
+}
+
+.an_hiddenRoomItem button {
+    margin: 12px 4px 0 4px;
+    width: fit-content;
+    height: fit-content;    
+}
+
+.an_projectsFieldset {
+    min-width: 0;
+    min-height: 0;
+    overflow-x: hidden;
+}
+
+.an_projectsFieldset strong {
+    margin: 0px 20px;
+}
+
+.an_projectsFieldset li {
+    color: rgb(236 200 101);
+    font-size: larger;
+    list-style-type: disc;
+}
+
+.an_projects progress {
+    /* -webket-appearance: none; */
+    width: 97%;
+    height: 20px;
+    padding: 0px 0px 0px 0px;
+    margin: 8px 0px 0px 4px;
+    vertical-align: bottom;
+    text-align: center;
+    position: relative;
+    left: 10px;
+    background-color: rgb(31, 31, 31);
+    border-radius: 10px;
+    border: 2px outset rgb(122,113,45);
+    overflow: hidden;
+}
+
+.an_projects progress::-webkit-progress-value {
+    background-color: rgb(172, 159, 64);
+}
+.an_projects progress::-moz-progress-bar {
+    background-color: rgb(167, 155, 64);
+}
+
+.an_settings p {
+    text-align: left;
+    padding: 0px 30px;
+    margin: 8px 0px;
+    margin-top: 24px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.an_settings strong {
+    font-size: 21px;
+    margin: 0px 20px;
+}
+
+.an_projectStatus {
+    margin: 0 20px 0 0 !important;
+    font-size: 18px;
+    float: right;
+}
+
+.an_projectEndDate {
+    margin: 5px 20px 0 0;
+    float: right;
+}
+
+.an_donutGraphContainer {
+    display: flex;
+}
+
+.an_donutGraph {
+    max-width: 200px;
+    width: 40%;
+    min-width: 100px;
+    margin: 0 auto;
+}
+
+.an_barGraph {
+    width: 85%;
+    min-width: 350px;
+    margin: 0 auto;
+}
+
+.an_radioOption {
+    margin: 0px 30px;
+}
+
+.an_exportButtons {
+    justify-self: right;
+    margin: 0px 30px 0px 0px;
+}
+
+.an_startExportButton {
+    float: right;
+    margin: 0px 8px 8px 0px;
+}
+
+.an_note {
+    margin: 5px 28px;
+    padding: 2px 6px;
+    width: 75%;
+}
+
+.an_noteButtons {
+    margin: 0px 0px 0px 30px;
+}
+
+@media (max-width: 1600px) {
+    .an_leftCol {
+        grid-column: 1 / 5;
+    }
+
+    .an_rightCol {
+        grid-column: 5 / 11;
+    }
+}
+
+@media (max-width: 1100px) {
+    .an_leftCol {
+        grid-column: 1 / -1;
+        grid-row: 1;
+    }
+
+    .an_rightCol {
+        grid-column: 1 / -1;
+        grid-row: 2;
+    }
+}
+.an_k-pager {
+    margin-top: 5px;
+    text-align: center;
+}
+#prevBtn{
+    float: left;
+    margin-left: 10px;
+}
+#nextBtn{
+    float: right;
+    margin-right: 10px;
+}
+
 
 /* Admin Tools */
 
@@ -3170,4 +3644,241 @@ span.psw {
     .cancelbtn {
         width: 100%;
     }
+}
+
+/*
+            _ _    _  _  
+            (_) |  (_)
+    __      ___| | ___   _
+    \ \ /\ / / | |/ / | |
+     \ V  V /| |   <| |_|
+      \_/\_/ |_|_|\_\_(_) 
+
+    Wiki Definitions
+*/ 
+.w_container {
+    /* display: flex;  */
+    /* flex-direction: row; */
+    display: grid;
+    position: relative;    
+}
+
+.w_toc {
+
+    height: fit-content;
+    grid-column: 1/2;
+    /* width: 300px */
+    width: fit-content;
+    
+}
+.w_viwer {
+    width: 750px;
+    grid-column: 2/2;
+    margin-left: 10px;
+    margin-right: 200px;
+}
+
+
+
+.w_fieldset {
+    border:5px dashed rgb(144, 118, 26);
+    margin-left: 200px;
+    margin-right: 0px;
+    grid-column:1/2;
+    overflow-y: scroll;
+    overflow-x: scroll;
+    max-height: 1000px;
+    max-width: fit-content;
+    background-color: rgb(65, 65, 60);
+    box-shadow: 5px 10px 15px;
+    border-radius: 12px;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif
+}
+
+p.toc-item{
+     border-radius: 12px;
+     text-align: left;
+     margin-left: 10px;
+     width: fit-content;
+     margin-right: 4px;
+    
+}
+
+.toc-folder{
+    width: fit-content;
+}
+
+.toc-children {
+    width: fit-content;
+}
+
+.scrollDir {
+    overflow-y: scroll;
+    overflow-x: scroll;
+    display: inline-block;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    margin-left: 25px;
+    margin-right: 25px;
+    overflow-y: scroll;
+    max-height: 500px;
+    max-width: fit-content;
+    text-align: left;
+    border-left: 3px dashed rgb(144, 118, 26); 
+}
+.scrollArt {
+    overflow-y: scroll;
+    max-height: fit-content;
+    width: 1000px;
+    text-wrap: wrap;
+    border-radius: 12px;
+    background-color: rgb(65, 65, 60);
+    box-shadow: 5px 10px 15px;
+    
+/* markdown styling  */
+   h1 {
+    color:rgb(236, 200, 101);
+    text-align: center;
+   }
+   
+   h2 {
+    color:rgb(236, 200, 101);
+    margin-left: 10px;
+   }
+   
+   h3 {
+    color:rgb(236, 200, 101);
+    margin-left: 10px;
+   }
+   ul {
+    list-style-type: square;
+   }
+   p {
+    text-align: left;
+    margin-left: 5px;
+   }
+
+   strong {
+    font-weight: bold;
+    font-size: medium;
+   }
+
+   code {
+    background-color: black;
+    color: white;
+   }
+
+   blockquote {
+    padding-left: 1rem;
+    border-left: 3px solid
+
+   }
+   
+}
+
+.wA_fieldset {
+    border:4px solid rgb(144, 118, 26);
+   
+}
+.toc-item {
+    pointer-events: auto;
+    cursor: pointer;
+    padding: 4px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    width: fit-content;
+}
+.toc-item[data-isOpen="true"] {
+     background-color: rgb(144, 118, 26);
+}
+.toc-item[data-isOpen="true"] {
+     background-color: rgb(144, 118, 26);
+}
+.toc-item[data-isOpen="true"] {
+     background-color: rgb(144, 118, 26);
+}
+
+.toc-item:hover {
+    background-color: rgb(144, 118, 26);
+    color:rgb(236, 200, 101)
+}
+
+pre {
+     white-space: pre-wrap;
+     color:rgb(236, 200, 101)
+}
+a {
+    color: rgb(49, 125, 64);
+}
+a.visited {
+  color: rgb(135,62,9)
+}
+
+.wFile_fieldset{
+    margin-top: 1px;
+    margin-bottom: 1px;
+    margin-left: 8px;
+    text-align: left;
+    white-space: pre-wrap;
+    overflow: scroll;
+    text-overflow: ellipsis;
+    font-size: larger;
+    cursor: pointer;
+    width: fit-content;
+    background-color: rgb(65, 65, 60);
+    box-shadow: 5px 10px 10px;
+    
+}
+
+.pop_fieldset{
+    z-index: 1; /* Sit on top */
+    position:absolute;
+    width:50%; /* Full width */
+    height: 50%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgb(0,0,0); /* Fallback color */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    margin-top: 60px;
+    margin-left: 25%;
+    margin-right: 25%;
+    border: 2px outset rgb(144,118,26);
+    border-radius: 15px;
+}
+.pop_fieldset_sm{
+    z-index: 1; /* Sit on top */
+    position:absolute;
+    width:30%; /* Full width */
+    height: 20%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgb(0,0,0); /* Fallback color */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    margin-top: 60px;
+    margin-left: 25%;
+    margin-right: 25%;
+    border: 2px outset rgb(144,118,26);
+    border-radius: 15px;
+}
+.wikiInput {
+    margin-left: 10%;
+    margin-right: 10%;
+    margin-top: 10%;
+    margin-bottom: 10%;
+    color:rgb(144,118,26);
+}
+
+.addFileButton{
+    z-index: 1;
+
+}
+
+.file-btn {
+    background-color: transparent;
+
+}
+
+.folder-btn {
+    background-color: transparent;
+}
+
+.delete-btn {
+    background-color: transparent;
 }

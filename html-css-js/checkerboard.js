@@ -59,16 +59,11 @@ async function run() {
     clearVisContainer();
     // Get selected zone building list
     buildStarterTopper(zone_array);
-    // iterativly go through buildings
-    // compile a hit list
-    let buildingsToCheck = [];
-    for(var i = 0; i < zone_array.length; i++) {
-        buildingsToCheck.push(...getBuildingAbbrevsFromZone(zone_array[i]));
-    }
+
     // Iterating through buildings to check
     let cbTotalBuildingResponse = [];
-    for(var i = 0; i < buildingsToCheck.length; i++) {
-        let cbBuildingResponse = await getCheckerboardByBuilding(buildingsToCheck[i]);
+    for(var i = 0; i < zone_array.length; i++) {
+        let cbBuildingResponse = await getCheckerboardByBuilding(zone_array[i]);
         // stash
         if (document.title != "CheckerBoard - Bronson") {
             stashCheckerboard(cbBuildingResponse);
@@ -112,15 +107,15 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 
 // We are currently not formatting the time in a good way, ie: 1900 is the displayed
 // time on checkerboard, so we need to have some way to make it nice.
-function FourDigitToTimeFormat(unformattedTime) {
-    let hours = unformattedTime.slice(0,2);
-    let minutes = unformattedTime.slice(2,4);
-    //console.log(hours, minutes);
-    if (hours == "TO" || hours == "00") {
-        return "TOMORROW";
+function FourDigitToTimeFormat(timestamp) {
+    let date = new Date(timestamp);
+    let now = new Date(Date.now());
+    if (((date.getMonth() * 100) + (date.getDate())) > ((now.getMonth() * 100) + (now.getDate()))) {
+        date.setHours(23);
+        date.setMinutes(59);
     }
-    hours = Number(hours);
-    minutes = Number(minutes);
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
     let suffix = " AM";
     if (hours >= 12) {
         suffix = " PM";
@@ -136,25 +131,20 @@ function buildStarterTopper(zone_array) {
     let topperContainer = document.querySelector(".cbTopperContainer");
     // Iterate through selected zones
     let HTML_cbTopperContainer = ``;
+    // Make HTML for zone Header
+    let HTML_cbTopperZone = `<div class ="cbTopperZoneHeader"> Buildings </div>`;
+    let HTML_cbTopperBuildings = `<ul class="cbTopperBuildingList">`;
     for(var i = 0; i < zone_array.length; i++) {
-        let buildingNames = getBuildingNamesFromZone(zone_array[i]);
-        let buildingAbbrev = getBuildingAbbrevsFromZone(zone_array[i]);
-        // Make HTML for zone Header
-        let HTML_cbTopperZone = `<div class ="cbTopperZoneHeader"> Zone ${zone_array[i]} </div>`;
-        let HTML_cbTopperBuildings = `<ul class="cbTopperBuildingList">`;
-        // Iterate through buildings in a given zone
-        for (var j = 0; j < buildingNames.length; j++) {
-            // Note, would be cool if this could be animated triple dot...
-            let HTML_tmp = `<li class=cbTopperBuilding id="cbTopper_${buildingAbbrev[j]}" onclick="cbJumpTo(\'cbVis_${buildingAbbrev[j]}\')">
-            <p class="cbTopperBuildingNameText">${buildingNames[j]}</p>
-            <p class="cbTopperBuildingStatus">Loading. .. </p>
-            </li>`;
-            HTML_cbTopperBuildings += HTML_tmp;
-        }
-        HTML_cbTopperBuildings += `</ul>`;
-        HTML_cbTopperZone += HTML_cbTopperBuildings;
-        HTML_cbTopperContainer += HTML_cbTopperZone;
+        // Note, would be cool if this could be animated triple dot...
+        let HTML_tmp = `<li class=cbTopperBuilding id="cbTopper_${zone_array[i]}" onclick="cbJumpTo(\'cbVis_${zone_array[i]}\')">
+        <p class="cbTopperBuildingNameText">${zone_array[i]}</p>
+        <p class="cbTopperBuildingStatus">Loading. .. </p>
+        </li>`;
+        HTML_cbTopperBuildings += HTML_tmp;
     }
+    HTML_cbTopperBuildings += `</ul>`;
+    HTML_cbTopperZone += HTML_cbTopperBuildings;
+    HTML_cbTopperContainer += HTML_cbTopperZone;
     topperContainer.innerHTML = HTML_cbTopperContainer;
     return;
 }
@@ -306,7 +296,7 @@ function toggleHideRooms() {
     if (!bool) {
         currentState = "true";
         let label = document.getElementById("cbToggleLabel");
-        label.innerHTML = "Hiding Checked Rooms";
+        label.innerHTML = "Hiding <br>Checked Rooms";
         // When showing checked rooms, remove hideVisTile from all rooms
         let allRooms = document.querySelectorAll(".cbVisRoom");
         allRooms.forEach(room => {
@@ -327,6 +317,48 @@ function toggleHideRooms() {
     }
     sessionStorage.setItem("cbHideBool", currentState);
     return;
+}
+
+function updateCheckedBuildings() {
+    let checkedCount = 0;
+    let buildings = document.getElementsByName("cb_dev");
+    for (box in buildings) {
+        if (buildings[box].checked) {
+            checkedCount += 1;
+        }
+    }
+
+    if (checkedCount == 0) {
+        let checkedBtn = document.getElementById("cb_check");
+        checkedBtn.onclick = checkAllBuildings;
+        checkedBtn.innerHTML = "Check All";
+    } else {
+        let checkedBtn = document.getElementById("cb_check");
+        checkedBtn.onclick = uncheckAllBuildings;
+        checkedBtn.innerHTML = "Uncheck All";
+    }
+}
+
+function checkAllBuildings() {
+    let buildings = document.getElementsByName("cb_dev");
+    buildings.forEach(box => {
+        box.checked = true;
+    });
+
+    let checkedBtn = document.getElementById("cb_check");
+    checkedBtn.onclick = uncheckAllBuildings;
+    checkedBtn.innerHTML = "Uncheck All";
+}
+
+function uncheckAllBuildings() {
+    let buildings = document.getElementsByName("cb_dev");
+    buildings.forEach(box => {
+        box.checked = false;
+    });
+
+    let checkedBtn = document.getElementById("cb_check");
+    checkedBtn.onclick = checkAllBuildings;
+    checkedBtn.innerHTML = "Check All";
 }
 
 async function setChecker() {
@@ -385,26 +417,30 @@ async function setChecker() {
     // map_select Section
     let map_select = document.createElement("div");
     map_select.classList.add('cb_mapSelect');
-    map_select.innerHTML = `
+
+    let building_checkboxes = `
         <fieldset>
-            <legend ${isMobile ? "class='mobile_legend'" : ""}>Zones: </legend>
-            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type ="checkbox" id="1" name="cb_dev" value="zone1"/>
-            <label for="1" ${isMobile ? "class='mobile_font'" : ""}> 
-                Zone 1</label>
+            <legend ${isMobile ? "class='mobile_legend'": ""}>Buildings: </legend>
+            <div class='cb_legend'>
+    `;
+
+    let campus = JSON.parse(localStorage.getItem("campData"));
+    Object.keys(campus).forEach(bldg => {
+        building_checkboxes += `
+            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" onclick="updateCheckedBuildings()" type="checkbox" id="${bldg}" name="cb_dev" value="${bldg}"/>
+            <label for="${bldg}" ${isMobile ? "class='mobile_font'" : ""}>
+                ${bldg}
+            </label>
             <br>
-            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="2" name="cb_dev" value="zone2"/>
-            <label for="2" ${isMobile ? "class='mobile_font'" : ""}>
-                Zone 2</label>
-            <br>
-            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="3" name="cb_dev" value="zone3"/>
-            <label for="3" ${isMobile ? "class='mobile_font'" : ""}>
-                Zone 3</label>
-            <br>
-            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="4" name="cb_dev" value="zone4"/>
-            <label for="4" ${isMobile ? "class='mobile_font'" : ""}>
-                Zone 4</label>
-            <br>
-        </fieldset>`;
+        `;
+    });
+
+    building_checkboxes += `
+        </div>
+        </fieldset>
+    `;
+
+    map_select.innerHTML = building_checkboxes;
 
     // Bottom Menu buttons
     // html options: menu
@@ -417,13 +453,15 @@ async function setChecker() {
                 Run!</button>
             <button id="cb_clear" onclick="cb_clear()" class="headButton ${isMobile ? "mobile_button" : ""}">
                 Clear</button>
+            <button id="cb_check" onclick="checkAllBuildings()" class="headButton ${isMobile ? "mobile_button" : ""}" style="float: right;">
+                Check All</button>
             <br>
             <label id="cbHideChkedRoomsToggle" class="switch ${isMobile ? "mobile_switch" : ""}">
                 <input id="cbToggleHide" type="checkbox" onclick="toggleHideRooms()">
                 <span class="slider round"></span>
             </label>
-            <label id="cbToggleLabel" for="cbHideChkedRoomsToggle" ${isMobile ? "class='mobile_font'" : ""}>
-                Showing Checked Rooms</label>
+            <label id="cbToggleLabel" for="cbHideChkedRoomsToggle" ${isMobile ? "class='mobile_font'" : ""} style="font-size: medium; float: center;">
+                Showing \nChecked Rooms</label>
         </fieldset>`;
 
     // Console Output
@@ -433,7 +471,7 @@ async function setChecker() {
         <fieldset>
             <legend ${isMobile ? "class='mobile_legend'" : ""}>Console Output: </legend>
             <div class="cbTopperContainer" id="cbTopID">
-                <p class="cfm_text ${isMobile ? "mobile_font" : ""}">Select Zone(s) and click Run to run search.</p>
+                <p class="cfm_text ${isMobile ? "mobile_font" : ""}">Select Building(s) and click Run to run search.</p>
             </div>
             <div id="cbVisConID" class="cbVisContainer">
             </div>

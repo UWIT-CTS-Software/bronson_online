@@ -13,6 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Contrail+One&family=Racing+Sans+One&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head><!-- Javascript  -->
   <script src="bronson-manager.js" type="text/javascript" charset="utf-8"></script>
   <script src="checkerboard.js" type="text/javascript" charset="utf-8"></script>
@@ -20,29 +21,19 @@
   <script src="cc-altmode.js" type="text/javascript" charset="utf-8"></script>
   <script src="jacknet.js" type="text/javascript" charset="utf-8"></script>
   <script src="tickex.js" type="text/javascript" charset="utf-8"></script>
-  <!-- <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> -->
+  <script src="wiki.js" type="text/javascript" charset="utf-8"></script>
+  <script src="analytics.js" type="text/javascript" charset="utf-8"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
+
+
 
 
     // When the user clicks anywhere outside of the modal, close it
     const hb_modal = document.getElementById('hb_menu');
     const br_modal = document.getElementById('bug_report_modal');
     const hb_button = document.getElementById('hb_button');
-    window.onclick = function(event) {
-      if (document.querySelector('.hb_menu').classList.contains("showMenu") && event.target != hb_modal && event.target != hb_button) {
-        toggleHBMenu();
-      }
-      /* if (document.querySelector(".hb_menu").classList.contains("showMenu") && event.target != hb_modal) {
-        toggleHBMenu();
-      }
-      if (event.target == hb_button) {
-        toggleHBMenu();
-      } */
-      if (event.target == br_modal) {
-        terminateForm();
-      }
-    }
-
+  
     // setInterval timers for ticket fetching
     localStorage.setItem("isDBTicketIntervalSet", false);
     localStorage.setItem("isTXTicketIntervalSet", false);
@@ -57,10 +48,20 @@
       }
     }
 
+    document.addEventListener('dblclick', (event) => {
+      const isInModal = event.target.closest('#hb_menu')
+      if(!isInModal) {
+        toggleHBMenu();
+      }
+    });
+
+
     /* setDashboard()
           Places the dashboard page, pretty baren at the moment.
     */
     async function setDashboard() {
+      // this await will cause the code responsible for setting default button selections to fail, so it's preloaded here.
+      let dbCheckerboard = await dashCheckerboardHTML();
       // History and init
       preserveCurrentTool();
       document.title = "Dashboard - Bronson";
@@ -116,6 +117,8 @@
               30 days </span></button>
             <button id="SemesterButton" onclick="setLeader('90days')" type="button" class="leaderTab semesterTab"><img class="leader_tab_img" src="button2.png"/><span> 
               90 days </span></button>
+            <button id="YearButton" onclick="setLeader('365days')" type="button" class="leaderTab yearTab"><img class="leader_tab_img" src="button2.png"/><span> 
+              365 days </span></button>
           </div>
           <textarea readonly rows="12" cols="1" class="innerConsole ${isMobile ? "mobile_font_leaderboard" : ""}" id="leaderboard" spellcheck="false">
           </textarea>
@@ -184,6 +187,7 @@
       incomingTickets.classList.add("db_tickets");
       incomingTickets.setAttribute("id", "db_tickets");
 
+      db_container.append(dbCheckerboard);
       db_container.appendChild(consoleOutput);
       db_container.appendChild(leaderboard);
       db_container.appendChild(schedule);
@@ -191,7 +195,6 @@
       db_container.appendChild(incomingTickets);
 
       // Check for client-side cached response
-      db_container.append(await dashCheckerboardHTML());
       if (sessionStorage.getItem("jn_body") != null) {
         //db_container.append(dashJackNet()); //dashJackNet() has nothing, DNE
       }
@@ -241,7 +244,7 @@
             <button class="hb_button" onclick="toggleHBMenu()">Back</button>
             <button class="hb_button" onclick="toggleFullScreen()" id="full_screen_button">Full Screen</button>
             <button class="hb_button" id="auto_scroll_button" onclick="toggleAutoScroll()">Auto Scroll: Off</button>
-            <button class="hb_button">Help / FAQ </button>
+            <button class="hb_button" onclick="setWiki()">Help / Wiki</button>
             <button class="hb_button" onclick="initForm()">Report Bug</button>
             <button class="hb_button" onclick="location.href='login.html'">Sign Out</button>
           </fieldset>
@@ -289,6 +292,9 @@
               <img class="tab_img" src="button2.png"/>
               <span> CamCode </span>
             </button>
+            <button id="ANButton" onclick="setAnalytics()" type="button" class="toolTab anTab">
+              <img class="tab_img" src="button2.png"/>
+              <span> Analytics </span>
             <button id="Notif" onclick="sendNotification(defaultNotification, 2000)" type="button" class="toolTab notifTab" style="display: none;">
               <img class="tab_img" src="button2.png"/>
               <span> Notify me! </span>

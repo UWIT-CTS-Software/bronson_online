@@ -1,0 +1,108 @@
+{
+  "TypeID": 9874,
+  "TypeCategoryID": 1747,
+  "Classification": 32,
+  "FormID": 16636,
+  "SourceID": 854,
+  "RespondedUid": "",
+  "ServiceID": 8870,
+  "ServiceCategoryID": 3284,
+  "StatusID": 1741,
+  "PriorityID": 3840,
+  "ResponsibleGroupID": 2742,
+  "AppID": 216,
+  "AccountID": 78181,
+  "Attributes": [
+    {
+      "ID": 19082,
+      "Name": "Ticket Started in Help Desk",
+      "Order": 100,
+      "Description": "",
+      "SectionID": 0,
+      "SectionName": null,
+      "FieldType": "hradio",
+      "DataType": "String",
+      "Choices": [
+        {
+          "ID": 43788,
+          "Name": "Yes",
+          "IsActive": true,
+          "DateCreated": "2016-01-04T21:00:44.68Z",
+          "DateModified": "2016-01-04T21:00:44.68Z",
+          "Order": 0
+        },
+        {
+          "ID": 43789,
+          "Name": "No",
+          "IsActive": true,
+          "DateCreated": "2016-01-04T21:00:47.41Z",
+          "DateModified": "2016-01-04T21:00:55.763Z",
+          "Order": 1
+        }
+      ],
+      "IsRequired": true,
+      "IsUpdatable": true,
+      "Value": "43789",
+      "ValueText": "No",
+      "ChoicesText": "No",
+      "AssociatedItemIDs": [
+        0
+      ]
+    },
+    {
+      "ID": 19083,
+      "Name": "Ticket Resolved in the Help Desk",
+      "Order": 101,
+      "Description": "",
+      "SectionID": 0,
+      "SectionName": null,
+      "FieldType": "hradio",
+      "DataType": "String",
+      "Choices": [
+        {
+          "ID": 43790,
+          "Name": "Yes",
+          "IsActive": true,
+          "DateCreated": "2016-01-04T21:01:30.48Z",
+          "DateModified": "2016-01-04T21:01:30.48Z",
+          "Order": 0
+        },
+        {
+          "ID": 43791,
+          "Name": "No",
+          "IsActive": true,
+          "DateCreated": "2016-01-04T21:01:33.12Z",
+          "DateModified": "2016-01-04T21:01:40.657Z",
+          "Order": 1
+        }
+      ],
+      "IsRequired": true,
+      "IsUpdatable": true,
+      "Value": "43791",
+      "ValueText": "No",
+      "ChoicesText": "No",
+      "AssociatedItemIDs": [
+        0
+      ]
+    },
+    {
+      "ID": 15679,
+      "Name": "Contact Information",
+      "Order": 0,
+      "Description": "",
+      "SectionID": 0,
+      "SectionName": null,
+      "FieldType": "textarea",
+      "DataType": "String",
+      "Choices": [],
+      "IsRequired": true,
+      "IsUpdatable": true,
+      "Value": "clrmtech@uwyo.edu",
+      "ValueText": "clrmtech@uwyo.edu",
+      "ChoicesText": "",
+      "AssociatedItemIDs": [
+        0
+      ]
+    }
+  ]
+}

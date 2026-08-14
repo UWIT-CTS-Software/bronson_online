@@ -604,7 +604,7 @@ latex_template += r"""
     \begin{minipage}{0.48\textwidth}
         \centering
 """
-latex_template += generateLatexBarGraph(time_of_day_counts, "Total Tickets per Hour", 14)
+latex_template += generateLatexBarGraph(time_of_day_counts, "Ticket Count by Hour", 14)
 latex_template += r"""
     \end{minipage}
 \end{figure}
