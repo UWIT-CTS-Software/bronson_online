@@ -1559,13 +1559,13 @@ impl Request {
 			return "".to_string();
 		}
 
-		let username_search = Regex::new("^(?<username>.*)=(?<key>.*=.*)").unwrap();
-		let uname = match username_search.captures(self.headers.get("Cookie").unwrap()) {
-            Some(uname) => uname,
-            None => panic!("Unable to capture username.")
-        };
-
-		return uname["username"].to_string();
+		let username_search = Regex::new("^[^=]*").unwrap();
+		let cookie = self.headers.get("Cookie").unwrap();
+		
+		match username_search.find(cookie) {
+			Some(matched) => matched.as_str().to_string(),
+			None => panic!("Unable to capture username.")
+		}
 	}
 }
 
