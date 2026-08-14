@@ -162,6 +162,17 @@ async function exportButton() {
         optionalData[sectionId] = notes;
     });
 
+    // Handle custom date range
+    if (timePeriod === 5) {
+        const customRange = getCustomDateRange();
+        if (!customRange) {
+            alert("Please enter valid custom dates before exporting.");
+            return;
+        }
+        optionalData.custom_start_date = customRange.startDate.toISOString().split('T')[0];
+        optionalData.custom_end_date = customRange.endDate.toISOString().split('T')[0];
+    }
+
     // TODO: Disable "Export to PDF" button while action in progress
 
     const pdfBlob = await fetchExportedPDF(timePeriod, optionalData);
@@ -265,6 +276,7 @@ function showExport() {
                 <button onclick="exportButton()">Export to PDF</button>
                 <button onclick="showSettings()">Cancel</button>
             </div>
+            <p style="float: right; font-size: 10pt; margin-top: 6px;">*Larger reports take longer to generate</p>
         </fieldset>
     `;
 
@@ -1178,7 +1190,7 @@ async function setAnalytics() {
 
             ${adminTechSelectorHTML}
 
-            <p>Note: "My Analytics" Widget is unavailable for development until we have shibboleth</p>
+            <p>Dev Note: "My Analytics" Widget is unavailable for development until we have shibboleth</p>
 
             <strong><u>Room Checks:</u></strong>
             <div id="an_individualRoomcheckStats">
