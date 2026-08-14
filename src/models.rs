@@ -245,7 +245,7 @@ pub struct DB_DataElement {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable, AsChangeset, Default)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Queryable, Selectable, Insertable, AsChangeset, Default, Clone)]
 #[diesel(table_name = tickets)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct DB_Ticket {

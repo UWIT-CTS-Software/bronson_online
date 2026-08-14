@@ -110,6 +110,8 @@ const TICKETID_BLACKLIST = [
 // Stores up to 100 ticket description for every ticket
 const MAX_DESC_CACHE = 100;
 
+
+
     /* -------------------- Helpers -------------------- */
 
 // Simple delay/wait function
@@ -559,26 +561,22 @@ async function dismissAll(confirmed) {
         // Display loading message while fetching tickets
         let button = document.getElementById("tx_dismissAllButton");
         button.disabled = true;
+        button.textContent = "Clearing...";
 
-        let ellipsis = "";
-        const ellipsisInterval = setInterval(() => {
-            ellipsis += ".";
-            if (ellipsis.length > 3) ellipsis = "";
-            button.textContent = `Clearing${ellipsis}`;
-        }, 1000); // every 1 second
 
-        for (const ticket of window.currentTickets) {
-            if (ticket && !ticket.has_been_viewed) {
-                await updateTicketViewed(ticket.ID, true);
-                
-                let tick = document.querySelectorAll(`[id="${ticket.ID}"]`);
-                tick.forEach(t => {
-                    t.classList.remove("tx_highlight_row");
-                });
+        // remove highlights from all tickets if the dismiss all request is successful
+        if (await updateAllTicketsViewed()) {
+            for (const ticket of window.currentTickets) {
+                if (ticket) {
+                    ticket.has_been_viewed = true;
+                    let tick = document.querySelectorAll(`[id="${ticket.ID}"]`);
+                    tick.forEach(ticketRow => {
+                        if (ticketRow) ticketRow.classList.remove("tx_highlight_row");
+                    });
+                }
             }
         }
 
-        clearInterval(ellipsisInterval);
         button.textContent = "Dismiss All";
         button.disabled = false;
     }
@@ -1273,9 +1271,9 @@ function initBoard() {
         // Hard-coded blacklist for tickets that we don't want showing up in Tickex
         if (TICKETID_BLACKLIST.includes(ticket.ID)) continue;
 
-        let highlightClass = ticket.has_been_viewed ? '' : 'tx_highlight_row';
+        let isHighlighted = !ticket.has_been_viewed ? 'tx_highlight_row' : '';
         let ticketRow = `
-            <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showTicketPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
+            <tr class="tx_ticket ${isHighlighted}" id="${ticket.ID}" onclick="showTicketPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
                 <td>${ticket.Title}</td>
                 ${isMobile ? "" : `<td>${ticket.ID}</td>`}
                 <td>${ticket.StatusName}</td>
@@ -1283,15 +1281,10 @@ function initBoard() {
         `;
 
         // If less than 14 days old or status == new
-        const isNew = (Date.now() - new Date(ticket.CreatedDate) < 14 * 24 * 60 * 60 * 1000 
-                    || ticket.StatusName === 'New') 
-                    && ticket.StatusName !== 'Closed'
-                    && ticket.StatusName !== 'Cancelled'
-                    && ticket.StatusName !== 'Resolved';
+        const isNew = (Date.now() - new Date(ticket.CreatedDate) < 14 * 24 * 60 * 60 * 1000 || ticket.StatusName === 'New') 
+                    && ticket.StatusName !== 'Closed' && ticket.StatusName !== 'Cancelled' && ticket.StatusName !== 'Resolved';
 
-        const isClosed = ticket.StatusName === 'Closed' 
-                      || ticket.StatusName === 'Cancelled'
-                      || ticket.StatusName === 'Resolved';
+        const isClosed = ticket.StatusName === 'Closed' || ticket.StatusName === 'Cancelled' || ticket.StatusName === 'Resolved';
 
         // Ensure k-pager rows are displaying corresponding to current page number
         if (isNew) {
@@ -1308,7 +1301,7 @@ function initBoard() {
         }
         if (isClosed) {
             let closedRow = `
-                <tr class="tx_ticket ${highlightClass}" id="${ticket.ID}" onclick="showTicketPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
+                <tr class="tx_ticket" id="${ticket.ID}" onclick="showTicketPopup(${JSON.stringify(ticket).replace(/"/g, '&quot;')}, this)">
                     <td>${ticket.Title}</td>
                     ${isMobile ? "" : `<td>${ticket.ID}</td>`}
                 </tr>
@@ -1535,6 +1528,27 @@ async function updateTicketViewed(ticketID, viewed) {
         if (!response.ok) console.error('Failed to update ticket viewed status');
     } catch (error) {
         console.error('Error updating ticket viewed status:', error);
+    }
+}
+
+async function updateAllTicketsViewed() {
+    try {
+        // Make a single backend call to dismiss all tickets at once
+        const response = await fetch('/update/ticket/dismissAll', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) return true;
+        else {
+            console.error("Failed to dismiss all tickets");
+            return false;
+        }
+    } catch (error) {
+        console.error("Error dismissing all tickets:", error);
+        return false;
     }
 }
 
@@ -1949,16 +1963,6 @@ async function setTickex(openTicketByID = -1) {
 
                     // New tickets found
                     if (actuallyNew.length > 0) {
-                        // Mark new tickets as not viewed
-                        actuallyNew.forEach(ticket => {
-                            updateTicketViewed(ticket.ID, false); // mark as not viewed
-                            removeFromCache(ticket.ID); // Clear cache for this ticket so new description/comments will be fetched
-
-                            // Update local copy immediately
-                            const index = newTickets.findIndex(t => t.ID === ticket.ID);
-                            if (index !== -1) newTickets[index].has_been_viewed = false;
-                        });
-
                         // Check if user is currently on Tickex page
                         const txButton = document.getElementById("TXButton");
                         if (!(txButton && txButton.classList.contains("selected"))) 
@@ -1981,11 +1985,6 @@ async function setTickex(openTicketByID = -1) {
                                 if (t) {
                                     updateTicketViewed(ticket.ID, true); // mark as viewed
                                     t.classList.remove("tx_highlight_row");
-                                    t.classList.add("tx_ticket_closed_flash");
-
-                                    setTimeout(() => {
-                                        t.classList.remove("tx_ticket_closed_flash");
-                                    }, 3000);
                                 }
                             });
                         });
@@ -1997,9 +1996,7 @@ async function setTickex(openTicketByID = -1) {
 
     // Instantly opens up the provided ticket upon page loadup
     const t = window.ticketById?.get(openTicketByID);
-    if (openTicketByID != -1 && t) { // -1: default for no popup on loadup
-        showTicketPopup(t); 
-    }
+    if (openTicketByID != -1 && t) showTicketPopup(t); // -1: default for no popup on loadup
 
     await Promise.resolve();
 }

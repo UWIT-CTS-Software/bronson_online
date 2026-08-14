@@ -1622,24 +1622,6 @@ ol li::marker {
     transition: background-color 0.5s ease;
 }
 
-.tx_ticket_closed_flash.dashboard {
-    /* No background flash on the Dashboard tab */
-    background-color: transparent !important;
-}
-.tx_ticket_closed_flash {
-    background-color: #2ed1299c;
-    animation: closedFlash 3s ease-out 2s forwards;
-}
-@keyframes closedFlash {
-    0% {
-        background-color: #2ed1299c;
-    }
-    100% {
-        background-color: transparent;
-    }
-}
-
-
 .tx_newTickets {
     background-color: rgb(50, 50, 50);
     grid-column: 2 / 5;

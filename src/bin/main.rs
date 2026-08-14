@@ -1064,6 +1064,22 @@ async fn handle_connection(
                 .status(STATUS_200)
                 .send_contents("".into())
         },
+        "POST /update/ticket/dismissAll HTTP/1.1" => {
+            let _ = match dismiss_all_tickets(&mut database).await {
+                Ok(v) => v,
+                Err(e) => {
+                    error!("Failed to dismiss all tickets: {}", e);
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents("[]".into())
+                        .build();
+                }
+            };
+
+            Response::new()
+                .status(STATUS_200)
+                .send_contents("".into())
+        },
         "GET /projects HTTP/1.1" => {
             if database.check_if_projects_empty() {
                 match fetch_projects(&mut database, &tdx_client).await {
@@ -3476,6 +3492,21 @@ async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_j
     info!("[Data] - Successfully updated ticket parent state (Ticket ID: {}, ParentID: {})", id, new_parent_id);
 
     Ok(())
+}
+
+async fn dismiss_all_tickets(database: &mut Database) -> Result<(), String> {
+    info!("[Data] - Dismissing all tickets notifications");
+
+    match database.mark_all_tickets_as_viewed() {
+        Ok(count) => {
+            info!("[Data] - Successfully dismissed {} ticket notifications", count);
+            Ok(())
+        }
+        Err(e) => {
+            error!("[Data] - Failed to mark all tickets as viewed: {}", e);
+            Err(format!("Failed to mark all tickets as viewed: {}", e))
+        }
+    }
 }
 
 async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Value, username: String) -> Result<(), String> {
