@@ -32,7 +32,6 @@ TOC:
   Dashboard Helpers
     - initCheckerboardStorage()
     - dashCheckerboardHTML()
-    - dashCheckerboard()
     - setSchedule(buttonID)
     - setUserSchedule() ------------------------------------- DB_TODO / SSO
     - makeTechTableHeader(firstColumn)
@@ -116,7 +115,6 @@ async function initLocalStorage() {
     // Once data is loaded, set default tab selection
     if(document.title.includes("Dashboard")) {
         setDashboardDefaults();
-        dashCheckerboard(); // poplate cb_dash
         dashSpares(); // populate db_spares
         dashTickex();
     }
@@ -208,7 +206,6 @@ function setDashboardDefaults() {
     setSchedule(todayButton);
     // populate overview
     // let db_checker_obj = getElementsByClassName("db_checker")[0];
-    // db_checker_obj.innerHTML = dashCheckerboard();
     return;
 }
 
@@ -517,61 +514,26 @@ async function dashCheckerboardHTML() {
     let cb_dashDivHTML = `
     <fieldset>
         <legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}>
-            Checkerboard Zone Overview
+            Checkerboard Building Overview
         </legend>
-    <ul>
+    <ul class="dbCbProg">
     `;
-    for (item in object) {
-        if (object[item]["rooms"] != 0) {
-            let zoneNum = object[item]["zone"];
-            let checkedRooms = object[item]["checked"];
-            let totalRooms = object[item]["rooms"];
-            let percent = checkedRooms / totalRooms;
-            percent = String((100*percent).toFixed(5)).slice(0,5);
-            cb_dashDivHTML += `<li> 
-            <div style="display: inline;"><p class="db_cbZonep ${isMobile ? "mobile_font" : ""}">Zone ${zoneNum}: </p><p class="db_cbRoomCountp">${checkedRooms} / ${totalRooms}</p>
-            <label class="dbCbProgLabel ${isMobile ? "mobile_font" : ""}" for="${zoneNum}_prog"> ${percent}%</label>
-            <progress id="${zoneNum}_prog" value="${percent}" max="100"></progress></div>
-            </li>`;
-        }
-    }
+    let buildings = await getCampusData();
+    Object.entries(buildings).forEach(([bldg, bldg_info]) => {
+        let percent = bldg_info["checked_rooms"] / bldg_info["rooms"].length;
+        percent = String((Math.floor(10000*percent) / 100).toFixed(2)).padStart(5, "0");
+        cb_dashDivHTML += `
+            <li>
+                <div style="display:inline;"><p class="db_cbZonep ${isMobile ? "mobile_font" : "" }">${bldg}</p><p class="db_cbRoomCountp">${bldg_info["checked_rooms"]} / ${bldg_info["rooms"].length}</p>
+                <label class="dbCbProgLabel ${isMobile ? "mobile_font" : ""}" for="${bldg}_prog"> ${bldg_info["rooms"].length > 0 ? percent+"%" : "N/A" }</label>
+                <progress id="${bldg}_prog" value="${percent}" max="100"></progress>
+                </div>
+            </li>
+        `;
+    });
     cb_dashDivHTML += `</ul></fieldset>`;
     cb_dashDiv.innerHTML = cb_dashDivHTML;
     return cb_dashDiv;
-}
-
-// Parses CampusData for information. And places it in db_checker
-async function dashCheckerboard() {
-    let cb_dash = JSON.parse(sessionStorage.getItem("db_checker"));
-    let zoneObject = JSON.parse(localStorage.getItem("zoneData"));
-    let cbBuildingCounts = JSON.parse(sessionStorage.getItem("cbBuildingCounts")) || {};
-    //console.log(cb_dash);
-    // GET ZONE OBJ AND ITERATE OVER THAT AND USE THAT ARRAY TO GRAB
-    // ENTRIES OUT OF CAMPOBJECT
-    for (zone in zoneObject) {
-        let cr = 0; // Checked Rooms
-        let tr = 0; // Total Rooms
-        let bl = await getBuildingAbbrevsFromZone(zone);
-        for(bldg in bl) {
-            let building = await getBuilding(bl[bldg]);
-            // Use checked counts from checkerboard if available, otherwise use database
-            if (cbBuildingCounts[bl[bldg]] !== undefined) {
-                cr += cbBuildingCounts[bl[bldg]];
-            } else {
-                cr += building.checked_rooms;
-            }
-            tr += building.total_rooms;
-        }
-        // add to cb_dash
-        cb_dash[zone-1].checked = cr;
-        cb_dash[zone-1].rooms = tr;
-    }
-    //console.log(cb_dash);
-    // if good send to session storage
-    sessionStorage.setItem("db_checker", JSON.stringify(cb_dash));
-    let html_obj = document.getElementById("db_checker");
-    html_obj.replaceWith(await dashCheckerboardHTML());
-    return;
 }
 
 // Schedule
@@ -793,7 +755,7 @@ function setLeader(jsonValue) {
     if (current.length != 0) {
         current[0].classList.remove("leader_selected");
     }
-    let newCurrent = document.getElementById(`${buttonId}`);
+    let newCurrent = document.getElementById(buttonId);
     newCurrent.classList.add("leader_selected");
 
     // Add resize listener if not already added

@@ -605,6 +605,11 @@ input:checked + .slider:before {
     padding: 0px 15px 0px 0px;
 }
 
+.dbCbProg {
+    overflow-y: scroll;
+    max-height: 400px;
+}
+
 .dbCbProgLabel {
     margin:0px 2%;
     vertical-align: middle;
