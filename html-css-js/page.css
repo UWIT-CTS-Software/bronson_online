@@ -607,7 +607,7 @@ input:checked + .slider:before {
 
 .dbCbProg {
     overflow-y: scroll;
-    max-height: 400px;
+    height: 250px;
 }
 
 .dbCbProgLabel {
@@ -759,7 +759,9 @@ progress::-webkit-progress-bar {
 .innerConsole {
     box-sizing: border-box;
     border:2px inset rgb(144, 118, 26);
-    border-radius: 5px 5px 15px 15px;
+    border-radius: 5px 5px 17px 17px;
+    margin-bottom: 1px;
+    height: 214px;
 }
 
 .cbDev {
