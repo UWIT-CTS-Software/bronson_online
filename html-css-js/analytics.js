@@ -175,10 +175,17 @@ async function exportButton() {
         optionalData.custom_end_date = customRange.endDate.toISOString().split('T')[0];
     }
 
-    // TODO: Disable "Export to PDF" button while action in progress
+    const exportButton = document.getElementById("an_exportToPDFButton");
+    exportButton.disabled = true;
+    exportButton.textContent = "Generating PDF...";
 
     const pdfBlob = await fetchExportedPDF(timePeriod, optionalData);
-    if (!pdfBlob) return; // TODO: Alert then Re-enable button
+    if (!pdfBlob) {
+        alert("Failed to generate PDF.");
+        exportButton.disabled = false;
+        exportButton.textContent = "Export to PDF";
+        return;
+    }
 
     let reportPeriod = "ERROR";
     if (timePeriod === 0) reportPeriod = "Week";
@@ -197,7 +204,8 @@ async function exportButton() {
     a.click();
     URL.revokeObjectURL(url);
 
-    // TODO: Re-enable button
+    exportButton.disabled = false;
+    exportButton.textContent = "Export to PDF";
 
     showSettings();
 }
@@ -295,7 +303,8 @@ function showExport() {
                 <button id="an_exportToPDFButton" onclick="exportButton()">Export to PDF</button>
                 <button onclick="showSettings()">Cancel</button>
             </div>
-            <p style="float: right; font-size: 10pt; margin-top: 6px;">*Larger reports take longer to generate</p>
+            <p style="float: right; font-size: 10pt; margin-top: 6px; margin-bottom: 0px;">*Larger reports take longer to generate, up to 10 minutes.</p>
+            <p style="float: right; font-size: 10pt; margin-top: 0px;">Do not close the browser while generating...</p>
         </fieldset>
     `;
 
