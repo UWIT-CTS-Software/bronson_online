@@ -605,6 +605,11 @@ input:checked + .slider:before {
     padding: 0px 15px 0px 0px;
 }
 
+.dbCbProg {
+    overflow-y: scroll;
+    height: 250px;
+}
+
 .dbCbProgLabel {
     margin:0px 2%;
     vertical-align: middle;
@@ -754,7 +759,9 @@ progress::-webkit-progress-bar {
 .innerConsole {
     box-sizing: border-box;
     border:2px inset rgb(144, 118, 26);
-    border-radius: 5px 5px 15px 15px;
+    border-radius: 5px 5px 17px 17px;
+    margin-bottom: 1px;
+    height: 214px;
 }
 
 .cbDev {
@@ -961,14 +968,13 @@ progress::-webkit-progress-bar {
     background-color: rgb(50, 50, 50);
     grid-column: 2 / 3;
     grid-row: 1;
-    max-height: 400px;
-    overflow-y: scroll;
     /* float: center; */
 }
 
-/* .cb_legend {
+.cb_legend {
+    max-height: 400px;
     overflow-y: scroll;
-} */
+}
 
 .cb_buttonRow {
     background-color: rgb(50, 50, 50);

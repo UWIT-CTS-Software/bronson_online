@@ -60,6 +60,8 @@
           Places the dashboard page, pretty baren at the moment.
     */
     async function setDashboard() {
+      // this await will cause the code responsible for setting default button selections to fail, so it's preloaded here.
+      let dbCheckerboard = await dashCheckerboardHTML();
       // History and init
       preserveCurrentTool();
       document.title = "Dashboard - Bronson";
@@ -185,6 +187,7 @@
       incomingTickets.classList.add("db_tickets");
       incomingTickets.setAttribute("id", "db_tickets");
 
+      db_container.append(dbCheckerboard);
       db_container.appendChild(consoleOutput);
       db_container.appendChild(leaderboard);
       db_container.appendChild(schedule);
@@ -192,7 +195,6 @@
       db_container.appendChild(incomingTickets);
 
       // Check for client-side cached response
-      db_container.append(await dashCheckerboardHTML());
       if (sessionStorage.getItem("jn_body") != null) {
         //db_container.append(dashJackNet()); //dashJackNet() has nothing, DNE
       }
