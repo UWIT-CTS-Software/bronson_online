@@ -4463,28 +4463,6 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
     return Ok(());
 }
 
-//rustdoc 
-/// Function creates a pdf with information concurrent to that currently displayed by the analytics page. 
-/// 
-/// Note: The PDF engine used creates the file from which the contents are grabbed and then the file is deleted. So only the user has local copy of the export. 
-/// Nothing is stored in the Bronson Database.
-/// ### Parameters 
-///  * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
-///  * `time_period` - the current time period given by radio button selection made on the front end. 
-///  * `optional_data` - information grabbed from the JSON body. 
-/// ### Returns 
-/// * Upon Success - String containing the filename created. (to be deleted) 
-/// * Upon failure - Returns Error with String description of the associating error. 
-/// ### Example 
-/// call in [`handle_connection`]
-/// ``` no_run
-///   let file_name = match export_to_pdf(&mut database, time_period, optional_data).await {
-///          Ok(f) => f,
-///          Err(e) => {
-///           error!("Failed to export PDF: {}", e);
-///        }
-///     };
-/// ```
 async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data: serde_json::Value) -> Result<String, String> {
     // Helper: get date range based on time_period
     let get_date_range = |period: i16| -> (DateTime<Utc>, DateTime<Utc>) {
@@ -4904,7 +4882,7 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
         \end{document}
     "#;
 
-    // Generate file name using timestamp
+    // Genereate file name using timestamp
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let file_name = format!("report_{}", timestamp);
 
@@ -5007,21 +4985,6 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
     Ok(file_name)
 }
 
-//rustdoc 
-/// Function deletes temp files used to generate the export from analytics. 
-/// ### Parameters 
-/// * `filename` - the String returned from [`export_to_pdf`]
-/// ### Returns 
-/// * Upon Success - Return OK()
-/// * Upon Failure -  Returns Error with String description of the associating error. 
-/// ### Example 
-/// call to [`handle_connection`]
-/// ``` no_run
-/// match cleanup_temp_files(file_name).await {
-///      Ok(_) => (),
-///      Err(e) => error!("Failed to clean up temporary files: {}", e),
-///    };
-/// ```
 async fn cleanup_temp_files(file_name: String) -> Result<(), String> {
     if !dir_exists(TEMP_DIR) {
         return Err(format!("Missing Temp Directory: ./generated_files/temp does not exist"));
