@@ -1186,10 +1186,7 @@ async fn handle_connection(
                 .status(STATUS_200)
                 .send_file(report_path.as_str());
 
-            match cleanup_temp_files(file_name).await {
-                Ok(_) => (),
-                Err(e) => error!("Failed to clean up temporary files: {}", e),
-            };
+            let _ = cleanup_temp_files(file_name).await;
 
             resp_ret
         },
@@ -4483,6 +4480,7 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
     return Ok(());
 }
 
+<<<<<<< HEAD
 //rustdoc 
 /// Function creates a pdf with information concurrent to that currently displayed by the analytics page. 
 /// 
@@ -4505,6 +4503,8 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
 ///        }
 ///     };
 /// ```
+=======
+>>>>>>> d32d69e (Analytics: All things exporting fixed)
 async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data: serde_json::Value) -> Result<String, String> {
     // Helper: get date range based on time_period
     let get_date_range = |period: i16| -> (DateTime<Utc>, DateTime<Utc>) {
@@ -4924,7 +4924,11 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
         \end{document}
     "#;
 
+<<<<<<< HEAD
     // Generate file name using timestamp
+=======
+    // Genereate file name using timestamp
+>>>>>>> d32d69e (Analytics: All things exporting fixed)
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let file_name = format!("report_{}", timestamp);
 
@@ -5027,6 +5031,7 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
     Ok(file_name)
 }
 
+<<<<<<< HEAD
 //rustdoc 
 /// Function deletes temp files used to generate the export from analytics. 
 /// ### Parameters 
@@ -5042,6 +5047,8 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
 ///      Err(e) => error!("Failed to clean up temporary files: {}", e),
 ///    };
 /// ```
+=======
+>>>>>>> d32d69e (Analytics: All things exporting fixed)
 async fn cleanup_temp_files(file_name: String) -> Result<(), String> {
     if !dir_exists(TEMP_DIR) {
         return Err(format!("Missing Temp Directory: ./generated_files/temp does not exist"));
