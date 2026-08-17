@@ -1186,7 +1186,10 @@ async fn handle_connection(
                 .status(STATUS_200)
                 .send_file(report_path.as_str());
 
-            let _ = cleanup_temp_files(file_name).await;
+            match cleanup_temp_files(file_name).await {
+                Ok(_) => (),
+                Err(e) => error!("Failed to clean up temporary files: {}", e),
+            };
 
             resp_ret
         },
