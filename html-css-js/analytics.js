@@ -789,8 +789,7 @@ async function renderProjects() {
                 </a>
                 ${adminButtons}
             </div>
-            <br>
-            
+            <hr style="margin: 3px 0;">
         `;
 
         if (i < currentProjects.length - 1) {
