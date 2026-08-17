@@ -2547,8 +2547,8 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .an_adminProjectButtons {
-    float: right;
-    margin-bottom: 5px;
+    float: left;
+    margin: 0 0 5px 7px;
 }
 
 .an_hiddenRoomItem {
