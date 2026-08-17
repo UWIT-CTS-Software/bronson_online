@@ -1616,6 +1616,7 @@ impl Response {
 			"css"  => self.headers.insert(content_type, String::from("text/css")),
 			"js"   => self.headers.insert(content_type, String::from("text/javascript")),
 			"json" => self.headers.insert(content_type, String::from("application/json")),
+			"pdf" => self.headers.insert(content_type, String::from("application/pdf")),
 			"zip"  => {
 				self.headers.insert(content_type, String::from("application/zip"));
 				let attachment_string = format!("attachment; filename=\"{}\"", filepath);

@@ -1138,8 +1138,8 @@ async fn handle_connection(
             let time_period = body_json["timePeriod"].as_i64().unwrap_or(0) as i16;
             let optional_data = body_json["optionalData"].clone();
 
-            match export_to_pdf(&mut database, time_period, optional_data).await {
-                Ok(()) => (),
+            let file_name = match export_to_pdf(&mut database, time_period, optional_data).await {
+                Ok(f) => f,
                 Err(e) => {
                     error!("Failed to export PDF: {}", e);
                     return Response::new()
@@ -1147,9 +1147,9 @@ async fn handle_connection(
                         .send_contents("Failed to generate PDF".into())
                         .build();
                 }
-            }
+            };
 
-            let report_path = format!("{}/report.pdf", TEMP_DIR);
+            let report_path = format!("{}/{}.pdf", TEMP_DIR, &file_name);
             if !dir_exists(report_path.as_str()) {
                 return Response::new()
                     .status(STATUS_500)
@@ -1157,11 +1157,16 @@ async fn handle_connection(
                     .build();
             }
 
-            let _ = cleanup_temp_dir().await;
-
-            Response::new()
+            let resp_ret = Response::new()
                 .status(STATUS_200)
-                .send_file(report_path.as_str())
+                .send_file(report_path.as_str());
+
+            match cleanup_temp_files(file_name).await {
+                Ok(_) => (),
+                Err(e) => error!("Failed to clean up temporary files: {}", e),
+            };
+
+            resp_ret
         },
         "POST /update/projects/hidden HTTP/1.1" => {
             // Parse JSON body
@@ -4073,10 +4078,37 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
     return Ok(());
 }
 
-async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data: serde_json::Value) -> Result<(), String> {
+async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data: serde_json::Value) -> Result<String, String> {
     // Helper: get date range based on time_period
     let get_date_range = |period: i16| -> (DateTime<Utc>, DateTime<Utc>) {
         let now = Utc::now();
+        
+        // Handle custom date range separately
+        if period == 5 {
+            if let Some(custom_start) = optional_data.get("custom_start_date").and_then(|v| v.as_str()) {
+                if let Ok(date) = chrono::NaiveDate::parse_from_str(custom_start, "%Y-%m-%d") {
+                    let start_dt = DateTime::<Utc>::from_naive_utc_and_offset(
+                        date.and_hms_opt(0, 0, 0).unwrap(),
+                        Utc
+                    );
+                    // Parse custom end date
+                    if let Some(custom_end) = optional_data.get("custom_end_date").and_then(|v| v.as_str()) {
+                        if let Ok(end_date) = chrono::NaiveDate::parse_from_str(custom_end, "%Y-%m-%d") {
+                            let end_dt = DateTime::<Utc>::from_naive_utc_and_offset(
+                                end_date.and_hms_opt(23, 59, 59).unwrap(),
+                                Utc
+                            );
+                            return (start_dt, end_dt);
+                        }
+                    }
+                    // If end date fails, use now as end
+                    return (start_dt, now);
+                }
+            }
+            // Fallback to 7 days if custom dates are not provided or invalid
+            return (now - TimeDelta::days(7), now);
+        }
+        
         let start = match period {
             0 => now - TimeDelta::days(7),
             1 => now - TimeDelta::days(30),
@@ -4224,6 +4256,40 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
                     1 => "30days",
                     2 => "90days",
                     3 | 4 => "365days",
+                    5 => {
+                        let custom_start = optional_data
+                            .get("custom_start_date")
+                            .and_then(|v| v.as_str())
+                            .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok());
+
+                        let custom_end = optional_data
+                            .get("custom_end_date")
+                            .and_then(|v| v.as_str())
+                            .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok());
+
+                        // Round custom dates to closest available time period
+                        match (custom_start, custom_end) {
+                            (Some(start), Some(end)) => {
+                                let days = (end - start).num_days();
+
+                                let frames = [7, 30, 90, 365];
+                                let closest = frames
+                                    .iter()
+                                    .min_by_key(|&&frame| (frame - days).abs())
+                                    .copied()
+                                    .unwrap_or(7);
+
+                                match closest {
+                                    7 => "7days",
+                                    30 => "30days",
+                                    90 => "90days",
+                                    365 => "365days",
+                                    _ => "7days",
+                                }
+                            }
+                            _ => "7days",
+                        }
+                    },
                     _ => "7days",
                 };
                 
@@ -4340,7 +4406,7 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
         \begin{document}
          \begin{landscape} % Orient the page in landscape mode
  
-         \title{\textbf{\huge CTS Analytics - [[ time_frame ]]}}
+         \title{\textbf{\huge CTS Analytics: [[ time_frame ]]}}
          \author{} % Leave blank
          \date{} % Leave blank
  
@@ -4367,11 +4433,9 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
             \begin{tabular}{ c|c|c|c } 
                 {\small Tickets Created}                 & {\small Tickets Closed}                 & {\small Current Open Tickets}                 & {\small False Tickets}                \\ 
                 {\LARGE \textbf{[[ tickets_created ]]}}  & {\LARGE \textbf{[[ tickets_closed ]]}}  & {\LARGE \textbf{[[ current_open_tickets ]]}}  & {\LARGE \textbf{[[ false_tickets ]]}} \\ 
-                {\small Last sss: ddd}                     & {\small Last sss: ddd}                    & {\small Last sss: ddd}                          & {}                                    \\
             \hline
                 {\small Room Checks Performed}                 & {\small Tickets from Room Checks}                 & {\small WyoCast / Event Tickets}              & {\small PC Related Tickets}                \\ 
                 {\LARGE \textbf{[[ room_checks_performed ]]}}  & {\LARGE \textbf{[[ tickets_from_room_checks ]]}}  & {\Large \textbf{[[ wycast_event_tickets ]]}}  & {\Large \textbf{[[ pc_related_tickets ]]}} \\ 
-                {\small Last sss: ddd}                           & {}                                                & {}                                            & {}                                         \\ 
             \end{tabular}
             \end{center}
     
@@ -4432,26 +4496,51 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
          \end{landscape}
         \end{document}
     "#;
-    match tera.add_raw_template("report.tex", latex_template) {
+
+    // Genereate file name using timestamp
+    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+    let file_name = format!("report_{}", timestamp);
+
+    match tera.add_raw_template(&format!("{file_name}.tex"), latex_template) {
         Ok(r) => r,
         Err(e) => return Err(format!("Failed to add LaTeX template: {}", e))
     }
 
     // Sub in values
     let time_frame_label = match time_period {
-        0 => "Last 7 Days",
-        1 => "Last 30 Days",
-        2 => "Last 90 Days",
-        3 => "Last 365 Days",
-        4 => "All Time",
-        _ => "Last 7 Days",
+        0 => "Last 7 Days".to_string(),
+        1 => "Last 30 Days".to_string(),
+        2 => "Last 90 Days".to_string(),
+        3 => "Last 365 Days".to_string(),
+        4 => "All Time".to_string(),
+        5 => {
+            // Custom date range: format the dates nicely
+            if let (Some(start_str), Some(end_str)) = (
+                optional_data.get("custom_start_date").and_then(|v| v.as_str()),
+                optional_data.get("custom_end_date").and_then(|v| v.as_str())
+            ) {
+                if let (Ok(start_date), Ok(end_date)) = (
+                    chrono::NaiveDate::parse_from_str(start_str, "%Y-%m-%d"),
+                    chrono::NaiveDate::parse_from_str(end_str, "%Y-%m-%d")
+                ) {
+                    let start_formatted = start_date.format("%B %d, %Y").to_string();
+                    let end_formatted = end_date.format("%B %d, %Y").to_string();
+                    format!("{} - {}", start_formatted, end_formatted)
+                } else {
+                    "Custom Date Range".to_string()
+                }
+            } else {
+                "Custom Date Range".to_string()
+            }
+        }
+        _ => "ERROR".to_string(),
     };
 
     // Format building x coordinates for LaTeX
     let building_x_coords = top_10_buildings.join(",");
 
     let mut context = Context::new();
-    context.insert("time_frame", time_frame_label);
+    context.insert("time_frame", &time_frame_label);
     context.insert("accomplishments", &latex_accomplishments);
     context.insert("future_notes", &latex_future_notes);
     context.insert("tickets_created", &tickets_created);
@@ -4470,22 +4559,22 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
 
         // Render
     // Register the template
-    match tera.add_raw_template("report.tex", latex_template) {
+    match tera.add_raw_template(&format!("{file_name}.tex"), latex_template) {
         Ok(_) => (),
         Err(e) => return Err(format!("Failed to add LaTeX template: {}", e)),
     }
     // Render the template
-    let rendered_tex = match tera.render("report.tex", &context) {
+    let rendered_tex = match tera.render(&format!("{file_name}.tex"), &context) {
         Ok(t) => t,
         Err(e) => return Err(format!("Failed to render LaTeX template: {}", e)),
     };
 
-    // Write report.tex
+    // Write .tex
     let temp_dir = Path::new(TEMP_DIR);
-    let tex_path = temp_dir.join("report.tex");
+    let tex_path = temp_dir.join(&format!("{file_name}.tex"));
     match std::fs::write(&tex_path, rendered_tex) {
         Ok(_) => (),
-        Err(e) => return Err(format!("Failed to write report.tex: {}", e)),
+        Err(e) => return Err(format!("Failed to write .tex file: {}", e)),
     }
 
     // Run pdflatex (silently, unless error) in the temp directory
@@ -4493,7 +4582,7 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
         .current_dir(temp_dir)
         .arg("-interaction=nonstopmode")
         .arg("-halt-on-error")
-        .arg("report.tex")
+        .arg(&format!("{file_name}.tex"))
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .status()
@@ -4503,14 +4592,15 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
     };
 
     if !status.success() {
-        return Err("pdflatex failed to compile report.tex".to_string());
+        return Err("pdflatex failed to compile .tex file".to_string());
     }
 
     info!("[Data] - Analytics PDF successfully generated!");
-    return Ok(());
+    
+    Ok(file_name)
 }
 
-async fn cleanup_temp_dir() -> Result<(), String> {
+async fn cleanup_temp_files(file_name: String) -> Result<(), String> {
     if !dir_exists(TEMP_DIR) {
         return Err(format!("Missing Temp Directory: ./generated_files/temp does not exist"));
     }
@@ -4521,13 +4611,6 @@ async fn cleanup_temp_dir() -> Result<(), String> {
     };
 
     for entry in entries {
-        // Skip the generated .pdf
-        if let Ok(entry) = &entry {
-            if entry.path().ends_with("report.pdf") {
-                continue;
-            }
-        }
-
         let entry = match entry {
             Ok(entry) => entry,
             Err(e) => return Err(format!("Failed to access temp directory entry: {}", e))
@@ -4536,13 +4619,17 @@ async fn cleanup_temp_dir() -> Result<(), String> {
         let path = entry.path();
 
         if path.is_file() {
-            if let Err(e) = std::fs::remove_file(&path) {
-                return Err(format!("Failed to delete temporary file '{}': {}", path.display(), e))
+            if let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
+                if filename.starts_with(&file_name) {
+                    if let Err(e) = std::fs::remove_file(&path) {
+                        return Err(format!("Failed to delete temporary file '{}': {}", path.display(), e));
+                    }
+                }
             }
         }
     }
 
-    return Ok(());
+    Ok(())
 }
 
 /*
