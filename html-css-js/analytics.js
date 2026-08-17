@@ -303,8 +303,11 @@ function showExport() {
                 <button id="an_exportToPDFButton" onclick="exportButton()">Export to PDF</button>
                 <button onclick="showSettings()">Cancel</button>
             </div>
-            <p style="float: right; font-size: 10pt; margin-top: 6px; margin-bottom: 0px;">*Larger reports take longer to generate, up to 10 minutes.</p>
-            <p style="float: right; font-size: 10pt; margin-top: 0px;">Do not close the browser while generating...</p>
+            <p style="float: right; font-size: 10pt; margin-top: 6px;">
+                *Larger reports take longer to generate, up to 10 minutes. 
+                <br>
+                Do not close the browser while generating...
+            </p>
         </fieldset>
     `;
 
