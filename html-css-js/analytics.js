@@ -68,8 +68,8 @@ TOC:
 
 // Validates if the two date ranges in the time period selector are valid
 function validateDateRange() {
-    const startDateInput = document.getElementById("custom-start-date");
-    const endDateInput = document.getElementById("custom-end-date");
+    const startDateInput = document.getElementById("an_custom-start-date");
+    const endDateInput = document.getElementById("an_custom-end-date");
 
     const startValue = startDateInput.value;
     const endValue = endDateInput.value;
@@ -79,24 +79,26 @@ function validateDateRange() {
 
     const startDate = new Date(startValue);
     const endDate = new Date(endValue);
-
     if (startDate > endDate) {
         alert("Start date must be before end date.");
 
         // Clear both fields
         startDateInput.value = "";
         endDateInput.value = "";
+        cacheCustomDates();
         setBoard();
         return;
     }
 
+    cacheCustomDates();
     setBoard();
 }
 
 // Grabs the custom date range from the time period selector, if valid
 function getCustomDateRange() {
-    const startDateInput = document.getElementById("custom-start-date");
-    const endDateInput = document.getElementById("custom-end-date");
+    const startDateInput = document.getElementById("an_custom-start-date");
+    const endDateInput = document.getElementById("an_custom-end-date");
+    
     const startValue = startDateInput?.value;
     const endValue = endDateInput?.value;
 
@@ -211,6 +213,9 @@ async function exportButton() {
 // Generates the HTML for the time period radio buttons
 function getTimePeriodRadioHTML(timePeriod) {
     const selectedPeriod = parseInt(timePeriod, 10);
+    const startDate = sessionStorage.getItem("an_custom_start");
+    const endDate = sessionStorage.getItem("an_custom_end");
+
     return `
         <div class="an_timePeriodSelector">
             <strong>Selected Time Period:</strong>
@@ -238,12 +243,26 @@ function getTimePeriodRadioHTML(timePeriod) {
                 <input type="radio" id="custom" name="time-period" value="custom" ${selectedPeriod === 5 ? "checked" : ""}>
                 <label for="custom">*Custom Date Range</label>
                 <label for="custom">: </label>
-                <input type="date" id="custom-start-date">
+                <input type="date" id="an_custom-start-date" ${startDate !== "" ? `value=${startDate}` : ""}>
                 <label for="custom"> → </label>
-                <input type="date" id="custom-end-date">
+                <input type="date" id="an_custom-end-date" ${endDate !== "" ? `value=${endDate}` : ""}>
             </div>
         </div>
     `;
+}
+
+// Extract selected dates input from user (which can be blank) and cache them
+function cacheCustomDates() {
+    const startDate = document.getElementById("an_custom-start-date").value;
+    const endDate = document.getElementById("an_custom-end-date").value;
+
+    if (startDate !== null) sessionStorage.setItem("an_custom_start", startDate);
+    if (endDate !== null) sessionStorage.setItem("an_custom_end", endDate);
+
+    // Force custom date radio button to be selected, because it was just modified
+    const customRadioButton = document.getElementById("custom");
+    customRadioButton.checked = true;
+    customRadioButton.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
 // Displays the export settings in the settings widget
@@ -284,8 +303,11 @@ function showExport() {
                 <button id="an_exportToPDFButton" onclick="exportButton()">Export to PDF</button>
                 <button onclick="showSettings()">Cancel</button>
             </div>
-            <p style="float: right; font-size: 10pt; margin-top: 6px; margin-bottom: 0px;">*Larger reports take longer to generate, up to 10 minutes.</p>
-            <p style="float: right; font-size: 10pt; margin-top: 0px;">Do not close the browser while generating...</p>
+            <p style="float: right; font-size: 10pt; margin-top: 6px;">
+                *Larger reports take longer to generate, up to 10 minutes. 
+                <br>
+                Do not close the browser while generating...
+            </p>
         </fieldset>
     `;
 
@@ -305,7 +327,7 @@ function showSettings() {
             <button class="an_startExportButton" onclick="showExport()">Export</button>
         </fieldset>
     `;
- 
+
     initializeRadioListener();
 }
 
@@ -385,8 +407,8 @@ function initializeRadioListener() {
     });
 
     // Date Field Listeners
-    document.getElementById("custom-start-date").addEventListener("change", validateDateRange);
-    document.getElementById("custom-end-date").addEventListener("change", validateDateRange);
+    document.getElementById("an_custom-start-date").addEventListener("change", validateDateRange);
+    document.getElementById("an_custom-end-date").addEventListener("change", validateDateRange);
 }
 
 // Admin only: Populates the hidden project list for admins to manage
@@ -1163,8 +1185,9 @@ async function setAnalytics() {
     clearInterval(ellipsisInterval);
     loadingMessage.remove();
 
-
-    sessionStorage.setItem("an_timePeriod", 0); // Initialize page to "Week"
+    sessionStorage.setItem("an_custom_start", ""); // Initialize as blank date
+    sessionStorage.setItem("an_custom_end", ""); // Initialize as blank date
+    sessionStorage.setItem("an_timePeriod", 1); // Initialize page to "Past Month"
 
     const leftCol = document.createElement('div');
     leftCol.classList.add('an_leftCol');
