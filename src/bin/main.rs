@@ -909,7 +909,7 @@ async fn handle_connection(
                             })
                         }
                     }
-                } Err(m) => {
+                } Err(_) => {
                     json!({
                         "selections": []
                     })
