@@ -1424,20 +1424,6 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_contents(contents)
         },
-        "GET /aliasTable HTTP/1.1" => {
-            let alias_table = database.get_data("alias_table")
-                .unwrap_or(DB_DataElement {
-                    key: "alias_table".to_string(),
-                    val: "Alias Table has not been updated".to_string()
-                })
-                .val;
-            let contents = json!({
-                "response": alias_table
-            }).to_string().into();
-            Response::new()
-                    .status(STATUS_200)
-                    .send_contents(contents)
-        },
         "GET /threadSchedule HTTP/1.1" => {
             let ts = thread_schedule.read().unwrap();
             let contents = json!({
@@ -1487,92 +1473,6 @@ async fn handle_connection(
                         .status(STATUS_500)
                         .send_contents("Task Not Found".into())
             }
-        },
-        "POST /setAliasTable HTTP/1.1" => {
-            let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-            // Parse Request Body
-            let alias_rooms = body_json["rooms"]
-                .as_array()
-                .unwrap();
-            //  Iterate through the rooms and find hostname exceptions,
-            for alias_record in alias_rooms.iter() {
-                debug!("[Alias] - Record \n {}", alias_record);
-                let hostname_exception = alias_record.get("hostnameException")
-                    .unwrap()
-                    .to_string()
-                    .replace("\"","");
-                let room_name = alias_record.get("name")
-                    .unwrap()
-                    .to_string()
-                    .replace("\"","");
-                if hostname_exception != "" {
-                    debug!("[Alias] - Hostname Exception: \n {} at {}", hostname_exception, room_name);
-                    let mut room : DB_Room = match database.get_room_by_name(&room_name) {
-                        Ok(r)  => r,
-                        Err(m) => {
-                            error!("DB_ERR: {}", m);
-                            return Response::new()
-                                    .status(STATUS_500)
-                                    .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
-                                    .build();
-                        }
-                    };
-                    let mut pd = room.ping_data.clone();
-                    for ping_record in &mut pd {
-                        ping_record
-                            .as_mut()
-                            .unwrap()
-                            .hostname.room = room_name.clone();
-                    }
-                    room.ping_data = pd;
-                    let _ = database.update_room(&room);
-                }
-            }
-            // Save Alias Table to database as dataElement
-            let alias_table = DB_DataElement {
-                key: "alias_table".to_string(),
-                val: String::from_utf8(req.body).expect("Unable to parse body contents")
-            };
-            let _ = database.update_data(&alias_table);
-
-            Response::new()
-                    .status(STATUS_200)
-                    .send_contents("Database Alias Table Updated".into())
-        },
-        "POST /resetAlias HTTP/1.1" => {
-            let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-            // Get List of Rooms from body_json
-            let target_rooms = body_json["rooms"]
-                .as_array()
-                .unwrap();
-            // Change ping_data.hostname.room to original name
-            for room in target_rooms.iter() {
-                let mut room = match database.get_room_by_name(&room.to_string().replace("\"","")) {
-                    Ok(r)  => r,
-                    Err(m) => {
-                        error!("DB_ERR: {}", m);
-                        return Response::new()
-                                .status(STATUS_500)
-                                .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
-                                .build();
-                    }
-                };
-                let room_name = room.name.clone();
-                let mut pd = room.ping_data.clone();
-                for ping_record in &mut pd {
-                    ping_record
-                        .as_mut()
-                        .unwrap()
-                        .hostname.room = room_name.clone();
-                }
-                room.ping_data = pd;
-                let _ = database.update_room(&room);
-            }
-            debug!("[Alias] - Reverting Alias Change for target_rooms, {:?}", &target_rooms);
-
-            Response::new()
-                    .status(STATUS_200)
-                    .send_contents("Reset Requested Rooms".into())
         },
         // Terminal
         // --------------------------------------------------------------------
@@ -2287,7 +2187,7 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
     // Iterate over each.
     for building in buildings {
         debug!("[Checkerboard] - Processing Building: {:?}", building.1.abbrev);
-        let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last90days%22%2CParentLocation%3A%22{}%22%7D", building.1.lsm_name.as_str());
+let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last90days%22%2CParentLocation%3A%22{}%22%7D", building.1.lsm_name.as_str());
         // Get Alias Table, to swap incoming room_names from LSM with
         //   Bronson friendly naming. We filter Alias Table to only contain
         //   rooms that are relevant to current LSM request.
@@ -2367,7 +2267,7 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
                 }
             };
             
-            for i in 0..num_entries {
+for i in 0..num_entries {
                 let mut check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
                 // Look to see if check["LocationName"] is in the alias_obj, replace it if so.
                 for tuple in &alias_vec {
