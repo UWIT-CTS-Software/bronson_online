@@ -10,7 +10,7 @@ Backend
     - main()
     - handle_connection(req: Request, database: Database) -> Option
     - process_buffer(buffer: mut [u8]) -> String
-    - find_enclosed(s: String, delimeters: (char,char), include_delim: bool) -> String
+    - find_enclosed(s: String, delimiters: (char,char), include_delim: bool) -> String
 
 JackNet
     - execute_ping(body: Vec<u8>) -> String
@@ -29,8 +29,8 @@ CamCode
     - get_dir_contents(path: &str) -> Vec<String>
     - get_origin(req: Request) -> String
 -- Handlers -----------------------------
-    - get_file(body: Vec<u8>, root: &str) -> String
-    - get_file(body: Vec<u8>, root: &str) -> String
+    - get_file_path(body: Vec<u8>, root: &str) -> String
+    - get_file_path(body: Vec<u8>, root: &str) -> String
 
 Tickex
     - fetch_tdx_token(database: &mut Database, req: &Client) -> Result<(), String>
@@ -48,7 +48,7 @@ use server_lib::{
     BUFF_SIZE, 
     ThreadPool, ThreadSchedule, TaskSchedule, PingRequest, 
     Building, 
-    CFMRequestFile, TreeNode,
+    RequestFile, TreeNode,
     jp::{ ping_this, },
     API, APIClient::{ MultiThread, SingleThread, },
     CFM_DIR, WIKI_DIR, /* LOG, */ TEMP_DIR, TICKT_JSON, 
@@ -143,7 +143,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
     }
     
-    // set TcpListener and initalize
+    // set TcpListener and initialize
     // ------------------------------------------------------------------------
     let host_ip: &str;
     let mut host_port = 7878;
@@ -284,7 +284,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 None    => {
                     Response::new()
                             .status(STATUS_500)
-                            .send_contents(format!("An internal error occured. Please contact a system administrator.\n").into())
+                            .send_contents(format!("An internal error occurred. Please contact a system administrator.\n").into())
                             .build()
                             .expect("Build failed")
                 }
@@ -464,7 +464,7 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
                     info!("[Data] - Pulling LSM Inventory Information");
                     info!("MAYBE TODO: Get Diagnostic Information from LSM");
                     //update_lsm_data(&mut database, Arc::clone(&lsm_request)).await;
-                    info!("[Data] - Completed LSM Inventory Data Retreieval");
+                    info!("[Data] - Completed LSM Inventory Data Retrieval");
                 },
                 "checkerboard"    => {
                     info!("[Data] - Running Checkerboard");
@@ -1213,7 +1213,7 @@ async fn handle_connection(
                 Err(m) => {
                     return Response::new()
                                     .status(STATUS_500)
-                                    .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                    .send_contents(format!("An internal error occurred. Please contact a system administrator.\n{}", m).into())
                                     .build();
                 }
             };
@@ -1312,7 +1312,7 @@ async fn handle_connection(
                     error!("DB_ERR: {}", m);
                     return Response::new()
                                     .status(STATUS_500)
-                                    .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                    .send_contents(format!("An internal error occurred. Please contact a system administrator.\n{}", m).into())
                                     .build();
                 }
             };
@@ -1334,7 +1334,7 @@ async fn handle_connection(
                     error!("Unable to parse new onln field from JSON: {}", m);
                     return Response::new()
                                     .status(STATUS_500)
-                                    .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                    .send_contents(format!("An internal error occurred. Please contact a system administrator.\n{}", m).into())
                                     .build();
                 }
             };
@@ -1377,7 +1377,7 @@ async fn handle_connection(
                         error!("DB_ERR: {}", m);
                         return Response::new()
                                 .status(STATUS_500)
-                                .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                .send_contents(format!("An internal error occurred. Please contact a system administrator.\n{}", m).into())
                                 .build();
                     }
                 };
@@ -1513,7 +1513,7 @@ async fn handle_connection(
                             error!("DB_ERR: {}", m);
                             return Response::new()
                                     .status(STATUS_500)
-                                    .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                    .send_contents(format!("An internal error occurred. Please contact a system administrator.\n{}", m).into())
                                     .build();
                         }
                     };
@@ -1553,7 +1553,7 @@ async fn handle_connection(
                         error!("DB_ERR: {}", m);
                         return Response::new()
                                 .status(STATUS_500)
-                                .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                .send_contents(format!("An internal error occurred. Please contact a system administrator.\n{}", m).into())
                                 .build();
                     }
                 };
@@ -1705,7 +1705,7 @@ async fn handle_connection(
                     error!("DB_ERR: {}", m);
                     return Response::new()
                             .status(STATUS_500)
-                            .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                            .send_contents(format!("An internal error occurred. Please contact a system administrator.\n{}", m).into())
                             .build();
                 }
             };
@@ -1715,7 +1715,7 @@ async fn handle_connection(
                     error!("DB_ERR: {}", m);
                     return Response::new()
                             .status(STATUS_500)
-                            .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                            .send_contents(format!("An internal error occurred. Please contact a system administrator.\n{}", m).into())
                             .build();
                 }
             };
@@ -1762,7 +1762,7 @@ async fn handle_connection(
                 .send_contents(contents)
         },
         "POST /cfm_file HTTP/1.1" => {
-            let contents = get_file(req.body, CFM_DIR);
+            let contents = get_file_path(req.body, CFM_DIR);
             let mut f = match File::open(&contents) {
                 Ok(file) => file,
                 Err(e) => {
@@ -1806,7 +1806,7 @@ async fn handle_connection(
         },
 
         "POST /w_file HTTP/1.1" => {
-            let contents = get_file(req.body, WIKI_DIR);
+            let contents = get_file_path(req.body, WIKI_DIR);
             let mut f = match File::open(&contents) {
                 Ok(file) => file,
                 Err(e) => {
@@ -1842,12 +1842,12 @@ async fn handle_connection(
                 parent_path: String, 
                 fileblob: String, //base64
             }
-            //req.body was comming in as &Vec<u8>
+            //req.body was coming in as &Vec<u8>
 
             let body_to_string = match String::from_utf8(req.body.clone()) {
                  Ok(s) => s,
                 Err(e) => {
-                     error!("Invalid UTF-8 recived: {}", e);
+                     error!("Invalid UTF-8 received: {}", e);
                     return Response::new()
                          .status(STATUS_400)
                          .send_contents(format!("Invalid UTF-8: {}", e).into())
@@ -1859,7 +1859,7 @@ async fn handle_connection(
             let file_obj: UploadFile = match serde_json::from_str(&body_to_string){
                 Ok(obj) => obj,
                 Err(e) => {
-                    error!("Invalid JSON recived: {}", e);
+                    error!("Invalid JSON received: {}", e);
                     return Response::new()
                     .status(STATUS_400)
                     .insert_header("Content-Type", "application/json")
@@ -1919,12 +1919,12 @@ async fn handle_connection(
                 filename: String, 
                 parent_path: String, 
             }
-            //req.body was comming in as &Vec<u8>
+            //req.body was coming in as &Vec<u8>
 
             let body_to_string = match String::from_utf8(req.body.clone()) {
                  Ok(s) => s,
                 Err(e) => {
-                     error!("Invalid UTF-8 recived: {}", e);
+                     error!("Invalid UTF-8 received: {}", e);
                     return Response::new()
                          .status(STATUS_400)
                          .send_contents(format!("Invalid UTF-8: {}", e).into())
@@ -1936,7 +1936,7 @@ async fn handle_connection(
             let folder_obj: UploadDir = match serde_json::from_str(&body_to_string){
                 Ok(obj) => obj,
                 Err(e) => {
-                    error!("Invalid JSON recived: {}", e);
+                    error!("Invalid JSON received: {}", e);
                     return Response::new()
                     .status(STATUS_400)
                     .insert_header("Content-Type", "application/json")
@@ -1980,7 +1980,7 @@ async fn handle_connection(
               let body_to_string = match String::from_utf8(req.body.clone()) {
                  Ok(s) => s,
                 Err(e) => {
-                     error!("Invalid UTF-8 recived: {}", e);
+                     error!("Invalid UTF-8 received: {}", e);
                     return Response::new()
                          .status(STATUS_400)
                          .send_contents(format!("Invalid UTF-8: {}", e).into())
@@ -1992,7 +1992,7 @@ async fn handle_connection(
             let received_path: FilePath = match serde_json::from_str(&body_to_string.clone()){
                 Ok(obj) => obj,
                 Err(e) => {
-                    error!("Invalid JSON recived: {}", e);
+                    error!("Invalid JSON received: {}", e);
                     return Response::new()
                     .status(STATUS_400)
                     .insert_header("Content-Type", "application/json")
@@ -2377,7 +2377,7 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
                     }
                 }
                 
-                // Replace Abbrevition if exists
+                // Replace Abbreviation if exists
                 if alias_abbrev.0 != "NOTSET" {
                     // check["LocationName"]
                     debug!("[Checkerboard Alias] Building - {:?} to be replaced with {:?}", alias_abbrev.0, alias_abbrev.1);
@@ -2618,7 +2618,7 @@ NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
       CAMPUS_STR -> "html-css-js/campus.json"
 */
 
-// call ping_this executible here
+// call ping_this executable here
 async fn execute_ping(database: &mut Database) {
     let buildings: HashMap<String, DB_Building> = match database.get_buildings() {
         Ok(bs) => bs,
@@ -2997,10 +2997,12 @@ fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
 }
 
 
-// get_file() - sends the selected file to the client
+// get_file_path() - sends the selected file to the client
 // TODO:
 //    [ ] - store selected file as bytes ?
 //    [ ] - send in json as usual ?
+
+
 // rustdoc 
 /// Function retrieves the absolute file path. 
 /// ### Parameters 
@@ -3010,17 +3012,17 @@ fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
 /// A string containing the raw file path.
 /// ### Example 
 /// ``` no_run
-/// let contents = get_file_path(req.body, EX_DIR);
+/// let contents = get_file_path_path(req.body, EX_DIR);
 /// ```
-fn get_file(body: Vec<u8>, root: &str) -> String {
+fn get_file_path(body: Vec<u8>, root: &str) -> String {
     let tmp = String::from_utf8(body).expect("Err, invalid UTF-8");
     //
-    let cfmr_f: CFMRequestFile = serde_json::from_str(&tmp)
+    let r_f: RequestFile = serde_json::from_str(&tmp)
         .expect("Err, Failed to grab file");
-    let filename = cfmr_f
+    let filename = r_f
         .filename
         .strip_prefix("Root/")
-        .unwrap_or(&cfmr_f.filename);
+        .unwrap_or(&r_f.filename);
 
     let mut path_raw = String::from(root);
     path_raw.push('/');
@@ -3714,6 +3716,9 @@ async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_j
     Ok(())
 }
 
+
+// rustdoc 
+///
 async fn dismiss_all_tickets(database: &mut Database) -> Result<(), String> {
     info!("[Data] - Dismissing all tickets notifications");
 
@@ -3767,7 +3772,7 @@ async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Va
     let tdx_uid = get_tdx_user(database, req, &username).await?;
     ticket_json["RequestorUid"] = tdx_uid["UID"].clone();
     
-    // Send ticket content and recieve the new ticket JSON as a verification response
+    // Send ticket content and receive the new ticket JSON as a verification response
     let mut new_ticket_resp = match req
         .build()
         .method("POST")
@@ -3856,7 +3861,7 @@ async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -
         revised_ticket["ResponsibleUid"] = Value::String(uid.into());
     }
 
-    // Send updated ticket content and recieve the new ticket JSON as a verification response
+    // Send updated ticket content and receive the new ticket JSON as a verification response
     let mut new_ticket_resp = match req
         .build()
         .method("POST")
@@ -4712,7 +4717,7 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
         \end{document}
     "#;
 
-    // Genereate file name using timestamp
+    // Generate file name using timestamp
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let file_name = format!("report_{}", timestamp);
 
