@@ -897,6 +897,31 @@ async fn handle_connection(
                     user.to_string().into()
                 )
         },
+        "GET /data/cbSelection HTTP/1.1" => { // Fetch a user's Checkerboard building selections
+            let selection: Value = match database.get_data(&format!("{}_cbSelections", req.get_current_username())) {
+                Ok(d) => {
+                    match serde_json::from_str(&d.val) {
+                        Ok(v) => v,
+                        Err(m) => {
+                            error!("Unable to parse json: {}", m);
+                            json!({
+                                "selections": []
+                            })
+                        }
+                    }
+                } Err(m) => {
+                    json!({
+                        "selections": []
+                    })
+                }
+            };
+
+            Response::new()
+                .status(STATUS_200)
+                .send_contents(
+                    selection.to_string().into()
+                )
+        }
         "GET /tickets HTTP/1.1" => { // OUTGOING, Tickets for Tickex
             let db_tickets = match database.get_all_tickets() {
                 Ok(t) => t,
@@ -1408,6 +1433,31 @@ async fn handle_connection(
             Response::new()
                 .status(STATUS_200)
                 .send_contents("Successful Room Schedule Timestamps Update".into())
+        },
+        "POST /update/data/cbSelection HTTP/1.1" => { // Updates a users Checkerboard building selection
+            let body_json: Value = serde_json::from_str(str::from_utf8(&req.body).unwrap()).expect("Failed parsing JSON");
+            let username: String = req.get_current_username();
+            let cb_key: String = username + "_cbSelections";
+            let cb_val: String = body_json.to_string();
+
+            match database.update_data(
+                &DB_DataElement {
+                    key: cb_key,
+                    val: cb_val.clone()
+                }
+            ) {
+                Ok(_) => {},
+                Err(m) => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents(m.to_string().into())
+                        .build();
+                }
+            };
+
+            Response::new()
+                .status(STATUS_200)
+                .send_contents(cb_val.to_string().into())
         },
         "GET /roomSchd/timestamps HTTP/1.1" => { // Returns 25Live Report Dates
             let timestamps = database.get_data("report_timestamps").unwrap_or( DB_DataElement {key:"report_timestamps".to_string(),val:"[\"Timestamp Not Found\"]".to_string()}).val;
