@@ -60,8 +60,8 @@
           Places the dashboard page, pretty baren at the moment.
     */
     async function setDashboard() {
-      // this await will cause the code responsible for setting default button selections to fail, so it's preloaded here.
       let dbCheckerboard = await dashCheckerboardHTML();
+      // this await will cause the code responsible for setting default button selections to fail, so it's preloaded here.
       // History and init
       preserveCurrentTool();
       document.title = "Dashboard - Bronson";
@@ -204,6 +204,28 @@
       main_container.classList.add('program_guts');
       prog_guts.replaceWith(main_container);
       
+      let selections = JSON.parse(localStorage.getItem("cbSelection"));
+      if (selections !== null) {
+        selections["selections"].forEach(s => {
+          let b_div = document.getElementById(`${s}_div`);
+          b_div.style.display = "inline";
+        });
+      } else {
+        fetch("/data/cbSelection")
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("HTTP error " + response.status);
+                }
+                return response.json()
+            })
+            .then(json => {
+                json["selections"].forEach(s => {
+                  let b_div = document.getElementById(`${s}_div`);
+                  b_div.style.display = "inline";
+                });
+            })
+      }
+
       return;
     }
 
