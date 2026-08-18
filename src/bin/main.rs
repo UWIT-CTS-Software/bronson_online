@@ -2839,13 +2839,32 @@ _|        _|        _|      _|
                '                       
 */
 
+// rustdoc
+/// Function queries the file system to check if the directory exists
+/// * Returns a boolean   
+///
+
 fn dir_exists(path: &str) -> bool {
     return metadata(path).is_ok();
 }
 
+// rustdoc
+/// Function queries the file system to check if the path leads to a directory.  
+/// * Returns a boolean
+
 fn is_this_dir(path: &str) -> bool {
     return metadata(path).unwrap().is_dir();
 }
+
+// rustdoc 
+/// Function iterates over the entries in a directory and returns the paths 
+/// ### Returns 
+/// * A vector containing the string representation of the paths contained in the given directory. 
+/// * Note: function is non-recursive so providing a directory of directories will only retrieve the first layer. 
+/// ### Example
+/// ``` no_run
+///  let dirs = get_dir_contents(ex_path);
+/// ```
 
 fn get_dir_contents(path: &str) -> Vec<String> {
     let mut strings = Vec::new();
@@ -2875,7 +2894,26 @@ fn get_dir_contents(path: &str) -> Vec<String> {
   _/                
 */
 
-// build_tree() - build virtual tree of files and directories and store in database as JSON
+// rustdoc
+///  Entry function for the building (via DFS) of a virtual tree of files and directories as JSON.
+/// ## Parameters 
+/// * `root` -  The path to the root directory.
+/// * `blacklist` - collection of excluded file types. 
+/// ## Returns 
+/// * Result<String, String> 
+///    - The Ok variant field is the json string 
+///    - The Err variant field is an error message.
+/// ## Example 
+/// ```no_run
+///
+///  let json_return = match build_tree(WIKI_DIR, _wiki_blacklist) {
+///     Ok(j)     =>  j,
+///     Err(m)    => {error!("[Data] - Tree Build FAILED: {}", m); json!([]).to_string() }
+/// };
+/// 
+/// ```
+/// * Where `EXAMPLE_DIR` is a directory path stored in a macro
+/// * And `ex_blacklist` is a hashset containing excluded file extensions.
 fn build_tree(root: &str, blacklist: HashSet<&str>) -> Result<String, String> {
     let mut tree_root: TreeNode = TreeNode::with_name_path("Root", "./");
 
@@ -2903,6 +2941,16 @@ fn build_tree(root: &str, blacklist: HashSet<&str>) -> Result<String, String> {
 
     Ok(json_return.to_string())
 }
+
+// rustdoc
+/// Function to recursively build a json subtree from the node passed to it by [`build_tree`].
+/// ### Parameters
+/// * `path` - The relative path passed
+/// * `root` -  The path to the root directory.
+/// * `blacklist` - Collection of excluded file types.
+/// ### Return 
+/// * A [`TreeNode`] (struct) containing filename, filepath, and children. 
+/// 
 
 
 fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
@@ -2953,6 +3001,17 @@ fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
 // TODO:
 //    [ ] - store selected file as bytes ?
 //    [ ] - send in json as usual ?
+// rustdoc 
+/// Function retrieves the absolute file path. 
+/// ### Parameters 
+/// * `body` - The request body
+/// * `root` - The directory to extract the path from. 
+/// ### Returns 
+/// A string containing the raw file path.
+/// ### Example 
+/// ``` no_run
+/// let contents = get_file_path(req.body, EX_DIR);
+/// ```
 fn get_file(body: Vec<u8>, root: &str) -> String {
     let tmp = String::from_utf8(body).expect("Err, invalid UTF-8");
     //
@@ -2981,6 +3040,22 @@ $$$$$$$$\ $$\           $$\
    $$ |   $$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$  /\$$\ 
    \__|   \__| \_______|\__|  \__| \_______|\__/  \__|
 */
+
+//rustdoc 
+
+/// Functions fetches authentication token (Bearer token) for use in TeamDynamix API endpoints. 
+/// The retrieved token is stored in the Bronson Database. 
+/// ### Parameters 
+/// * database - function requires [`Database`] (struct) to provide context of the Bronson database. 
+/// * req - [`API`] provides information to the function of the request that was made 
+/// ### Returns 
+/// - Result Ok - Token was successfully stored in the database.
+/// - String  - An error occurred.
+/// ### Example 
+/// ``` no_run
+///  let _ = fetch_tdx_token(database, req).await;
+/// ```
+/// Note: Token has a lifespan of 24hrs 
 
 async fn fetch_tdx_token(database: &mut Database, req: &API) -> Result<(), String> {
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/auth/login";
@@ -3036,6 +3111,19 @@ async fn fetch_tdx_token(database: &mut Database, req: &API) -> Result<(), Strin
     Ok(())
 }
 
+// rustdoc
+/// Function fetches new authentication token (Bearer token) when TeamDynamix responds with "Unauthorized".
+/// ### Parameters
+/// * database - function requires [`Database`] (struct) to provide context of the Bronson database. 
+/// * req - [`API`] provides information to the function of the request that was made 
+/// * method 
+/// * url
+/// * request_body
+/// ### Returns 
+/// [`APIResponse`] (struct)
+/// 
+/// 
+
 async fn retry_tdx_token(database: &mut Database, req: &API, method: &str, url: &str, request_body: Option<serde_json::Value>) -> Result<APIResponse, String> {
     warn!("Unauthorized Response from TDX while performing action, trying again with new Token...");
 
@@ -3074,6 +3162,24 @@ async fn retry_tdx_token(database: &mut Database, req: &API, method: &str, url: 
     warn!("Successfully recovered new TDX Token & fetched new description data");
     Ok(retry_resp)
 }
+
+
+//rustdoc
+/// Function first checks the database, if database comes back empty all tickets will be grabbed. Otherwise function call sinks ticket data up to the past six-months. 
+///  ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database. 
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made 
+/// ### Returns 
+/// * Result Ok - Tickex run was successful.
+/// * String  - An error occurred.
+/// ### Example 
+/// ``` no_run
+///  let _ = match run_tickex(&mut database, &tdx_api).await {
+///         Ok(_)     =>  info!("[Data] - Tickex Run Complete"),
+///         Err(m)    => error!("[Data] - Tickex Run FAILED: {}", m)
+///        };
+/// ```
+/// Note: Function is called every minute to keep database up to date with TDX. 
 
 async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/search";
@@ -3198,6 +3304,31 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
     Ok(())
 }
 
+// rustdoc 
+/// Function formats ticket information from TDX to be stored in the Bronson database. 
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database. 
+/// * `ticket_json` - JSON representation of the ticket to be serialized 
+/// ### Returns 
+/// * [`DB_Ticket`] - Upon success the function returns a new [`DB_Ticket`] object
+/// * String - Upon error a string error message is provided. 
+/// 
+/// Note: Function is called when tickets are edited or added to the Bronson database. 
+/// ### Example 
+/// call from [`run_tickex`]
+/// ``` no_run
+/// for ticket_val in &tickets_json {
+///     match serialize_ticket(database, ticket_val.clone()) {
+///         Ok(ticket) => {
+///             if let Err(e) = database.update_ticket(&ticket) {
+///                  error!("Failed to insert/update ticket {}: {}", ticket.ticket_id, e);
+///                 }
+///             }
+///             Err(e) => error!("Failed to process ticket: {}", e)
+///         }
+///     }
+/// ```
+
 fn serialize_ticket(database: &mut Database, ticket_json: serde_json::Value) -> Result<DB_Ticket, String> {
     let id = ticket_json["ID"].as_i64().unwrap_or(0) as i32;
 
@@ -3246,6 +3377,24 @@ fn serialize_ticket(database: &mut Database, ticket_json: serde_json::Value) -> 
     })
 }
 
+
+// rustdoc 
+/// Function returns the description of tickets from TDX 
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made.
+/// * `ticket_id` - the identifier for the ticket requiring it's description grabbed. 
+/// ### Returns 
+/// * String - Upon success a String containing the ticket `description` is returned. 
+/// * String - Upon error a string error message is provided. 
+/// ### Example 
+/// ``` no_run
+/// let result = tokio::task::block_in_place(|| {
+///     tokio::runtime::Handle::current().block_on(
+///         fetch_tdx_ticket_description(&mut database, &tdx_client, ticket_id)
+///     )
+///    });
+/// ```
 async fn fetch_tdx_ticket_description(database: &mut Database, req: &API, ticket_id: i32) -> Result<String, String> {
     // Construct the API URL to fetch ticket details
     let url = format!(
@@ -3289,6 +3438,26 @@ async fn fetch_tdx_ticket_description(database: &mut Database, req: &API, ticket
 
     Ok(description)
 }
+
+// rustdoc 
+/// Function fetches and formats ticket feed (comments) from TDX to display in Tickex
+/// ### Parameters  
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made.
+/// * `ticket_id` - the identifier for the ticket requiring it's description grabbed. 
+/// ### Returns
+/// * String - Upon success a String containing the formatted `output_json` is returned 
+/// * String - Upon error a string error message is provided. 
+/// ### Example 
+/// ``` no_run
+/// let result = tokio::task::block_in_place(|| {
+///     tokio::runtime::Handle::current().block_on(
+///         fetch_tdx_ticket_feed(&mut database, &tdx_client, ticket_id)
+///     )
+/// });
+
+/// ```
+
 
 async fn fetch_tdx_ticket_feed(database: &mut Database, req: &API, ticket_id: i32) -> Result<String, String> {
     // Construct the API URL to fetch ticket details
@@ -3378,6 +3547,30 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &API, ticket_id: i3
     Ok(output_json)
 }
 
+// rustdoc 
+/// Function fetches and formats ticket replies to comments from TDX to display in Tickex
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made.
+/// * `feed_id` - the ID to an individual comment
+/// ### Returns 
+/// * Three vectors (where each index contains the following)
+///     - `created_by` person who posted the reply.
+///     - `replies_body`  the contents of the reply.
+///     - `created_date` the date the reply was made.
+/// ### Example 
+/// called by [`fetch_tdx_ticket_feed`]
+/// ``` no_run
+///   let replies: (Vec<String>, Vec<String>, Vec<String>) = if replies_count > 0 {
+///     fetch_tdx_feed_replies(
+///         database, req, entry.get("ID").and_then(|v| v.as_i64()).unwrap_or(0)
+///     ).await.map_err(|e| format!("Failed to read response: {}", e))?
+///    } else {
+///      (Vec::new(), Vec::new(), Vec::new())
+///    };
+/// 
+/// ```
+
 async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64) -> Result<(Vec<String>, Vec<String>, Vec<String>), String> {
     // Construct the API URL to fetch feed replies
     let url = format!(
@@ -3441,6 +3634,28 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64
     Ok((created_by, replies_body, created_date))
 }
 
+// rustdoc
+/// Function marks ticket as false by assigning parent id to the global false id.
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made.
+/// * `body_json` - provides ticket information stored as JSON. 
+/// ### Returns 
+/// * Upon success - result ok 
+/// * Upon error - String containing error message.
+/// ### Example 
+/// ``` no_run 
+///  let _ = match toggle_mark_ticket_false(&mut database, &tdx_client, body_json).await {
+///     Ok(v) => v,
+///     Err(e) => {
+///           error!("Failed to mark Ticket as false: {}", e);   
+///           return Response::new()
+///                 .status(STATUS_500)
+///                 .send_contents("[]".into())
+///                 .build();
+///                 }
+///             };
+/// ```
 async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_json: Value) -> Result<(), String> {
     let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
     info!("[Data] - Marking Ticket as False/True (Ticket ID: {})", id);
@@ -4643,7 +4858,27 @@ $$  /   \$$ |$$ |$$ | \$$\ $$ |
 \__/     \__|\__|\__|  \__|\__|
 */
 
-
+// rustdoc
+/// 
+/// Function builds out a JSON object with the articles in the wiki directory. 
+/// ### Returns 
+///  - A JSON object of all the articles (files) in the `WIKI_DIR` and returns them as a stringified json object   
+/// as UTF-8 bytes. 
+/// - The JSON object maps each article's filename (key) to it's base64-encoded file contents (value).
+///  
+/// ### Panics 
+/// Panics if any article file cannot be read. 
+/// ### Example
+/// ```no_run
+///  let contents = w_build_articles();
+///  assert_eq!(contents,
+///             "{
+///                 file_name1: base64Data1
+///                 file_name2: base64Data2
+///                 ...
+///               }".to_string().into()
+///       );
+///```
 
 fn w_build_articles() -> Vec<u8> {
     let mut article_names_vec: Vec<String> = Vec::new();
@@ -4682,6 +4917,61 @@ fn w_build_articles() -> Vec<u8> {
     
 }
 
+// rustdoc
+/// Builds a JSON representation of the wiki articles directory as a tree from a depth first search, then returns it as bytes. 
+/// ### Returns 
+/// - On success returns the tree structure produced by the call to [`build_tree`] as bytes. 
+/// - On failure the error is logged and an empty JSON array (`[]`) is returned as bytes.
+
+/// ### Example
+/// ``` no_run 
+/// tree: {
+///         name: "Root",
+///         file_path: "./",
+///         children: [
+///             {
+///              name: "example.md",
+///               file_path:"./example/path",
+///              children: null
+///             },
+///
+///             {
+///              name: "example_dir",
+///              file_path:"./example/path",
+///              children: [
+///                 {
+///                 name: "nested_file.txt",
+///                 file_path:"./example/path/example_dir",
+///                 children: null
+///                 },
+///                 {
+///                  name: "double_nested_dir",
+///                  file_path:"./example/path/example_dir",
+///                  children: [
+///                  {
+///                     name: "doubled_nested_file", 
+///                     file_path:"./example/path/example_dir/double_nested_dir",
+///                     children: null}, 
+///                   ]
+///                 },
+///                ]
+///              },
+///             {
+///             name: "empty_dir",
+///             file_path:"./example/path", 
+///             children: [] 
+///             },
+///            ]
+///       }
+///```
+/// ### Blacklist 
+/// `_wiki_blacklist`, (currently an empty hashset) can be used to "blacklist" specified file extensions by inserting them into the hashset.
+/// ### Example 
+///```no_run
+///  _wiki_blacklist.insert("txt");
+///  _wiki_blacklist.insert("xlsx");
+///```
+/// In the above example files ending with the extension txt, and xlsx would be excluded. 
 fn w_tree() -> Vec<u8>  {
     let  _wiki_blacklist = HashSet::new();
     let json_return = match build_tree(WIKI_DIR, _wiki_blacklist) {
