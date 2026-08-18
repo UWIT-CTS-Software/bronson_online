@@ -194,6 +194,7 @@ function navigateFolderHistory(direction=0) {
         // load previous path
         cfmState.currentPath = Array.isArray(path) ? [...path] : [path];
         cfmState.currentNode = getNodeAtPath(cfmState.fullTree, cfmState.currentPath);
+        cfmState.highlightedFile = null; // Clear highlight on history navigation
         updateFileContainer();
         updatePathTracker();
     }
@@ -207,6 +208,7 @@ function navigateFolderHistory(direction=0) {
         // load next path
         cfmState.currentPath = Array.isArray(path) ? [...path] : [path];
         cfmState.currentNode = getNodeAtPath(cfmState.fullTree, cfmState.currentPath);
+        cfmState.highlightedFile = null; // Clear highlight on history navigation
         updateFileContainer();
         updatePathTracker();
     }
@@ -353,6 +355,7 @@ function searchTree(search="") {
                 let fullPath = result.path;
                 let displayPath = fullPath.startsWith('/Root/') ? fullPath.slice(9) : fullPath;
                 let targetPath = result.isFolder ? fullPath.slice(1) : fullPath.slice(1, fullPath.lastIndexOf('/'));
+                let highlightArg = result.isFolder ? 'null' : `'${result.name.replace(/'/g, "\\'")}'`;
                 let displayText = displayPath;
                 if (displayPath.length > 30) {
                     let prefix = displayPath.substring(0, displayPath.indexOf("/", displayPath.indexOf("/") + 1) + 1);
@@ -360,7 +363,7 @@ function searchTree(search="") {
                     displayText = prefix + ".../" + (suffix.length > 40 ? "..." + suffix.substring(suffix.length - 20, suffix.length) : suffix);
                     if (prefix.length === 0) displayText = displayPath; 
                 }
-                html += `<p class="cfm_search_result" title="${displayPath}" onclick="selectFolderFromTree('${targetPath}')">${displayText}</p>`;
+                html += `<p class="cfm_search_result" title="${displayPath}" onclick="selectFolderFromTree('${targetPath}', ${highlightArg})">${displayText}</p>`;
             }
         }
         container.innerHTML = html;
@@ -379,7 +382,7 @@ function searchTree(search="") {
         const fullPath = currentPath + "/" + node.name;
         const nodeLowerCase = node.name.toLowerCase();
 
-        if (nodeLowerCase.includes(target)) results.push({path: fullPath, isFolder: !!node.children});
+        if (nodeLowerCase.includes(target)) results.push({path: fullPath, isFolder: !!node.children, name: node.name});
 
         // Recurseive DFS Search of every child
         if (node.children) {
@@ -403,6 +406,7 @@ async function initializeCFM() {
    
     cfmState.currentNode = cfmState.fullTree;
     cfmState.currentPath = [cfmState.fullTree.name];
+    cfmState.highlightedFile = null; // Clear highlight when initializing/going home
     console.log(cfmState.fullTree);
     updateFileTreeDisplay();
     updateFileContainer();
@@ -482,11 +486,13 @@ function findPathToNode(node, targetName, currentPath = []) {
 }
 
 // Select a folder from the tree
-function selectFolderFromTree(pathString) {
+function selectFolderFromTree(pathString, highlightFile = null) {
     let pathArray = pathString.split('/').filter(p => p.length > 0);
     cfmState.currentPath = pathArray;
     cfmState.currentNode = getNodeAtPath(cfmState.fullTree, pathArray);
     
+    cfmState.highlightedFile = highlightFile;
+
     navigateFolderHistory(0); // Record this navigation in the history stack
     
     updateFileContainer();
@@ -519,10 +525,11 @@ function updateFileContainer() {
     
     if (cfmState.currentNode.children && cfmState.currentNode.children.length > 0) {
         for (let child of cfmState.currentNode.children) {
+            let highlightClass = (cfmState.highlightedFile === child.name) ? 'cfm_highlighted_file' : '';
             if (child.children) // It's a folder
-                html += `<p title="${child.name}" onclick="selectFolderFromTree('${buildPathToChild(child)}')">📁${child.name}</p>`;
+                html += `<p class="${highlightClass}" title="${child.name}" onclick="selectFolderFromTree('${buildPathToChild(child)}')">📁${child.name}</p>`;
             else // It's a file
-                html += `<p title="${child.name}" onclick="downloadFileFromPath('${buildPathToChild(child)}')">📄${child.name}</p>`;
+                html += `<p class="${highlightClass}" title="${child.name}" onclick="downloadFileFromPath('${buildPathToChild(child)}')">📄${child.name}</p>`;
         }
     } else {
         html += `<p>No items in this directory</p>`;
