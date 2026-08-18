@@ -3643,7 +3643,7 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64
 /// * `req` - [`API`] (struct) provides information to the function of the request that was made.
 /// * `body_json` - provides ticket information stored as JSON. 
 /// ### Returns 
-/// * Upon success - result ok 
+/// * Upon success - Result Ok() 
 /// * Upon error - String containing error message.
 /// ### Example 
 /// ``` no_run 
@@ -3718,7 +3718,21 @@ async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_j
 
 
 // rustdoc 
-///
+/// Function marks all ticket notifications as viewed. 
+/// ### Parameters 
+///  * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// ### Returns
+/// * Upon success - Result Ok is returned and the log provides the number of dismissed tickets. 
+/// * Upon failure - Result Err is returned as a String and the log provides an error message.
+/// ### Example 
+/// ``` no_run
+///  let _ = match dismiss_all_tickets(&mut database).await {
+///        Ok(v) => v,
+///        Err(e) => {
+///           error!("Failed to dismiss all tickets: {}", e);
+///        }
+///     };
+/// ```
 async fn dismiss_all_tickets(database: &mut Database) -> Result<(), String> {
     info!("[Data] - Dismissing all tickets notifications");
 
@@ -3733,6 +3747,22 @@ async fn dismiss_all_tickets(database: &mut Database) -> Result<(), String> {
         }
     }
 }
+
+//rustdoc 
+/// Function to create a new TDX ticket. 
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made.
+/// * `body_json` - provides ticket operation type information stored as JSON. 
+/// * `username`- current user as a String.
+/// ### Returns 
+/// * Upon success - Result Ok() 
+/// * Upon failure - Returns Error with String description of the associating error. 
+/// ### Example 
+/// ``` no_run
+/// let _ = create_tdx_ticket(&mut database, &tdx_client, body_json, req.get_current_username()).await,
+/// 
+/// ```
 
 async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Value, username: String) -> Result<(), String> {
     info!("[Data] - Sending Create Ticket Request to TDX");
@@ -3807,6 +3837,23 @@ async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Va
 
     Ok(())
 }
+
+//rustdoc 
+/// Function to edit an existing TDX ticket. 
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made.
+/// * `body_json` - provides ticket operation type information stored as JSON. 
+
+/// ### Returns 
+/// * Upon success - Result Ok() 
+/// * Upon failure - Returns Error with String description of the associating error. 
+/// ### Example 
+/// ``` no_run
+/// let _ = edit_tdx_ticket(&mut database, &tdx_client, body_json) 
+/// 
+/// ```
+
 
 async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -> Result<(), String> {
     let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
@@ -3906,6 +3953,25 @@ async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -
     Ok(())
 }
 
+// rustdoc
+/// Function to post a comment to an existing TDX ticket. 
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made.
+/// * `body_json` - provides request body information stored as JSON. 
+/// ### Returns 
+/// * Upon success - Result Ok() 
+/// * Upon failure - Returns Error with String description of the associating error. 
+/// ### Example 
+/// ``` no_rust 
+///   let _ = match post_comment(&mut database, &tdx_client, body_json).await {
+///       Ok(v) => v,
+///       Err(e) => {
+///           error!("Failed to post comment: {}", e);
+///       }
+///     };
+/// ```
+
 async fn post_comment(database: &mut Database, req: &API, body_json: Value) -> Result<(), String> {
     let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
     info!("[Data] - Sending Commenting Request to TDX (Ticket ID: {})", id);
@@ -3957,6 +4023,23 @@ async fn post_comment(database: &mut Database, req: &API, body_json: Value) -> R
     Ok(())
 }
 
+// rustdoc 
+/// Function grabs the status id to provide context when creating, and editing ticket statuses. 
+/// ### Parameters 
+///  * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+///  * `req` - [`API`] (struct) provides information to the function of the request that was made.
+///  * `status_name` - String containing the name of the status for which the id is needed. 
+/// ### Returns 
+/// * Upon Success - Returns the status id as an i32. 
+/// * Upon  Error - Returns Error with String description of the associating error. 
+/// ### Examples 
+/// ``` no_run
+///
+///     let status_id = match fetch_status_id(database, &req, status).await {
+///         Ok(v) => v,
+///         Err(e) => return Err(format!("Failed to fetch StatusID from TDX: {}", e))
+///     };
+/// ``` 
 async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) -> Result<i32, String> {
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/statuses/search";
 
@@ -4012,6 +4095,20 @@ async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) 
     Err(format!("Could not find StatusID for status '{}'", status_name))
 }
 
+// rustdoc 
+/// Function to grab user from TDX including UID and Display Name. 
+/// ### Parameters 
+///  * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+///  * `req` - [`API`] (struct) provides information to the function of the request that was made.
+///  * `username` - string reference with the username logged into Bronson.
+/// ### Returns 
+/// * Upon Success - A Value with a JSON object containing the fetched UID and the full name associated with the ID. 
+/// * Upon Failure - Returns Error with String description of the associating error. 
+/// ### Example
+/// ``` no_run
+/// 
+/// ```
+/// 
 async fn get_tdx_user(database: &mut Database, req: &API, username: &str) -> Result<Value, String> {
     let url = format!("https://uwyo.teamdynamix.com/TDWebApi/api/people/getuid/{}{}", username, "@uwyo.edu");
 
