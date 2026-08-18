@@ -2842,7 +2842,8 @@ _|        _|        _|      _|
 // rustdoc
 /// Function queries the file system to check if the directory exists
 /// * Returns a boolean   
-///
+/// 
+/// Example call in [`w_build_articles`]
 
 fn dir_exists(path: &str) -> bool {
     return metadata(path).is_ok();
@@ -2851,6 +2852,8 @@ fn dir_exists(path: &str) -> bool {
 // rustdoc
 /// Function queries the file system to check if the path leads to a directory.  
 /// * Returns a boolean
+/// 
+/// Example call in [`build_subtree`]
 
 fn is_this_dir(path: &str) -> bool {
     return metadata(path).unwrap().is_dir();
@@ -2862,6 +2865,7 @@ fn is_this_dir(path: &str) -> bool {
 /// * A vector containing the string representation of the paths contained in the given directory. 
 /// * Note: function is non-recursive so providing a directory of directories will only retrieve the first layer. 
 /// ### Example
+/// call in [`build_tree`]
 /// ``` no_run
 ///  let dirs = get_dir_contents(ex_path);
 /// ```
@@ -2904,6 +2908,7 @@ fn get_dir_contents(path: &str) -> Vec<String> {
 ///    - The Ok variant field is the json string 
 ///    - The Err variant field is an error message.
 /// ## Example 
+/// call in [`w_tree`]
 /// ```no_run
 ///
 ///  let json_return = match build_tree(WIKI_DIR, _wiki_blacklist) {
@@ -2950,7 +2955,7 @@ fn build_tree(root: &str, blacklist: HashSet<&str>) -> Result<String, String> {
 /// * `blacklist` - Collection of excluded file types.
 /// ### Return 
 /// * A [`TreeNode`] (struct) containing filename, filepath, and children. 
-/// 
+/// Called by [`build_tree`]
 
 
 fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
@@ -3011,6 +3016,7 @@ fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
 /// ### Returns 
 /// A string containing the raw file path.
 /// ### Example 
+/// call in [`handle_connection`]
 /// ``` no_run
 /// let contents = get_file_path_path(req.body, EX_DIR);
 /// ```
@@ -3054,6 +3060,7 @@ $$$$$$$$\ $$\           $$\
 /// - Result Ok - Token was successfully stored in the database.
 /// - String  - An error occurred.
 /// ### Example 
+/// call in [`data_sync`]
 /// ``` no_run
 ///  let _ = fetch_tdx_token(database, req).await;
 /// ```
@@ -3122,9 +3129,10 @@ async fn fetch_tdx_token(database: &mut Database, req: &API) -> Result<(), Strin
 /// * url
 /// * request_body
 /// ### Returns 
-/// [`APIResponse`] (struct)
-/// 
-/// 
+/// * [`APIResponse`] (struct)
+///
+///  Called in most tdx functions if response received "Unauthorized".
+/// one example call in [`get_tdx_user`]
 
 async fn retry_tdx_token(database: &mut Database, req: &API, method: &str, url: &str, request_body: Option<serde_json::Value>) -> Result<APIResponse, String> {
     warn!("Unauthorized Response from TDX while performing action, trying again with new Token...");
@@ -3175,6 +3183,7 @@ async fn retry_tdx_token(database: &mut Database, req: &API, method: &str, url: 
 /// * Result Ok - Tickex run was successful.
 /// * String  - An error occurred.
 /// ### Example 
+///  call in [`data_sync`]
 /// ``` no_run
 ///  let _ = match run_tickex(&mut database, &tdx_api).await {
 ///         Ok(_)     =>  info!("[Data] - Tickex Run Complete"),
@@ -3317,7 +3326,7 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
 /// 
 /// Note: Function is called when tickets are edited or added to the Bronson database. 
 /// ### Example 
-/// call from [`run_tickex`]
+///call in [`run_tickex`]
 /// ``` no_run
 /// for ticket_val in &tickets_json {
 ///     match serialize_ticket(database, ticket_val.clone()) {
@@ -3390,6 +3399,7 @@ fn serialize_ticket(database: &mut Database, ticket_json: serde_json::Value) -> 
 /// * String - Upon success a String containing the ticket `description` is returned. 
 /// * String - Upon error a string error message is provided. 
 /// ### Example 
+/// call in [`handle_connection`]
 /// ``` no_run
 /// let result = tokio::task::block_in_place(|| {
 ///     tokio::runtime::Handle::current().block_on(
@@ -3450,7 +3460,8 @@ async fn fetch_tdx_ticket_description(database: &mut Database, req: &API, ticket
 /// ### Returns
 /// * String - Upon success a String containing the formatted `output_json` is returned 
 /// * String - Upon error a string error message is provided. 
-/// ### Example 
+/// ### Example
+/// call in [`handle_connection`]
 /// ``` no_run
 /// let result = tokio::task::block_in_place(|| {
 ///     tokio::runtime::Handle::current().block_on(
@@ -3646,6 +3657,7 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64
 /// * Upon success - Result Ok() 
 /// * Upon error - String containing error message.
 /// ### Example 
+///call in [`handle_connection`]
 /// ``` no_run 
 ///  let _ = match toggle_mark_ticket_false(&mut database, &tdx_client, body_json).await {
 ///     Ok(v) => v,
@@ -3725,6 +3737,7 @@ async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_j
 /// * Upon success - Result Ok is returned and the log provides the number of dismissed tickets. 
 /// * Upon failure - Result Err is returned as a String and the log provides an error message.
 /// ### Example 
+/// call in [`handle_connection`]
 /// ``` no_run
 ///  let _ = match dismiss_all_tickets(&mut database).await {
 ///        Ok(v) => v,
@@ -3759,6 +3772,7 @@ async fn dismiss_all_tickets(database: &mut Database) -> Result<(), String> {
 /// * Upon success - Result Ok() 
 /// * Upon failure - Returns Error with String description of the associating error. 
 /// ### Example 
+///call in [`handle_connection`]
 /// ``` no_run
 /// let _ = create_tdx_ticket(&mut database, &tdx_client, body_json, req.get_current_username()).await,
 /// 
@@ -3848,7 +3862,8 @@ async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Va
 /// ### Returns 
 /// * Upon success - Result Ok() 
 /// * Upon failure - Returns Error with String description of the associating error. 
-/// ### Example 
+/// ### Example
+/// call in [`handle_connection`] 
 /// ``` no_run
 /// let _ = edit_tdx_ticket(&mut database, &tdx_client, body_json) 
 /// 
@@ -3963,6 +3978,7 @@ async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -
 /// * Upon success - Result Ok() 
 /// * Upon failure - Returns Error with String description of the associating error. 
 /// ### Example 
+/// call in [`handle_connection`]
 /// ``` no_rust 
 ///   let _ = match post_comment(&mut database, &tdx_client, body_json).await {
 ///       Ok(v) => v,
@@ -4033,6 +4049,7 @@ async fn post_comment(database: &mut Database, req: &API, body_json: Value) -> R
 /// * Upon Success - Returns the status id as an i32. 
 /// * Upon  Error - Returns Error with String description of the associating error. 
 /// ### Examples 
+/// call in [`edit_tdx_ticket`]
 /// ``` no_run
 ///
 ///     let status_id = match fetch_status_id(database, &req, status).await {
@@ -4105,7 +4122,13 @@ async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) 
 /// * Upon Success - A Value with a JSON object containing the fetched UID and the full name associated with the ID. 
 /// * Upon Failure - Returns Error with String description of the associating error. 
 /// ### Example
+/// call in [`handle_connection`]
 /// ``` no_run
+/// let username = req.get_current_username();
+/// let user = match get_tdx_user(&mut database, &tdx_client, &username.to_string()).await {
+///     Ok(u) => u,
+///     Err(_) => { ... }
+///    };
 /// 
 /// ```
 /// 
@@ -4204,7 +4227,22 @@ $$ |  $$ |$$ |  $$ |\$$$$$$$ |$$ |\$$$$$$$ |  \$$$$  |$$ |\$$$$$$$\ $$$$$$$  |
                                   \$$$$$$  |                                  
                                    \______/                                   
 */
-
+// rustdoc 
+/// Function grabs projects from TDX and stores them in the database. 
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made.
+/// ### Returns 
+/// * Upon success - Result Ok() 
+/// * Upon failure - Returns Error with String description of the associating error. 
+/// ### Example 
+/// call in [`handle_connection`]
+/// ```no_run
+///  match fetch_projects(&mut database, &tdx_client).await {
+///      Ok(()) => (),
+///      Err(e) => error!("Failed to populate projects: {}", e),
+///     }
+/// ```
 async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String> {
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/3444/projects/search";
 
@@ -4395,6 +4433,28 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
     return Ok(());
 }
 
+//rustdoc 
+/// Function creates a pdf with information concurrent to that currently displayed by the analytics page. 
+/// 
+/// Note: The PDF engine used creates the file from which the contents are grabbed and then the file is deleted. So only the user has local copy of the export. 
+/// Nothing is stored in the Bronson Database.
+/// ### Parameters 
+///  * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+///  * `time_period` - the current time period given by radio button selection made on the front end. 
+///  * `optional_data` - information grabbed from the JSON body. 
+/// ### Returns 
+/// * Upon Success - String containing the filename created. (to be deleted) 
+/// * Upon failure - Returns Error with String description of the associating error. 
+/// ### Example 
+/// call in [`handle_connection`]
+/// ``` no_run
+///   let file_name = match export_to_pdf(&mut database, time_period, optional_data).await {
+///          Ok(f) => f,
+///          Err(e) => {
+///           error!("Failed to export PDF: {}", e);
+///        }
+///     };
+/// ```
 async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data: serde_json::Value) -> Result<String, String> {
     // Helper: get date range based on time_period
     let get_date_range = |period: i16| -> (DateTime<Utc>, DateTime<Utc>) {
@@ -4917,6 +4977,21 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
     Ok(file_name)
 }
 
+//rustdoc 
+/// Function deletes temp files used to generate the export from analytics. 
+/// ### Parameters 
+/// * `filename` - the String returned from [`export_to_pdf`]
+/// ### Returns 
+/// * Upon Success - Return OK()
+/// * Upon Failure -  Returns Error with String description of the associating error. 
+/// ### Example 
+/// call to [`handle_connection`]
+/// ``` no_run
+/// match cleanup_temp_files(file_name).await {
+///      Ok(_) => (),
+///      Err(e) => error!("Failed to clean up temporary files: {}", e),
+///    };
+/// ```
 async fn cleanup_temp_files(file_name: String) -> Result<(), String> {
     if !dir_exists(TEMP_DIR) {
         return Err(format!("Missing Temp Directory: ./generated_files/temp does not exist"));
@@ -4986,7 +5061,6 @@ fn w_build_articles() -> Vec<u8> {
     let mut article_names_vec: Vec<String> = Vec::new();
     let mut article_contents_vec: Vec<String> = Vec::new();
 
-    // Check for CFM_Code Directory
     if dir_exists(WIKI_DIR) {
         // Error handling
     }
@@ -5020,7 +5094,7 @@ fn w_build_articles() -> Vec<u8> {
 }
 
 // rustdoc
-/// Builds a JSON representation of the wiki articles directory as a tree from a depth first search, then returns it as bytes. 
+/// Function builds a JSON representation of the wiki articles directory as a tree from a depth first search, then returns it as bytes. 
 /// ### Returns 
 /// - On success returns the tree structure produced by the call to [`build_tree`] as bytes. 
 /// - On failure the error is logged and an empty JSON array (`[]`) is returned as bytes.
