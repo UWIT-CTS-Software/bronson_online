@@ -1476,6 +1476,12 @@ progress::-webkit-progress-bar {
     text-overflow: ellipsis;
 }
 
+.cfm_highlighted_file {
+    background-color: rgba(236, 200, 101, 0.25);
+    border-radius: 4px;
+    padding-left: 2px;
+}
+
 ol li::marker {
     color: rgb(170, 170, 170);
     opacity: 40%;
