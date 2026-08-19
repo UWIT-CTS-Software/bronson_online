@@ -1483,8 +1483,7 @@ pub struct Request {
 }
 
 impl Request {
-	pub fn from(buffer: [u8; BUFF_SIZE]) -> Request {
-		let buf_vec: Vec<u8> = Vec::from(buffer);
+	pub fn from(buf_vec: Vec<u8>) -> Request {
 		let mut lines: Vec<Vec<u8>> = Vec::new();
 
 		let buf_lines = buf_vec

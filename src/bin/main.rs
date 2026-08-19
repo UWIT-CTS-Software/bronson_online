@@ -269,11 +269,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
 
-        match stream.read(&mut buffer) {
-            Ok(_) => (),
-            Err(e) => error!("Error reading to buffer: {}", e)
-        };
-        let req = Request::from(buffer.clone());
+        let mut packet_size: usize = BUFF_SIZE;
+        let mut packet: Vec<u8> = Vec::with_capacity(1048576); // Maximum packet size is 1GB
+        while packet_size >= BUFF_SIZE {
+            match stream.read(&mut buffer) {
+                Ok(ps) => {
+                    packet_size = ps as usize; 
+                },
+                Err(e) => error!("Error reading to buffer: {}", e)
+            };
+
+            let sliced_buffer: &[u8] = if let Some(last_char) = buffer.iter().rposition(|&x| x != 0) {
+                &buffer[..=last_char]
+            } else {
+                &[]
+            };        
+            packet.append(&mut Vec::from(sliced_buffer));
+            buffer = [0; BUFF_SIZE];
+        }
+        let req = Request::from(packet.clone());
         let clone_db = request_database.clone();
         let req_ts = Arc::clone(&thread_schedule);
         let tc_clone = Arc::clone(&tdx_client);
