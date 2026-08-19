@@ -349,7 +349,19 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
 
     Ok(())
 }
-
+//rustdoc 
+/// Function creates a space to run API calls separate from users threadpool.
+/// ### Parameters 
+///  * `thread_schedule` - cloned with Arc to control singlethread constraint. Type [`ThreadSchedule`]
+///  * `tdx_api` - cloned with Arc to because the type [`API`] may be multithread. `tdx_api` Is multi thread. 
+///  * `lsm_api` - cloned with Arc to because the type [`API`] may be multithread. `lsm_client ` Is single thread.
+///
+/// NOTE: `lsm_api` passed here and `lsm_client` passed in [`handle_connection`] serve the same purpose.
+/// Naming conventions need updated for further clarification. The same can be said for `tdx_client` and `tdx_api`.
+///  ### Returns 
+/// * Void 
+/// ### Example 
+/// ALEX MAKE AN EXAMPLE FOR THIS 
 #[tokio::main]
 #[allow(unused_assignments)]
 #[allow(unreachable_code)]
@@ -540,7 +552,22 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
 }
-
+// rustdoc 
+/// Function is the entry point to the servers on-request services. 
+/// 
+/// Note: function may be in use by any number of threads in the initialized threadpool. 
+/// ### Parameters
+///  * `req` - 
+///  * `database` - function requires [`Database`] (struct) to provide context of the Bronson database. 
+///  * `thread_schedule` - cloned with Arc to control singlethread constraint. Type [`ThreadSchedule`]
+///  * `tdx_client` - cloned with Arc to because the type [`API`] may be multithread. `tdx_client` Is multi thread. 
+///  * `lsm_client` - cloned with Arc to because the type [`API`] may be multithread. `lsm_client ` Is single thread. 
+/// ### Returns 
+/// * A [`Response`] object compiled into a byte vector. 
+/// Note: a compiled byte vector is easier to clone, so it is done before return instead of after. 
+/// ### Examples 
+/// call in [`main`]
+/// ALEX ADD AN EXAMPLE 
 #[tokio::main]
 #[allow(unused_assignments)]
 async fn handle_connection(
@@ -2166,7 +2193,28 @@ async fn handle_connection(
     
     return res.build();
 }
-
+//rustdoc 
+/// Function pulls leaderboard information from LSM APIs and updates the Bronson database. 
+/// ### Parameters 
+/// * database - function requires [`Database`] (struct) to provide context of the Bronson database. 
+/// * req - [`API`] provides information to the function of the request that was made 
+/// ### Returns 
+/// * Void 
+/// ### Example 
+/// ``` no_run 
+/// for task_name in due_tasks {
+/// // Execute task based on task_name
+///         match task_name.as_str() {
+///         // other tasks names to match on
+///         // ... => {}
+///         "leaderboard"     => {
+///             info!("[Data] - Pulling New LSM Leaderboard");
+///             update_room_check_leaderboard(&mut database, &lsm_api).await;
+///             info!("[Data] - New LSM Leaderboard Pulled")
+///       },
+///     }
+///   }
+/// ```
 async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
     let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
     let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
