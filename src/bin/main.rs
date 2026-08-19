@@ -116,6 +116,13 @@ $$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |  $$ |\$$$$$$$ |
 \_______/  \_______| \_______|\__|  \__| \_______|\__|  \__| \_______|
 */
 
+//rustdoc 
+/// Entry Function for the server. 
+/// ### Returns 
+/// Upon Success - ()
+/// Upon Failure - dynamic error. 
+/// ### Example 
+/// ALEX ADD AN EXAMPLE
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // debug setting
     env::set_var("RUST_BACKTRACE", "1");
@@ -299,7 +306,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     return Ok(());
 }
-
+// rustdoc 
+/// Function creates verbose server log to standard out and writes a log file.  
+/// ### Parameter 
+/// * `level` - String Reference containing the sensitivity level for the logger. 
+/// ### Returns 
+/// * The logger. 
+/// ### Example 
+/// ``` no_run
+/// if matches.opt_present("d") {
+///     match init_logger("debug") {
+///         Ok(_) => (),
+///         Err(e) => error!("Unable to init logger: {}", e)
+///       };
+/// } else {
+///     match init_logger("info") {
+///         Ok(_) => (),
+///         Err(e) => error!("Unable to init logger: {}", e)
+///     };
+/// }
+/// ```
 fn init_logger(level: &str) -> Result<(), fern::InitError> {
     let log_filter: log::LevelFilter;
     match level {
@@ -3750,7 +3776,7 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64
 /// * `req` - [`API`] (struct) provides information to the function of the request that was made.
 /// * `body_json` - provides ticket information stored as JSON. 
 /// ### Returns 
-/// * Upon success - Result Ok() 
+/// * Upon success - ()
 /// * Upon error - String containing error message.
 /// ### Example 
 ///call in [`handle_connection`]
@@ -3830,7 +3856,7 @@ async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_j
 /// ### Parameters 
 ///  * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
 /// ### Returns
-/// * Upon success - Result Ok is returned and the log provides the number of dismissed tickets. 
+/// * Upon success - The log provides the number of dismissed tickets. 
 /// * Upon failure - Result Err is returned as a String and the log provides an error message.
 /// ### Example 
 /// call in [`handle_connection`]
@@ -3865,7 +3891,7 @@ async fn dismiss_all_tickets(database: &mut Database) -> Result<(), String> {
 /// * `body_json` - provides ticket operation type information stored as JSON. 
 /// * `username`- current user as a String.
 /// ### Returns 
-/// * Upon success - Result Ok() 
+/// * Upon success - ()
 /// * Upon failure - Returns Error with String description of the associating error. 
 /// ### Example 
 ///call in [`handle_connection`]
@@ -3956,7 +3982,7 @@ async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Va
 /// * `body_json` - provides ticket operation type information stored as JSON. 
 
 /// ### Returns 
-/// * Upon success - Result Ok() 
+/// * Upon success - ()
 /// * Upon failure - Returns Error with String description of the associating error. 
 /// ### Example
 /// call in [`handle_connection`] 
@@ -4071,7 +4097,7 @@ async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -
 /// * `req` - [`API`] (struct) provides information to the function of the request that was made.
 /// * `body_json` - provides request body information stored as JSON. 
 /// ### Returns 
-/// * Upon success - Result Ok() 
+/// * Upon success - ()
 /// * Upon failure - Returns Error with String description of the associating error. 
 /// ### Example 
 /// call in [`handle_connection`]
@@ -4329,7 +4355,7 @@ $$ |  $$ |$$ |  $$ |\$$$$$$$ |$$ |\$$$$$$$ |  \$$$$  |$$ |\$$$$$$$\ $$$$$$$  |
 /// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
 /// * `req` - [`API`] (struct) provides information to the function of the request that was made.
 /// ### Returns 
-/// * Upon success - Result Ok() 
+/// * Upon success - ()
 /// * Upon failure - Returns Error with String description of the associating error. 
 /// ### Example 
 /// call in [`handle_connection`]
@@ -5078,7 +5104,7 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
 /// ### Parameters 
 /// * `filename` - the String returned from [`export_to_pdf`]
 /// ### Returns 
-/// * Upon Success - Return OK()
+/// * Upon Success - ()
 /// * Upon Failure -  Returns Error with String description of the associating error. 
 /// ### Example 
 /// call to [`handle_connection`]
