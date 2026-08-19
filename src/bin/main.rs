@@ -2258,7 +2258,13 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
         val: String::from_utf8(contents).expect("Unable to parse LSM Return"),
     });
 }
-
+// rustdoc 
+/// Function fetches an LSM endpoint that fetches the location of our spare PCs and updates the database 
+/// ### Parameters 
+/// * database - function requires [`Database`] (struct) to provide context of the Bronson database. 
+/// * req - [`API`] provides information to the function of the request that was made 
+/// ### Returns 
+/// * Void 
 async fn update_lsm_spares(database: &mut Database, req: &API) {
     let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
 
@@ -2638,6 +2644,18 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 
 */
 
+//rustdoc 
+/// Function fetches all of the rooms in a building requested.  
+/// ### Parameters 
+/// * `tmp` - String containing the request body. 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// ### Returns 
+/// * A byte vector of stringified json containing the rooms in the building. 
+/// ### Example 
+/// call in [`handle_connection`]
+/// ``` no_run
+/// let contents = ping_response(String::from_utf8(req.body).expect("Err, invalid UTF-8"), database);
+/// ```
 fn ping_response(tmp: String, mut database: Database) -> Vec<u8> {
     let pr: PingRequest = serde_json::from_str(&tmp)
         .expect("Fatal Error: Unable to parse ping request");
@@ -2666,6 +2684,25 @@ NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
 */
 
 // call ping_this executable here
+
+//rustdoc 
+/// Function grabs and iterates through rooms calling [`ping_room`] 
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// ### Returns 
+/// * Void
+/// ### Example 
+/// 
+/// ``` no_run
+///  if jn_st {
+///         let mut db_jn_clone = database.clone();
+///         jn_thread.execute( move || async {
+///             execute_ping(&mut db_jn_clone).await;
+///         }.now_or_never().unwrap());
+///         } else {
+///             execute_ping(&mut database).await;
+///        }
+/// ```
 async fn execute_ping(database: &mut Database) {
     let buildings: HashMap<String, DB_Building> = match database.get_buildings() {
         Ok(bs) => bs,
@@ -2697,6 +2734,15 @@ async fn execute_ping(database: &mut Database) {
     }
 }
 
+// rustdoc 
+/// Function sends ICMP pings room devices and returns their IP addresses if found. 
+/// 
+/// ### Parameters 
+/// * `net_elements` - vector of [`DB_IpAddress`] information needed for pings grabbed from the database. 
+/// ### Returns 
+/// * `pinged_hns` - vector of [`DB_IpAddress`] containing the hostnames of devices that ponged back. 
+/// call in [`execute_ping`]
+/// 
 fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
     let mut pinged_hns: Vec<Option<DB_IpAddress>> = Vec::new();
 
@@ -2755,6 +2801,7 @@ $$ |  $$\ $$ |  $$ |$$  _$$<  $$ |      $$ |  $$ |$$ |      $$ |  $$ |
  \______/ \__|  \__|\__|  \__|\__|      \_______/ \__|       \_______|
 */
 
+
 fn construct_headers(call_type: &str) -> Result<HeaderMap, String> {
     let k_json = match env::var("KEYS_JSON") {
         Ok(k)  => String::from(k),
@@ -2785,70 +2832,6 @@ fn construct_headers(call_type: &str) -> Result<HeaderMap, String> {
     return Ok(header_map);
 }
 
-/* fn check_schedule(room: &DB_Room) -> (bool, String) {
-    let mut available: bool = true;
-    let mut until: String = String::from("TOMORROW");
-
-    let now = Local::now();
-    let day_of_week = match now.date_naive().weekday() {
-        Weekday::Mon => "M",
-        Weekday::Tue => "T",
-        Weekday::Wed => "W",
-        Weekday::Thu => "R",
-        Weekday::Fri => "F",
-        _            => "?",
-    };
-    let now_str = now.to_string();
-    let time_filter = Regex::new(r"(?<hours>[0-9]{2}):(?<minutes>[0-9]{2})").unwrap();
-    let time = time_filter.captures(&now_str).unwrap();
-
-    let hours: u16 = match time["hours"].parse() {
-        Ok(h) => h,
-        Err(e) => {
-            error!("Unable to parse schedule hours: {}\nDefaulting to 0.", e);
-            0
-        }
-    };
-    let minutes: u16 = match time["minutes"].parse() {
-        Ok(m) => m,
-        Err(e) => {
-            error!("Unable to parse schedule minutes: {}\nDefaulting to 0.", e);
-            0
-        }
-    };
-    let adjusted_time: u16 = (hours * 100) + minutes;
-    
-    for block in &room.schedule {
-        let block_vec: Vec<&str> = block.as_ref().unwrap().split(&[' ', '-']).collect::<Vec<_>>().to_vec();
-        let adjusted_start: u16 = match block_vec[1].parse() {
-            Ok(t) => t,
-            Err(e) => {
-                error!("Unable to parse schedule start time: {}", e);
-                0
-            }
-        };
-        let adjusted_end: u16 = match block_vec[2].parse() {
-            Ok(t) => t,
-            Err(e) => {
-                error!("Unable to parse schedule end time: {}", e);
-                0
-            }
-        };
-        if block_vec[0].contains(day_of_week) {
-            if adjusted_time < adjusted_start {
-                available = true;
-                until = pad_zero((adjusted_start % 100).to_string(), 4);
-                return (available, until);
-            } else if (adjusted_start <= adjusted_time) && (adjusted_time <= adjusted_end) {
-                available = false;
-                until = pad_zero((adjusted_end).to_string(), 4);
-                return (available, until);
-            }
-        }
-    }
-
-    return (available, until);
-} */
 
 fn check_period_to_delta(period: i16) -> TimeDelta {
     match period {
