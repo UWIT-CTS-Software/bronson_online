@@ -2258,6 +2258,7 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
         val: String::from_utf8(contents).expect("Unable to parse LSM Return"),
     });
 }
+
 // rustdoc 
 /// Function fetches an LSM endpoint that fetches the location of our spare PCs and updates the database 
 /// ### Parameters 
@@ -2265,6 +2266,23 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
 /// * req - [`API`] provides information to the function of the request that was made 
 /// ### Returns 
 /// * Void 
+/// ### Example 
+///  call in [`data_sync`]
+/// ``` no_run 
+///  for task_name in due_tasks {
+/// // Execute task based on task_name
+///         match task_name.as_str() {
+///         // other tasks names to match on
+///         // ... => {}
+///         "spares"          => {
+///             info!("[Data] - Pulling New LSM Spare Information");
+///             update_lsm_spares(&mut database, &lsm_api).await; 
+///             info!("[Data] - New LSM Spare Information Pulled")
+///         },
+///
+///     }
+/// }
+/// ```
 async fn update_lsm_spares(database: &mut Database, req: &API) {
     let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
 
@@ -3155,9 +3173,9 @@ async fn fetch_tdx_token(database: &mut Database, req: &API) -> Result<(), Strin
 /// ### Parameters
 /// * database - function requires [`Database`] (struct) to provide context of the Bronson database. 
 /// * req - [`API`] provides information to the function of the request that was made 
-/// * method 
-/// * url
-/// * request_body
+/// * method - String Reference containing the API method. 
+/// * url - String Reference containing the TDX API url. 
+/// * request_body - the response body as JSON if required. 
 /// ### Returns 
 /// * [`APIResponse`] (struct)
 ///
