@@ -357,17 +357,8 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
     // Init Everyting
     // ThreadSchedule Init
     //let mut thread_schedule = ThreadSchedule::new();
-    // TODO: Only add print1/2 if Debug is enabled.
     {
         let mut ts = thread_schedule.write().unwrap();
-        ts.tasks.insert("print1".to_string(), TaskSchedule {
-            duration: 60,
-            timestamp: Utc::now(),
-        });
-        ts.tasks.insert("print2".to_string(), TaskSchedule {
-            duration: 120,
-            timestamp: Utc::now(),
-        });
         ts.tasks.insert("leaderboard".to_string(), TaskSchedule {
             duration: 3600,
             timestamp: Utc::now() - Duration::from_secs(3599),
@@ -444,12 +435,6 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
         for task_name in due_tasks {
             // Execute task based on task_name
             match task_name.as_str() {
-                "print1"          => { // Not-LSM
-                    debug!("[ThreadSchedule Debug] - One Minute Message");
-                },
-                "print2"          => { // Not-LSM
-                    debug!("[ThreadSchedule Debug] - Two Minute Message");
-                },
                 "leaderboard"     => {
                     info!("[Data] - Pulling New LSM Leaderboard");
                     update_room_check_leaderboard(&mut database, &lsm_api).await;
