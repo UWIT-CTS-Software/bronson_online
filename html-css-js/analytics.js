@@ -248,6 +248,7 @@ function getTimePeriodRadioHTML(timePeriod) {
                 <label for="custom"> → </label>
                 <input type="date" id="an_custom-end-date" min="2020-01-01" max="${todaysDate}" ${endDate !== "" ? `value=${endDate}` : ""}>
             </div>
+            <p style="font-size: 8pt; margin-top: 8px;">*Room Check counts will get rounded to 7, 30, 90, or 365 days</p>
         </div>
     `;
 }
