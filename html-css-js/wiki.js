@@ -325,7 +325,7 @@ function deleteButton(node){
 // Article Viewer 
 //-------------------------------------------------------------------
 
- async function getArticleHTML(blob, filename) {
+    async function getArticleHTML(blob, filename) {
     const isMobile = localStorage.getItem("isMobile") === "true";
    
     if (filename.endsWith('.md')){
@@ -337,7 +337,7 @@ function deleteButton(node){
                 <legend ${isMobile ? "class='mobile_legend'" : "class='w_legend'"}> 
                     ${filename}
                 </legend>  
-                <pre>${parsed_md} </pre>
+                <pre class="md_item">${parsed_md} </pre>
                 </div>
 
             </fieldset>
@@ -357,12 +357,13 @@ function deleteButton(node){
                 <legend ${isMobile ? "class='mobile_legend'" :  "class='w_legend'"}> 
                     ${filename}
                 </legend> 
-                <iframe width="100%" height="1200px" src="${blobUrl}"></iframe>
+                <iframe id="pdfViewer" src="${blobUrl}"></iframe>
                 </div>
 
             </fieldset>
             
         `;
+       
         w_viwer.innerHTML = html;
          return; 
     } else {
