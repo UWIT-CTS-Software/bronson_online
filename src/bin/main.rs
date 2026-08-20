@@ -1148,7 +1148,7 @@ async fn handle_connection(
             let time_period = body_json["timePeriod"].as_i64().unwrap_or(0) as i16;
             let optional_data = body_json["optionalData"].clone();
 
-            let file_name = match export_to_pdf(&mut database, time_period, optional_data).await {
+            let file_name = match export_analytics_report_to_pdf(&mut database, time_period, optional_data).await {
                 Ok(f) => f,
                 Err(e) => {
                     error!("Failed to export PDF: {}", e);
@@ -4363,14 +4363,14 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
 /// ### Example 
 /// call in [`handle_connection`]
 /// ``` no_run
-///   let file_name = match export_to_pdf(&mut database, time_period, optional_data).await {
+///   let file_name = match export_analytics_report_to_pdf(&mut database, time_period, optional_data).await {
 ///          Ok(f) => f,
 ///          Err(e) => {
 ///           error!("Failed to export PDF: {}", e);
 ///        }
 ///     };
 /// ```
-async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data: serde_json::Value) -> Result<String, String> {
+async fn export_analytics_report_to_pdf(database: &mut Database, time_period: i16, optional_data: serde_json::Value) -> Result<String, String> {
     // Helper: get date range based on time_period
     let get_date_range = |period: i16| -> (DateTime<Utc>, DateTime<Utc>) {
         let now = Utc::now();
@@ -4728,6 +4728,7 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
             \hline
                 {\small Room Checks Performed}                 & {\small Tickets from Room Checks}                 & {\small WyoCast / Event Tickets}              & {\small PC Related Tickets}                \\ 
                 {\LARGE \textbf{[[ room_checks_performed ]]}}  & {\LARGE \textbf{[[ tickets_from_room_checks ]]}}  & {\Large \textbf{[[ wycast_event_tickets ]]}}  & {\Large \textbf{[[ pc_related_tickets ]]}} \\ 
+                [[ roomcheck_rounding_note ]] % a note to the user if the room check count is rounded due to custom date range
             \end{tabular}
             \end{center}
     
@@ -4828,6 +4829,11 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
         _ => "ERROR".to_string(),
     };
 
+    let roomcheck_rounding_note = match time_period {
+        4 | 5 => r#"{\scriptsize *Room Checks rounded to a max of 365 days} & {} & {} & {}"#.to_string(),
+        _ => "".to_string(),
+    };
+
     // Format building x coordinates for LaTeX
     let building_x_coords = top_10_buildings.join(",");
 
@@ -4843,6 +4849,7 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
     context.insert("tickets_from_room_checks", &tickets_from_room_checks);
     context.insert("wycast_event_tickets", &wycast_event_tickets);
     context.insert("pc_related_tickets", &pc_related_tickets);
+    context.insert("roomcheck_rounding_note", &roomcheck_rounding_note);
     context.insert("notes", &latex_roomcheck_tickets_notes);
     context.insert("building_coords", &building_latex_coords);
     context.insert("building_x_coords", &building_x_coords);
@@ -4895,7 +4902,7 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
 //rustdoc 
 /// Function deletes temp files used to generate the export from analytics. 
 /// ### Parameters 
-/// * `filename` - the String returned from [`export_to_pdf`]
+/// * `filename` - the String returned from [`export_analytics_report_to_pdf`]
 /// ### Returns 
 /// * Upon Success - Return OK()
 /// * Upon Failure -  Returns Error with String description of the associating error. 
