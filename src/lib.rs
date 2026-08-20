@@ -22,7 +22,7 @@ buildingData
 Building
 PingRequest
 jack_ping
-CFMRequestFile
+RequestFile
 GeneralRequest
 */
 
@@ -273,7 +273,7 @@ impl Database {
 			.await {
 				Ok(b) => b,
 				Err(m) => { 
-					error!("Buildings not recieved from lsm: {}", m); 
+					error!("Buildings not received from lsm: {}", m); 
 					return None;
 				}
 			}
@@ -1914,7 +1914,7 @@ impl Display for TerminalError {
 			TerminalError::InvalidArgument(item) => write!(f, "Invalid argument: {}\n", item),
 			TerminalError::StrParseError(item) => write!(f, "Unable to parse: {}\n", item),
 			TerminalError::StringParseError(item) => write!(f, "Unable to parse: {}", item),
-			TerminalError::ResponseError(item) => write!(f, "An error occured: {}\n", item),
+			TerminalError::ResponseError(item) => write!(f, "An error occurred: {}\n", item),
 		}
 	}
 }
@@ -2053,7 +2053,7 @@ help   : help
 						)
 			},
 			&_       => {
-				return Err(TerminalError::InvalidArgument("Unknown comand: ".to_owned() + &arg_vec[0]));
+				return Err(TerminalError::InvalidArgument("Unknown command: ".to_owned() + &arg_vec[0]));
 			}
 		})
     }
@@ -2104,7 +2104,7 @@ pub struct PingRequest {
 
 // ----------- Custom structs for CFM Requests
 #[derive(Serialize, Deserialize, Debug)]
-pub struct CFMRequestFile {
+pub struct RequestFile {
 	pub filename: String
 }
 
