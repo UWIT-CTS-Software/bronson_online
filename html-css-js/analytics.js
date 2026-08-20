@@ -215,6 +215,7 @@ function getTimePeriodRadioHTML(timePeriod) {
     const selectedPeriod = parseInt(timePeriod, 10);
     const startDate = sessionStorage.getItem("an_custom_start");
     const endDate = sessionStorage.getItem("an_custom_end");
+    const todaysDate = new Date().toISOString().split('T')[0];
 
     return `
         <div class="an_timePeriodSelector">
@@ -243,9 +244,9 @@ function getTimePeriodRadioHTML(timePeriod) {
                 <input type="radio" id="custom" name="time-period" value="custom" ${selectedPeriod === 5 ? "checked" : ""}>
                 <label for="custom">*Custom Date Range</label>
                 <label for="custom">: </label>
-                <input type="date" id="an_custom-start-date" ${startDate !== "" ? `value=${startDate}` : ""}>
+                <input type="date" id="an_custom-start-date" min="2020-01-01" max="${todaysDate}" ${startDate !== "" ? `value=${startDate}` : ""}>
                 <label for="custom"> → </label>
-                <input type="date" id="an_custom-end-date" ${endDate !== "" ? `value=${endDate}` : ""}>
+                <input type="date" id="an_custom-end-date" min="2020-01-01" max="${todaysDate}" ${endDate !== "" ? `value=${endDate}` : ""}>
             </div>
         </div>
     `;
