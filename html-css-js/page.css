@@ -609,6 +609,17 @@ input:checked + .slider:before {
     overflow-y: scroll;
     height: 250px;
 }
+.dbCbProg::-webkit-scrollbar {
+    display: block !important;
+    width: 8px;
+}
+.dbCbProg::-webkit-scrollbar-thumb {
+    background: rgb(224, 193, 108);
+    border-radius: 4px;
+}
+.dbCbProg::-webkit-scrollbar-track {
+    background: transparent;
+}
 
 .dbCbProgLabel {
     margin:0px 2%;
