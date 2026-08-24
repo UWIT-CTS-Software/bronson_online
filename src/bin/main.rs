@@ -2225,48 +2225,8 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
     // Iterate over each.
     for building in buildings {
         debug!("[Checkerboard] - Processing Building: {:?}", building.1.abbrev);
-let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last90days%22%2CParentLocation%3A%22{}%22%7D", building.1.lsm_name.as_str());
-        // Get Alias Table, to swap incoming room_names from LSM with
-        //   Bronson friendly naming. We filter Alias Table to only contain
-        //   rooms that are relevant to current LSM request.
-        let alias_table : DB_DataElement = match database.get_data("alias_table") {
-            Ok(at) => at,
-            Err(m)     => {
-                error!("DB_ERR: {}", m);
-                DB_DataElement { 
-                    key: String::from("alias_table"),
-                    val: String::from("{\"buildings\": [], \"rooms\": []}") 
-                }
-            }
-        };
-        
-        let alias_obj: Value = serde_json::from_str(&alias_table.val)
-            .expect("Unable to Parse Alias Table Contents.");
-        let alias_rooms = alias_obj.get("rooms").unwrap();
-        //
-        let mut alias_vec: Vec<(String, String)> = Vec::new();
-        if let Some(arr) = alias_rooms.as_array() {
-            for item in arr {
-                let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
-                if alias_name.contains(&building.1.abbrev.as_str()) {
-                    debug!("[Checkerboard] Relevant Alias Found");
-                    let alias_lsm = item.get("lsmName").unwrap().as_str().unwrap().to_string();
-                    alias_vec.push((alias_name, alias_lsm));
-                }
-            }
-        }
-        // Alias Building
-        let alias_buildings = alias_obj.get("buildings").unwrap();
-        let mut alias_abbrev : (String, String) = ("NOTSET".to_string(),"NOTSET".to_string());
-        if let Some(arr) = alias_buildings.as_array() {
-            for item in arr {
-                let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
-                if alias_name == building.1.abbrev.as_str() {
-                    alias_abbrev.0 = item.get("lsmName").unwrap().as_str().unwrap().to_string();
-                    alias_abbrev.1 = item.get("name").unwrap().as_str().unwrap().to_string();
-                }
-            }
-        }
+        let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last90days%22%2CParentLocation%3A%22{}%22%7D", building.1.lsm_name.as_str());
+
         // Process Request to LSM
         let body = match req
             .build()
@@ -2305,27 +2265,8 @@ let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BComp
                 }
             };
             
-for i in 0..num_entries {
-                let mut check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
-                // Look to see if check["LocationName"] is in the alias_obj, replace it if so.
-                for tuple in &alias_vec {
-                    if tuple.1 == check["LocationName"].as_str().unwrap() {
-                        debug!("[Checkerboard Alias] Room - {:?} to be replaced with {:?}", check["LocationName"].as_str().unwrap(), tuple.0);
-                        check["LocationName"] = serde_json::Value::String(tuple.0.clone());
-                    }
-                }
-                
-                // Replace Abbreviation if exists
-                if alias_abbrev.0 != "NOTSET" {
-                    // check["LocationName"]
-                    debug!("[Checkerboard Alias] Building - {:?} to be replaced with {:?}", alias_abbrev.0, alias_abbrev.1);
-                    check["LocationName"] = serde_json::Value::String(
-                        check["LocationName"]
-                            .as_str()
-                            .unwrap()
-                            .replace(&alias_abbrev.0, &alias_abbrev.1)
-                    );
-                }
+            for i in 0..num_entries {
+                let check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
               
                 // Only insert if this is the first entry or if the new timestamp is more recent
                 let location_name = String::from(check["LocationName"].as_str().unwrap());
