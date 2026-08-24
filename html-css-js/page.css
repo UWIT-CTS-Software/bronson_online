@@ -986,6 +986,17 @@ progress::-webkit-progress-bar {
     max-height: 400px;
     overflow-y: scroll;
 }
+.cb_legend::-webkit-scrollbar {
+    display: block !important;
+    width: 8px;
+}
+.cb_legend::-webkit-scrollbar-thumb {
+    background: rgb(224, 193, 108);
+    border-radius: 4px;
+}
+.cb_legend::-webkit-scrollbar-track {
+    background: transparent;
+}
 
 .cb_buttonRow {
     background-color: rgb(50, 50, 50);
