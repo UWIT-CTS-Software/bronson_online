@@ -726,11 +726,6 @@ impl Database {
 			});
 
 			let _ = self.update_data(&DB_DataElement {
-				key: String::from("alias_table"),
-				val: String::from("{\"buildings\": [], \"rooms\": []}"),
-			});
-
-			let _ = self.update_data(&DB_DataElement {
 				key: String::from("lsm_leaderboard"),
 				val: String::from(LDRB_ERR),
 			});
@@ -1874,7 +1869,7 @@ impl<B: std::clone::Clone> APIEndpoint<B>  {
 
 		while let Some(chunk) = match resp.chunk().await {
 			Ok(c) => c,
-			Err(m) => { return Err(m.to_string() + &String::from_utf8(raw_body.clone()).expect("Cannot parse")); }
+			Err(m) => { return Err(m.to_string()); }
 		} {
 			raw_body.extend_from_slice(&chunk);
 		}

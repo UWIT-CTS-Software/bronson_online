@@ -12,6 +12,14 @@ The frontend is written in JavaScript and the backend was written in Rust.
 
 ## Prerequisites
 
+### Install LaTeX Compiling Engine (Report Generation)
+
+**Debian**<br>
+`sudo apt install texlive texlive-pictures texlive-latex-extra`
+
+**Arch**<br>
+`sudo pacman -S texlive texlive-pictures texlive-latexextra`
+
 ### Install Rust and Cargo
 First, Rust needs installed. <br>
 `curl https://sh.rustup.rs -sSf | sh`<br>

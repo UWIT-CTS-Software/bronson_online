@@ -357,17 +357,8 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
     // Init Everyting
     // ThreadSchedule Init
     //let mut thread_schedule = ThreadSchedule::new();
-    // TODO: Only add print1/2 if Debug is enabled.
     {
         let mut ts = thread_schedule.write().unwrap();
-        ts.tasks.insert("print1".to_string(), TaskSchedule {
-            duration: 60,
-            timestamp: Utc::now(),
-        });
-        ts.tasks.insert("print2".to_string(), TaskSchedule {
-            duration: 120,
-            timestamp: Utc::now(),
-        });
         ts.tasks.insert("leaderboard".to_string(), TaskSchedule {
             duration: 3600,
             timestamp: Utc::now() - Duration::from_secs(3599),
@@ -444,12 +435,6 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
         for task_name in due_tasks {
             // Execute task based on task_name
             match task_name.as_str() {
-                "print1"          => { // Not-LSM
-                    debug!("[ThreadSchedule Debug] - One Minute Message");
-                },
-                "print2"          => { // Not-LSM
-                    debug!("[ThreadSchedule Debug] - Two Minute Message");
-                },
                 "leaderboard"     => {
                     info!("[Data] - Pulling New LSM Leaderboard");
                     update_room_check_leaderboard(&mut database, &lsm_api).await;
@@ -1163,7 +1148,7 @@ async fn handle_connection(
             let time_period = body_json["timePeriod"].as_i64().unwrap_or(0) as i16;
             let optional_data = body_json["optionalData"].clone();
 
-            let file_name = match export_to_pdf(&mut database, time_period, optional_data).await {
+            let file_name = match export_analytics_report_to_pdf(&mut database, time_period, optional_data).await {
                 Ok(f) => f,
                 Err(e) => {
                     error!("Failed to export PDF: {}", e);
@@ -1471,20 +1456,6 @@ async fn handle_connection(
                     .status(STATUS_200)
                     .send_contents(contents)
         },
-        "GET /aliasTable HTTP/1.1" => {
-            let alias_table = database.get_data("alias_table")
-                .unwrap_or(DB_DataElement {
-                    key: "alias_table".to_string(),
-                    val: "Alias Table has not been updated".to_string()
-                })
-                .val;
-            let contents = json!({
-                "response": alias_table
-            }).to_string().into();
-            Response::new()
-                    .status(STATUS_200)
-                    .send_contents(contents)
-        },
         "GET /threadSchedule HTTP/1.1" => {
             let ts = thread_schedule.read().unwrap();
             let contents = json!({
@@ -1534,92 +1505,6 @@ async fn handle_connection(
                         .status(STATUS_500)
                         .send_contents("Task Not Found".into())
             }
-        },
-        "POST /setAliasTable HTTP/1.1" => {
-            let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-            // Parse Request Body
-            let alias_rooms = body_json["rooms"]
-                .as_array()
-                .unwrap();
-            //  Iterate through the rooms and find hostname exceptions,
-            for alias_record in alias_rooms.iter() {
-                debug!("[Alias] - Record \n {}", alias_record);
-                let hostname_exception = alias_record.get("hostnameException")
-                    .unwrap()
-                    .to_string()
-                    .replace("\"","");
-                let room_name = alias_record.get("name")
-                    .unwrap()
-                    .to_string()
-                    .replace("\"","");
-                if hostname_exception != "" {
-                    debug!("[Alias] - Hostname Exception: \n {} at {}", hostname_exception, room_name);
-                    let mut room : DB_Room = match database.get_room_by_name(&room_name) {
-                        Ok(r)  => r,
-                        Err(m) => {
-                            error!("DB_ERR: {}", m);
-                            return Response::new()
-                                    .status(STATUS_500)
-                                    .send_contents(format!("An internal error occurred. Please contact a system administrator.\n{}", m).into())
-                                    .build();
-                        }
-                    };
-                    let mut pd = room.ping_data.clone();
-                    for ping_record in &mut pd {
-                        ping_record
-                            .as_mut()
-                            .unwrap()
-                            .hostname.room = room_name.clone();
-                    }
-                    room.ping_data = pd;
-                    let _ = database.update_room(&room);
-                }
-            }
-            // Save Alias Table to database as dataElement
-            let alias_table = DB_DataElement {
-                key: "alias_table".to_string(),
-                val: String::from_utf8(req.body).expect("Unable to parse body contents")
-            };
-            let _ = database.update_data(&alias_table);
-
-            Response::new()
-                    .status(STATUS_200)
-                    .send_contents("Database Alias Table Updated".into())
-        },
-        "POST /resetAlias HTTP/1.1" => {
-            let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-            // Get List of Rooms from body_json
-            let target_rooms = body_json["rooms"]
-                .as_array()
-                .unwrap();
-            // Change ping_data.hostname.room to original name
-            for room in target_rooms.iter() {
-                let mut room = match database.get_room_by_name(&room.to_string().replace("\"","")) {
-                    Ok(r)  => r,
-                    Err(m) => {
-                        error!("DB_ERR: {}", m);
-                        return Response::new()
-                                .status(STATUS_500)
-                                .send_contents(format!("An internal error occurred. Please contact a system administrator.\n{}", m).into())
-                                .build();
-                    }
-                };
-                let room_name = room.name.clone();
-                let mut pd = room.ping_data.clone();
-                for ping_record in &mut pd {
-                    ping_record
-                        .as_mut()
-                        .unwrap()
-                        .hostname.room = room_name.clone();
-                }
-                room.ping_data = pd;
-                let _ = database.update_room(&room);
-            }
-            debug!("[Alias] - Reverting Alias Change for target_rooms, {:?}", &target_rooms);
-
-            Response::new()
-                    .status(STATUS_200)
-                    .send_contents("Reset Requested Rooms".into())
         },
         // Terminal
         // --------------------------------------------------------------------
@@ -2341,47 +2226,7 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
     for building in buildings {
         debug!("[Checkerboard] - Processing Building: {:?}", building.1.abbrev);
         let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last90days%22%2CParentLocation%3A%22{}%22%7D", building.1.lsm_name.as_str());
-        // Get Alias Table, to swap incoming room_names from LSM with
-        //   Bronson friendly naming. We filter Alias Table to only contain
-        //   rooms that are relevant to current LSM request.
-        let alias_table : DB_DataElement = match database.get_data("alias_table") {
-            Ok(at) => at,
-            Err(m)     => {
-                error!("DB_ERR: {}", m);
-                DB_DataElement { 
-                    key: String::from("alias_table"),
-                    val: String::from("{\"buildings\": [], \"rooms\": []}") 
-                }
-            }
-        };
-        
-        let alias_obj: Value = serde_json::from_str(&alias_table.val)
-            .expect("Unable to Parse Alias Table Contents.");
-        let alias_rooms = alias_obj.get("rooms").unwrap();
-        //
-        let mut alias_vec: Vec<(String, String)> = Vec::new();
-        if let Some(arr) = alias_rooms.as_array() {
-            for item in arr {
-                let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
-                if alias_name.contains(&building.1.abbrev.as_str()) {
-                    debug!("[Checkerboard] Relevant Alias Found");
-                    let alias_lsm = item.get("lsmName").unwrap().as_str().unwrap().to_string();
-                    alias_vec.push((alias_name, alias_lsm));
-                }
-            }
-        }
-        // Alias Building
-        let alias_buildings = alias_obj.get("buildings").unwrap();
-        let mut alias_abbrev : (String, String) = ("NOTSET".to_string(),"NOTSET".to_string());
-        if let Some(arr) = alias_buildings.as_array() {
-            for item in arr {
-                let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
-                if alias_name == building.1.abbrev.as_str() {
-                    alias_abbrev.0 = item.get("lsmName").unwrap().as_str().unwrap().to_string();
-                    alias_abbrev.1 = item.get("name").unwrap().as_str().unwrap().to_string();
-                }
-            }
-        }
+
         // Process Request to LSM
         let body = match req
             .build()
@@ -2421,26 +2266,7 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
             };
             
             for i in 0..num_entries {
-                let mut check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
-                // Look to see if check["LocationName"] is in the alias_obj, replace it if so.
-                for tuple in &alias_vec {
-                    if tuple.1 == check["LocationName"].as_str().unwrap() {
-                        debug!("[Checkerboard Alias] Room - {:?} to be replaced with {:?}", check["LocationName"].as_str().unwrap(), tuple.0);
-                        check["LocationName"] = serde_json::Value::String(tuple.0.clone());
-                    }
-                }
-                
-                // Replace Abbreviation if exists
-                if alias_abbrev.0 != "NOTSET" {
-                    // check["LocationName"]
-                    debug!("[Checkerboard Alias] Building - {:?} to be replaced with {:?}", alias_abbrev.0, alias_abbrev.1);
-                    check["LocationName"] = serde_json::Value::String(
-                        check["LocationName"]
-                            .as_str()
-                            .unwrap()
-                            .replace(&alias_abbrev.0, &alias_abbrev.1)
-                    );
-                }
+                let check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
               
                 // Only insert if this is the first entry or if the new timestamp is more recent
                 let location_name = String::from(check["LocationName"].as_str().unwrap());
@@ -4478,14 +4304,14 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
 /// ### Example 
 /// call in [`handle_connection`]
 /// ``` no_run
-///   let file_name = match export_to_pdf(&mut database, time_period, optional_data).await {
+///   let file_name = match export_analytics_report_to_pdf(&mut database, time_period, optional_data).await {
 ///          Ok(f) => f,
 ///          Err(e) => {
 ///           error!("Failed to export PDF: {}", e);
 ///        }
 ///     };
 /// ```
-async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data: serde_json::Value) -> Result<String, String> {
+async fn export_analytics_report_to_pdf(database: &mut Database, time_period: i16, optional_data: serde_json::Value) -> Result<String, String> {
     // Helper: get date range based on time_period
     let get_date_range = |period: i16| -> (DateTime<Utc>, DateTime<Utc>) {
         let now = Utc::now();
@@ -4843,6 +4669,7 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
             \hline
                 {\small Room Checks Performed}                 & {\small Tickets from Room Checks}                 & {\small WyoCast / Event Tickets}              & {\small PC Related Tickets}                \\ 
                 {\LARGE \textbf{[[ room_checks_performed ]]}}  & {\LARGE \textbf{[[ tickets_from_room_checks ]]}}  & {\Large \textbf{[[ wycast_event_tickets ]]}}  & {\Large \textbf{[[ pc_related_tickets ]]}} \\ 
+                [[ roomcheck_rounding_note ]] % a note to the user if the room check count is rounded due to custom date range
             \end{tabular}
             \end{center}
     
@@ -4943,6 +4770,11 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
         _ => "ERROR".to_string(),
     };
 
+    let roomcheck_rounding_note = match time_period {
+        4 | 5 => r#"{\scriptsize *Room Checks rounded to a max of 365 days} & {} & {} & {}"#.to_string(),
+        _ => "".to_string(),
+    };
+
     // Format building x coordinates for LaTeX
     let building_x_coords = top_10_buildings.join(",");
 
@@ -4958,6 +4790,7 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
     context.insert("tickets_from_room_checks", &tickets_from_room_checks);
     context.insert("wycast_event_tickets", &wycast_event_tickets);
     context.insert("pc_related_tickets", &pc_related_tickets);
+    context.insert("roomcheck_rounding_note", &roomcheck_rounding_note);
     context.insert("notes", &latex_roomcheck_tickets_notes);
     context.insert("building_coords", &building_latex_coords);
     context.insert("building_x_coords", &building_x_coords);
@@ -5010,7 +4843,7 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
 //rustdoc 
 /// Function deletes temp files used to generate the export from analytics. 
 /// ### Parameters 
-/// * `filename` - the String returned from [`export_to_pdf`]
+/// * `filename` - the String returned from [`export_analytics_report_to_pdf`]
 /// ### Returns 
 /// * Upon Success - Return OK()
 /// * Upon Failure -  Returns Error with String description of the associating error. 
