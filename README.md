@@ -46,8 +46,8 @@ Update the package list. <br>
 `sudo pacman -Syu` (Arch)
 
 Install PostgreSQL 16 and its contrib modules. <br>
-`sudo apt install postgresql-16 postgresql-contrib-16` (Debian) <br>
-`sudo pacman -S postgresql postgresql-libs` (Arch)
+`sudo apt install postgresql-16 postgresql-contrib-16 build-essential pkg-config libssl-dev libpq-dev` (Debian) <br>
+`sudo pacman -S postgresql postgresql-libs build-essential pkg-config libssl-dev libpq-dev` (Arch)
 
 ### Mount and configure the PostgreSQL server
 Start and enable the PostgreSQL service. <br>
@@ -83,7 +83,7 @@ Connect to the PostgreSQL database server with the default "postgres" user. <br>
 `sudo -u postgres psql`
 
 Set a password for the postgres user. <br>
-`ALTER USER postgres PASSWORD '<password>'` <br>
+`ALTER USER postgres PASSWORD '<password>';` <br>
 where `<password>` is the password you'd like to set.
 
 Quit psql. <br>
