@@ -34,7 +34,7 @@ First, update your package index and install the prerequisite packages. <br>
 
 ### Fetch PostgreSQL repository (Debian)
 After the necessary packages are installed, the PostgreSQL repository can be fetched. <br>
-`sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs).pgdg main" > /etc/apt/sources.list.d/pgdg.list'`
+`sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'`
 
 Now that apt knows about the repository, the signing key is necessary for an authorized transaction. <br>
 `curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg`
