@@ -18,6 +18,9 @@ need to consolidate things and reuse tags
     --bronson-grey-light: rgb(149, 157, 165);
     --bronson-grey-highlight:rgb(237, 239, 242);
 
+    --bronson-green-light: rgb(57, 125, 54);
+    --bronson-green-dark: rgb(67, 102, 65);  
+
 
 }
 
@@ -702,11 +705,13 @@ progress::-webkit-progress-bar {
 }
 
 .db_checker progress::-webkit-progress-value {
-    background-color: rgb(172, 159, 64);
+    /* background-color: rgb(172, 159, 64); */
+    background-color: var(--bronson-green-light)
     /* MAKE THIS CB GREEN */
 }
 .db_checker progress::-moz-progress-bar {
-    background-color: rgb(167, 155, 64);
+    /* background-color: rgb(167, 155, 64); */
+    background-color: var(--bronson-green-light)
     /* MAKE THIS CB GREEN */
 }
 
@@ -1022,8 +1027,9 @@ progress::-webkit-progress-bar {
 }
 
 .visTrue {
-    background-color: rgb(120, 184, 92);
-}
+    /* background-color: rgb(120, 184, 92); */
+    background-color: var(--bronson-green-light)
+} 
 
 .visFalse {
     background-color: rgb(184, 92, 101);
@@ -1178,7 +1184,8 @@ progress::-webkit-progress-bar {
     position: relative;
     z-index: 1; 
     text-align: left;
-    mix-blend-mode: difference;
+    /* mix-blend-mode: difference; */
+    color: var(--bronson-yellow-highlight);
 }
 
 .cbProgress {
@@ -1194,12 +1201,14 @@ progress::-webkit-progress-bar {
 
 .cbProgress::-webkit-progress-value {
     border-radius: 0px 0px 10px 10px;
-    background-color: rgb(166, 175, 86);
+    /* background-color: rgb(166, 175, 86); */
+      background-color: var(--bronson-green-light);
 }
 
 .cbProgress::-moz-progress-bar {
     /* background-color: rgb(126, 170, 61); */
-    background-color: rgb(166, 175, 86);
+    /* background-color: rgb(166, 175, 86); */
+      background-color: var(--bronson-green-light);
 }
 
 .cbProgLabel {
@@ -1211,7 +1220,7 @@ progress::-webkit-progress-bar {
     float: right;
     z-index: 1;
     width: 18%;
-    mix-blend-mode: difference;
+    /* mix-blend-mode: difference; */
 }
 .cbVisContainer {
     margin-bottom:0px;
@@ -1235,6 +1244,7 @@ progress::-webkit-progress-bar {
     margin-left: 8%;
     font-family: "Contrail One", sans-serif;
     font-size: 20pt;
+    /* MAKE THIS A BLUE */
     border-bottom: rgb(45,100,100) inset 2px;
     border-radius: 5px;
 }
@@ -1285,7 +1295,7 @@ progress::-webkit-progress-bar {
 }
 
 .cbVisOffline {
-    background-color: rgb(40, 40, 40);
+    background-color: var(--bronson-grey-shadow);
     /* border: rgb(33, 39, 33) inset 2px; */
     border-radius: 0px 0px 0px 18px;
     border-right:rgb(75,45,15) outset 1px;
@@ -1303,7 +1313,7 @@ progress::-webkit-progress-bar {
 }
 
 .cbVisChecked {
-    background-color: rgb(67, 102, 65);
+    background-color: var(--bronson-green-dark);
     /* border: rgb(33, 39, 33) inset 2px; */
     border-radius: 0px 0px 0px 18px;
     border-right:rgb(75,45,15) outset 1px;
@@ -1321,7 +1331,7 @@ progress::-webkit-progress-bar {
 }
 
 .cbVisAvailable {
-    background-color: rgb(57, 125, 54);
+    background-color: var(--bronson-green-light);
     /* border: rgb(33, 39, 33) inset 2px; */
     border-radius: 0px 0px 18px 0px;
     border-left:rgb(90,60,30) inset 1px;
@@ -1493,6 +1503,8 @@ progress::-webkit-progress-bar {
 }
 
 /*  Types of Data Entries in cfm_list*/
+
+/* DEPRECATED ??? */
 .cfm_file {
     background-color: rgb(87, 106, 119);
     /* color: rgb(236, 200, 101); */
@@ -2012,7 +2024,7 @@ td.mobile_th {
     height: fit-content;
     /* border: 3px solid rgb(224, 193, 108); */
     border: 3px solid var(--bronson-yellow-highlight);
-    background: rgb(60, 60, 60);
+    background: var(--bronson-grey-shadow);
     border-radius: 6px;
     margin-top: 90px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
@@ -2927,7 +2939,7 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .toBeAdded {
-    background-color:#3d643f;
+    background-color: var(--bronson-grey-dark);
 }
 
 .toBeRemoved {
@@ -3146,7 +3158,7 @@ p.tx_Description::-webkit-scrollbar-track {
     color: var(--bronson-yellow-dark);
     background-color: var(--bronson-grey-bg) !important;
     border-style: inset !important;
-    border-color: light-dark(rgb(118, 118, 118), rgb(133, 133, 133)) !important;
+    border-color: light-dark(var(--bronson-grey-dark), var(--bronson-grey-light)) !important;
 }
 
 .dbRoomInputName {
@@ -3183,7 +3195,7 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .dbRowToBeAdded, .dbBuildingToBeAdded {
-    background-color:#67a742;
+    background-color: var(--bronson-green-light);
 }
 
 @media (max-width: 1000px) {
@@ -3196,8 +3208,8 @@ p.tx_Description::-webkit-scrollbar-track {
     font-weight:100;
     font-size:small;
     font-family:'Courier New', Courier, monospace;
-    border: 1px inset rgb(216, 192, 104);
-    color:rgb(194, 181, 124);
+    border: 1px inset var(--bronson-yellow-light);
+    color: var(--bronson-yellow-highlight);
     border-radius: 4px;
     padding-bottom: 5px;
     width:100%;
