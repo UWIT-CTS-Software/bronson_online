@@ -13,13 +13,17 @@ need to consolidate things and reuse tags
     --bronson-yellow-highlight:rgb(233, 210, 126);
 
     --bronson-grey-bg:rgb(50, 50, 50);
-    --bronson-grey-shadow: rgb(31, 31, 31);
+    --bronson-grey-shadow: rgba(31, 31, 31, 0.75);
     --bronson-grey-dark: rgb(65, 65, 60);
     --bronson-grey-light: rgb(149, 157, 165);
     --bronson-grey-highlight:rgb(237, 239, 242);
 
     --bronson-green-light: rgb(57, 125, 54);
     --bronson-green-dark: rgb(67, 102, 65);  
+
+    --bronson-blue-dark: rgb(48, 47, 53);
+    --bronson-blue-shadow: rgba(27, 31, 35, 0.15);
+    --bronson-blue-light: rgb(33, 66, 99);
 
 
 }
@@ -103,7 +107,7 @@ textarea {
     height: 100%;
     box-sizing: border-box;
     float: left;
-    color:rgb(205, 205, 205);
+    color:var(--bronson-yellow-light);
     /* background-color: rgb(39, 39, 39); */
     background-color: var(--bronson-grey-bg);
     /* border:2px inset rgb(144, 118, 26); */
@@ -192,9 +196,9 @@ button {
     appearance: none;
     /* background-color: #e9d27e; */
     background-color: var(--bronson-yellow-highlight);
-    border: 1px inset rgba(27, 31, 35, 0.15);
+    border: 1px inset var(--bronson-blue-shadow);
     border-radius: 5px;
-    box-shadow: rgba(27, 31, 35, 0.04) 0 1px 0, var(--bronson-grey-dark) 0 1px 0 inset;
+    box-shadow: var(--bronson-blue-shadow) 1px 0, var(--bronson-grey-dark) 0 1px 0 inset;
     box-sizing: border-box;
     color: #24292E;
     cursor: pointer;
@@ -243,14 +247,12 @@ button:hover {
 button:disabled {
     /* background-color: #353320; */
     background-color: var(--bronson-yellow-shadow);
-    border-color: rgba(27, 31, 35, 0.15);
+    border-color: var(--bronson-blue-dark);
     color: var(--bronson-grey-light);
     cursor: default;
 }
   
 button:active {
-    /* background-color: #EDEFF2; */
-    /* box-shadow: rgba(225, 228, 232, 0.2) 0 1px 0 inset; */
     box-shadow: var(--bronson-grey-dark) 0 1px 0 inset;
     transition: none 0s;
 }
@@ -300,7 +302,6 @@ button:-webkit-details-marker {
   left: 0;
   right: 0;
   bottom: 0;
-  /* background-color: #ccc; */
   background-color: var(--bronson-grey-light);
   -webkit-transition: .4s;
   transition: .4s;
@@ -319,7 +320,6 @@ button:-webkit-details-marker {
 }
 
 input:checked + .slider {
-  /* background-color: #a0a742; */
   background-color: var(--bronson-yellow-dark);
 }
 
@@ -411,7 +411,6 @@ input:checked + .slider:before {
 /* Bronson icon in top left, brings out hamburger menu */
 .site_header {
     color: rgb(118, 66, 28);
-    /* background-color: rgb(205, 177, 99); */
     background-color: var(--bronson-yellow-light);
     text-align: center;
     font-family: "Racing Sans One", sans-serif;
@@ -567,7 +566,6 @@ input:checked + .slider:before {
 .db_spares fieldset ul {
     padding: 0px 0px 0px 4px;
     margin: 5px 0px 0px 0px;
-    /* color:rgb(236, 200, 101); */
     color: var(--bronson-yellow-light);
     font-family:Verdana, Geneva, Tahoma, sans-serif;
 }
@@ -578,7 +576,6 @@ input:checked + .slider:before {
 }
 
 .spareLocale {
-    /* color:#9b9560; */
     color: var(--bronson-yellow-dark);
 }
 
@@ -666,7 +663,6 @@ input:checked + .slider:before {
     width: 8px;
 }
 .dbCbProg::-webkit-scrollbar-thumb {
-    /* background: rgb(224, 193, 108); */
      background: var(--bronson-yellow-light);
     border-radius: 4px;
 }
@@ -694,7 +690,6 @@ input:checked + .slider:before {
     /* left: 10px;*/
     background-color: var(--bronson-grey-shadow);
     border-radius: 10px;
-    /* border: 2px outset rgb(122,113,45); */
     border: 2px outset var(--bronson-yellow-dark);
     overflow: hidden;
 }
@@ -705,14 +700,10 @@ progress::-webkit-progress-bar {
 }
 
 .db_checker progress::-webkit-progress-value {
-    /* background-color: rgb(172, 159, 64); */
-    background-color: var(--bronson-green-light)
-    /* MAKE THIS CB GREEN */
+    background-color: var(--bronson-green-light);
 }
 .db_checker progress::-moz-progress-bar {
-    /* background-color: rgb(167, 155, 64); */
-    background-color: var(--bronson-green-light)
-    /* MAKE THIS CB GREEN */
+    background-color: var(--bronson-green-light);
 }
 
 /* Schedule Stuff */
@@ -721,7 +712,6 @@ progress::-webkit-progress-bar {
     vertical-align: bottom;
     font-size: xx-small;
     border: none;
-    /* border-left: 1px inset rgb(216,192,104); */
     border-left: 1px inset var(--bronson-yellow-light);
 }
 
@@ -729,9 +719,7 @@ progress::-webkit-progress-bar {
     font-weight:100;
     font-size:x-small;
     font-family:'Courier New', Courier, monospace;
-    /* border: 1px inset rgb(216, 192, 104); */
     border-left: 1px inset var(--bronson-yellow-highlight);
-    /* color:rgb(194, 181, 124); */
     color: var(--bronson-yellow-light);
     border-radius: 4px;
     margin-top:11px;
@@ -745,12 +733,10 @@ progress::-webkit-progress-bar {
     text-align: left;
     vertical-align:bottom;
     border: none;
-    /* border-left: 1px inset rgb(216, 192, 104); */
     border-left: 1px inset var(--bronson-yellow-highlight);
 }
 
 #db_schedule_table th {
-    /* border: 1px outset rgb(220, 183, 96); */
     border: 1px outset var(--bronson-yellow-highlight);
     width:7%;
     font-size: xx-small;
@@ -827,13 +813,11 @@ progress::-webkit-progress-bar {
 
 .jn_innerConsole {
     box-sizing: border-box;
-    /* border:2px inset rgb(144, 118, 26); */
     border:2px inset var(--bronson-yellow-dark)
 }
 
 .innerConsole {
     box-sizing: border-box;
-    /* border:2px inset rgb(144, 118, 26); */
     border:2px inset var(--bronson-yellow-dark);
     border-radius: 5px 5px 17px 17px;
     margin-bottom: 1px;
@@ -842,9 +826,6 @@ progress::-webkit-progress-bar {
 
 .cbDev {
     background-color: var(--bronson-grey-bg);
-    /* color: rgb(236, 200, 101);
-    accent-color:  rgb(236, 200, 101); */
-    /* color: var(--bronson-grey-bg); */
     color: var(--bronson-yellow-light);
     accent-color: var(--bronson-yellow-highlight);
 }
@@ -878,22 +859,6 @@ progress::-webkit-progress-bar {
     grid-row: 1/4;
 }
 
-/* .jn_fieldset {
-    border:4px outset rgb(144, 118, 26)
-} */
-/* Visualizer Stuff */
-/*
-                            * BUILDING *         |x| |
-                                ---                  |
-        ROOOOM |#1 |#2 |#3|     ...     #9999        |
-        ---------------------------------------------
-          proc |o  |o  |o |                          |
-            pj |x o|   |  |                          |
-          disp |   |o o|o |                          |
-            ws |x  |o  |  |                          |
-            tp |o  |o  |o |                          |
-        ---------------------------------------------
-*/
 .jn_visList {
     columns: 2;
     column-gap:1%;
@@ -913,7 +878,7 @@ progress::-webkit-progress-bar {
     gap: 0rem;
     padding: 0rem 0rem 0rem 0rem;
     margin: 0rem 2% 1% 2%;
-    border: rgb(33,66,99) outset 3px;
+    border: var(--bronson-blue-light) outset 3px;
     border-radius: 6px;
 }
 
@@ -921,10 +886,8 @@ progress::-webkit-progress-bar {
 .visHeader {
     /* grid-column: 1 / -1; */
     padding: 1% 1% 1% 1%;
-    background-color:#24292E;
-    /* color: rgb(205, 177, 99);
-    border-bottom:2px inset #94742e; */
-     color: var(--bronson-yellow-light);
+    background-color: var(--bronson-blue-dark);
+    color: var(--bronson-yellow-light);
     border-bottom:2px inset var(--bronson-yellow-dark);
     border-radius:5px;
 }
@@ -933,7 +896,7 @@ progress::-webkit-progress-bar {
     display:flex;
     margin: 0rem;
     padding: 0.4rem;
-    background-color: #37343e;
+    background-color: var(--bronson-blue-dark);
     gap: .2rem;
     overflow-x: auto;
 }
@@ -962,10 +925,7 @@ progress::-webkit-progress-bar {
 
 /* li / Device Title */
 .visIndexItemHead {
-    background-color:#302f35;
-    /* color: rgb(168, 140, 64);
-    border-right:2px inset #94742e;
-    border-bottom:2px inset #94742e; */
+    background-color:var(--bronson-blue-dark);
     color: var(--bronson-yellow-light);
     border-right: var(--bronson-yellow-dark);
     border-bottom: var(--bronson-yellow-dark);
@@ -974,7 +934,7 @@ progress::-webkit-progress-bar {
     text-align: center;
 }
 .visIndexItem {
-    background-color:#232128;
+    background-color:var(--bronson-blue-dark);
     /* color: rgb(168, 140, 64);
     border-right:2px inset #94742e;
     border-bottom:2px inset #94742e; */
@@ -986,7 +946,7 @@ progress::-webkit-progress-bar {
 }
 
 .visRoomHead {
-    background-color:#302f35;
+    background-color:var(--bronson-blue-dark);
     /* color: rgb(168, 140, 64); */
     color: var(--bronson-yellow-dark);
     border-bottom:2px inset #a5a29c;
@@ -1011,7 +971,6 @@ progress::-webkit-progress-bar {
     flex-direction: row;
     gap: 0.5rem;
     padding: 0.25rem;
-    /* border:1px outset #64603d; */
     border:1px outset var(--bronson-yellow-shadow);
     border-radius: 4px;
     margin: 0px 0px 0px 0px;
@@ -1027,8 +986,7 @@ progress::-webkit-progress-bar {
 }
 
 .visTrue {
-    /* background-color: rgb(120, 184, 92); */
-    background-color: var(--bronson-green-light)
+    background-color: var(--bronson-green-light);
 } 
 
 .visFalse {
@@ -1071,7 +1029,6 @@ progress::-webkit-progress-bar {
     width: 8px;
 }
 .cb_legend::-webkit-scrollbar-thumb {
-    /* background: rgb(224, 193, 108); */
     background: var(--bronson-yellow-highlight);
     border-radius: 4px;
 }
@@ -1191,7 +1148,7 @@ progress::-webkit-progress-bar {
 .cbProgress {
     margin: 0px 0px 0px 0px;
     width:100%;
-    background-color:rgb(19,19,19);
+    background-color:var(--bronson-grey-shadow);
     border-radius: 0px 0px 10px 10px;
     position: relative;
     top: -23px;
@@ -1244,8 +1201,7 @@ progress::-webkit-progress-bar {
     margin-left: 8%;
     font-family: "Contrail One", sans-serif;
     font-size: 20pt;
-    /* MAKE THIS A BLUE */
-    border-bottom: rgb(45,100,100) inset 2px;
+    border-bottom: var(--bronson-blue-light) inset 2px;
     border-radius: 5px;
 }
 
@@ -1284,7 +1240,6 @@ progress::-webkit-progress-bar {
     margin: 0px;
     padding:0px;
     /* padding-left:5%; */
-    /* color:rgb(224, 191, 100); */
     color: var(--bronson-yellow-highlight);
     column-count: 2;
     gap:0px;
@@ -1332,7 +1287,6 @@ progress::-webkit-progress-bar {
 
 .cbVisAvailable {
     background-color: var(--bronson-green-light);
-    /* border: rgb(33, 39, 33) inset 2px; */
     border-radius: 0px 0px 18px 0px;
     border-left:rgb(90,60,30) inset 1px;
     height:100%;
@@ -1389,7 +1343,6 @@ progress::-webkit-progress-bar {
 */
 .cfm_container {
     position: relative;
-    /* background-color: rgb(50, 50, 47); */
     background-color: var(--bronson-grey-bg);
     display: grid;
     grid-template-columns: repeat(7,1fr);
@@ -1484,7 +1437,6 @@ progress::-webkit-progress-bar {
 }
 
 .cfm_text {
-    /* color: rgb(205, 177, 99); */
     color: var(--bronson-yellow-light);
     text-align: center;
     font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
@@ -1494,7 +1446,6 @@ progress::-webkit-progress-bar {
 }
 
 .cfm_list {
-    /* color: rgb(170, 170, 170); */
     color: var(--bronson-grey-light);
     opacity: 75%;
     padding: 10px;
@@ -1599,14 +1550,12 @@ progress::-webkit-progress-bar {
 }
 
 .cfm_highlighted_file {
-    /* background-color: rgba(236, 200, 101, 0.25); */
     background-color: var(--bronson-yellow-shadow);
     border-radius: 4px;
     padding-left: 2px;
 }
 
 ol li::marker {
-    /* color: rgb(170, 170, 170); */
     color: var(--bronson-grey-light);
     opacity: 40%;
 }
@@ -1617,7 +1566,6 @@ ol li::marker {
 .terminal_container {
     position: relative;
     background-color: var(--bronson-grey-bg);
-    /* color: rgb(236, 200, 101); */
     color: var(--bronson-yellow-light);
     display: grid;
     grid-template-columns: repeat(7,1fr);
@@ -1632,8 +1580,6 @@ ol li::marker {
     width: 100%;
     height: 20%;
     background-color: var(--bronson-grey-bg);
-    /* color: rgb(236, 200, 101);
-    border-top: 2px inset rgb(236, 200, 101); */
     color: var(--bronson-yellow-light);
     border-top: 2px inset var(--bronson-yellow-light);
 }
@@ -1787,8 +1733,6 @@ ol li::marker {
 }
 
 .tx_ticketContainer th {
-    /* color: rgb(236, 200, 101);
-    border-bottom: 1px solid rgb(144, 118, 26); */
     color: var(--bronson-yellow-light);
     border-top: 2px inset var(--bronson-yellow-light);
     text-align: center;
@@ -1849,8 +1793,6 @@ td.mobile_th {
 }
 
 .tx_ticketContainer input {
-    /* background-color: rgb(221 187 96);
-    border: 2px outset rgb(144,118,26); */
     background-color: var(--bronson-yellow-light);
     border: 2px outset var(--bronson-yellow-dark   );
     max-width: 10%;
@@ -1873,7 +1815,6 @@ td.mobile_th {
 }
 
 .tx_ticketContainer button {
-    /* background-color: #ecc865; */
     background-color: var(--bronson-yellow-light);
     padding-inline: 4px;
     margin: 0px;
@@ -1881,7 +1822,6 @@ td.mobile_th {
 }
 
 .tx_ticketContainer span {
-    /* color: rgb(236 200 101); */
     color: var(--bronson-yellow-light);
     margin-left: 2px;
 }
@@ -1918,7 +1858,6 @@ td.mobile_th {
 
 .tx_ticket {
     cursor: pointer;
-    /* color: rgb(236, 200, 101); */
     color: var(--bronson-yellow-light);
 }
 
@@ -1972,9 +1911,7 @@ td.mobile_th {
 .tx_dismissAllPopupContainer .tx_popupBox {
     width: 420px;
     height: fit-content;
-    /* border: 3px solid rgb(224, 193, 108); */
     border: 3px solid var(--bronson-yellow-highlight);
-    /* background: rgb(60, 60, 60); */
     background: var(--bronson-grey-shadow);
     border-radius: 6px;
     margin-top: 250px;
@@ -2022,7 +1959,6 @@ td.mobile_th {
 .tx_ticketPopupContainer .tx_popupBox {
     width: 40%;
     height: fit-content;
-    /* border: 3px solid rgb(224, 193, 108); */
     border: 3px solid var(--bronson-yellow-highlight);
     background: var(--bronson-grey-shadow);
     border-radius: 6px;
@@ -2081,7 +2017,6 @@ td.mobile_th {
     max-height: 65%;
     overflow-y: scroll;
     border: 3px solid var(--bronson-yellow-highlight);
-    /* border: 3px solid rgb(224, 193, 108); */
     background: rgb(60, 60, 60);
     border-radius: 6px;
     margin-top: 125px;
@@ -2116,9 +2051,7 @@ td.mobile_th {
     height: fit-content;
     max-height: 65%;
     overflow-y: scroll;
-    /* border: 3px solid rgb(224, 193, 108); */
     border: 3px solid var(--bronson-yellow-highlight);
-    /* background: rgb(60, 60, 60); */
     background: var(--bronson-grey-shadow);
     border-radius: 6px;
     margin-top: 125px;
@@ -2165,9 +2098,7 @@ td.mobile_th {
     height: fit-content;
     max-height: 65%;
     overflow-y: scroll;
-    /* border: 3px solid rgb(224, 193, 108); */
     border: 3px solid var(--bronson-yellow-highlight);
-    /* background: rgb(60, 60, 60); */
     background: var(--bronson-grey-shadow);
     border-radius: 6px;
     margin-top: 125px;
@@ -2178,7 +2109,6 @@ td.mobile_th {
     width: 8px;
 }
 .tx_commentOnTicketPopupContainer .tx_popupBox::-webkit-scrollbar-thumb {
-    /* background: rgb(224, 193, 108); */
     background:var(--bronson-yellow-highlight);
     border-radius: 4px;
 }
@@ -2190,9 +2120,7 @@ td.mobile_th {
 .tx_popupBox.mobile {
     width: 551px;
     height: fit-content;
-    /* border: 3px solid rgb(224, 193, 108); */
     border: 3px solid var(--bronson-yellow-highlight);
-    /* background: rgb(60, 60, 60); */
 
     border-radius: 6px;
     margin-top: 90px;
@@ -2202,7 +2130,6 @@ td.mobile_th {
 
 .tx_popupBox span {
     color: rgb(118, 66, 28);
-    /* background-color: rgb(224, 193, 108); */
     background-color: var(--bronson-yellow-highlight);
     font-family: "Contrail One", sans-serif;
     font-size: 18pt;
@@ -2265,9 +2192,7 @@ td.mobile_th {
     width: fit-content;
     max-height: 500px;
     height: 100%;
-    /* border: 3px solid rgb(224, 193, 108); */
     border: 3px solid var(--bronson-yellow-highlight);
-    /* background: rgb(60, 60, 60); */
     background: var(--bronson-grey-shadow);
     margin-left: 10px;
     margin-bottom: 10px;
@@ -2400,7 +2325,6 @@ td.mobile_th {
 }
 
 .tx_replies {
-    /* background-color: rgb(75, 75, 75); */
     background-color: var(--bronson-grey-dark);
     margin: 0 15px;
 }
@@ -2428,7 +2352,6 @@ td.mobile_th {
 }
 
 .tx_comment_seperator {
-    /* border-top: 1px solid rgb(144, 118, 26); */
     border-top: 1px solid var(--bronson-yellow-dark);
     margin: 12px 0;
 }
@@ -2494,7 +2417,6 @@ p.tx_Description {
     max-height: 275px;
     white-space: pre-wrap;
     padding: 10px;
-    /* border: 1px solid rgb(144, 118, 26); */
     border: 1px solid var(--bronson-yellow-dark);
     margin: 15px 10px 15px 10px;
     overflow-y: scroll;
@@ -2509,7 +2431,6 @@ p.tx_Description::-webkit-scrollbar {
     width: 8px;
 }
 p.tx_Description::-webkit-scrollbar-thumb {
-    /* background: rgb(224, 193, 108); */
     background: var(--bronson-yellow-highlight);
     border-radius: 4px;
 }
@@ -2651,7 +2572,6 @@ p.tx_Description::-webkit-scrollbar-track {
     grid-row: 3;
     width: 100%;
     border: none;
-    /* border-bottom: 1px inset rgb(106 86 18); */
     border-bottom: 1px inset var(--bronson-yellow-dark);
     margin: 0.75rem 0;
 }
@@ -2734,7 +2654,6 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .an_projectsFieldset li {
-    /* color: rgb(236 200 101); */
     color: var(--bronson-yellow-light);
     font-size: larger;
     list-style-type: disc;
@@ -2752,17 +2671,14 @@ p.tx_Description::-webkit-scrollbar-track {
     left: 10px;
     background-color: var(--bronson-grey-shadow);
     border-radius: 10px;
-    /* border: 2px outset rgb(122,113,45); */
     border: 2px outset var(--bronson-yellow-shadow);
     overflow: hidden;
 }
 
 .an_projects progress::-webkit-progress-value {
-    /* background-color: rgb(172, 159, 64); */
     background-color: var(--bronson-yellow-light);
 }
 .an_projects progress::-moz-progress-bar {
-    /* background-color: rgb(167, 155, 64); */
     background-color: var(--bronson-yellow-light);
 }
 
@@ -2890,7 +2806,6 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 #admin_internals {
-    /* border: 1px inset rgb(236,200,101); */
     border: 1px inset var(--bronson-yellow-light);
     border-radius:15px;
     padding: 5px 0px 0px 0px;
@@ -2901,8 +2816,7 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 #dme_editor {
-    /* border:2px inset rgb(122,113,45); */
-     border:2px inset var(--bronson-yellow-dark);
+    border:2px inset var(--bronson-yellow-dark);
     padding: 30px 10px 3px 30px;
     margin-bottom:5px;
     field-sizing: content;
@@ -2934,7 +2848,6 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .tmpDBRecord {
-    /* background-color: #5e5b3b; */
     background-color: var(--bronson-yellow-shadow);
 }
 
@@ -3006,8 +2919,6 @@ p.tx_Description::-webkit-scrollbar-track {
     font-weight:100;
     font-size:small;
     font-family:'Courier New', Courier, monospace;
-    /* border: 1px inset rgb(216, 192, 104);
-    color:rgb(194, 181, 124); */
     border: 1px inset var(--bronson-yellow-dark);
     color: var(--bronson-yellow-light);
     border-radius: 4px;
@@ -3017,7 +2928,6 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .adminTechTable .schdLeftIndex {
-    /* border: 1px outset rgb(220, 183, 96); */
     border: 1px outset var(--bronson-yellow-dark);
     font-size: x-small;
 }
@@ -3028,7 +2938,7 @@ p.tx_Description::-webkit-scrollbar-track {
 
 .adminTechTable .schdtrue:hover {
     transform: scale(1.1);
-    box-shadow:#302f35 2px 2px 2px 2px;
+    box-shadow:var(--bronson-blue-shadow) 2px 2px 2px 2px;
 }
 
 .admin_internals li {
@@ -3055,7 +2965,6 @@ p.tx_Description::-webkit-scrollbar-track {
 #diag_list {
     height: 700px;
     overflow-y: scroll;
-    /* border: 2px inset rgb(144, 118, 26); */
     border: 2px inset var(--bronson-yellow-dark);
     margin-right: 5px;
     padding: 0px 0px 0px 0px;
@@ -3082,7 +2991,6 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .valid {
-    /* border: 1px solid rgb(144, 118, 26); */
     border: 1px solid var(--bronson-yellow-dark);
 }
 
@@ -3104,8 +3012,8 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .fileUpload {
-    background-color:#302f35;
-    border: 2px dotted rgb(33,66,99);
+    background-color: var(--bronson-blue-dark);
+    border: 2px dotted var(--bronson-blue-light);
     width: 200px;
     height: 100px;
     text-align: center;
@@ -3116,8 +3024,7 @@ p.tx_Description::-webkit-scrollbar-track {
 #lastUpdated-RS {
     font-size: small;
     text-align: center;
-    /* margin-top: 5px;
-    color: rgb(144, 118, 26); */
+    /* margin-top: 5px; */
     color: var(--bronson-yellow-dark)
 }
 
@@ -3142,7 +3049,7 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .dbe-legend {
-    background-color: #302f35;
+    background-color: var(--bronson-blue-dark);
 }
 
 .dbBuildingInput {
@@ -3163,15 +3070,11 @@ p.tx_Description::-webkit-scrollbar-track {
 
 .dbRoomInputName {
     width: 100px;
-    /* color: rgb(144, 118, 26); */
     color: var(--bronson-yellow-dark);
     background-color: var(--bronson-grey-bg);
-    /* border: 1px solid rgb(144, 118, 26); */
 }
 
 .dbBuildingTable {
-    /* color: rgb(133, 118, 60);
-    border: 1px inset rgb(216, 192, 104); */
     color: var(--bronson-yellow-dark);
     border: 1px inset var(--bronson-yellow-light);
     font-family: 'Courier New', Courier, monospace;
@@ -3181,12 +3084,10 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .dbRowChanged {
-    /* background-color: rgb(114, 104, 60); */
     background-color: var(--bronson-yellow-shadow);
 }
 
 .dbBuildingChanged {
-    /* background-color: rgb(114,104,60); */
     background-color: var(--bronson-yellow-shadow);
 }
 
@@ -3218,7 +3119,6 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .tableDiv th {
-    /* border: 2px solid rgb(114, 104, 60); */
     border: 2px solid var(--bronson-yellow-shadow);
     width: 1%;
 }
@@ -3228,8 +3128,6 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .tableDiv td {
-    /* border-top: 1px solid rgb(129, 116, 76);
-    border-bottom: 1px solid rgb(129, 116, 76); */
     border-top: 1px solid var(--bronson-yellow-shadow);
     border-bottom: 1px solid var(--bronson-yellow-shadow);
 }
@@ -3240,7 +3138,6 @@ p.tx_Description::-webkit-scrollbar-track {
 
 .aliasInput {
     width: 80%;
-    /* color: rgb(144, 118, 26); */
     color: var(--bronson-yellow-dark);
     background-color: var(--bronson-grey-bg);
     margin: 0px 10%;
@@ -3253,11 +3150,11 @@ p.tx_Description::-webkit-scrollbar-track {
 #aliasFileInput {
 	appearance: none;
 	background-color: var(--bronson-yellow-light);
-	border: 1px inset rgba(27, 31, 35, 0.15);
+	border: 1px inset var(--bronson-blue-shadow);
 	border-radius: 5px;
-	box-shadow: rgba(27, 31, 35, 0.04) 0 1px 0, var(--bronson-grey-dark) 0 1px 0 inset;
+	box-shadow: var(--bronson-blue-shadow) 0 1px 0, var(--bronson-grey-dark) 0 1px 0 inset;
 	box-sizing: border-box;
-	color: #24292E;
+	color: var(--bronson-blue-dark);
 	cursor: pointer;
 	display: inline-block;
 	font-family: 'Lucida Sans', sans-serif;
@@ -3315,9 +3212,7 @@ p.tx_Description::-webkit-scrollbar-track {
     top: 3px;
     left: 12px;
     bottom: 0px;
-    /* color: rgb(180, 142, 79); */
     color: var(--bronson-yellow-light);
-    /* background: rgb(88,79,51); */
     background: var(--bronson-yellow-shadow);
     border: rgb(135,62,9) solid 2px;
     border-bottom: none;
@@ -3471,7 +3366,6 @@ p.tx_Description::-webkit-scrollbar-track {
     top: 3px;
     left: 11px;
     bottom: 0px;
-    /* color: rgb(180, 142, 79); */
     color: var(--bronson-yellow-dark);
     background: var(--bronson-grey-dark);
     border: rgb(135,62,9) solid 2px;
@@ -3529,7 +3423,6 @@ p.tx_Description::-webkit-scrollbar-track {
     top: 3px;
     left: 11px;
     bottom: 0px;
-    /* color: rgb(180, 142, 79); */
     color: var(--bronson-yellow-dark);
     background: var(--bronson-grey-dark);
     border: rgb(135,62,9) solid 2px;
@@ -3738,8 +3631,6 @@ p.tx_Description::-webkit-scrollbar-track {
     margin: 8px 0;
     display: inline-block;
     background-color: var(--bronson-grey-bg);
-    /* border: 1px solid rgb(144, 118, 26);
-    color: rgb(144, 118, 26); */
     border: 1px solid var(--bronson-yellow-dark);
     color: var(--bronson-yellow-dark);
     box-sizing: border-box;
@@ -3791,7 +3682,6 @@ img.background {
 .modal-content {
     background-color: var(--bronson-grey-bg);
     margin: 10% auto 15% auto;
-    /* border: 1px solid rgb(144, 118, 26); */
     border: 1px solid var(--bronson-yellow-dark);
     width: 40%;
 }
