@@ -25,6 +25,12 @@ need to consolidate things and reuse tags
     --bronson-blue-shadow: rgba(27, 31, 35, 0.15);
     --bronson-blue-light: rgb(33, 66, 99);
 
+    --bronson-red-dark: rgb(102,53,54);
+    --bronson-red-bright: rgb(139,24,27);
+    --bronson-red-light: rgb(133, 60, 60);
+    --bronson-red-highlight: rgb(184, 92, 101);
+    --bronson-red-shadow: rgb(50, 20, 20);
+
 
 }
 
@@ -47,7 +53,6 @@ body {
 }
 
 label {
-    /* color: rgb(236, 200, 101); */
     color: var(--bronson-yellow-light);
     text-align: center;
     /* font-family:'Courier New', Courier, monospace; */
@@ -65,7 +70,6 @@ ul {
 }
 
 h1 {
-    /* color: rgb(236, 200, 101); */
     color: var(--bronson-yellow-light);
     text-align: center;
     font-family: 'Lucida Sans', sans-serif;
@@ -87,7 +91,6 @@ p {
 
 hr {
     display: block;
-    /* background-color: rgb(224, 193, 108); */
     color: var(--bronson-yellow-light);
     width: 100%;
     height: 1px;
@@ -95,7 +98,6 @@ hr {
 }
 
 strong {
-    /* color: rgb(236, 200, 101); */
     color: var(--bronson-yellow-light);
     text-align: center;
     font-size: x-large;
@@ -108,9 +110,7 @@ textarea {
     box-sizing: border-box;
     float: left;
     color:var(--bronson-yellow-light);
-    /* background-color: rgb(39, 39, 39); */
     background-color: var(--bronson-grey-bg);
-    /* border:2px inset rgb(144, 118, 26); */
     border:2px inset var(--bronson-yellow-dark);
     border-radius:15px;
     resize:none;
@@ -119,9 +119,7 @@ textarea {
 input[type=number] {
     -moz-appearance: textfield;
     appearance: textfield;
-    /* background-color: rgb(221 187 96); */
     background-color:var(--bronson-yellow-light);
-    /* border: 2px outset rgb(144,118,26); */
     border: 2px outset var(--bronson-yellow-dark);
     min-width: 5%;
     padding-left: 4px; 
@@ -130,9 +128,7 @@ input[type=number] {
 input[type=date] {
     -moz-appearance: textfield;
     appearance: textfield;
-    /* background-color: rgb(221 187 96); */
     background-color:var(--bronson-yellow-light);
-    /* border: 2px outset rgb(144,118,26); */
     border: 2px outset var(--bronson-yellow-dark);
     padding-left: 4px; 
     color: black;
@@ -141,24 +137,20 @@ input[type=date] {
 input[type=date]:disabled {
     -moz-appearance: textfield;
     appearance: textfield;
-    /* background-color: rgb(133, 112, 57); */
     background-color:var(--bronson-yellow-dark);
     border: 2px outset var(--bronson-yellow-shadow);
-    /* border: 2px outset rgb(144,118,26); */
     padding-left: 4px; 
     color: var(--bronson-yellow-dark);
     opacity: 0.5;
 }
 
 fieldset {
-    /* border: 2px outset rgb(144,118,26); */
     border: 2px outset var(--bronson-yellow-dark);
     border-radius: 15px;
     padding: 3px 3px 6px 3px;
 }
 
 legend {
-    /* color: rgb(236, 200, 101); */
     color: var(--bronson-yellow-light);
     background-color: var(--bronson-grey-bg);
     text-align: center;
@@ -166,8 +158,7 @@ legend {
     font-family: 'Lucida Sans', sans-serif;
     font-size: medium;
     font-style: italic;
-    /* padding: 0px 8px;
-    border: rgb(152, 141, 56) outset 2px; */
+    /* padding: 0px 8px; */
     border: var(--bronson-yellow-dark) outset 2px;
     border-radius: 15px;
     box-shadow: 2px 2px 3px black;
@@ -181,9 +172,7 @@ legend {
 /* Dropdown Menu */
 select {
     background-color: var(--bronson-grey-bg);
-    /* color: rgb(236, 200, 101); */
     color: var(--bronson-yellow-light);
-    /* border: 2px inset rgb(144, 118, 26); */
     border: 2px inset var(--bronson-yellow-dark);
     border-radius: 10px;
     padding: 2px 2px 2px 6px;
@@ -194,13 +183,12 @@ select {
 
 button {
     appearance: none;
-    /* background-color: #e9d27e; */
     background-color: var(--bronson-yellow-highlight);
     border: 1px inset var(--bronson-blue-shadow);
     border-radius: 5px;
     box-shadow: var(--bronson-blue-shadow) 1px 0, var(--bronson-grey-dark) 0 1px 0 inset;
     box-sizing: border-box;
-    color: #24292E;
+    color: var(--bronson-blue-dark);
     cursor: pointer;
     display: inline-block;
     font-family:'Lucida Sans', sans-serif;
@@ -237,7 +225,6 @@ button {
 }
 
 button:hover {
-    /* background-color: #F3F4F6; */
     background-color: var(--bronson-grey-highlight);
     text-decoration: none;
     /* font-weight: 500; */
@@ -245,7 +232,6 @@ button:hover {
 }
   
 button:disabled {
-    /* background-color: #353320; */
     background-color: var(--bronson-yellow-shadow);
     border-color: var(--bronson-blue-dark);
     color: var(--bronson-grey-light);
@@ -419,7 +405,7 @@ input:checked + .slider:before {
     grid-column: 1 / 1;
     grid-row: 1;
     margin: 12px auto;
-    border:4px double rgb(133, 60, 60);
+    border:4px double var(--bronson-red-light);
     border-radius: 20px;
     cursor: pointer;
     padding-left: 10px;
@@ -433,7 +419,6 @@ input:checked + .slider:before {
 }
 
 .site_header:hover {
-    /* background-color: rgb(211, 181, 98); */
     background-color: var(--bronson-yellow-highlight);
     text-decoration: none;
     transition-duration: 0.1s;
@@ -455,7 +440,6 @@ input:checked + .slider:before {
 
 .message_header {
     color: rgb(118, 66, 28);
-    /* background-color: rgb(224, 193, 108); */
     font-family: "Contrail One", sans-serif;
     font-size: large;
     font-weight: 400;
@@ -489,9 +473,8 @@ input:checked + .slider:before {
     z-index: 5;
     position: fixed;
     grid-row: 3x;
-    border:4px double rgb(133, 60, 60);
+    border:4px double var(--bronson-red-light);
     border-radius:20px;
-    /* background: rgb(39, 35, 35); */
     background: var(--bronson-grey-shadow);
     transform: translateX(-150%);
     transition: transform 0.2s;
@@ -509,9 +492,7 @@ input:checked + .slider:before {
 
 .hb_menu legend {
     color: rgb(118, 66, 28);
-    /* background-color: rgb(214, 184, 103); */
     background-color: var(--bronson-yellow-light);
-    /* border: 2px outset rgb(144, 118, 26); */
     border: 2px outset var(--bronson-yellow-dark);
     font-size: smaller;
 }
@@ -743,11 +724,11 @@ progress::-webkit-progress-bar {
 }
 
 .schdfalse {
-    border:#24292E solid 2px;
+    border:var(--bronson-blue-dark) solid 2px;
 }
 
 .schdtrue {
-    background-color: rgb(49, 125, 64);
+    background-color: var(--bronson-green-light);
 }
 @media(max-width: 1655px) {
     .db_checker p {
@@ -918,7 +899,6 @@ progress::-webkit-progress-bar {
 
 /* ul / Index / row title / "Proc\n pj\n disp\n ... */
 .visIndex {
-    /* color: rgb(205, 177, 99); */
     color: var(--bronson-yellow-light);
     display: contents;
 }
@@ -935,9 +915,6 @@ progress::-webkit-progress-bar {
 }
 .visIndexItem {
     background-color:var(--bronson-blue-dark);
-    /* color: rgb(168, 140, 64);
-    border-right:2px inset #94742e;
-    border-bottom:2px inset #94742e; */
     color: var(--bronson-yellow-light);
     border-right: var(--bronson-yellow-dark);
     border-bottom: var(--bronson-yellow-dark);
@@ -947,9 +924,8 @@ progress::-webkit-progress-bar {
 
 .visRoomHead {
     background-color:var(--bronson-blue-dark);
-    /* color: rgb(168, 140, 64); */
     color: var(--bronson-yellow-dark);
-    border-bottom:2px inset #a5a29c;
+    border-bottom:2px inset var(--bronson-grey-light);
     padding:.15rem;
     justify-content: center;
 }
@@ -990,7 +966,7 @@ progress::-webkit-progress-bar {
 } 
 
 .visFalse {
-    background-color: rgb(184, 92, 101);
+    background-color: var(--bronson-red-highlight);
 }
 
 /* checkerboard Definitions 
@@ -1095,7 +1071,7 @@ progress::-webkit-progress-bar {
 }
 
 .cbTopperBuilding {
-    border: rgb(102,53,54) inset 2px;
+    border: var(--bronson-red-light) inset 2px;
     border-radius: 12px;
     cursor: pointer;
     padding: 0% 0%;
@@ -1121,7 +1097,7 @@ progress::-webkit-progress-bar {
     text-align: center;
     font-style: italic;
     font-family: Arial, Helvetica, sans-serif;
-    border-bottom: 2px solid rgb(50,20,20);
+    border-bottom: 2px solid var(--bronson-red-shadow);
 
 }
 
@@ -1158,13 +1134,10 @@ progress::-webkit-progress-bar {
 
 .cbProgress::-webkit-progress-value {
     border-radius: 0px 0px 10px 10px;
-    /* background-color: rgb(166, 175, 86); */
       background-color: var(--bronson-green-light);
 }
 
 .cbProgress::-moz-progress-bar {
-    /* background-color: rgb(126, 170, 61); */
-    /* background-color: rgb(166, 175, 86); */
       background-color: var(--bronson-green-light);
 }
 
@@ -1191,7 +1164,7 @@ progress::-webkit-progress-bar {
     padding-top: 8px;
     padding-right: 15px;
     /* border:#37343e inset 1px; */
-    border-top: rgb(133, 60, 60) outset 2px;
+    border-top: var(--bronson-red-light) outset 2px;
     border-radius: 15px;
 }
 
@@ -1259,7 +1232,7 @@ progress::-webkit-progress-bar {
 }
 
 .cbVisNotChecked {
-    background-color: rgb(102, 53, 54);
+    background-color: var(--bronson-red-dark);
     /* border: rgb(94, 46, 17) inset 2px; */
     border-radius: 0px 0px 0px 18px;
     border-right:rgb(75,45,15) outset 1px;
@@ -1277,7 +1250,7 @@ progress::-webkit-progress-bar {
 }
 
 .cbVisBackOnline {
-    background-color: rgb(75, 75, 75);
+    background-color: var(--bronson-grey-dark);
     /* border: rgb(94, 46, 17) inset 2px; */
     border-radius: 0px 0px 18px 0px;
     border-left:rgb(90,60,30) inset 1px;
@@ -1294,7 +1267,7 @@ progress::-webkit-progress-bar {
 }
 
 .cbVisNotAvailable {
-    background-color: rgb(139,24,27);
+    background-color: var(--bronson-red-bright);
     /* border: rgb(94, 46, 17) inset 2px; */
     border-radius: 0px 0px 18px 0px;
     border-left:rgb(90,60,30) inset 1px;
@@ -1703,7 +1676,6 @@ ol li::marker {
 }
 
 .tx_highlight_row {
-    /* background-color: rgba(236, 200, 101, 0.25); */
     background-color: var(--bronson-yellow-shadow);
     transition: background-color 0.5s ease;
 }
@@ -1976,11 +1948,11 @@ td.mobile_th {
 }
 
 .tx_textareaRequired {
-    border: 2px inset rgb(209, 23, 23);
+    border: 2px inset var(--bronson-red-bright);
 }
 
 .tx_textareaRequired::placeholder {
-    color: rgb(209, 23, 23);
+    color: var(--bronson-red-bright);
     opacity: 1;
 }
 
@@ -2017,7 +1989,7 @@ td.mobile_th {
     max-height: 65%;
     overflow-y: scroll;
     border: 3px solid var(--bronson-yellow-highlight);
-    background: rgb(60, 60, 60);
+    background: var(--bronson-grey-dark);
     border-radius: 6px;
     margin-top: 125px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
@@ -2798,11 +2770,11 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .exeButton {
-    background-color: rgb(62, 156, 59);
+    background-color: var(--bronson-green-light)
 }
 
 .rmvButton {
-    background-color: rgb(196, 112, 112);
+    background-color: var(--bronson-red-highlight);
 }
 
 #admin_internals {
@@ -2946,7 +2918,7 @@ p.tx_Description::-webkit-scrollbar-track {
     border: 2px black;
 }
 .setToRemove {
-    background-color:red;
+    background-color:var(--bronson-red-bright);
 }
 
 #techSchdRemoveList {
@@ -2983,7 +2955,7 @@ p.tx_Description::-webkit-scrollbar-track {
 
 /* Database Editor Tab */
 .invalid, .invalidInput {
-    border: 2px solid red;
+    border: 2px solid var(--bronson-red-bright);
 }
 
 .dbRoomInput {
@@ -3092,7 +3064,7 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .dbRowToBeRemoved, .dbBuildingToBeRemoved {
-    background-color: rgb(167, 74, 74);
+    background-color:var(--bronson-red-highlight);
 }
 
 .dbRowToBeAdded, .dbBuildingToBeAdded {
@@ -3698,7 +3670,7 @@ img.background {
 
 .close:hover,
 .close:focus {
-    color: red;
+    color: var(--bronson-red-bright);
     cursor: pointer;
 }
 
