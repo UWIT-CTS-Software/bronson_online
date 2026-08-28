@@ -1,5 +1,5 @@
 /*
-page.css
+page.cssshadow
 
 This file is a nightmare to navigate.
 need to consolidate things and reuse tags
@@ -29,8 +29,17 @@ need to consolidate things and reuse tags
     --bronson-red-bright: rgb(139,24,27);
     --bronson-red-light: rgb(133, 60, 60);
     --bronson-red-highlight: rgb(184, 92, 101);
-    --bronson-red-shadow: rgb(50, 20, 20);
+    --bronson-red-shadow: rgb(50, 20, 20); /* Only used once maybe discard */ 
 
+    --bronson-orange-dark: rgb(118, 66, 28);
+    --bronson-orange-light: rgb(135, 62, 9);
+
+    --bronson-black: rgb(0, 0, 0);
+    --bronson-black01: rgba(0, 0, 0, 0.1);
+    --bronson-black04: rgba(0, 0, 0, 0.4);
+    --bronson-black07: rgba(0, 0, 0, 0.7);
+
+    --bronson-white: rgb(255, 255, 255);
 
 }
 
@@ -131,7 +140,7 @@ input[type=date] {
     background-color:var(--bronson-yellow-light);
     border: 2px outset var(--bronson-yellow-dark);
     padding-left: 4px; 
-    color: black;
+    color:var(--bronson-black);
 }
 
 input[type=date]:disabled {
@@ -161,7 +170,7 @@ legend {
     /* padding: 0px 8px; */
     border: var(--bronson-yellow-dark) outset 2px;
     border-radius: 15px;
-    box-shadow: 2px 2px 3px black;
+    box-shadow: 2px 2px 3px var(--bronson-black);
 }
 
 .mobile_legend {
@@ -300,7 +309,7 @@ button:-webkit-details-marker {
   width: 12px;
   left: 2px;
   bottom: 3px;
-  background-color: white;
+  background-color: var(--bronson-white);
   -webkit-transition: .4s;
   transition: .4s;
 }
@@ -373,18 +382,16 @@ input:checked + .slider:before {
 /* ----------=--------=----------- */
 
 .program_header {
-    color: rgb(118, 66, 28);
-    /* background-color: rgb(224, 193, 108); */
+    color: var(--bronson-orange-dark);
      background-color: var(--bronson-yellow-light);
     position: relative;
     display: grid;
     grid-template-columns: repeat(10,1fr);
     gap: 2px;
     grid-auto-rows: minmax(5px, auto);
-    /* border:4px none rgb(133, 118, 60); */
     border: 4px none var(--bronson-yellow-dark);
     border-style: none double inset double;
-    box-shadow: 5px 7px 7px black;
+    box-shadow: 5px 7px 7px var(--bronson-black);
 }
 
 .program_header.mobile {
@@ -396,7 +403,7 @@ input:checked + .slider:before {
 
 /* Bronson icon in top left, brings out hamburger menu */
 .site_header {
-    color: rgb(118, 66, 28);
+    color: var(--bronson-orange-dark);
     background-color: var(--bronson-yellow-light);
     text-align: center;
     font-family: "Racing Sans One", sans-serif;
@@ -427,7 +434,7 @@ input:checked + .slider:before {
 
 /* Middle panel, contains tabs and message of the day */
 .middle_section {
-    color: rgb(118, 66, 28);
+    color: var(--bronson-orange-dark);
     background-color: rgba(0, 0, 0, 0);
     text-align: left;
     font-family:'Courier New', Courier, monospace;
@@ -439,7 +446,7 @@ input:checked + .slider:before {
 }
 
 .message_header {
-    color: rgb(118, 66, 28);
+    color: var(--bronson-orange-dark);
     font-family: "Contrail One", sans-serif;
     font-size: large;
     font-weight: 400;
@@ -478,7 +485,7 @@ input:checked + .slider:before {
     background: var(--bronson-grey-shadow);
     transform: translateX(-150%);
     transition: transform 0.2s;
-    color: black;
+    color:var(--bronson-black);
     margin-top: 100px;
     width: 11rem;
     box-shadow: 3px 4px 4px;
@@ -491,14 +498,14 @@ input:checked + .slider:before {
 }
 
 .hb_menu legend {
-    color: rgb(118, 66, 28);
+    color: var(--bronson-orange-dark);
     background-color: var(--bronson-yellow-light);
     border: 2px outset var(--bronson-yellow-dark);
     font-size: smaller;
 }
 
 .hb_menu fieldset {
-    color: rgb(118, 66, 28);
+    color: var(--bronson-orange-dark);
     background-color: var(--bronson-yellow-light);
     border: 2px inset var(--bronson-yellow-dark);
     display: block;
@@ -1058,7 +1065,7 @@ progress::-webkit-progress-bar {
     margin-left: 25px;
     margin-bottom:6px;
     border-radius: 15px;
-    border-bottom:2px solid rgb(0,0,0);
+    border-bottom:2px solid var(--bronson-black);
     width: 90px;
     text-align: center;
     
@@ -1163,7 +1170,6 @@ progress::-webkit-progress-bar {
     padding-bottom:2px;
     padding-top: 8px;
     padding-right: 15px;
-    /* border:#37343e inset 1px; */
     border-top: var(--bronson-red-light) outset 2px;
     border-radius: 15px;
 }
@@ -1195,7 +1201,7 @@ progress::-webkit-progress-bar {
     margin:2px 1px 5px 1px;
     padding:4px 0px 0px 0px;
     break-inside: avoid;
-    border: rgb(99, 66, 33) outset 2px;
+    border: var(--bronson-orange-dark) outset 2px;
     border-radius: 20px;
     background-color:var(--bronson-grey-shadow);
 }
@@ -1203,7 +1209,7 @@ progress::-webkit-progress-bar {
 .cbVisRoomName {
     margin: 0px;
     padding: 0px 0px 3px 0px;
-    border-bottom: rgb(99,66,33) inset 2px;
+    border-bottom: var(--bronson-orange-dark) inset 2px;
     font-family:Arial, Helvetica, sans-serif;
     font-style:italic;
     font-weight: bolder;
@@ -1226,7 +1232,7 @@ progress::-webkit-progress-bar {
     background-color: var(--bronson-grey-shadow);
     /* border: rgb(33, 39, 33) inset 2px; */
     border-radius: 0px 0px 0px 18px;
-    border-right:rgb(75,45,15) outset 1px;
+    border-right:var(--bronson-orange-dark) outset 1px;
     height:100%;
     padding-left:5px;
 }
@@ -1235,7 +1241,7 @@ progress::-webkit-progress-bar {
     background-color: var(--bronson-red-dark);
     /* border: rgb(94, 46, 17) inset 2px; */
     border-radius: 0px 0px 0px 18px;
-    border-right:rgb(75,45,15) outset 1px;
+    border-right:var(--bronson-orange-dark) outset 1px;
     height:100%;
     padding-left:5px;
 }
@@ -1244,7 +1250,7 @@ progress::-webkit-progress-bar {
     background-color: var(--bronson-green-dark);
     /* border: rgb(33, 39, 33) inset 2px; */
     border-radius: 0px 0px 0px 18px;
-    border-right:rgb(75,45,15) outset 1px;
+    border-right:var(--bronson-orange-dark) outset 1px;
     height:100%;
     padding-left:5px;
 }
@@ -1253,7 +1259,7 @@ progress::-webkit-progress-bar {
     background-color: var(--bronson-grey-dark);
     /* border: rgb(94, 46, 17) inset 2px; */
     border-radius: 0px 0px 18px 0px;
-    border-left:rgb(90,60,30) inset 1px;
+    border-left:var(--bronson-orange-light) inset 1px;
     height:100%;
     padding-right:5px;
 }
@@ -1261,7 +1267,7 @@ progress::-webkit-progress-bar {
 .cbVisAvailable {
     background-color: var(--bronson-green-light);
     border-radius: 0px 0px 18px 0px;
-    border-left:rgb(90,60,30) inset 1px;
+    border-left:var(--bronson-orange-light) inset 1px;
     height:100%;
     padding-right: 5px;
 }
@@ -1270,7 +1276,7 @@ progress::-webkit-progress-bar {
     background-color: var(--bronson-red-bright);
     /* border: rgb(94, 46, 17) inset 2px; */
     border-radius: 0px 0px 18px 0px;
-    border-left:rgb(90,60,30) inset 1px;
+    border-left:var(--bronson-orange-light) inset 1px;
     height:100%;
     padding-right:5px;
 }
@@ -1869,7 +1875,7 @@ td.mobile_th {
     display: flex;
     justify-content: center;
     opacity: 0;
-    background-color: rgba(0,0,0,0.4);
+    background-color: var(--bronson-black04);
     pointer-events: none;
     transition: .2s ease;
 }
@@ -1887,7 +1893,7 @@ td.mobile_th {
     background: var(--bronson-grey-shadow);
     border-radius: 6px;
     margin-top: 250px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    box-shadow: 0 0 10px var(--bronson-black01);
 }
 
 .dismissAllButtonConfirm {
@@ -1912,7 +1918,7 @@ td.mobile_th {
     display: flex;
     justify-content: center;
     opacity: 0;
-    background-color: rgba(0,0,0,0.4);
+    background-color: var(--bronson-black04);
     pointer-events: none;
     transition: .2s ease;
     overflow-y: scroll;
@@ -1935,7 +1941,7 @@ td.mobile_th {
     background: var(--bronson-grey-shadow);
     border-radius: 6px;
     margin-top: 90px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    box-shadow: 0 0 10px var(--bronson-black01);
 }
 
 .tx_createTicketText {
@@ -1972,7 +1978,7 @@ td.mobile_th {
     display: flex;
     justify-content: center;
     opacity: 0;
-    background-color: rgba(0,0,0,0.4);
+    background-color: var(--bronson-black04);
     pointer-events: none;
     transition: .2s ease;
 }
@@ -1992,7 +1998,7 @@ td.mobile_th {
     background: var(--bronson-grey-dark);
     border-radius: 6px;
     margin-top: 125px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    box-shadow: 0 0 10px var(--bronson-black01);
 }
 
 .tx_editTicketPopupContainer {
@@ -2007,7 +2013,7 @@ td.mobile_th {
     display: flex;
     justify-content: center;
     opacity: 0;
-    background-color: rgba(0,0,0,0.4);
+    background-color: var(--bronson-black04);
     pointer-events: none;
     transition: .2s ease;
 }
@@ -2027,14 +2033,13 @@ td.mobile_th {
     background: var(--bronson-grey-shadow);
     border-radius: 6px;
     margin-top: 125px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    box-shadow: 0 0 10px var(--bronson-black01);
 }
 .tx_editTicketPopupContainer .tx_popupBox::-webkit-scrollbar {
     display: block !important;
     width: 8px;
 }
 .tx_editTicketPopupContainer .tx_popupBox::-webkit-scrollbar-thumb {
-    /* background: rgb(224, 193, 108); */
     background: var(--bronson-yellow-highlight);
     border-radius: 4px;
 }
@@ -2054,7 +2059,7 @@ td.mobile_th {
     display: flex;
     justify-content: center;
     opacity: 0;
-    background-color: rgba(0,0,0,0.4);
+    background-color: var(--bronson-black04);
     pointer-events: none;
     transition: .2s ease;
 }
@@ -2074,7 +2079,7 @@ td.mobile_th {
     background: var(--bronson-grey-shadow);
     border-radius: 6px;
     margin-top: 125px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    box-shadow: 0 0 10px var(--bronson-black01);
 }
 .tx_commentOnTicketPopupContainer .tx_popupBox::-webkit-scrollbar {
     display: block !important;
@@ -2096,12 +2101,12 @@ td.mobile_th {
 
     border-radius: 6px;
     margin-top: 90px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    box-shadow: 0 0 10px var(--bronson-black01);
     scale: 135%;
 }
 
 .tx_popupBox span {
-    color: rgb(118, 66, 28);
+    color: var(--bronson-orange-dark);
     background-color: var(--bronson-yellow-highlight);
     font-family: "Contrail One", sans-serif;
     font-size: 18pt;
@@ -2168,7 +2173,7 @@ td.mobile_th {
     background: var(--bronson-grey-shadow);
     margin-left: 10px;
     margin-bottom: 10px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    box-shadow: 0 0 10px var(--bronson-black01);
     overflow-y: hidden;
 }
 .tx_popupComments.mobile {
@@ -2191,8 +2196,7 @@ td.mobile_th {
 }
 
 .tx_popupComments span {
-    color: rgb(118, 66, 28);
-    /* background-color: rgb(224, 193, 108); */
+    color: var(--bronson-orange-dark);
     background-color: var(--bronson-yellow-highlight);
     font-family: "Contrail One", sans-serif;
     font-size: 18pt;
@@ -2297,7 +2301,7 @@ td.mobile_th {
 }
 
 .tx_replies {
-    background-color: var(--bronson-grey-dark);
+    background-color: var(--bronson-grey-shadow);
     margin: 0 15px;
 }
 
@@ -2828,7 +2832,7 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .toBeRemoved {
-    background-color: #8b4040;
+    background-color: var(--bronson-red-highlight);
 }
 
 /* Admin Tools -- Schedule Editor */
@@ -3026,14 +3030,12 @@ p.tx_Description::-webkit-scrollbar-track {
 
 .dbBuildingInput {
     width: 380px;
-    /* color: rgb(144, 118, 26); */
     color: var(--bronson-yellow-dark);
     background-color: var(--bronson-grey-bg);
 }
 
 .dbBuildingSmallInput {
     width: 40px;
-    /* color: rgb(144, 118, 26); */
     color: var(--bronson-yellow-dark);
     background-color: var(--bronson-grey-bg) !important;
     border-style: inset !important;
@@ -3186,7 +3188,7 @@ p.tx_Description::-webkit-scrollbar-track {
     bottom: 0px;
     color: var(--bronson-yellow-light);
     background: var(--bronson-yellow-shadow);
-    border: rgb(135,62,9) solid 2px;
+    border: var(--bronson-orange-light) solid 2px;
     border-bottom: none;
     border-radius: 10px;
     padding: 0px 0px 0px 0px;
@@ -3256,7 +3258,7 @@ p.tx_Description::-webkit-scrollbar-track {
 @keyframes pulse {
     0% {
         transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(0,0,0,0.7);
+        box-shadow: 0 0 0 0 var(--bronson-black07);
     }
 
     70% {
@@ -3266,7 +3268,7 @@ p.tx_Description::-webkit-scrollbar-track {
 
     100% {
         transform: scale(.95);
-        box-shadow: 0 0 0 0 rgba(0,0,0,0.7);
+        box-shadow: 0 0 0 0 var(--bronson-black07);
     }
 }
 
@@ -3340,7 +3342,7 @@ p.tx_Description::-webkit-scrollbar-track {
     bottom: 0px;
     color: var(--bronson-yellow-dark);
     background: var(--bronson-grey-dark);
-    border: rgb(135,62,9) solid 2px;
+    border: var(--bronson-orange-light) solid 2px;
     border-bottom: none;
     border-radius: 10px;
     padding: 0px 0px 0px 0px;
@@ -3520,10 +3522,9 @@ p.tx_Description::-webkit-scrollbar-track {
     top: 3px;
     left: 13px;
     bottom: 0px;
-    /* color: rgb(180, 142, 79); */
     color: var(--bronson-yellow-dark);
     background: var(--bronson-grey-dark);
-    border: rgb(135,62,9) solid 2px;
+    border: var(--bronson-orange-light) solid 2px;
     border-bottom: none;
     border-radius: 10px;
     padding: 0px 0px 0px 0px;
@@ -3645,8 +3646,8 @@ img.background {
     width: 100%; /* Full width */
     height: 100%; /* Full height */
     overflow: auto; /* Enable scroll if needed */
-    background-color: rgb(0,0,0); /* Fallback color */
-    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    background-color: rgb(--bronson-black); /* Fallback color */
+    background-color: rgba(--bronson-black04); /* Black w/ opacity */
     padding-top: 60px;
 }
 
@@ -3663,7 +3664,7 @@ img.background {
     position: absolute;
     right: 25px;
     top: 0;
-    color: #000;
+    color: var(--bronson-black);
     font-size: 35px;
     font-weight: bold;
 }
@@ -3819,8 +3820,8 @@ p.toc-item{
    }
 
    code {
-    background-color: black;
-    color: white;
+    background-color: var(--bronson-black);
+    color: var(bronson-white);
    }
 
    blockquote {
