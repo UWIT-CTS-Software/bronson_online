@@ -54,7 +54,7 @@ use server_lib::{
     CFM_DIR, WIKI_DIR, /* LOG, */ TEMP_DIR, TICKT_JSON, 
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_400, STATUS_404, STATUS_500, 
     SCHD_ERR, DASH_ERR, LDRB_ERR, SPRS_ERR, 
-    Database, Terminal, 
+    Database, Terminal, BodyType,
     models::{
         DB_Room, DB_Building, DB_User, DB_DataElement, DB_Project, 
         DB_IpAddress, DB_Key, DB_Ticket, DB_Reservation
@@ -2190,7 +2190,7 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
     let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
     let url_365_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last365days%22%7D";
 
-    let v_7_days: Value = match serde_json::from_str(req
+    let v_7_days: Value = req
         .build()
         .method("GET")
         .endpoint(url_7_days)
@@ -2198,13 +2198,9 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
         .send()
         .await
         .expect("Unable to make lsm_7_days API call")
-        .body
-        .as_str()) {
-            Ok(v)  => v,
-            Err(_) => json!({"data": []})
-        };
+        .body;
 
-    let v_30_days: Value = match serde_json::from_str(req
+    let v_30_days: Value = req
         .build()
         .method("GET")
         .endpoint(url_30_days)
@@ -2212,13 +2208,9 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
         .send()
         .await
         .expect("Unable to make lsm_30_days API call")
-        .body
-        .as_str()) {
-            Ok(v)  => v,
-            Err(_) => json!({"data": []})
-        };
+        .body;
 
-    let v_90_days: Value = match serde_json::from_str(req
+    let v_90_days: Value = req
         .build()
         .method("GET")
         .endpoint(url_90_days)
@@ -2226,13 +2218,9 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
         .send()
         .await
         .expect("Unable to make lsm_90_days API call")
-        .body
-        .as_str()) {
-                Ok(v)  => v,
-                Err(_) => json!({"data": []})
-        };
+        .body;
 
-    let v_365_days: Value = match serde_json::from_str(req
+    let v_365_days: Value = req
         .build()
         .method("GET")
         .endpoint(url_365_days)
@@ -2240,11 +2228,7 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
         .send()
         .await
         .expect("Unable to make lsm_365_days API call")
-        .body
-        .as_str()) {
-                Ok(v)  => v,
-                Err(_) => json!({"data": []})
-        };
+        .body;
 
     let data_7_days: Vec<Value> = match v_7_days["data"].as_array() {
         Some(data) => data.clone(),
@@ -2279,18 +2263,21 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
 async fn update_lsm_spares(database: &mut Database, req: &API) {
     let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
 
-    let body_spares = match req
+    let body_spares: Value = match req
         .build()
         .method("GET")
         .endpoint(url_spares)
         .send()
         .await {
             Ok(b) => b.body,
-            Err(m) => { error!("Unable to make update_lsm_spares API call: {}", m); String::new() }
+            Err(m) => { error!("Unable to make update_lsm_spares API call: {}", m);
+            json!({
+                "data": []
+            })
+            }
         };
 
-    let v_spares: Value = serde_json::from_str(&body_spares).expect("Empty");
-    let data_spares: Vec<Value> = match v_spares["data"].as_array() {
+    let data_spares: Vec<Value> = match body_spares["data"].as_array() {
         Some(data) => data.clone(),
         None => Vec::<Value>::new()
     };
@@ -2394,7 +2381,7 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
             }
         }
         // Process Request to LSM
-        let body = match req
+        let v: Value = match req
             .build()
             .method("GET")
             .endpoint(&url)
@@ -2405,17 +2392,6 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
                 Err(m) => { return Err(format!("Unable to make run_checkerboard API call: {}", m)); }
             }
             .body;
-        
-        let v: Value = match serde_json::from_str(&body) {
-            Ok(val) => val,
-            Err(_)      => {
-                warn!("LSM_ERR: API call returned error.");
-                json!({
-                    "count": -1,
-                    "data": "LSM Busy: Please try again"
-                })
-            }
-        };
 
         let mut check_map: HashMap<String, DateTime<Local>> = HashMap::new();
         if v["count"].as_i64() > Some(0) {
@@ -3071,6 +3047,7 @@ async fn fetch_tdx_token(database: &mut Database, req: &API) -> Result<(), Strin
         .method("POST")
         .endpoint(&url)
         .header("Accept", "application/json")
+        .return_type::<String>(BodyType::<String>::String)
         .json(
             json!({
                 "username": username,
@@ -3088,7 +3065,7 @@ async fn fetch_tdx_token(database: &mut Database, req: &API) -> Result<(), Strin
     }
 
     // Store token in database
-    let token = resp.body;
+    let token: String = resp.body;
     let token = "Bearer ".to_owned() + &token;
     let _ = database.update_key(&DB_Key {
         key_id: String::from("tdx_api"),
@@ -3100,7 +3077,7 @@ async fn fetch_tdx_token(database: &mut Database, req: &API) -> Result<(), Strin
     Ok(())
 }
 
-async fn retry_tdx_token(database: &mut Database, req: &API, method: &str, url: &str, request_body: Option<serde_json::Value>) -> Result<APIResponse, String> {
+async fn retry_tdx_token(database: &mut Database, req: &API, method: &str, url: &str, request_body: Option<serde_json::Value>) -> Result<APIResponse<Value>, String> {
     warn!("Unauthorized Response from TDX while performing action, trying again with new Token...");
 
     // Grab new TDX Token
@@ -4829,23 +4806,18 @@ $$$$$$$$\                    $$\
 
 async fn collegenet_login(cn_client: &Arc<API>) -> Result<LoginSuccess, String> {
     let url = "https://webservices.collegenet.com/r25ws/wrd/uwyo/run/login.xml";
-    let text = match cn_client
+    let doc: LoginSuccess = match cn_client
         .build()
         .method("GET")
         .endpoint(url)
         .timeout(Duration::from_secs(15))
-        .return_type::<LoginSuccess>()
+        .return_type(BodyType::XML)
         .send()
         .await {
             Ok(t) => t,
             Err(m) => {return Err(m)}
         }
         .body;
-
-    let doc: LoginSuccess = match serde_xml_rs::from_str(&text) {
-        Ok(d) => d,
-        Err(m) => { return Err(m.to_string()); }
-    };
 
     Ok(doc)
 }

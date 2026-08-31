@@ -264,12 +264,12 @@ impl Database {
 	pub async fn init(&mut self, _tdx_client: Arc<API>, lsm_client: Arc<API>) -> Option<()> {
 		info!("[Data] Initializing database...");
 		info!("[Data] Fetching buildings...");
-		let buildings_body = match lsm_client
+		let buildings_json: Value = match lsm_client
 			.build()
 			.method("GET")
 			.endpoint("https://uwyo.talem3.com/lsm/api/BuildingInfo")
 			.timeout(Duration::from_secs(15))
-			.send()
+			.send::<Value>()
 			.await {
 				Ok(b) => b,
 				Err(m) => { 
@@ -278,8 +278,7 @@ impl Database {
 				}
 			}
 			.body;
-		
-		let buildings_json: Value = serde_json::from_str(&buildings_body).expect("Empty");
+
 		let building_vec: Vec<Value> = match buildings_json["data"].as_array() {
 			Some(d) => d.clone(),
 			None    => Vec::new()
@@ -324,12 +323,12 @@ impl Database {
 		room_count = 100;
 		room_offset = 0;
 		while room_count == 100 {
-			let proc_counts_body = match lsm_client
+			let procs_json: Value = match lsm_client
 				.build()
 				.method("GET")
 				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/ProcsPerRoom?offset={}", room_offset))
 				.timeout(Duration::from_secs(15))
-				.send()
+				.send::<Value>()
 				.await {
 					Ok(b)  => b,
 					Err(m) => {
@@ -339,7 +338,6 @@ impl Database {
 				}
 				.body;
 
-			let procs_json: Value = serde_json::from_str(&proc_counts_body).expect("Empty");
 			room_count = match procs_json["count"].as_i64() {
 				Some(c) => c,
 				None    => {
@@ -390,12 +388,12 @@ impl Database {
 		room_count = 100;
 		room_offset = 0;
 		while room_count == 100 {
-			let tps_counts_body = match lsm_client
+			let tps_json: Value = match lsm_client
 				.build()
 				.method("GET")
 				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/TPsPerRoom?offset={}", room_offset))
 				.timeout(Duration::from_secs(15))
-				.send()
+				.send::<Value>()
 				.await {
 					Ok(b)  => b,
 					Err(m) => {
@@ -405,7 +403,6 @@ impl Database {
 				}
 				.body;
 
-			let tps_json: Value = serde_json::from_str(&tps_counts_body).expect("Empty");
 			room_count = match tps_json["count"].as_i64() {
 				Some(c) => c,
 				None    => {
@@ -456,12 +453,12 @@ impl Database {
 		room_count = 100;
 		room_offset = 0;
 		while room_count == 100 {
-			let pjs_counts_body = match lsm_client
+			let pjs_json: Value = match lsm_client
 				.build()
 				.method("GET")
 				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/ProjectorsPerRoom?offset={}", room_offset))
 				.timeout(Duration::from_secs(15))
-				.send()
+				.send::<Value>()
 				.await {
 					Ok(b)  => b,
 					Err(m) => {
@@ -471,7 +468,6 @@ impl Database {
 				}
 				.body;
 
-			let pjs_json: Value = serde_json::from_str(&pjs_counts_body).expect("Empty");
 			room_count = match pjs_json["count"].as_i64() {
 				Some(c) => c,
 				None    => {
@@ -522,12 +518,12 @@ impl Database {
 		room_count = 100;
 		room_offset = 0;
 		while room_count == 100 {
-			let disp_counts_body = match lsm_client
+			let disps_json: Value = match lsm_client
 				.build()
 				.method("GET")
 				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/DisplaysPerRoom?offset={}", room_offset))
 				.timeout(Duration::from_secs(15))
-				.send()
+				.send::<Value>()
 				.await {
 					Ok(b)  => b,
 					Err(m) => {
@@ -537,7 +533,6 @@ impl Database {
 				}
 				.body;
 
-			let disps_json: Value = serde_json::from_str(&disp_counts_body).expect("Empty");
 			room_count = match disps_json["count"].as_i64() {
 				Some(c) => c,
 				None    => {
@@ -592,12 +587,12 @@ impl Database {
 		room_count = 100;
 		room_offset = 0;
 		while room_count == 100 {
-			let rooms_body = match lsm_client
+			let rooms_json: Value = match lsm_client
 				.build()
 				.method("GET")
 				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/RoomInfo?offset={}&p=%7BMinAssessmentCount%3A%200%7D", room_offset))
 				.timeout(Duration::from_secs(15))
-				.send()
+				.send::<Value>()
 				.await {
 					Ok(r)  => r,
 					Err(m) => {
@@ -607,7 +602,6 @@ impl Database {
 				}
 				.body;
 
-			let rooms_json: Value = serde_json::from_str(&rooms_body).expect("Empty");
 			room_count = match rooms_json["count"].as_i64() {
 				Some(c) => c,
 				None    => {
@@ -1708,33 +1702,31 @@ impl API {
 		};
 	}
 
-	pub fn build(&self) -> APIEndpoint<Value> {
-		return APIEndpoint::<Value> {
+	pub fn build(&self) -> APIEndpoint {
+		return APIEndpoint {
 			client: self.client.clone(),
 			method: None,
 			data: None,
 			endpoint: None,
 			headers: HeaderMap::new(),
 			args: json!([]),
-			timeout: Duration::from_secs(15),
-			body: None
+			timeout: Duration::from_secs(15)
 		};
 	}
 }
 
 #[derive(Clone)]
-pub struct APIEndpoint<B> {
+pub struct APIEndpoint {
 	pub client: APIClient,
 	pub method: Option<Arc<dyn Fn(reqwest::Client, String) -> reqwest::RequestBuilder>>,
 	pub data: Option<Arc<dyn Fn(reqwest::RequestBuilder, Value) -> reqwest::RequestBuilder>>,
 	pub endpoint: Option<String>,
 	pub headers: HeaderMap,
 	pub args: Value,
-	pub timeout: Duration,
-	pub body: Option<B>
+	pub timeout: Duration
 }
 
-impl<B: std::fmt::Debug> std::fmt::Debug for APIEndpoint<B> {
+impl APIEndpoint {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("APIEndpoint")
 			.field("client", &self.client)
@@ -1743,13 +1735,12 @@ impl<B: std::fmt::Debug> std::fmt::Debug for APIEndpoint<B> {
 			.field("headers", &self.headers)
 			.field("args", &self.args)
 			.field("timeout", &self.timeout)
-			.field("body", &self.body)
 			.finish()
 	}
 }
 
-impl<B: std::clone::Clone> APIEndpoint<B>  {
-	pub fn method(mut self, m: &str) -> APIEndpoint<B> {
+impl<'de> APIEndpoint {
+	pub fn method(mut self, m: &str) -> APIEndpoint {
 
 		match m.to_uppercase().as_str() {
 			"GET"    => {
@@ -1780,53 +1771,40 @@ impl<B: std::clone::Clone> APIEndpoint<B>  {
 		self
 	}
 
-	pub fn body(mut self, v: Value) -> APIEndpoint<B> {
+	pub fn body(mut self, v: Value) -> APIEndpoint {
 		self.args = v;
 		self.data = Some(Arc::new(|c, b| { reqwest::RequestBuilder::body(c, b.to_string()) }));
 
 		self
 	}
 
-	pub fn json(mut self, v: Value) -> APIEndpoint<B> {
+	pub fn json(mut self, v: Value) -> APIEndpoint {
 		self.args = v;
 		self.data = Some(Arc::new(|c, b| { reqwest::RequestBuilder::json(c, &b) }));
 
 		self
 	}
 
-	pub fn endpoint(mut self, e: &str) -> APIEndpoint<B> {
+	pub fn endpoint(mut self, e: &str) -> APIEndpoint {
 		self.endpoint = Some(String::from(e));
 
 		self
 	}
 
-	pub fn header<K>(mut self, k: K, v: &str) -> APIEndpoint<B>
+	pub fn header<K>(mut self, k: K, v: &str) -> APIEndpoint
 	where K: IntoHeaderName {
 		self.headers.insert(k, v.parse().unwrap());
 
 		self
 	}
 
-	pub fn timeout(mut self, d: Duration) -> APIEndpoint<B> {
+	pub fn timeout(mut self, d: Duration) -> APIEndpoint {
 		self.timeout = d;
 
 		self
 	}
 
-	pub fn return_type<B2>(&self) -> APIEndpoint<B2> {
-		return APIEndpoint::<B2> {
-			client: self.client.clone(),
-			method: self.method.clone(),
-			data: self.data.clone(),
-			endpoint: self.endpoint.clone(),
-			headers: self.headers.clone(),
-			args: self.args.clone(),
-			timeout: self.timeout,
-			body: None
-		};
-	}
-
-	pub async fn send(&mut self) -> Result<APIResponse, String> {
+	pub async fn send<T: APIFormat<'de, T> + Deserialize<'de>>(&mut self) -> Result<APIResponse<T>, String> {
 		let url = match &self.endpoint {
 			Some(u) => u,
 			None    => {
@@ -1878,27 +1856,53 @@ impl<B: std::clone::Clone> APIEndpoint<B>  {
 			raw_body.extend_from_slice(&chunk);
 		}
 
-		Ok(APIResponse {
+		let body_string_raw: String = format!("{}", match String::from_utf8(raw_body) {
+			Ok(b) => b,
+			Err(m) => { return Err(m.to_string()); }
+		});
+
+		let body_string: &'de String = &body_string_raw;
+
+		let tbd_body: T;
+		tbd_body.compile(&body_string);
+
+		Ok(APIResponse::<T> {
 			status: raw_status,
 			version: raw_version,
 			headers: raw_headers,
-			body: match String::from_utf8(raw_body) {
-				Ok(b) => b,
-				Err(m) => { return Err(m.to_string()); }
-			}
+			body: tbd_body
 		})
 	}
 }
 
-#[derive(Debug)]
-pub struct APIResponse {
+pub struct APIResponse<T> {
 	pub status: reqwest::StatusCode,
 	pub version: String,
 	pub headers: HeaderMap,
-	pub body: String
+	pub body: T
 }
 
+trait APIFormat<'de, Format: Deserialize<'de>> {
+	fn compile(&self, str_data: &'de String) -> Format;
+}
 
+impl<'de, Format: Deserialize<'de>> APIFormat<'de, Format> for String {
+	fn compile(&self, str_data: &String) -> Format {
+		str_data.clone()
+	}
+}
+
+impl<'de, Format: Deserialize<'de> + Clone> APIFormat<'de, Format> for Value {
+	fn compile(&self, str_data: &'de String) -> Format {
+		serde_json::from_str::<Format>(str_data).unwrap().clone()
+	}
+}
+
+impl<'de, Format: Deserialize<'de> + Clone> APIFormat<'de, Format> for LoginSuccess {
+	fn compile(&self, str_data: &'de String) -> Format {
+		serde_xml_rs::from_str::<Format>(str_data).unwrap().clone()
+	}
+}
 
 #[derive(Debug)]
 pub enum TerminalError {
