@@ -93,7 +93,7 @@ use serde_json::{ json, Value, };
 use serde::Deserialize;
 use regex::Regex;
 use chrono::{ offset::Local, DateTime, TimeDelta, Utc, Days };
-use urlencoding::decode;
+use urlencoding::{ decode, encode };
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
@@ -2225,8 +2225,8 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
     // Iterate over each.
     for building in buildings {
         debug!("[Checkerboard] - Processing Building: {:?}", building.1.abbrev);
-        let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last90days%22%2CParentLocation%3A%22{}%22%7D", building.1.lsm_name.as_str());
-
+        let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last90days%22%2CParentLocation%3A%22{}%22%7D", encode(building.1.lsm_name.as_str()));
+        println!("{}", url);
         // Process Request to LSM
         let body = match req
             .build()
