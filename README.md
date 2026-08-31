@@ -42,7 +42,7 @@ First, update your package index and install the prerequisite packages. <br>
 
 ### Fetch PostgreSQL repository (Debian)
 After the necessary packages are installed, the PostgreSQL repository can be fetched. <br>
-`sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs).pgdg main" > /etc/apt/sources.list.d/pgdg.list'`
+`sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'`
 
 Now that apt knows about the repository, the signing key is necessary for an authorized transaction. <br>
 `curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg`
@@ -54,8 +54,8 @@ Update the package list. <br>
 `sudo pacman -Syu` (Arch)
 
 Install PostgreSQL 16 and its contrib modules. <br>
-`sudo apt install postgresql-16 postgresql-contrib-16` (Debian) <br>
-`sudo pacman -S postgresql postgresql-libs` (Arch)
+`sudo apt install postgresql-16 postgresql-contrib-16 build-essential pkg-config libssl-dev libpq-dev` (Debian) <br>
+`sudo pacman -S postgresql postgresql-libs build-essential pkg-config libssl-dev libpq-dev` (Arch)
 
 ### Mount and configure the PostgreSQL server
 Start and enable the PostgreSQL service. <br>
@@ -91,7 +91,7 @@ Connect to the PostgreSQL database server with the default "postgres" user. <br>
 `sudo -u postgres psql`
 
 Set a password for the postgres user. <br>
-`ALTER USER postgres PASSWORD '<password>'` <br>
+`ALTER USER postgres PASSWORD '<password>';` <br>
 where `<password>` is the password you'd like to set.
 
 Quit psql. <br>
