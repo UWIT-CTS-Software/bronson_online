@@ -64,7 +64,6 @@ body {
 label {
     color: var(--bronson-yellow-light);
     text-align: center;
-    /* font-family:'Courier New', Courier, monospace; */
     font-family: 'Lucida Sans', sans-serif;
     font-size: medium;
     font-style: bold;
@@ -163,7 +162,6 @@ legend {
     color: var(--bronson-yellow-light);
     background-color: var(--bronson-grey-bg);
     text-align: center;
-    /* font-family:'Courier New', Courier, monospace; */
     font-family: 'Lucida Sans', sans-serif;
     font-size: medium;
     font-style: italic;
