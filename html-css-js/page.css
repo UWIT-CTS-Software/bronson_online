@@ -1096,7 +1096,6 @@ progress::-webkit-progress-bar {
 }
 
 .cbTopperBuildingNameText {
-    /*font-family: 'Courier New', Courier, monospace;*/
     margin:2px 0px 4px 0px;
     font-weight: bold;
     text-align: center;
@@ -1122,7 +1121,6 @@ progress::-webkit-progress-bar {
     position: relative;
     z-index: 1; 
     text-align: left;
-    /* mix-blend-mode: difference; */
     color: var(--bronson-yellow-highlight);
 }
 
@@ -1208,7 +1206,7 @@ progress::-webkit-progress-bar {
     margin: 0px;
     padding: 0px 0px 3px 0px;
     border-bottom: var(--bronson-orange-dark) inset 2px;
-    font-family:Arial, Helvetica, sans-serif;
+    font-family: 'Arial', Helvetica, sans-serif;
     font-style:italic;
     font-weight: bolder;
 }
@@ -1216,7 +1214,6 @@ progress::-webkit-progress-bar {
 .cbVisRoomAttributes {
     margin: 0px;
     padding:0px;
-    /* padding-left:5%; */
     color: var(--bronson-yellow-highlight);
     column-count: 2;
     gap:0px;
@@ -1228,7 +1225,6 @@ progress::-webkit-progress-bar {
 
 .cbVisOffline {
     background-color: var(--bronson-grey-shadow);
-    /* border: rgb(33, 39, 33) inset 2px; */
     border-radius: 0px 0px 0px 18px;
     border-right:var(--bronson-orange-dark) outset 1px;
     height:100%;
@@ -1237,7 +1233,6 @@ progress::-webkit-progress-bar {
 
 .cbVisNotChecked {
     background-color: var(--bronson-red-dark);
-    /* border: rgb(94, 46, 17) inset 2px; */
     border-radius: 0px 0px 0px 18px;
     border-right:var(--bronson-orange-dark) outset 1px;
     height:100%;
@@ -1246,7 +1241,6 @@ progress::-webkit-progress-bar {
 
 .cbVisChecked {
     background-color: var(--bronson-green-dark);
-    /* border: rgb(33, 39, 33) inset 2px; */
     border-radius: 0px 0px 0px 18px;
     border-right:var(--bronson-orange-dark) outset 1px;
     height:100%;
@@ -1255,7 +1249,6 @@ progress::-webkit-progress-bar {
 
 .cbVisBackOnline {
     background-color: var(--bronson-grey-dark);
-    /* border: rgb(94, 46, 17) inset 2px; */
     border-radius: 0px 0px 18px 0px;
     border-left:var(--bronson-orange-light) inset 1px;
     height:100%;
@@ -1272,7 +1265,6 @@ progress::-webkit-progress-bar {
 
 .cbVisNotAvailable {
     background-color: var(--bronson-red-bright);
-    /* border: rgb(94, 46, 17) inset 2px; */
     border-radius: 0px 0px 18px 0px;
     border-left:var(--bronson-orange-light) inset 1px;
     height:100%;
@@ -1433,12 +1425,10 @@ progress::-webkit-progress-bar {
 /*  Types of Data Entries in cfm_list*/
 
 /* DEPRECATED ??? */
-.cfm_file {
+/* .cfm_file {
     background-color: rgb(87, 106, 119);
-    /* color: rgb(236, 200, 101); */
     color: var(--bronson-yellow-light);
     border-radius: 4px;
-    /* border: 2px inset rgb(144, 118, 26); */
     border: 2px inset var(--bronson-yellow-dark);
     text-align: left;
     padding: 5px;
@@ -1449,10 +1439,8 @@ progress::-webkit-progress-bar {
 
 .cfm_zip {
     background-color: rgb(79, 127, 80);
-    /* color: rgb(236, 200, 101); */
     color: var(--bronson-yellow-light);
     border-radius: 4px;
-    /* border: 2px outset rgb(144, 118, 26); */
     border: 2px outset var(--bronson-yellow-dark);
     text-align: center;
     padding: 5px;
@@ -1462,12 +1450,9 @@ progress::-webkit-progress-bar {
 }
 
 .cfm_dir {
-    /* background-color: rgb(138, 101, 71);
-    color: rgb(236, 200, 101); */
     background-color: var(--bronson-yellow-dark);
     color: var(--bronson-yellow-light);
     border-radius: 4px;
-    /* border: 2px outset rgb(144, 118, 26); */
     border: 2px outset var(--bronson-yellow-dark);
     text-align: right;
     padding: 5px;
@@ -1476,12 +1461,11 @@ progress::-webkit-progress-bar {
     width: fit-content;
 }
 
-/* Hover underline effects for file/folder names */
 .cfm_file:hover,
 .cfm_zip:hover,
 .cfm_dir:hover {
     text-decoration: underline;
-}
+} */
 
 .cfm_fileTreeInspector p:hover,
 .cfm_FileContainer p:hover {
