@@ -116,6 +116,13 @@ $$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |  $$ |\$$$$$$$ |
 \_______/  \_______| \_______|\__|  \__| \_______|\__|  \__| \_______|
 */
 
+//rustdoc 
+/// Entry Function for the server. 
+/// ### Returns 
+/// Upon Success - ()
+/// Upon Failure - dynamic error. 
+/// ### Example 
+/// ALEX ADD AN EXAMPLE
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // debug setting
     env::set_var("RUST_BACKTRACE", "1");
@@ -299,7 +306,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     return Ok(());
 }
-
+// rustdoc 
+/// Function creates verbose server log to standard out and writes a log file.  
+/// ### Parameter 
+/// * `level` - String Reference containing the sensitivity level for the logger. 
+/// ### Returns 
+/// * The logger. 
+/// ### Example 
+/// ``` no_run
+/// if matches.opt_present("d") {
+///     match init_logger("debug") {
+///         Ok(_) => (),
+///         Err(e) => error!("Unable to init logger: {}", e)
+///       };
+/// } else {
+///     match init_logger("info") {
+///         Ok(_) => (),
+///         Err(e) => error!("Unable to init logger: {}", e)
+///     };
+/// }
+/// ```
 fn init_logger(level: &str) -> Result<(), fern::InitError> {
     let log_filter: log::LevelFilter;
     match level {
@@ -349,7 +375,19 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
 
     Ok(())
 }
-
+//rustdoc 
+/// Function creates a space to run API calls separate from users threadpool.
+/// ### Parameters 
+///  * `thread_schedule` - cloned with Arc to control singlethread constraint. Type [`ThreadSchedule`]
+///  * `tdx_api` - cloned with Arc to because the type [`API`] may be multithread. `tdx_api` Is multi thread. 
+///  * `lsm_api` - cloned with Arc to because the type [`API`] may be multithread. `lsm_client ` Is single thread.
+///
+/// NOTE: `lsm_api` passed here and `lsm_client` passed in [`handle_connection`] serve the same purpose.
+/// Naming conventions need updated for further clarification. The same can be said for `tdx_client` and `tdx_api`.
+///  ### Returns 
+/// * Void 
+/// ### Example 
+/// ALEX MAKE AN EXAMPLE FOR THIS 
 #[tokio::main]
 #[allow(unused_assignments)]
 #[allow(unreachable_code)]
@@ -525,7 +563,22 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
 }
-
+// rustdoc 
+/// Function is the entry point to the servers on-request services. 
+/// 
+/// Note: function may be in use by any number of threads in the initialized threadpool. 
+/// ### Parameters
+///  * `req` - 
+///  * `database` - function requires [`Database`] (struct) to provide context of the Bronson database. 
+///  * `thread_schedule` - cloned with Arc to control singlethread constraint. Type [`ThreadSchedule`]
+///  * `tdx_client` - cloned with Arc to because the type [`API`] may be multithread. `tdx_client` Is multi thread. 
+///  * `lsm_client` - cloned with Arc to because the type [`API`] may be multithread. `lsm_client ` Is single thread. 
+/// ### Returns 
+/// * A [`Response`] object compiled into a byte vector. 
+/// Note: a compiled byte vector is easier to clone, so it is done before return instead of after. 
+/// ### Examples 
+/// call in [`main`]
+/// ALEX ADD AN EXAMPLE 
 #[tokio::main]
 #[allow(unused_assignments)]
 async fn handle_connection(
@@ -2051,7 +2104,28 @@ async fn handle_connection(
     
     return res.build();
 }
-
+//rustdoc 
+/// Function pulls leaderboard information from LSM APIs and updates the Bronson database. 
+/// ### Parameters 
+/// * database - function requires [`Database`] (struct) to provide context of the Bronson database. 
+/// * req - [`API`] provides information to the function of the request that was made 
+/// ### Returns 
+/// * Void 
+/// ### Example 
+/// ``` no_run 
+/// for task_name in due_tasks {
+/// // Execute task based on task_name
+///         match task_name.as_str() {
+///         // other tasks names to match on
+///         // ... => {}
+///         "leaderboard"     => {
+///             info!("[Data] - Pulling New LSM Leaderboard");
+///             update_room_check_leaderboard(&mut database, &lsm_api).await;
+///             info!("[Data] - New LSM Leaderboard Pulled")
+///       },
+///     }
+///   }
+/// ```
 async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
     let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
     let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
@@ -2143,6 +2217,7 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
         val: String::from_utf8(contents).expect("Unable to parse LSM Return"),
     });
 }
+
 // rustdoc 
 /// Function fetches an LSM endpoint that fetches the location of our spare PCs and updates the database 
 /// ### Parameters 
@@ -2150,6 +2225,23 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
 /// * req - [`API`] provides information to the function of the request that was made 
 /// ### Returns 
 /// * Void 
+/// ### Example 
+///  call in [`data_sync`]
+/// ``` no_run 
+///  for task_name in due_tasks {
+/// // Execute task based on task_name
+///         match task_name.as_str() {
+///         // other tasks names to match on
+///         // ... => {}
+///         "spares"          => {
+///             info!("[Data] - Pulling New LSM Spare Information");
+///             update_lsm_spares(&mut database, &lsm_api).await; 
+///             info!("[Data] - New LSM Spare Information Pulled")
+///         },
+///
+///     }
+/// }
+/// ```
 async fn update_lsm_spares(database: &mut Database, req: &API) {
     let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
 
@@ -2981,9 +3073,9 @@ async fn fetch_tdx_token(database: &mut Database, req: &API) -> Result<(), Strin
 /// ### Parameters
 /// * database - function requires [`Database`] (struct) to provide context of the Bronson database. 
 /// * req - [`API`] provides information to the function of the request that was made 
-/// * method 
-/// * url
-/// * request_body
+/// * method - String Reference containing the API method. 
+/// * url - String Reference containing the TDX API url. 
+/// * request_body - the response body as JSON if required. 
 /// ### Returns 
 /// * [`APIResponse`] (struct)
 ///
@@ -3510,7 +3602,7 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64
 /// * `req` - [`API`] (struct) provides information to the function of the request that was made.
 /// * `body_json` - provides ticket information stored as JSON. 
 /// ### Returns 
-/// * Upon success - Result Ok() 
+/// * Upon success - ()
 /// * Upon error - String containing error message.
 /// ### Example 
 ///call in [`handle_connection`]
@@ -3590,7 +3682,7 @@ async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_j
 /// ### Parameters 
 ///  * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
 /// ### Returns
-/// * Upon success - Result Ok is returned and the log provides the number of dismissed tickets. 
+/// * Upon success - The log provides the number of dismissed tickets. 
 /// * Upon failure - Result Err is returned as a String and the log provides an error message.
 /// ### Example 
 /// call in [`handle_connection`]
@@ -3625,7 +3717,7 @@ async fn dismiss_all_tickets(database: &mut Database) -> Result<(), String> {
 /// * `body_json` - provides ticket operation type information stored as JSON. 
 /// * `username`- current user as a String.
 /// ### Returns 
-/// * Upon success - Result Ok() 
+/// * Upon success - ()
 /// * Upon failure - Returns Error with String description of the associating error. 
 /// ### Example 
 ///call in [`handle_connection`]
@@ -3716,7 +3808,7 @@ async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Va
 /// * `body_json` - provides ticket operation type information stored as JSON. 
 
 /// ### Returns 
-/// * Upon success - Result Ok() 
+/// * Upon success - ()
 /// * Upon failure - Returns Error with String description of the associating error. 
 /// ### Example
 /// call in [`handle_connection`] 
@@ -3831,7 +3923,7 @@ async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -
 /// * `req` - [`API`] (struct) provides information to the function of the request that was made.
 /// * `body_json` - provides request body information stored as JSON. 
 /// ### Returns 
-/// * Upon success - Result Ok() 
+/// * Upon success - ()
 /// * Upon failure - Returns Error with String description of the associating error. 
 /// ### Example 
 /// call in [`handle_connection`]
@@ -4089,7 +4181,7 @@ $$ |  $$ |$$ |  $$ |\$$$$$$$ |$$ |\$$$$$$$ |  \$$$$  |$$ |\$$$$$$$\ $$$$$$$  |
 /// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
 /// * `req` - [`API`] (struct) provides information to the function of the request that was made.
 /// ### Returns 
-/// * Upon success - Result Ok() 
+/// * Upon success - ()
 /// * Upon failure - Returns Error with String description of the associating error. 
 /// ### Example 
 /// call in [`handle_connection`]
@@ -4845,7 +4937,7 @@ async fn export_analytics_report_to_pdf(database: &mut Database, time_period: i1
 /// ### Parameters 
 /// * `filename` - the String returned from [`export_analytics_report_to_pdf`]
 /// ### Returns 
-/// * Upon Success - Return OK()
+/// * Upon Success - ()
 /// * Upon Failure -  Returns Error with String description of the associating error. 
 /// ### Example 
 /// call to [`handle_connection`]
