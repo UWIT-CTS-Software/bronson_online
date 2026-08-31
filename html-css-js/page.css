@@ -1186,7 +1186,7 @@ progress::-webkit-progress-bar {
     margin-bottom:3px;
     padding-top:3px;
     padding-bottom:10px;
-    /* Column attempt */
+    /* column attempt */
     column-count: 5;
     column-gap: 10px;
     padding-left: 0px;
@@ -3710,7 +3710,9 @@ span.psw {
     
 }
 .w_viwer {
-    width: 750px;
+    height: 80vh;
+    width: 100vh;
+    overflow-y: scroll;
     grid-column: 2/2;
     margin-left: 10px;
     margin-right: 200px;
@@ -3725,7 +3727,7 @@ span.psw {
     grid-column:1/2;
     overflow-y: scroll;
     overflow-x: scroll;
-    max-height: 1000px;
+    max-height: 80vh;
     max-width: fit-content;
     background-color: var(--bronson-grey-dark);
     box-shadow: 5px 10px 15px;
@@ -3742,6 +3744,8 @@ p.toc-item{
     
 }
 
+
+
 .toc-folder{
     width: fit-content;
 }
@@ -3749,74 +3753,74 @@ p.toc-item{
 .toc-children {
     width: fit-content;
 }
+#pdfViewer {
+    display: block;
+    width: 100%;
+    min-height: 200px;
+    /* height: calc(100vh-200px); */
+    height:80vh;
+    border: none;
 
-.scrollDir {
-    overflow-y: scroll;
-    overflow-x: scroll;
-    display: inline-block;
-    margin-top: 5px;
-    margin-bottom: 5px;
-    margin-left: 25px;
-    margin-right: 25px;
-    overflow-y: scroll;
-    max-height: 500px;
-    max-width: fit-content;
-    text-align: left;
-    border-left: 3px dashed rgb(144, 118, 26); 
 }
-.scrollArt {
+pre.md_item{
+    max-height: 80vh;
     overflow-y: scroll;
-    max-height: fit-content;
-    width: 1000px;
-    text-wrap: wrap;
-    border-radius: 12px;
-    background-color: var(--bronson-grey-dark);
-    box-shadow: 5px 10px 15px;
-    
-/* markdown styling  */
-   h1 {
+h1 {
     color:rgb(236, 200, 101);
     text-align: center;
-   }
+ }
    
-   h2 {
+ h2 {
     color:rgb(236, 200, 101);
     margin-left: 10px;
-   }
+}
    
-   h3 {
+ h3 {
     color:rgb(236, 200, 101);
     margin-left: 10px;
-   }
-   ul {
+   } 
+ul {
     list-style-type: square;
+    color:rgb(236, 200, 101);
    }
-   p {
+p {
     text-align: left;
     margin-left: 5px;
+    color:rgb(236, 200, 101);
    }
 
-   strong {
+ strong {
     font-weight: bold;
     font-size: medium;
-   }
+}
 
    code {
     background-color: var(--bronson-black);
     color: var(bronson-white);
    }
 
-   blockquote {
+    blockquote.md_item {
     padding-left: 1rem;
     border-left: 3px solid
 
-   }
-   
+    }
+    pre {
+     white-space: pre-wrap;
+     color:rgb(236, 200, 101)
+    }
+    a {
+    color: rgb(49, 125, 64);
+    }
+    a.visited {
+  color: rgb(135,62,9)
+    }
+    
 }
 
 .wA_fieldset {
     border:4px solid rgb(144, 118, 26);
-   
+    max-height: 80vh;
+    width: 100vh;
 }
 .toc-item {
     pointer-events: auto;
@@ -3839,17 +3843,10 @@ p.toc-item{
     background-color: rgb(144, 118, 26);
     color:rgb(236, 200, 101)
 }
+pre.plain-text {
+     color:rgb(236, 200, 101);
+}
 
-pre {
-     white-space: pre-wrap;
-     color:rgb(236, 200, 101)
-}
-a {
-    color: rgb(49, 125, 64);
-}
-a.visited {
-  color: rgb(135,62,9)
-}
 
 .wFile_fieldset{
     margin-top: 1px;
