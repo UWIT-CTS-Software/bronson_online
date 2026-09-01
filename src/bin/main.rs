@@ -2318,7 +2318,6 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
     for building in buildings {
         debug!("[Checkerboard] - Processing Building: {:?}", building.1.abbrev);
         let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last90days%22%2CParentLocation%3A%22{}%22%7D", encode(building.1.lsm_name.as_str()));
-        println!("{}", url);
         // Process Request to LSM
         let body = match req
             .build()
