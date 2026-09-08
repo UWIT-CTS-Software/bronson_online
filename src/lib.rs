@@ -2227,6 +2227,41 @@ pub struct Space {
 	pub space_id: i64
 }
 
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename="r25:spaces")]
+pub struct Spaces {
+	#[serde(rename="r25:space")]
+	pub spaces: Vec<BlackoutSpace>
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct BlackoutSpace {
+	#[serde(rename="r25:space_id")]
+	pub space_id: i64,
+	#[serde(rename="r25:space_name")]
+	pub space_name: String,
+	#[serde(rename="r25:blackouts")]
+	pub blackouts: Option<Vec<Blackout>>
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Blackout {
+	#[serde(rename="r25:blackout_profile_name")]
+	pub profile_name: String,
+	#[serde(rename="r25:blackout_dates")]
+	pub blackout_dates: Vec<BlackoutDate>
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct BlackoutDate {
+	#[serde(rename="r25:blackout_id")]
+	pub blackout_id: i64,
+	#[serde(rename="r25:blackout_start")]
+	pub blackout_start: DateTime<Local>,
+	#[serde(rename="r25:blackout_end")]
+	pub blackout_end: DateTime<Local>
+}
+
 pub static BUFF_SIZE : usize = 4096;
 pub static TSCH_JSON : &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/techSchedule.json");
 pub static TICKT_JSON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/create_ticket_template.json");

@@ -59,7 +59,7 @@ use server_lib::{
         DB_Room, DB_Building, DB_User, DB_DataElement, DB_Project, 
         DB_IpAddress, DB_Key, DB_Ticket, DB_Reservation
     },
-    LoginSuccess, Reservations, 
+    LoginSuccess, Reservations, Spaces, 
 };
 use futures_util::future::FutureExt;
 use getopts::Options;
@@ -5126,12 +5126,13 @@ $$$$$$$$\                                $$\                     $$\
 */
 
 async fn store_collegenet_reservations(database: &mut Database, cn_client: &Arc<API>) -> Result<(), String> {
+    let run_time: DateTime<Local> = DateTime::from(Utc::now());
+    let url: String = format!("https://webservices.collegenet.com/r25ws/wrd/uwyo/run/reservations.xml?start_dt={}", run_time.format("%Y%m%dT00000000"));
     let reservations_body = match cn_client
         .build()
         .method("GET")
-        .endpoint("https://webservices.collegenet.com/r25ws/wrd/uwyo/run/reservations.xml?start_dt=0")
+        .endpoint(&url)
         .timeout(Duration::from_secs(15))
-        .return_type::<Reservations>()
         .send()
         .await {
             Ok(rs) => rs,
@@ -5166,6 +5167,48 @@ async fn store_collegenet_reservations(database: &mut Database, cn_client: &Arc<
             Ok(_) => (),
             Err(m) => { return Err(m.to_string()); }
         };
+    }
+
+    let blackouts_body = match cn_client
+        .build()
+        .method("GET")
+        .endpoint("https://webservices.collegenet.com/r25ws/wrd/uwyo/run/spaces.xml?scope=extended&include=blackouts")
+        .timeout(Duration::from_secs(30))
+        .send()
+        .await {
+            Ok(bs) => bs,
+            Err(m) => { return Err(m.to_string()); }
+        }
+        .body;
+    let blackouts: Spaces = match serde_xml_rs::from_str(&blackouts_body) {
+        Ok(bs) => bs,
+        Err(m) => { return Err(m.to_string()); }
+    };
+
+    for blackout in blackouts.spaces {
+        let sid: Option<Vec<Option<i64>>> = Some(vec!(Some(blackout.space_id)));
+        let sname: String = blackout.space_name;
+        match blackout.blackouts {
+            Some(bs) => {
+                for blackout_event in bs {
+                    for date in blackout_event.blackout_dates.into_iter().filter(
+                        |event| event.blackout_start <= run_time && event.blackout_end >= run_time
+                    ) {
+                        let _ = database.update_reservation(&DB_Reservation {
+                            reservation_id: date.blackout_id,
+                            start_dt: date.blackout_start,
+                            end_dt: date.blackout_end,
+                            event_name: format!("{} Blackout", sname),
+                            event_space_id: sid.clone()
+                        });
+                    }
+                }
+            },
+            None => {
+                continue;
+            }
+        }
+
     }
 
     Ok(())
