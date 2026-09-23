@@ -40,8 +40,11 @@ async function setWiki() {
     /* -------------------- Wiki Page -------------------- */
 
      await getW_tree();
-    let defult_wiki = "/home/rkilduff/Desktop/bronson_online/data/wiki_articles/BronsonWiki.pdf"
-    getWiki_File(defult_wiki);
+    try {
+        getWiki_File("BronsonWiki.pdf");
+    } catch {
+        ;
+    }
 
     let w_container = document.createElement('div');
     w_container.classList.add('w_container');
