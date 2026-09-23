@@ -275,12 +275,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 continue;
             }
         };
+        let mut bytes_read: usize = 4096;
+        let mut buf_vec: Vec<u8> = Vec::with_capacity(1_073_741_824);
+        while bytes_read == 4096 {
+            match stream.read(&mut buffer) {
+                Ok(s) => {
+                    bytes_read = s;
+                    buf_vec.extend_from_slice(&buffer[0..bytes_read]);
+                },
+                Err(e) => error!("Error reading to buffer: {}", e)
+            };
 
-        match stream.read(&mut buffer) {
-            Ok(_) => (),
-            Err(e) => error!("Error reading to buffer: {}", e)
-        };
-        let req = Request::from(buffer.clone());
+            buffer = [0; BUFF_SIZE];
+        }
+        let req = Request::from(buf_vec.clone());
         let clone_db = request_database.clone();
         let req_ts = Arc::clone(&thread_schedule);
         let tc_clone = Arc::clone(&tdx_client);
@@ -301,7 +309,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             stdout().flush().unwrap();
         });
 
-        buffer = [0; BUFF_SIZE];
     }
 
     return Ok(());
@@ -2888,8 +2895,6 @@ fn build_tree(root: &str, blacklist: HashSet<&str>) -> Result<String, String> {
     let json_return = json!({
         "tree": tree_root
     });
-
-    info!("[Data] - CFM Tree Build Complete");
 
     Ok(json_return.to_string())
 }
