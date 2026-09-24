@@ -510,7 +510,7 @@ async function deleteElement(button) {
     showDeletePopup();
 }
 
-async function submitDelete(){
+async function submitDelete() {
     const parent_path = sessionStorage.getItem("Parent Path");
     const filePath = {
         filepath: parent_path
