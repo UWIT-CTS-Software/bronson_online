@@ -479,7 +479,7 @@ async function submitFile() {
             },
         body: JSON.stringify(file_obj)
     })
-    .then(response =>{})
+    .then(response => {})
     .catch(error => console.log("Error", error));
 
     hidePopupHTML();
@@ -502,7 +502,7 @@ async function submitFolder() {
         },
         body: JSON.stringify(folder_obj)
         })
-        .then(response =>{})
+        .then(response => {})
         .catch(error => console.log("Error", error));
 
         hideDirPopup();
