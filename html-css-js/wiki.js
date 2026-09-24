@@ -152,17 +152,7 @@ async function renderToC(treeJSON) {
 }
 
 function parseTreeToC(root) {
-    if (!root) return;
-    let buttonHTML = "";
-    let addButtonHTML = "";
-    let deleteButtonHTML = "";
-    let addFileButtonHTML = "";
-    let retHTML = "";
-    for (let child of root.children) {
-        retHTML += dfs(child)
-    }
-return retHTML;
-
+    // Nested dfs function to prevent cross-contamination in the future.
     function dfs(node) {
         let buttonHTML = "";
         let childHTML = "";
@@ -205,6 +195,18 @@ return retHTML;
             return retHTML; 
         }
     }
+
+    // Build the table of contents given a directory as the root.
+    if (!root) return;
+    let buttonHTML = "";
+    let addButtonHTML = "";
+    let deleteButtonHTML = "";
+    let addFileButtonHTML = "";
+    let retHTML = "";
+    for (let child of root.children) {
+        retHTML += dfs(child)
+    }
+    return retHTML;
 }
 
 
@@ -476,7 +478,9 @@ async function submitFile() {
             'Content-Type': 'application/json; charset=utf-8'
             },
         body: JSON.stringify(file_obj)
-    });
+    })
+    .then(response => {})
+    .catch(error => console.log("Error", error));
 
     hidePopupHTML();
     setWiki();
@@ -498,8 +502,9 @@ async function submitFolder() {
         },
         body: JSON.stringify(folder_obj)
         })
-        .then(response =>{})
+        .then(response => {})
         .catch(error => console.log("Error", error));
+
         hideDirPopup();
         setWiki();
 }
@@ -525,6 +530,7 @@ async function submitDelete() {
     })
     .then(response => {})
     .catch(error => console.log("Error", error));
+
     hideDeletePopup();
     setWiki();
 }
