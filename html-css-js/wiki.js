@@ -20,7 +20,7 @@ async function setWiki() {
 
 
     menuItems.forEach(function(menuItem) {
-      menuItem.addEventListener("click", toggleMenu);
+        menuItem.addEventListener("click", toggleMenu);
     });
 
     document.title = "Wiki - Bronson";
@@ -39,16 +39,15 @@ async function setWiki() {
 
     /* -------------------- Wiki Page -------------------- */
 
-     await getW_tree();
+    await getW_tree();
     try {
         getWiki_File("BronsonWiki.pdf");
     } catch {
-        ;
+        ; // Do not error out if the file doesn't exist, just move on.
     }
 
     let w_container = document.createElement('div');
     w_container.classList.add('w_container');
-
 
     let w_toc = document.createElement("div");
     w_toc.classList.add('w_toc');
@@ -56,15 +55,13 @@ async function setWiki() {
 
     //w_toc.innerHTML = await getTocHTML();
     w_toc.innerHTML = `  
-            <fieldset class=${isMobile ? "w_fieldset_mobile" : "w_fieldset"} id="toc_fieldset">
+        <fieldset class=${isMobile ? "w_fieldset_mobile" : "w_fieldset"} id="toc_fieldset">
             <legend class="w_legend"> 
                 Table of Contents:
             </legend>
-             </fieldset>
-        `;
+        </fieldset>
+    `;
     let treeJSON =  JSON.parse(sessionStorage.getItem('wikiTree'));
-   
-
     
     let w_viwer = document.createElement("div");
     w_viwer.classList.add('w_viwer');
@@ -76,17 +73,17 @@ async function setWiki() {
 
     w_popup.id = "w_popup";
     w_popup.innerHTML = `
-          <div id="wiki_modal" class="modal" style="display:none";>
-          <fieldset class=pop_fieldset>
-          <legend>Choose file </legend>
-          <input id="newFile" type="file" class="wikiInput"></input>
-          <button class="close" onClick="hidePopupHTML()">X</button> 
-          <div class="modal_container">
-          <button type="button" class="headButton" onclick="hidePopupHTML()">Cancel</button>
-          <button class="submitButton" type="submit", onClick="submitFile(this)" style="float: right;">Submit</button>
-          </div>
-          </fieldset>
-          </div>
+        <div id="wiki_modal" class="modal" style="display:none";>
+        <fieldset class=pop_fieldset>
+        <legend>Choose file </legend>
+        <input id="newFile" type="file" class="wikiInput"></input>
+        <button class="close" onClick="hidePopupHTML()">X</button> 
+        <div class="modal_container">
+        <button type="button" class="headButton" onclick="hidePopupHTML()">Cancel</button>
+        <button class="submitButton" type="submit", onClick="submitFile(this)" style="float: right;">Submit</button>
+        </div>
+        </fieldset>
+        </div>
     `;
 
     let wd_popup = document.createElement('div');
@@ -94,16 +91,15 @@ async function setWiki() {
 
     wd_popup.id = "wd_popup";
     wd_popup.innerHTML = `
-       <div id="wiki_del_modal" class="modal" style="display:none";>
-          <fieldset class=pop_fieldset_sm>
-          <p> Are you sure you want to delete the selected element </p>
-          <div class="modal_container">
-          <button type="button" class="headButton" onclick="hideDeletePopup()">No</button>
-          <button class="submitButton" type="submit", onClick="submitDelete(this)" style="float: right;">Yes</button>
-          </div>
-          </fieldset>
-          </div>
-
+        <div id="wiki_del_modal" class="modal" style="display:none";>
+        <fieldset class=pop_fieldset_sm>
+        <p> Are you sure you want to delete the selected element </p>
+        <div class="modal_container">
+        <button type="button" class="headButton" onclick="hideDeletePopup()">No</button>
+        <button class="submitButton" type="submit", onClick="submitDelete(this)" style="float: right;">Yes</button>
+        </div>
+        </fieldset>
+        </div>
     `;
 
     let wf_popup = document.createElement("div");
@@ -111,20 +107,18 @@ async function setWiki() {
 
     wf_popup.id = "wf_popup";
     wf_popup.innerHTML = `
-          <div id="wiki_folder_modal" class="modal" style="display:none";>
-          <fieldset class=pop_fieldset>
-          <legend>New Directory </legend>
-          <input id="newFolder" type="text" class="wikiInput"></input>
-          <button class="close" onClick="hideDirPopup()">X</button> 
-          <div class="modal_container">
-          <button type="button" class="headButton" onclick="hideDirPopup()">Cancel</button>
-          <button class="submitButton" type="submit", onClick="submitFolder(this)" style="float: right;">Submit</button>
-          </div>
-          </fieldset>
-          </div>
+        <div id="wiki_folder_modal" class="modal" style="display:none";>
+        <fieldset class=pop_fieldset>
+        <legend>New Directory </legend>
+        <input id="newFolder" type="text" class="wikiInput"></input>
+        <button class="close" onClick="hideDirPopup()">X</button> 
+        <div class="modal_container">
+        <button type="button" class="headButton" onclick="hideDirPopup()">Cancel</button>
+        <button class="submitButton" type="submit", onClick="submitFolder(this)" style="float: right;">Submit</button>
+        </div>
+        </fieldset>
+        </div>
     `;
-
-
 
     w_container.appendChild(w_toc);
     w_container.appendChild(w_viwer);
@@ -135,10 +129,7 @@ async function setWiki() {
     progGuts.replaceWith(main_container);
     await renderToC(treeJSON); 
 
-
-     renderToC(treeJSON); 
-
-   
+    renderToC(treeJSON);  
 }
 
 // Table of Contents (ToC)
@@ -153,25 +144,26 @@ async function renderToC(treeJSON) {
         <legend> Table of Contents </legend>
         ${ await parseTreeToC(treeJSON.tree)}
         ${(isAuthorized) ? 
-       ` <button class="file-btn" id=${"Root"} data-path="${""}" onClick="uploadNewFile(this)">📄</button>
+        ` <button class="file-btn" id=${"Root"} data-path="${""}" onClick="uploadNewFile(this)">📄</button>
         <button class="folder-btn" id=${"Root"} data-path="${""}" onClick="uploadNewFolder(this)">📁</button>`
         :"" } 
     `;
     return;
 }
 
- function parseTreeToC(root) {
+function parseTreeToC(root) {
     if (!root) return;
     let buttonHTML = "";
     let addButtonHTML = "";
     let deleteButtonHTML = "";
     let addFileButtonHTML = "";
     let retHTML = "";
-     for (let child of root.children) {
+    for (let child of root.children) {
         retHTML += dfs(child)
-     }
-     return retHTML;
-    function dfs(node){
+    }
+return retHTML;
+
+    function dfs(node) {
         let buttonHTML = "";
         let childHTML = "";
         let isFile = node.children === null; 
@@ -179,17 +171,17 @@ async function renderToC(treeJSON) {
         if(isFile) { // Child is null
         buttonHTML = deleteButton(node);
         retHTML = ` 
-          <div id ='${node.name}' data-isOpen="false">
-           <p class="toc-item" onClick="clickableFiles('${node.file_path}')" data-path="${node.file_path}">${node.name}${(true) ? buttonHTML : " "}</p>
-           </div>
+            <div id ='${node.name}' data-isOpen="false">
+            <p class="toc-item" onClick="clickableFiles('${node.file_path}')" data-path="${node.file_path}">${node.name}${(true) ? buttonHTML : " "}</p>
+            </div>
         `;
         return retHTML; 
 
         } else if (node.children.length  === 0) {
-             addButtonHTML = addFileButton(node);
-             deleteButtonHTML = deleteButton(node);
-             addFolderButtonHTML = addFolderButton(node);
-             retHTML =  `
+            addButtonHTML = addFileButton(node);
+            deleteButtonHTML = deleteButton(node);
+            addFolderButtonHTML = addFolderButton(node);
+            retHTML =  `
                 <div id="${node.name}" data-isOpen="false" class="toc-folder"><p class="toc-item"
                 onClick="clickableFiles('${node.file_path}')"
                 data-path="${node.file_path}">${node.name} ${(true) ? addButtonHTML + deleteButtonHTML + addFolderButtonHTML : " "}</p>
@@ -198,7 +190,7 @@ async function renderToC(treeJSON) {
             `;
             return retHTML; 
             
-        }else { // Directory with contents
+        } else { // Directory with contents
             for (let child of node.children) {
                 childHTML += dfs(child)
             }
@@ -213,7 +205,6 @@ async function renderToC(treeJSON) {
             return retHTML; 
         }
     }
-
 }
 
 
@@ -222,7 +213,7 @@ function clickableFiles(path) { // This is no longer a `this` element (it can be
     let treeJSON =  JSON.parse(sessionStorage.getItem('wikiTree'));
         
     if (!path) {
-    return;
+        return;
     }
 
     const node = findPath(treeJSON.tree, path);
@@ -233,7 +224,7 @@ function clickableFiles(path) { // This is no longer a `this` element (it can be
 
     if(Array.isArray(node.children)) {
         showDir(node, path);
-    } else if (node.children === null){
+    } else if (node.children === null) {
         getWiki_File(path);
     } else {
         console.log("Something went wrong");
@@ -255,83 +246,73 @@ function findPath(node, path) {
 
     //Else 
     return null;
- }
+}
 
-function showDir(node, path){
+function showDir(node, path) {
     let folderDiv = document.querySelector(`[data-path="${path}"]`).parentElement;
     let childDiv = folderDiv.querySelector(".toc-children");
-    if(folderDiv.dataset.isopen ==="true"){
+    if (folderDiv.dataset.isopen ==="true") {
         childDiv.style.display="none";
         folderDiv.dataset.isopen="false";
        
-    }else {
+    } else {
         childDiv.style.display="block";
         folderDiv.dataset.isopen="true";
-    
     }
-
-   
 }
 
 // Add Wikis Popup 
 //------------------------------------------------------------------
 
 
-function showWikiPopup(){
+function showWikiPopup() {
     document.getElementById('w_popup').style.display='block';
     document.getElementById('wiki_modal').style.display='block';
 }
 
-function hidePopupHTML(){
+function hidePopupHTML() {
     document.getElementById('w_popup').style.display='none';
     document.getElementById('wiki_modal').style.display='none';
-
 }
 
-function showDeletePopup(){
+function showDeletePopup() {
     document.getElementById('wd_popup').style.display='block';
     document.getElementById('wiki_del_modal').style.display='block';
 }
 
-function hideDeletePopup(){
+function hideDeletePopup() {
     document.getElementById('wd_popup').style.display='none';
     document.getElementById('wiki_del_modal').style.display='none';
-
 }
 
-
-function showFolderPopup(){
+function showFolderPopup() {
     document.getElementById('wf_popup').style.display='block';
     document.getElementById('wiki_folder_modal').style.display='block';
 }
 
-function hideDirPopup(){
+function hideDirPopup() {
     document.getElementById('wf_popup').style.display='none';
     document.getElementById('wiki_folder_modal').style.display='none';
-
 }
 
-
-
-
-
-function addFileButton(node){
+function addFileButton(node) {
    return `<button class="file-btn" id="${node.name}" data-path="${node.file_path}" onClick="uploadNewFile(this)">📄</button>`
 }
-function addFolderButton(node){
+
+function addFolderButton(node) {
    return `<button class="folder-btn" id="${node.name}" data-path="${node.file_path}" onClick="uploadNewFolder(this)">📁</button>`
 }
 
-function deleteButton(node){
+function deleteButton(node) {
     return `<button class="delete-btn" id="${node.name}" data-path="${node.file_path}" onClick="deleteElement(this)">❌</button>`
 }
+
 // Article Viewer 
 //-------------------------------------------------------------------
-
-    async function getArticleHTML(blob, filename) {
+async function getArticleHTML(blob, filename) {
     const isMobile = localStorage.getItem("isMobile") === "true";
    
-    if (filename.endsWith('.md')){
+    if (filename.endsWith('.md')) {
         let parsed_md = "";
         let md = await blob.text();
         parsed_md = marked.parse(md);
@@ -342,15 +323,12 @@ function deleteButton(node){
                 </legend>  
                 <pre class="md_item">${parsed_md} </pre>
                 </div>
-
-            </fieldset>
-            
+            </fieldset>           
         `;
         w_viwer.innerHTML = html;
         return;
         
-    } else if (filename.endsWith('.pdf')){
-       
+    } else if (filename.endsWith('.pdf')) {
         let raw_blob = await blob;
         let pdf_blob = new Blob([raw_blob], {type: "application/pdf"});
         const blobUrl = URL.createObjectURL(pdf_blob); 
@@ -362,13 +340,12 @@ function deleteButton(node){
                 </legend> 
                 <iframe id="pdfViewer" src="${blobUrl}"></iframe>
                 </div>
-
             </fieldset>
-            
         `;
-       
+
         w_viwer.innerHTML = html;
-         return; 
+        return;
+
     } else {
       
         let text = await blob.text();
@@ -379,16 +356,12 @@ function deleteButton(node){
                 </legend> 
                 <pre class="plain-text">${text}<pre>
                 </div>
-
-            </fieldset>
-            
+            </fieldset>            
         `;
-         w_viwer.innerHTML = html;
+
+        w_viwer.innerHTML = html;
         return; 
-
     }
-
-    
 }
 
 /*
@@ -413,21 +386,18 @@ async function getW_BuildArticles() {
     });
 };
 
-
-async function getW_tree(){
+async function getW_tree() {
     return await fetch('w_build_tree', {
         method: 'POST',
         body: JSON.stringify({
             message: 'w_build_tree'
         })
     })
-
     .then((response) => response.json())
     .then((json) => {
         sessionStorage.setItem("wikiTree", JSON.stringify(json));
         return json;
     });
-
 };
 
 async function getWiki_File(filepath) {
@@ -453,8 +423,6 @@ async function getWiki_File(filepath) {
     });
 }
 
-
-
 // Fetches the current user's permission level
 async function fetchCurrentUserPermissions() {
     try {
@@ -466,6 +434,7 @@ async function fetchCurrentUserPermissions() {
  
         const data = await response.json();
         return data.permissions || 0;
+
     } catch (error) {
         console.error("Error fetching current user permissions:", error);
         return 0;
@@ -474,28 +443,26 @@ async function fetchCurrentUserPermissions() {
  
 
 // send file new file to backend 
-
-async function uploadNewFile(button){
-     let parent_path = button.dataset.path;
-      sessionStorage.setItem("Parent Path", parent_path);
+async function uploadNewFile(button) {
+    let parent_path = button.dataset.path;
+    sessionStorage.setItem("Parent Path", parent_path);
     showWikiPopup();
 }
 
-async function uploadNewFolder(button){
-     let parent_path = button.dataset.path;
-      sessionStorage.setItem("Parent Path", parent_path);
+async function uploadNewFolder(button) {
+    let parent_path = button.dataset.path;
+    sessionStorage.setItem("Parent Path", parent_path);
     showFolderPopup();
 }
 
 
 
 
-async function submitFile(){
+async function submitFile() {
     const newFile = document.getElementById("newFile").files[0];
     const parent_path = sessionStorage.getItem("Parent Path") + "/";
     const newFileBytes = await newFile.bytes();
     const base64 = btoa(String.fromCharCode(...newFileBytes));
-
 
     const file_obj = {
         filename: newFile.name, 
@@ -503,50 +470,43 @@ async function submitFile(){
         fileblob:base64
     }
 
-   
-    const response = await fetch('/w_upload-json',{
+    const response = await fetch('/w_upload-json', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json; charset=utf-8'
             },
-            body: JSON.stringify(file_obj)
-        })
+        body: JSON.stringify(file_obj)
+    });
 
-    hidePopupHTML()
-    setWiki()
-
+    hidePopupHTML();
+    setWiki();
 }
 
-async function submitFolder(){
+async function submitFolder() {
     const newFolder = document.getElementById("newFolder").value;
     const parent_path = sessionStorage.getItem("Parent Path") + "/";
-
 
     const folder_obj = {
         filename: newFolder,
         parent_path: parent_path, 
     }
 
-
-
     const response = await fetch('/w_upload_folder',{
         method: 'POST',
         headers: {
             'Content-Type': 'application/json; charset=utf-8'
-            },
-            body: JSON.stringify(folder_obj)
+        },
+        body: JSON.stringify(folder_obj)
         })
         .then(response =>{})
         .catch(error => console.log("Error", error));
         hideDirPopup();
-        setWiki()
-
+        setWiki();
 }
 
-
 async function deleteElement(button) {
-     let parent_path = button.dataset.path;
-      sessionStorage.setItem("Parent Path", parent_path);
+    let parent_path = button.dataset.path;
+    sessionStorage.setItem("Parent Path", parent_path);
     showDeletePopup();
 }
 
@@ -556,7 +516,7 @@ async function submitDelete(){
         filepath: parent_path
     }
 
-    const response = await fetch('/w_delete',{
+    const response = await fetch('/w_delete', {
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json; charset=utf-8'
@@ -565,6 +525,6 @@ async function submitDelete(){
     })
     .then(response => {})
     .catch(error => console.log("Error", error));
-    hideDeletePopup()
-    setWiki()
+    hideDeletePopup();
+    setWiki();
 }
