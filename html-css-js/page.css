@@ -1,11 +1,8 @@
 /*
-page.cssshadow
-
 This file is a nightmare to navigate.
 need to consolidate things and reuse tags
 */
-
-/* Global Bronson Colors */ 
+/* Global Bronson Settings */ 
 :root {
     --bronson-yellow-light: rgb(236, 200, 101);
     --bronson-yellow-dark: rgb(144, 118, 26);
@@ -41,30 +38,26 @@ need to consolidate things and reuse tags
 
     --bronson-white: rgb(255, 255, 255);
 
-}
+    --bronson-font-brand: "Contrail One", sans-serif;
+    --bronson-font-emphasis: "Racing Sans One", sans-serif;
+    --bronson-font-ui: "Lucida Sans", sans-serif;
+    --bronson-font-mono: "Courier New", Courier, monospace;
 
-/* Fonts */
-.racing-sans-one-regular {
-    font-family: "Racing Sans One", sans-serif;
-    font-weight: 400;
-    font-style: normal;
-}
 
-.contrail-one-regular {
-    font-family: "Contrail One", sans-serif;
-    font-weight: 400;
-    font-style: normal;
+
 }
 
 /* ---- Global Elements ---- */
 body {
     background-color: var(--bronson-grey-bg);
+    font-family: var(--bronson-font-brand);
 }
+
 
 label {
     color: var(--bronson-yellow-light);
     text-align: center;
-    font-family: 'Lucida Sans', sans-serif;
+    font-family: var(--bronson-font-ui);
     font-size: medium;
     font-style: bold;
 }
@@ -80,20 +73,13 @@ ul {
 h1 {
     color: var(--bronson-yellow-light);
     text-align: center;
-    font-family: 'Lucida Sans', sans-serif;
-}
-
-hr {
-    border: none;
-    border-bottom: 1px inset var(--bronson-yellow-dark);
-    width: 100%;
+    font-family: var(--bronson-font-ui);
 }
 
 p {
-    /* color: rgb(236, 200, 101); */
     color: var(--bronson-yellow-light);
     text-align: center;
-    font-family: 'Lucida Sans', sans-serif;
+    font-family: var(--bronson-font-ui);
     font-size: medium;
 }
 
@@ -162,7 +148,7 @@ legend {
     color: var(--bronson-yellow-light);
     background-color: var(--bronson-grey-bg);
     text-align: center;
-    font-family: 'Lucida Sans', sans-serif;
+    font-family: var(--bronson-font-ui);
     font-size: medium;
     font-style: italic;
     /* padding: 0px 8px; */
@@ -171,10 +157,6 @@ legend {
     box-shadow: 2px 2px 3px var(--bronson-black);
 }
 
-.mobile_legend {
-    margin: 10px 0;
-    font-size: x-large;
-}
 
 /* Dropdown Menu */
 select {
@@ -184,7 +166,7 @@ select {
     border-radius: 10px;
     padding: 2px 2px 2px 6px;
     text-align: left;
-    font-family:'Courier New', Courier, monospace;
+    font-family:var(--bronson-font-mono);
     width: 100%;
 }
 
@@ -198,7 +180,7 @@ button {
     color: var(--bronson-blue-dark);
     cursor: pointer;
     display: inline-block;
-    font-family:'Lucida Sans', sans-serif;
+    font-family: var(--bronson-font-ui);
     font-size: 12px;
     font-weight: 400;
     line-height: 20px;
@@ -207,12 +189,16 @@ button {
     margin: 2px;
     text-align: center;
     position: relative;
-    /* transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1); */
     user-select: none;
     -webkit-user-select: none;
     touch-action: manipulation;
     white-space: nowrap;
     word-wrap: break-word;
+}
+
+.mobile_legend {
+    margin: 10px 0;
+    font-size: x-large;
 }
 
 .mobile_button {
@@ -381,7 +367,7 @@ input:checked + .slider:before {
 
 .program_header {
     color: var(--bronson-orange-dark);
-     background-color: var(--bronson-yellow-light);
+    background-color: var(--bronson-yellow-light);
     position: relative;
     display: grid;
     grid-template-columns: repeat(10,1fr);
@@ -404,7 +390,7 @@ input:checked + .slider:before {
     color: var(--bronson-orange-dark);
     background-color: var(--bronson-yellow-light);
     text-align: center;
-    font-family: "Racing Sans One", sans-serif;
+    font-family: var(--bronson-font-emphasis);
     font-weight: 400;
     font-style: normal;
     grid-column: 1 / 1;
@@ -435,7 +421,7 @@ input:checked + .slider:before {
     color: var(--bronson-orange-dark);
     background-color: rgba(0, 0, 0, 0);
     text-align: left;
-    font-family:'Courier New', Courier, monospace;
+    font-family:var(--bronson-font-mono);
     display: inline-block;
     grid-column: 2 / 11;
     grid-row: 1;
@@ -445,7 +431,7 @@ input:checked + .slider:before {
 
 .message_header {
     color: var(--bronson-orange-dark);
-    font-family: "Contrail One", sans-serif;
+    font-family: var(--bronson-font-brand);
     font-size: large;
     font-weight: 400;
     font-style: normal;
@@ -553,11 +539,11 @@ input:checked + .slider:before {
     padding: 0px 0px 0px 4px;
     margin: 5px 0px 0px 0px;
     color: var(--bronson-yellow-light);
-    font-family:Verdana, Geneva, Tahoma, sans-serif;
+    font-family: var(--bronson-font-ui);
 }
 
 .sparePCName {
-    font-family: "Racing Sans One", serif;
+    font-family: var(--bronson-font-emphasis);
     font-size: 14pt;
 }
 
@@ -620,7 +606,7 @@ input:checked + .slider:before {
 }
 
 .db_checker p {
-    font-family: "Racing Sans One", sans-serif;
+    font-family: var(--bronson-font-emphasis);
     /* text-align: left; */
     font-size: 18pt;
     /* padding: 0px 0px 0px 0px; */
@@ -704,7 +690,7 @@ progress::-webkit-progress-bar {
 #db_schedule_table {
     font-weight:100;
     font-size:x-small;
-    font-family:'Courier New', Courier, monospace;
+    font-family: var(--bronson-font-mono);
     border-left: 1px inset var(--bronson-yellow-highlight);
     color: var(--bronson-yellow-light);
     border-radius: 4px;
@@ -1026,7 +1012,7 @@ progress::-webkit-progress-bar {
     background-color: var(--bronson-grey-bg);
     grid-column: 3 / 10;
     grid-row: 1/4;
-    font-family:'Courier New', Courier, monospace;
+    font-family: var(--bronson-font-mono);
 }
 
 .cb_zoneSelFieldset {
@@ -1057,7 +1043,7 @@ progress::-webkit-progress-bar {
 
 .cbTopperZoneHeader {
     font-weight:bold;
-    font-family: "Contrail One", sans-serif;
+    font-family: var(--bronson-font-brand);
     font-size:18pt;
     margin-left: 25px;
     margin-bottom:6px;
@@ -1099,7 +1085,7 @@ progress::-webkit-progress-bar {
     font-weight: bold;
     text-align: center;
     font-style: italic;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: var(--bronson-font-ui);
     border-bottom: 2px solid var(--bronson-red-shadow);
 
 }
@@ -1173,7 +1159,7 @@ progress::-webkit-progress-bar {
     padding-left:1%;
     padding-right: 1%;
     margin-left: 8%;
-    font-family: "Contrail One", sans-serif;
+    font-family: var(--bronson-font-brand);
     font-size: 20pt;
     border-bottom: var(--bronson-blue-light) inset 2px;
     border-radius: 5px;
@@ -1205,7 +1191,7 @@ progress::-webkit-progress-bar {
     margin: 0px;
     padding: 0px 0px 3px 0px;
     border-bottom: var(--bronson-orange-dark) inset 2px;
-    font-family: 'Arial', Helvetica, sans-serif;
+    font-family: var(--bronson-font-ui);
     font-style:italic;
     font-weight: bolder;
 }
@@ -1217,7 +1203,7 @@ progress::-webkit-progress-bar {
     column-count: 2;
     gap:0px;
     height: 60px;
-    font-family: 'Arial', sans-serif;
+    font-family: var(--bronson-font-ui);
     font-weight: bold;
     font-style:oblique;
 }
@@ -1407,7 +1393,7 @@ progress::-webkit-progress-bar {
 .cfm_text {
     color: var(--bronson-yellow-light);
     text-align: center;
-    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    font-family: var(--bronson-font-ui);
     grid-column: 1 / 2;
     grid-row: 1;
     margin: 5px;
@@ -1418,7 +1404,7 @@ progress::-webkit-progress-bar {
     opacity: 75%;
     padding: 10px;
     margin: 24px;
-    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    font-family: var(--bronson-font-ui);
 }
 
 /*  Types of Data Entries in cfm_list*/
@@ -1623,7 +1609,7 @@ ol li::marker {
 
 .tx_search {
     background-color: var(--bronson-grey-bg);
-    grid-column: 4 / 8;
+    grid-column: 4 / 8; 
     grid-row: 1 / 3;
     height: 100px;
 }
@@ -2089,7 +2075,7 @@ td.mobile_th {
 .tx_popupBox span {
     color: var(--bronson-orange-dark);
     background-color: var(--bronson-yellow-highlight);
-    font-family: "Contrail One", sans-serif;
+    font-family: var(--bronson-font-brand);
     font-size: 18pt;
     font-weight: 400;
     font-style: normal;
@@ -2176,7 +2162,7 @@ td.mobile_th {
 .tx_popupComments span {
     color: var(--bronson-orange-dark);
     background-color: var(--bronson-yellow-highlight);
-    font-family: "Contrail One", sans-serif;
+    font-family: var(--bronson-font-brand);
     font-size: 18pt;
     font-weight: 400;
     font-style: normal;
@@ -2251,11 +2237,11 @@ td.mobile_th {
 }
 
 #tx_applyChangesButton {
-    margin: 10px 0px 5px 7px
+    margin: 10px 0px 5px 7px;
 }
 
 #tx_commentButton {
-    margin: 10px 0px 5px 7px
+    margin: 10px 0px 5px 7px;
 }
 
 #tx_createTicketButton {
@@ -2752,7 +2738,7 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .exeButton {
-    background-color: var(--bronson-green-light)
+    background-color: var(--bronson-green-light);
 }
 
 .rmvButton {
@@ -2872,7 +2858,7 @@ p.tx_Description::-webkit-scrollbar-track {
 .adminTechTable {
     font-weight:100;
     font-size:small;
-    font-family:'Courier New', Courier, monospace;
+    font-family:var(--bronson-font-mono);
     border: 1px inset var(--bronson-yellow-dark);
     color: var(--bronson-yellow-light);
     border-radius: 4px;
@@ -2897,7 +2883,7 @@ p.tx_Description::-webkit-scrollbar-track {
 
 .admin_internals li {
     background-color: var(--bronson-grey-light);
-    border: 2px black;
+    border: 2px var(--bronson-black);
 }
 .setToRemove {
     background-color:var(--bronson-red-bright);
@@ -2905,7 +2891,7 @@ p.tx_Description::-webkit-scrollbar-track {
 
 #techSchdRemoveList {
     column-count: 2;
-    font-family: 'Lucida Sans', sans-serif;
+    font-family: var(--bronson-font-ui);
 }
 
 .diagOption:hover {
@@ -3029,7 +3015,7 @@ p.tx_Description::-webkit-scrollbar-track {
 .dbBuildingTable {
     color: var(--bronson-yellow-dark);
     border: 1px inset var(--bronson-yellow-light);
-    font-family: 'Courier New', Courier, monospace;
+    font-family: var(--bronson-font-mono);
     font-size: small;
     width: 100%;
     text-align: center;
@@ -3095,6 +3081,8 @@ p.tx_Description::-webkit-scrollbar-track {
     margin: 0px 10%;
 }
 
+/* Im not positive these alias stylings are still used */ 
+
 #aliasFileSpace {
     padding: 0px 15px 0px 0px;
 }
@@ -3109,7 +3097,7 @@ p.tx_Description::-webkit-scrollbar-track {
 	color: var(--bronson-blue-dark);
 	cursor: pointer;
 	display: inline-block;
-	font-family: 'Lucida Sans', sans-serif;
+	font-family: var(--bronson-font-ui);
 	font-size: 12px;
 	font-weight: 400;
 	line-height: 20px;
@@ -3171,7 +3159,7 @@ p.tx_Description::-webkit-scrollbar-track {
     border-radius: 10px;
     padding: 0px 0px 0px 0px;
     margin: 2px 0px 10px 0px;
-    font-family: "Racing Sans One", sans-serif;
+    font-family: var(--bronson-font-emphasis);
     font-size: 15px;
     text-align: center;
     width:110px;
@@ -3325,7 +3313,7 @@ p.tx_Description::-webkit-scrollbar-track {
     border-radius: 10px;
     padding: 0px 0px 0px 0px;
     margin: 2px 0px 10px 0px;
-    font-family: "Racing Sans One", sans-serif;
+    font-family: var(--bronson-font-emphasis);
     font-size: 14px;
     text-align: center;
     width:67px;
@@ -3382,7 +3370,7 @@ p.tx_Description::-webkit-scrollbar-track {
     border-radius: 10px;
     padding: 0px 0px 0px 0px;
     margin: 2px 0px 10px 0px;
-    font-family: "Racing Sans One", sans-serif;
+    font-family: var(--bronson-font-emphasis);
     font-size: 14px;
     text-align: center;
     width:83px;
@@ -3507,7 +3495,7 @@ p.tx_Description::-webkit-scrollbar-track {
     border-radius: 10px;
     padding: 0px 0px 0px 0px;
     margin: 2px 0px 10px 0px;
-    font-family: "Racing Sans One", sans-serif;
+    font-family: var(--bronson-font-emphasis);
     font-size: 14px;
     text-align: center;
     width:107px;
@@ -3728,7 +3716,7 @@ span.psw {
     background-color: var(--bronson-grey-dark);
     box-shadow: 5px 10px 15px;
     border-radius: 12px;
-    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif
+    font-family: var(--bronson-font-ui);
 }
 
 p.toc-item{
