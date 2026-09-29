@@ -104,13 +104,10 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 //  --- Zone 1 -----------
 //  Building1 Name / percent checked {#######---------}
 //  ...
-
-// We are currently not formatting the time in a good way, ie: 1900 is the displayed
-// time on checkerboard, so we need to have some way to make it nice.
 function FourDigitToTimeFormat(timestamp) {
     let date = new Date(timestamp);
     let now = new Date(Date.now());
-    if (((date.getMonth() * 100) + (date.getDate())) > ((now.getMonth() * 100) + (now.getDate()))) {
+    if (((date.getFullYear() * 10000) + (date.getMonth() * 100) + (date.getDate())) > ((now.getFullYear() * 10000) + (now.getMonth() * 100) + (now.getDate()))) {
         date.setHours(23);
         date.setMinutes(59);
     }

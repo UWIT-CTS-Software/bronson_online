@@ -59,7 +59,7 @@ use server_lib::{
         DB_Room, DB_Building, DB_User, DB_DataElement, DB_Project, 
         DB_IpAddress, DB_Key, DB_Ticket, DB_Reservation
     },
-    LoginSuccess, Reservations, 
+    LoginSuccess, Reservations, Spaces, 
 };
 use futures_util::future::FutureExt;
 use getopts::Options;
@@ -275,12 +275,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 continue;
             }
         };
+        let mut bytes_read: usize = 4096;
+        let mut buf_vec: Vec<u8> = Vec::with_capacity(1_073_741_824);
+        while bytes_read == 4096 {
+            match stream.read(&mut buffer) {
+                Ok(s) => {
+                    bytes_read = s;
+                    buf_vec.extend_from_slice(&buffer[0..bytes_read]);
+                },
+                Err(e) => error!("Error reading to buffer: {}", e)
+            };
 
-        match stream.read(&mut buffer) {
-            Ok(_) => (),
-            Err(e) => error!("Error reading to buffer: {}", e)
-        };
-        let req = Request::from(buffer.clone());
+            buffer = [0; BUFF_SIZE];
+        }
+        let req = Request::from(buf_vec.clone());
         let clone_db = request_database.clone();
         let req_ts = Arc::clone(&thread_schedule);
         let tc_clone = Arc::clone(&tdx_client);
@@ -301,7 +309,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             stdout().flush().unwrap();
         });
 
-        buffer = [0; BUFF_SIZE];
     }
 
     return Ok(());
@@ -2318,7 +2325,6 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
     for building in buildings {
         debug!("[Checkerboard] - Processing Building: {:?}", building.1.abbrev);
         let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last90days%22%2CParentLocation%3A%22{}%22%7D", encode(building.1.lsm_name.as_str()));
-        println!("{}", url);
         // Process Request to LSM
         let body = match req
             .build()
@@ -2889,8 +2895,6 @@ fn build_tree(root: &str, blacklist: HashSet<&str>) -> Result<String, String> {
     let json_return = json!({
         "tree": tree_root
     });
-
-    info!("[Data] - CFM Tree Build Complete");
 
     Ok(json_return.to_string())
 }
@@ -5127,12 +5131,13 @@ $$$$$$$$\                                $$\                     $$\
 */
 
 async fn store_collegenet_reservations(database: &mut Database, cn_client: &Arc<API>) -> Result<(), String> {
+    let run_time: DateTime<Local> = DateTime::from(Utc::now());
+    let url: String = format!("https://webservices.collegenet.com/r25ws/wrd/uwyo/run/reservations.xml?start_dt={}", run_time.format("%Y%m%dT00000000"));
     let reservations_body = match cn_client
         .build()
         .method("GET")
-        .endpoint("https://webservices.collegenet.com/r25ws/wrd/uwyo/run/reservations.xml?start_dt=0")
+        .endpoint(&url)
         .timeout(Duration::from_secs(15))
-        .return_type::<Reservations>()
         .send()
         .await {
             Ok(rs) => rs,
@@ -5167,6 +5172,48 @@ async fn store_collegenet_reservations(database: &mut Database, cn_client: &Arc<
             Ok(_) => (),
             Err(m) => { return Err(m.to_string()); }
         };
+    }
+
+    let blackouts_body = match cn_client
+        .build()
+        .method("GET")
+        .endpoint("https://webservices.collegenet.com/r25ws/wrd/uwyo/run/spaces.xml?scope=extended&include=blackouts")
+        .timeout(Duration::from_secs(30))
+        .send()
+        .await {
+            Ok(bs) => bs,
+            Err(m) => { return Err(m.to_string()); }
+        }
+        .body;
+    let blackouts: Spaces = match serde_xml_rs::from_str(&blackouts_body) {
+        Ok(bs) => bs,
+        Err(m) => { return Err(m.to_string()); }
+    };
+
+    for blackout in blackouts.spaces {
+        let sid: Option<Vec<Option<i64>>> = Some(vec!(Some(blackout.space_id)));
+        let sname: String = blackout.space_name;
+        match blackout.blackouts {
+            Some(bs) => {
+                for blackout_event in bs {
+                    for date in blackout_event.blackout_dates.into_iter().filter(
+                        |event| event.blackout_start <= run_time && event.blackout_end >= run_time
+                    ) {
+                        let _ = database.update_reservation(&DB_Reservation {
+                            reservation_id: date.blackout_id,
+                            start_dt: date.blackout_start,
+                            end_dt: date.blackout_end,
+                            event_name: format!("{} Blackout", sname),
+                            event_space_id: sid.clone()
+                        });
+                    }
+                }
+            },
+            None => {
+                continue;
+            }
+        }
+
     }
 
     Ok(())
