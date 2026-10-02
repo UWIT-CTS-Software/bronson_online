@@ -134,8 +134,6 @@ async function setWiki() {
 
 // Table of Contents (ToC)
 //-------------------------------------------------------------------
-
-
 async function renderToC(treeJSON) {
     const isAuthorized = await fetchCurrentUserPermissions() >= 6; // Is a boolean
     let tocFieldset = document.getElementById("toc_fieldset"); 
@@ -220,11 +218,11 @@ function clickableFiles(path) { // This is no longer a `this` element (it can be
 
     const node = findPath(treeJSON.tree, path);
    
-    if(!node) {
+    if (!node) {
         return;
     }
 
-    if(Array.isArray(node.children)) {
+    if (Array.isArray(node.children)) {
         showDir(node, path);
     } else if (node.children === null) {
         getWiki_File(path);
@@ -237,16 +235,15 @@ function clickableFiles(path) { // This is no longer a `this` element (it can be
 }
 
 function findPath(node, path) {
-    if(node.file_path === path) return node;
+    if (node.file_path === path) return node;
 
-    if(Array.isArray(node.children)){
+    if (Array.isArray(node.children)) {
         for (const child of node.children) {
             const found = findPath(child, path);
             if (found) return found;
         }
     }
 
-    //Else 
     return null;
 }
 
@@ -265,8 +262,6 @@ function showDir(node, path) {
 
 // Add Wikis Popup 
 //------------------------------------------------------------------
-
-
 function showWikiPopup() {
     document.getElementById('w_popup').style.display='block';
     document.getElementById('wiki_modal').style.display='block';
@@ -443,7 +438,6 @@ async function fetchCurrentUserPermissions() {
     }
 }
  
-
 // send file new file to backend 
 async function uploadNewFile(button) {
     let parent_path = button.dataset.path;
@@ -456,9 +450,6 @@ async function uploadNewFolder(button) {
     sessionStorage.setItem("Parent Path", parent_path);
     showFolderPopup();
 }
-
-
-
 
 async function submitFile() {
     const newFile = document.getElementById("newFile").files[0];
