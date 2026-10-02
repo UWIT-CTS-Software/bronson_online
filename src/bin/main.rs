@@ -51,10 +51,10 @@ use server_lib::{
     RequestFile, TreeNode,
     jp::{ ping_this, },
     API, APIClient::{ MultiThread, SingleThread, },
-    CFM_DIR, WIKI_DIR, /* LOG, */ TEMP_DIR, TICKT_JSON, 
+    CFM_DIR, WIKI_DIR, LOG, TEMP_DIR, TICKT_JSON, 
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_400, STATUS_404, STATUS_500, 
     SCHD_ERR, DASH_ERR, LDRB_ERR, SPRS_ERR, 
-    Database, Terminal, 
+    Database, 
     models::{
         DB_Room, DB_Building, DB_User, DB_DataElement, DB_Project, 
         DB_IpAddress, DB_Key, DB_Ticket, DB_Reservation
@@ -1012,6 +1012,11 @@ async fn handle_connection(
                 .status(STATUS_200)
                 .send_contents(contents)
         },
+        "GET /log HTTP/1.1" => {
+            Response::new()
+                .status(STATUS_200)
+                .send_file(LOG)
+        },
         "POST /update/ticket HTTP/1.1" => {
             // Parse JSON body
             let body_json: Value = match serde_json::from_slice(&req.body) {
@@ -1564,24 +1569,6 @@ async fn handle_connection(
                 Response::new()
                         .status(STATUS_500)
                         .send_contents("Task Not Found".into())
-            }
-        },
-        // Terminal
-        // --------------------------------------------------------------------
-        "POST /terminal HTTP/1.1" => {
-            match Terminal::execute(&req) {
-                Ok(resp) => {
-                    resp
-                },
-                Err(e) => {
-                    Response::new()
-                            .status(STATUS_500)
-                            .send_contents(
-                                json!(
-                                    {"response": format!("Internal error: {:?}", e)}
-                                ).to_string().into()
-                            )
-                }
             }
         },
         // --------------------------------------------------------------------
@@ -2798,7 +2785,6 @@ _|        _|        _|      _|
 /// * Returns a boolean   
 /// 
 /// Example call in [`w_build_articles`]
-
 fn dir_exists(path: &str) -> bool {
     return metadata(path).is_ok();
 }
@@ -2808,7 +2794,6 @@ fn dir_exists(path: &str) -> bool {
 /// * Returns a boolean
 /// 
 /// Example call in [`build_subtree`]
-
 fn is_this_dir(path: &str) -> bool {
     return metadata(path).unwrap().is_dir();
 }
@@ -2823,7 +2808,6 @@ fn is_this_dir(path: &str) -> bool {
 /// ``` no_run
 ///  let dirs = get_dir_contents(ex_path);
 /// ```
-
 fn get_dir_contents(path: &str) -> Vec<String> {
     let mut strings = Vec::new();
     let paths = match read_dir(&path) {
@@ -2908,8 +2892,6 @@ fn build_tree(root: &str, blacklist: HashSet<&str>) -> Result<String, String> {
 /// ### Return 
 /// * A [`TreeNode`] (struct) containing filename, filepath, and children. 
 /// Called by [`build_tree`]
-
-
 fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
     use std::path::Path;
 

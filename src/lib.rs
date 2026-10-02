@@ -34,17 +34,15 @@ mod jack_ping;
 pub use crate::jack_ping::jp;
 
 use std::{
-	string,
 	str,
 	env,
 	thread,
 	sync::{
 		mpsc, Arc, Mutex,
 	},
-	fmt::{ Debug, Display, Formatter, Result as FmtResult, },
+	fmt::{ Debug, },
 	collections::HashMap,
 	fs::{ read, read_to_string, },
-	error::Error,
 	time::Duration,
 	clone::Clone,
 };
@@ -1891,203 +1889,6 @@ pub struct APIResponse {
 	pub version: String,
 	pub headers: HeaderMap,
 	pub body: String
-}
-
-
-
-#[derive(Debug)]
-pub enum TerminalError {
-	Unauthorized,
-	EmptyArray,
-	InvalidArgument(String),
-	StrParseError(str::Utf8Error),
-	StringParseError(string::FromUtf8Error),
-	ResponseError(String),
-}
-
-impl Display for TerminalError {
-	fn fmt(&self, f: &mut Formatter) -> FmtResult {
-		match self {
-			TerminalError::Unauthorized => write!(f, "Unauthorized.\n"),
-			TerminalError::EmptyArray => write!(f, "No command found.\n"),
-			TerminalError::InvalidArgument(item) => write!(f, "Invalid argument: {}\n", item),
-			TerminalError::StrParseError(item) => write!(f, "Unable to parse: {}\n", item),
-			TerminalError::StringParseError(item) => write!(f, "Unable to parse: {}", item),
-			TerminalError::ResponseError(item) => write!(f, "An error occurred: {}\n", item),
-		}
-	}
-}
-
-impl Error for TerminalError {}
-
-pub struct Terminal;
-impl Terminal {
-    pub fn execute(req: &Request) -> Result<Response, TerminalError> {
-		let arg_str: &str = match str::from_utf8(&req.body) {
-			Ok(s) => s,
-			Err(e) => {
-				error!("Unable to parse argument string: {}", e);
-				return Err(TerminalError::StrParseError(e));
-			}
-		};
-		let arg_vec: Vec<String> = Self::group_delimited(arg_str.split(" ").collect());
-		
-		if arg_vec.len() == 0 || arg_vec[0].as_str() == "" {
-			return Err(TerminalError::EmptyArray);
-		}
-
-		let contents: Vec<u8>;
-		Ok(match arg_vec[0].as_str() {
-			"get"    => {
-				if arg_vec.len() == 1 || arg_vec[1] == "" {
-					return Err(TerminalError::InvalidArgument("Unknown `get` argument. See `get -h` for help".to_owned()));
-				}
-
-				match arg_vec[1].as_str() {
-					"-h"        => {
-						Response::new()
-								.status(STATUS_200)
-								.send_contents(
-									json!({
-										"response": "get [ log | campus | version | alerts | blacklist ]"
-									}).to_string().into()
-								)
-					},
-					"log"       => {
-						Response::new()
-								.status(STATUS_200)
-								.send_file(LOG)
-					},
-					"campus"       => {
-						// WARNING: This function call generates an entirely new Database object that will have a cookie key that is different than the database object in main.
-						// This was done because the only thing being done is data retrieval, not cookie management. 
-						// I am too lazy to pass a database object to this function.
-						contents = match Database::get_campus(&mut Database::new()) {
-							Ok(c)  => json!(c).to_string().into(),
-							Err(_) => "".into()
-						};
-
-						Response::new()
-								.status(STATUS_200)
-								.send_contents(
-									json!({
-										"response": contents
-									}).to_string().into()
-								)
-					},
-					"version"   => {
-						Response::new()
-								.status(STATUS_200)
-								.send_contents(
-									json!({
-										"response": env!("CARGO_PKG_VERSION")
-									}).to_string().into()
-								)
-					},
-					"alerts"    => {
-						Response::new()
-								.status(STATUS_200)
-								.send_contents(
-									json!({
-										"response": "none"
-									}).to_string().into()
-								)
-					},
-					"blacklist" => {
-						Response::new()
-								.status(STATUS_200)
-								.send_contents(
-									json!({
-										"response": "none"
-									}).to_string().into()
-								)
-					},
-					&_          => {
-						return Err(TerminalError::InvalidArgument("Unknown `get` argument. See `get -h` for help.".to_owned())).into();
-					}
-				}
-			},
-			"add"    => {
-				Response::new()
-						.status(STATUS_200)
-						.send_contents(
-							json!({
-								"response": "add page"
-							}).to_string().into()
-						)
-			},
-			"update" => {
-				Response::new()
-						.status(STATUS_200)
-						.send_contents(
-							json!({
-								"response": "update page"
-							}).to_string().into()
-						)
-			},
-			"delete" => {
-				Response::new()
-						.status(STATUS_200)
-						.send_contents(
-							json!({
-								"response": "delete page"
-							}).to_string().into()
-						)
-			},
-			"help"   => {
-				let contents = "
-hello  : hello NAME
-get    : get [ log | campus | version | alerts | blacklist ]
-add    : add [ user '{username: permissions}' | data '{key: val}' | key '{key: val}' ]
-update : update []
-delete : delete []
-help   : help
-            ";
-				Response::new()
-						.status(STATUS_200)
-						.send_contents(
-							json!({
-								"response": contents
-							}).to_string().into()
-						)
-			},
-			&_       => {
-				return Err(TerminalError::InvalidArgument("Unknown command: ".to_owned() + &arg_vec[0]));
-			}
-		})
-    }
-
-	pub fn group_delimited(args: Vec<&str>) -> Vec<String> {
-		let mut ret_vec: Vec<String> = Vec::new();
-		let mut agg_string: String = String::new();
-		let mut aggregate = false;
-		let mut q_char: &str = "";
-		for word in args {
-			if word.starts_with("\"") && q_char == "" {
-				q_char = "\"";
-				aggregate = true;
-			} else if word.starts_with("\'") && q_char == "" {
-				q_char = "\'";
-				aggregate = true;
-			}
-			
-			if q_char != "" && word.ends_with(q_char) && !word.ends_with(&("\\".to_owned() + q_char)) {
-				agg_string.push(' ');
-				agg_string.push_str(word);
-				ret_vec.push(agg_string.clone());
-				q_char = "";
-				aggregate = false;
-				continue;
-			}
-
-			if aggregate {
-				agg_string.push_str(word);
-			} else {
-				ret_vec.push(String::from(word));
-			}
-		}
-		ret_vec
-	}
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -65,21 +65,26 @@ async function setAdminBronson() {
     hamburger = document.getElementById("hb_menu");
     hamburger.innerHTML += `<fieldset id="admin_hb_fieldset">
     <legend>Admin Buttons</legend>
-    <button id="admin_terminalButton" class="hb_button" onclick="hideTerminal()">Hide Terminal</button>
+    <button id="admin_logButton" class="hb_button" onclick="getLog()">Download Log</button>
     </fieldset>`;
 }
 
-function hideTerminal() {
-    //console.log("Changing visability of the terminal");
-    let termButton = document.getElementById("admin_terminalButton");
-    //console.log(termButton.innerHTML);
-    if(termButton.innerHTML == "Hide Terminal") {
-        document.getElementById('terminal').style.display = 'none';
-        termButton.innerHTML = "Show Terminal";
-    } else {
-        document.getElementById('terminal').style.display = 'block';
-        termButton.innerHTML = "Hide Terminal";
-    }
+function getLog() {
+    fetch("log", {
+        method: "GET"
+    }).then((response) => {
+        if (!response.ok) {
+        console.log(` Error fetching log file: ${response}`);
+        }
+        return response.blob();
+    }).then((data) => {
+        const url = URL.createObjectURL(data);
+        const a = document.createElement("a");
+
+        a.href = url;
+        a.download = "output.log";
+        a.click();
+    });
 }
 
 // Set Admin Tool Page on program guts
