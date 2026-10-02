@@ -43,8 +43,6 @@ need to consolidate things and reuse tags
     --bronson-font-ui: "Lucida Sans", sans-serif;
     --bronson-font-mono: "Courier New", Courier, monospace;
 
-
-
 }
 
 /* ---- Global Elements ---- */
@@ -3696,7 +3694,6 @@ span.psw {
 .w_viwer {
     height: 80vh;
     width: 100vh;
-    overflow-y: scroll;
     grid-column: 2/2;
     margin-left: 10px;
     margin-right: 200px;
@@ -3746,8 +3743,9 @@ p.toc-item{
     border: none;
 
 }
-pre.md_item{
-    max-height: 80vh;
+pre.md_item {
+     max-height: 85vh;
+   /* max-width: 95vh; */
     overflow-y: scroll;
 h1 {
     color:var(--bronson-yellow-light);
@@ -3773,39 +3771,35 @@ p {
     color:var(--bronson-yellow-light);
    }
 
- strong {
+strong {
     font-weight: bold;
     font-size: medium;
 }
 
-   code {
+code {
     background-color: var(--bronson-black);
     color: var(bronson-white);
-   }
+}
 
-    blockquote.md_item {
+blockquote.md_item {
     padding-left: 1rem;
     border-left: 3px solid
 
-    }
-    pre {
-     white-space: pre-wrap;
-     color:var(--bronson-yellow-light);
-    }
-    a {
-    color: var(--bronson-green-dark);
-    }
-    a.visited {
-  color: var(--bronson-red-light);
-    }
+}
+pre {
+    white-space: pre-wrap;
+    color:var(--bronson-yellow-light);
+}
+a {
+color: var(--bronson-green-dark);
+}
+a.visited {
+color: var(--bronson-red-light);
+}
     
 }
 
-.wA_fieldset {
-    border:4px solid var(--bronson-yellow-dark);
-    max-height: 80vh;
-    width: 100vh;
-}
+
 .toc-item {
     pointer-events: auto;
     cursor: pointer;
@@ -3829,16 +3823,18 @@ p {
 }
 pre.plain-text {
      color: var(--bronson-yellow-light);
+     white-space: pre-wrap;
+    
 }
 
-
+/* 
 .wFile_fieldset{
     margin-top: 1px;
     margin-bottom: 1px;
     margin-left: 8px;
     text-align: left;
     white-space: pre-wrap;
-    overflow: scroll;
+    overflow-y: scroll;
     text-overflow: ellipsis;
     font-size: larger;
     cursor: pointer;
@@ -3846,14 +3842,14 @@ pre.plain-text {
     background-color: var(--bronson-grey-dark);
     box-shadow: 5px 10px 10px;
     
-}
+} */
 
 .pop_fieldset{
     z-index: 1; /* Sit on top */
     position:absolute;
     width:50%; /* Full width */
     height: 50%; /* Full height */
-    overflow: auto; /* Enable scroll if needed */
+    overflow-y: auto; /* Enable scroll if needed */
     background-color: var(--bronson-black); /* Fallback color */
     background-color: var(--bronson-black04); /* Black w/ opacity */
     margin-top: 60px;
@@ -3867,7 +3863,7 @@ pre.plain-text {
     position:absolute;
     width:30%; /* Full width */
     height: 20%; /* Full height */
-    overflow: auto; /* Enable scroll if needed */
+    overflow-y: auto; /* Enable scroll if needed */
     background-color: var(--bronson-black); /* Fallback color */
     background-color: var(--bronson-black04);/* Black w/ opacity */
     margin-top: 60px;

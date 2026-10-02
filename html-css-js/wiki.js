@@ -313,21 +313,34 @@ function deleteButton(node) {
 //-------------------------------------------------------------------
 async function getArticleHTML(blob, filename) {
     const isMobile = localStorage.getItem("isMobile") === "true";
-   
+    console.log(isMobile)
     if (filename.endsWith('.md')) {
         let parsed_md = "";
         let md = await blob.text();
         parsed_md = marked.parse(md);
-        let html = `
-            <fieldset class=${isMobile ? "wA_fieldset_mobile" : "class=wA_fieldset"}>
-                <legend ${isMobile ? "class='mobile_legend'" : "class='w_legend'"}> 
+        if(!isMobile) {
+            let html = `
+            <fieldset>
+                <legend> 
                     ${filename}
                 </legend>  
                 <pre class="md_item">${parsed_md} </pre>
-                </div>
             </fieldset>           
         `;
         w_viwer.innerHTML = html;
+
+        }
+        // else if(isMobile) {
+        //     let html = `
+        //     <fieldset "class = 'wA_fieldset_mobile'">
+        //         <legend "class = mobile_legend"> 
+        //             ${filename}
+        //         </legend>  
+        //         <pre class="md_item">${parsed_md} </pre>
+        //     </fieldset>           
+        // `; w_viwer.innerHTML = html;
+        // }
+
         return;
         
     } else if (filename.endsWith('.pdf')) {
@@ -335,33 +348,53 @@ async function getArticleHTML(blob, filename) {
         let pdf_blob = new Blob([raw_blob], {type: "application/pdf"});
         const blobUrl = URL.createObjectURL(pdf_blob); 
 
-        let html = `
-            <fieldset class=${isMobile ? "wA_fieldset_mobile'" : "class='wA_fieldset"}>
-                <legend ${isMobile ? "class='mobile_legend'" :  "class='w_legend'"}> 
+         if(!isMobile) {
+            let html = `
+            <fieldset>
+                <legend> 
                     ${filename}
-                </legend> 
+                </legend>  
                 <iframe id="pdfViewer" src="${blobUrl}"></iframe>
-                </div>
-            </fieldset>
+            </fieldset>           
         `;
-
         w_viwer.innerHTML = html;
+
+        }else if(isMobile) {
+            let html = `
+            <fieldset "class = 'wA_fieldset_mobile'">
+                <legend "class = mobile_legend"> 
+                    ${filename}
+                </legend>  
+                <iframe id="pdfViewer" src="${blobUrl}"></iframe>
+            </fieldset>           
+        `; w_viwer.innerHTML = html;
+        }
         return;
 
     } else {
       
         let text = await blob.text();
-        let html = `
-            <fieldset class=${isMobile ? "wA_fieldset_mobile'" : "class='wA_fieldset"}>
-                <legend ${isMobile ? "class='mobile_legend'" :  "class='w_legend'"}> 
+        if(!isMobile) {
+            let html = `
+            <fieldset>
+                <legend> 
                     ${filename}
-                </legend> 
+                </legend>  
                 <pre class="plain-text">${text}<pre>
-                </div>
-            </fieldset>            
+            </fieldset>           
         `;
-
         w_viwer.innerHTML = html;
+
+        }else if(isMobile) {
+            let html = `
+            <fieldset "class='wA_fieldset_mobile'">
+                <legend "class='mobile_legend'"> 
+                    ${filename}
+                </legend>  
+                <pre class="plain-text">${text}<pre>
+            </fieldset>           
+        `; w_viwer.innerHTML = html;
+        }
         return; 
     }
 }
