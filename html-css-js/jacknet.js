@@ -667,27 +667,27 @@ async function setJackNet() {
         <fieldset>
             <legend ${isMobile ? "class='mobile_legend'" : ""}>
                 Choose Devices to Search For: </legend>
-            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="proc" name="jn_dev" value="Processors"/>
+            <input class="bronson_checkBox ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="proc" name="jn_dev" value="Processors"/>
             <label ${isMobile ? "class='mobile_label'" : ""} for="proc"> 
                 Processors</label>
             <br>
-            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="pj" name="jn_dev" value="Projectors"/>
+            <input class="bronson_checkBox ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="pj" name="jn_dev" value="Projectors"/>
             <label ${isMobile ? "class='mobile_label'" : ""} for="pj">
                 Projectors</label>
             <br>
-            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="disp" name="jn_dev" value="Display"/>
+            <input class="bronson_checkBox ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="disp" name="jn_dev" value="Display"/>
             <label ${isMobile ? "class='mobile_label'" : ""} for="disp">
                 Displays</label>
             <br>
-            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="ws" name="jn_dev" value="Wyo Shares"/>
+            <input class="bronson_checkBox ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="ws" name="jn_dev" value="Wyo Shares"/>
             <label ${isMobile ? "class='mobile_label'" : ""} for="ws">
                 Wyo Shares</label>
             <br>
-            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="tp" name="jn_dev" value="Touch Panels"/>
+            <input class="bronson_checkBox ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="tp" name="jn_dev" value="Touch Panels"/>
             <label ${isMobile ? "class='mobile_label'" : ""} for="tp">
                 Touch Panels</label>
             <br>
-            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="cmicx" name="jn_dev" value="Ceiling Mics"/>
+            <input class="bronson_checkBox ${isMobile ? "mobile_checkbox" : ""}" type="checkbox" id="cmicx" name="jn_dev" value="Ceiling Mics"/>
             <label ${isMobile ? "class='mobile_label'" : ""} for="cmicx">
                 Ceiling Mics </label>
             <br>

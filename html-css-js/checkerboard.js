@@ -436,7 +436,7 @@ async function setChecker() {
     let campus = JSON.parse(localStorage.getItem("campData"));
     Object.keys(campus).forEach(bldg => {
         building_checkboxes += `
-            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" onclick="updateCheckedBuildings()" type="checkbox" id="${bldg}" name="cb_dev" value="${bldg}"/>
+            <input class="bronson_checkBox ${isMobile ? "mobile_checkbox" : ""}" onclick="updateCheckedBuildings()" type="checkbox" id="${bldg}" name="cb_dev" value="${bldg}"/>
             <label for="${bldg}" ${isMobile ? "class='mobile_font'" : ""}>
                 ${bldg}
             </label>

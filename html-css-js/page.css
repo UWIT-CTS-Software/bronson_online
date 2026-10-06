@@ -103,8 +103,7 @@ textarea {
     float: left;
     color:var(--bronson-yellow-light);
     background-color: var(--bronson-grey-bg);
-    border:2px inset var(--bronson-yellow-dark);
-    border-radius:15px;
+    border: transparent;
     resize:none;
 }
 
@@ -149,7 +148,6 @@ legend {
     font-family: var(--bronson-font-ui);
     font-size: medium;
     font-style: italic;
-    /* padding: 0px 8px; */
     border: var(--bronson-yellow-dark) outset 2px;
     border-radius: 15px;
     box-shadow: 2px 2px 3px var(--bronson-black);
@@ -218,7 +216,6 @@ button {
 button:hover {
     background-color: var(--bronson-grey-highlight);
     text-decoration: none;
-    /* font-weight: 500; */
     transition-duration: 0.1s;
 }
   
@@ -319,29 +316,6 @@ input:checked + .slider:before {
   border-radius: 50%;
 }
 
-/* Collapse Buttons - DEPRECATED ??? */
-/* .collapsible {
-    background-color: rgb(139, 139, 99);
-    color: rgb(90,30,30);
-    cursor: pointer;
-    padding: 10px;
-    width: 100%;
-    border: 2px solid rgb(102, 53, 54);
-    text-align: left;
-    outline: none;
-    font-size: 15px;
-} */
-
-/* .active, .collapsible:hover {
-    background-color: rgb(129, 116, 76);
-}
-
-.collapse_content {
-    padding: 0 18px;
-    display: none;
-    overflow: hidden;
-    background-color: #1a1a1a00;
-} */
 
 /* Buttons located in the hamburger menu */
 .hb_button {
@@ -517,7 +491,6 @@ input:checked + .slider:before {
     grid-template-columns: repeat(10,1fr);
     gap: 4px;
     grid-auto-rows: minmax(20px, auto);
-    /* float: left; */
 }
 
 .db_messages {
@@ -781,20 +754,8 @@ progress::-webkit-progress-bar {
   \____/ \__,_|\___|_|\_\_| \_|\___|\__|
 */
 
-.jn_innerConsole {
-    box-sizing: border-box;
-    border:2px inset var(--bronson-yellow-dark)
-}
 
-.innerConsole {
-    box-sizing: border-box;
-    border:2px inset var(--bronson-yellow-dark);
-    border-radius: 5px 5px 17px 17px;
-    margin-bottom: 1px;
-    height: 214px;
-}
-
-.cbDev {
+.bronson_checkBox {
     background-color: var(--bronson-grey-bg);
     color: var(--bronson-yellow-light);
     accent-color: var(--bronson-yellow-highlight);
@@ -1539,16 +1500,6 @@ ol li::marker {
     height: auto;
 }
 
-.tx_search textarea {
-    width: 90%;
-    height: 40px;
-    margin: 12px 0px 5% 5%;
-    padding-left: 10px;
-    padding-right: 10px;
-    align-items: center;
-    display: block; 
-    text-wrap-style: auto;
-}
 
 .tx_search.mobile textarea {
     font-size: 16pt;

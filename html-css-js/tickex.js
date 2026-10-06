@@ -1699,7 +1699,9 @@ async function setTickex(openTicketByID = -1) {
     if (isMobile) searchBar.classList.add("mobile");
     searchBar.innerHTML = `
         <legend ${isMobile ? "class='mobile_legend'" : ""}>Search</legend>
+        <fieldset max-width="fit-content" max-height = fit-content>
         <textarea id="searchBar" placeholder="${isMobile ? "Search..." : "Search: Title, ID, Description, Room, Date, etc... (Press Enter)"}"></textarea>
+        </fieldset>
         <ul>
     `;
     tx_container.append(searchBar);
