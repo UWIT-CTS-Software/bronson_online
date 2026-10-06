@@ -1300,14 +1300,12 @@ progress::-webkit-progress-bar {
     grid-template-columns: repeat(7,1fr);
     grid-auto-rows: minmax(50px, auto);
     gap: 3px;
+
 }
 
 .cfm_fileController {
-    background-color: var(--bronson-grey-dark);
-    box-shadow: 5px 10px 10px;
     grid-column: 2 / 3;
     grid-row: 1;
-    float: left;
     display: grid;
     grid-auto-flow: column;
     justify-content: center;
@@ -1323,11 +1321,8 @@ progress::-webkit-progress-bar {
 }
 
 .cfm_filePathTracker {
-    background-color: var(--bronson-grey-dark);
-    box-shadow: 5px 10px 10px;
     grid-column: 3 / 6;
     grid-row: 1;
-    float: left;
     display: block;
 }
 
@@ -1353,11 +1348,8 @@ progress::-webkit-progress-bar {
 .cfm_fileTreeInspector {
     max-width: 270px;
     max-height: 500px;
-    background-color: var(--bronson-grey-dark);
-    box-shadow: 5px 10px 10px;
     grid-column: 2 / 3;
     grid-row: 2;
-    float: left;
     display: block;
     overflow: scroll;
 }
@@ -1366,10 +1358,7 @@ progress::-webkit-progress-bar {
     max-height: 500px;
     grid-column: 3 / 7;
     grid-row: 2;
-    float: right;
     display: block;
-    background-color: var(--bronson-grey-dark);
-    box-shadow: 5px 10px 10px;
     overflow: scroll;
     padding-left: 20px;
 }
@@ -1404,51 +1393,6 @@ progress::-webkit-progress-bar {
     margin: 24px;
     font-family: var(--bronson-font-ui);
 }
-
-/*  Types of Data Entries in cfm_list*/
-
-/* DEPRECATED ??? */
-/* .cfm_file {
-    background-color: rgb(87, 106, 119);
-    color: var(--bronson-yellow-light);
-    border-radius: 4px;
-    border: 2px inset var(--bronson-yellow-dark);
-    text-align: left;
-    padding: 5px;
-    margin: 0px 0;
-    cursor: pointer;
-    width: fit-content;
-}
-
-.cfm_zip {
-    background-color: rgb(79, 127, 80);
-    color: var(--bronson-yellow-light);
-    border-radius: 4px;
-    border: 2px outset var(--bronson-yellow-dark);
-    text-align: center;
-    padding: 5px;
-    margin: 0px 0;
-    cursor: pointer;
-    width: fit-content;
-}
-
-.cfm_dir {
-    background-color: var(--bronson-yellow-dark);
-    color: var(--bronson-yellow-light);
-    border-radius: 4px;
-    border: 2px outset var(--bronson-yellow-dark);
-    text-align: right;
-    padding: 5px;
-    margin: 0px 0;
-    cursor: pointer;
-    width: fit-content;
-}
-
-.cfm_file:hover,
-.cfm_zip:hover,
-.cfm_dir:hover {
-    text-decoration: underline;
-} */
 
 .cfm_fileTreeInspector p:hover,
 .cfm_FileContainer p:hover {
@@ -1502,30 +1446,6 @@ progress::-webkit-progress-bar {
 ol li::marker {
     color: var(--bronson-grey-light);
     opacity: 40%;
-}
-
-/* Terminal definitions
-
-*/
-.terminal_container {
-    position: relative;
-    background-color: var(--bronson-grey-bg);
-    color: var(--bronson-yellow-light);
-    display: grid;
-    grid-template-columns: repeat(7,1fr);
-    gap: 10px;
-    grid-auto-rows: minmax(20px, auto);
-}
-
-#terminal {
-    position: fixed;
-    z-index:10;
-    bottom: 0;
-    width: 100%;
-    height: 20%;
-    background-color: var(--bronson-grey-bg);
-    color: var(--bronson-yellow-light);
-    border-top: 2px inset var(--bronson-yellow-light);
 }
 
 /*________        _                 _
@@ -3677,18 +3597,17 @@ span.psw {
     Wiki Definitions
 */ 
 .w_container {
-    /* display: flex;  */
-    /* flex-direction: row; */
     display: grid;
     position: relative;    
 }
 
 .w_toc {
 
-    height: fit-content;
+    max-height: fit-content;
     grid-column: 1/2;
-    /* width: 300px */
-    width: fit-content;
+    max-width: fit-content;
+    margin-left: 200px;
+    margin-right: 0px;
     
 }
 .w_viwer {
@@ -3700,19 +3619,10 @@ span.psw {
 }
 
 
-
-.w_fieldset {
-    border:5px dashed var(--bronson-yellow-dark);
-    margin-left: 200px;
-    margin-right: 0px;
-    grid-column:1/2;
+.toc_fieldset {
+    border:3px dashed var(--bronson-yellow-dark);
     overflow-y: scroll;
     overflow-x: scroll;
-    max-height: 80vh;
-    max-width: fit-content;
-    background-color: var(--bronson-grey-dark);
-    box-shadow: 5px 10px 15px;
-    border-radius: 12px;
     font-family: var(--bronson-font-ui);
 }
 
@@ -3726,7 +3636,6 @@ p.toc-item{
 }
 
 
-
 .toc-folder{
     width: fit-content;
 }
@@ -3738,67 +3647,70 @@ p.toc-item{
     display: block;
     width: 100%;
     min-height: 200px;
-    /* height: calc(100vh-200px); */
     height:80vh;
     border: none;
 
 }
 pre.md_item {
-     max-height: 85vh;
-   /* max-width: 95vh; */
+    max-height: 85vh;
+    max-width: 95vh;
     overflow-y: scroll;
-h1 {
-    color:var(--bronson-yellow-light);
-    text-align: center;
- }
-   
- h2 {
-    color:rgb(--bronson-yellow-light);
-    margin-left: 10px;
-}
-   
- h3 {
-    color:var(--bronson-yellow-light);
-    margin-left: 10px;
-   } 
-ul {
-    list-style-type: square;
-    color:var(--bronson-yellow-light);
-   }
-p {
-    text-align: left;
-    margin-left: 5px;
-    color:var(--bronson-yellow-light);
-   }
-
-strong {
-    font-weight: bold;
-    font-size: medium;
-}
-
-code {
-    background-color: var(--bronson-black);
-    color: var(bronson-white);
-}
-
-blockquote.md_item {
-    padding-left: 1rem;
-    border-left: 3px solid
-
-}
-pre {
     white-space: pre-wrap;
-    color:var(--bronson-yellow-light);
-}
-a {
-color: var(--bronson-green-dark);
-}
-a.visited {
-color: var(--bronson-red-light);
-}
+    h1 {
+        color:var(--bronson-yellow-light);
+        text-align: center;
+    }
+    
+    h2 {
+        color:rgb(--bronson-yellow-light);
+        margin-left: 10px;
+    }
+   
+    h3 {
+        color:var(--bronson-yellow-light);
+        margin-left: 10px;
+   } 
+    ul {
+        list-style-type: square;
+        color:var(--bronson-yellow-light);
+    }
+    ol {
+        color:var(--bronson-yellow-light);
+    }
+    p {
+        text-align: left;
+        margin-left: 5px;
+        color:var(--bronson-yellow-light);
+    }
+
+    strong {
+        font-weight: bold;
+        font-size: medium;
+    }
+
+    code {
+        background-color: var(--bronson-black);
+        color: var(bronson-white);
+    }
+
+    blockquote {
+        padding-left: 1rem;
+        border-left: 3px solid
+
+    }
+
+    pre {
+        white-space: pre-wrap;
+        color:var(--bronson-yellow-light);
+    }
+    a {
+        color: var(--bronson-green-dark);
+    }
+    a.visited {
+        color: var(--bronson-red-light);
+    }
     
 }
-
 
 .toc-item {
     pointer-events: auto;
@@ -3807,16 +3719,10 @@ color: var(--bronson-red-light);
     transition: background-color 0.15s ease, color 0.15s ease;
     width: fit-content;
 }
-.toc-item[data-isOpen="true"] {
-     background-color: var(--bronson-yellow-dark)
-}
-.toc-item[data-isOpen="true"] {
-     background-color: var(--bronson-yellow-dark);
-}
-.toc-item[data-isOpen="true"] {
-     background-color: VAR(--bronson-yellow-dark);
-}
 
+/* .toc-item[data-isOpen="true"] {
+     background-color: var(--bronson-yellow-dark);
+} */
 .toc-item:hover {
     background-color: var(--bronson-yellow-dark);
     color:var(--bronson-yellow-light)
@@ -3827,50 +3733,23 @@ pre.plain-text {
     
 }
 
-/* 
-.wFile_fieldset{
-    margin-top: 1px;
-    margin-bottom: 1px;
-    margin-left: 8px;
-    text-align: left;
-    white-space: pre-wrap;
-    overflow-y: scroll;
-    text-overflow: ellipsis;
-    font-size: larger;
-    cursor: pointer;
-    width: fit-content;
-    background-color: var(--bronson-grey-dark);
-    box-shadow: 5px 10px 10px;
-    
-} */
-
-.pop_fieldset{
-    z-index: 1; /* Sit on top */
+.pop_fieldset,.small_pop{
+    z-index: 1; 
     position:absolute;
-    width:50%; /* Full width */
-    height: 50%; /* Full height */
-    overflow-y: auto; /* Enable scroll if needed */
-    background-color: var(--bronson-black); /* Fallback color */
-    background-color: var(--bronson-black04); /* Black w/ opacity */
+    width:50%; 
+    height: 50%; 
+    overflow-y: auto; 
+    background-color: var(--bronson-black07); /* Black w/ opacity */
     margin-top: 60px;
     margin-left: 25%;
     margin-right: 25%;
-    border: 2px outset var(--bronson-yellow-dark);
-    border-radius: 15px;
 }
-.pop_fieldset_sm{
-    z-index: 1; /* Sit on top */
-    position:absolute;
-    width:30%; /* Full width */
-    height: 20%; /* Full height */
-    overflow-y: auto; /* Enable scroll if needed */
-    background-color: var(--bronson-black); /* Fallback color */
-    background-color: var(--bronson-black04);/* Black w/ opacity */
-    margin-top: 60px;
-    margin-left: 25%;
-    margin-right: 25%;
-    border: 2px outset var(--bronson-yellow-dark);
-    border-radius: 15px;
+.small_pop{
+    width:30%;
+    height: 20%;
+    margin-top: 10px; 
+    margin-left: 30%;
+    margin-right: 30%; 
 }
 .wikiInput {
     margin-left: 10%;
@@ -3880,20 +3759,6 @@ pre.plain-text {
     color:var(--bronson-yellow-dark);
 }
 
-.addFileButton{
-    z-index: 1;
-
-}
-
-.file-btn {
-    background-color: transparent;
-
-}
-
-.folder-btn {
-    background-color: transparent;
-}
-
-.delete-btn {
+.toc-btn {
     background-color: transparent;
 }

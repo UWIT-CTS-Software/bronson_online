@@ -140,7 +140,7 @@ async function setFileBrowser(header, files) {
     fs.replaceWith(new_fs);
 }
 
-// Need to figure out a mechanism to differntiate file types
+// Need to figure out a mechanism to differentiate file types
 async function populateFileList(list) {
     html = ``;
     let classtype  = "";
@@ -254,11 +254,13 @@ async function setCrestronFile() {
 
     let cfm_container = document.createElement('div');
     cfm_container.classList.add('cfm_container');
+    // cfm_container.innerHTML = `
+    // <fieldset></fieldset>`
 
 
     // Page Content
 
-    let cfm_fileController = document.createElement('div');
+    let cfm_fileController = document.createElement('legend');
     cfm_fileController.classList.add("cfm_fileController");
     cfm_fileController.innerHTML = `
         <button class="cfm_fileControllerButtons" onclick="controlButton('back')"> < </button>
@@ -267,7 +269,7 @@ async function setCrestronFile() {
         <button class="cfm_fileControllerButtons" onclick="controlButton('forward')"> > </button>
     `;
 
-    let cfm_filePathTracker = document.createElement('div');
+    let cfm_filePathTracker = document.createElement('legend');
     cfm_filePathTracker.classList.add("cfm_filePathTracker");
 
     let cfm_search = document.createElement('div');
@@ -302,10 +304,10 @@ async function setCrestronFile() {
         if (e.key == 'Escape') initializeCFM(); // clear search and return to home page
     });
 
-    let cfm_fileTreeInspector = document.createElement('div');
+    let cfm_fileTreeInspector = document.createElement('fieldset');
     cfm_fileTreeInspector.classList.add("cfm_fileTreeInspector");
 
-    let cfm_FileContainer = document.createElement('div');
+    let cfm_FileContainer = document.createElement('fieldset');
     cfm_FileContainer.classList.add("cfm_FileContainer");
 
     cfm_container.appendChild(cfm_fileController);
@@ -322,6 +324,7 @@ async function setCrestronFile() {
     //         CamCode (Q-SYS) </button>
     //     <p>\n</p>
     // `;
+
 
     main_container.appendChild(cfm_container);
     main_container.classList.add('program_guts');

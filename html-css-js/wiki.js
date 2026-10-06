@@ -55,7 +55,7 @@ async function setWiki() {
 
     //w_toc.innerHTML = await getTocHTML();
     w_toc.innerHTML = `  
-        <fieldset class=${isMobile ? "w_fieldset_mobile" : "w_fieldset"} id="toc_fieldset">
+        <fieldset class=${isMobile ? "w_fieldset_mobile" : "toc_fieldset"} id="toc_fieldset">
             <legend class="w_legend"> 
                 Table of Contents:
             </legend>
@@ -92,7 +92,7 @@ async function setWiki() {
     wd_popup.id = "wd_popup";
     wd_popup.innerHTML = `
         <div id="wiki_del_modal" class="modal" style="display:none";>
-        <fieldset class=pop_fieldset_sm>
+        <fieldset class="small_pop">
         <p> Are you sure you want to delete the selected element </p>
         <div class="modal_container">
         <button type="button" class="headButton" onclick="hideDeletePopup()">No</button>
@@ -109,7 +109,7 @@ async function setWiki() {
     wf_popup.innerHTML = `
         <div id="wiki_folder_modal" class="modal" style="display:none";>
         <fieldset class=pop_fieldset>
-        <legend>New Directory </legend>
+        <legend>New Directory</legend>
         <input id="newFolder" type="text" class="wikiInput"></input>
         <button class="close" onClick="hideDirPopup()">X</button> 
         <div class="modal_container">
@@ -142,8 +142,8 @@ async function renderToC(treeJSON) {
         <legend> Table of Contents </legend>
         ${ await parseTreeToC(treeJSON.tree)}
         ${(isAuthorized) ? 
-        ` <button class="file-btn" id=${"Root"} data-path="${""}" onClick="uploadNewFile(this)">📄</button>
-        <button class="folder-btn" id=${"Root"} data-path="${""}" onClick="uploadNewFolder(this)">📁</button>`
+        ` <button class="toc-btn " id=${"Root"} data-path="${""}" onClick="uploadNewFile(this)">📄</button>
+        <button class="toc-btn " id=${"Root"} data-path="${""}" onClick="uploadNewFolder(this)">📁</button>`
         :"" } 
     `;
     return;
@@ -293,15 +293,15 @@ function hideDirPopup() {
 }
 
 function addFileButton(node) {
-   return `<button class="file-btn" id="${node.name}" data-path="${node.file_path}" onClick="uploadNewFile(this)">📄</button>`
+   return `<button class="toc-btn" id="${node.name}" data-path="${node.file_path}" onClick="uploadNewFile(this)">📄</button>`
 }
 
 function addFolderButton(node) {
-   return `<button class="folder-btn" id="${node.name}" data-path="${node.file_path}" onClick="uploadNewFolder(this)">📁</button>`
+   return `<button class="toc-btn" id="${node.name}" data-path="${node.file_path}" onClick="uploadNewFolder(this)">📁</button>`
 }
 
 function deleteButton(node) {
-    return `<button class="delete-btn" id="${node.name}" data-path="${node.file_path}" onClick="deleteElement(this)">❌</button>`
+    return `<button class="toc-btn" id="${node.name}" data-path="${node.file_path}" onClick="deleteElement(this)">❌</button>`
 }
 
 // Article Viewer 
