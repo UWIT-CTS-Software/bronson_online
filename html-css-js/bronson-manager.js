@@ -98,13 +98,26 @@ async function initLocalStorage() {
         localStorage.setItem("zoneData", JSON.stringify(zoneData));
     }
 
+    // Checkerboard building selections
+    if (localStorage.getItem("cbSelection") == null) {
+        fetch("/data/cbSelection")
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("HTTP error " + response.status);
+                }
+                return response.json()
+            })
+            .then(json => {
+                localStorage.setItem("cbSelection", JSON.stringify(json));
+            })
+    }
+
     // Leaderboard
     let leaderboard = await getLeaderboard();
     localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
 
     // Spares
     let spares = await getSpares();
-    //console.log(spares["spares"]);
     localStorage.setItem("spares", JSON.stringify(spares["spares"]));
 
     // CheckerboardStorage
@@ -524,7 +537,7 @@ async function dashCheckerboardHTML() {
         percent = String((Math.floor(10000*percent) / 100).toFixed(2)).padStart(5, "0");
         cb_dashDivHTML += `
             <li>
-                <div style="display:inline;"><p class="db_cbZonep ${isMobile ? "mobile_font" : "" }">${bldg}</p><p class="db_cbRoomCountp">${bldg_info["checked_rooms"]} / ${bldg_info["rooms"].length}</p>
+                <div style="display:none;" id="${bldg}_div"><p class="db_cbZonep ${isMobile ? "mobile_font" : "" }">${bldg}</p><p class="db_cbRoomCountp">${bldg_info["checked_rooms"]} / ${bldg_info["rooms"].length}</p>
                 <label class="dbCbProgLabel ${isMobile ? "mobile_font" : ""}" for="${bldg}_prog"> ${bldg_info["rooms"].length > 0 ? percent+"%" : "N/A" }</label>
                 <progress id="${bldg}_prog" value="${percent}" max="100"></progress>
                 </div>

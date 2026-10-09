@@ -67,8 +67,6 @@ function setCSVExport(hns, ips, rms) {
     CSV_EXPORT.hostnames = hns;
     CSV_EXPORT.ip_addrs  = ips;
     CSV_EXPORT.rooms     = rms;
-
-    return;
 }
 
 // ---- ---- -- -- -  GET USER CONFIG FUNCTIONS
@@ -207,8 +205,6 @@ function runExport() {
     }
 
     downloadCsv(csvRows.join('\n'));
-
-    return;
 }
 
 function downloadCsv(data) {
@@ -225,8 +221,6 @@ function downloadCsv(data) {
 
     // TODO: Alter this to a pop-up notification
     updateConsole("Downloaded " + filename + '.csv');
-
-    return;
 }
 
 /*
@@ -319,7 +313,6 @@ async function runSearch() {
     }
     // re-enable runButton;
     runButton.disabled = false;
-    return;
 };
 
 // Requests ping with device list and building.
@@ -439,7 +432,6 @@ function clearConsole() {
     );
     // clear html cache
     sessionStorage.removeItem("JackNet_html");
-    return;
 };
 
 // updates the console by appending an item of text to contents
@@ -448,8 +440,6 @@ function updateConsole(text) {
     const beforeText = consoleObj.value.substring(0, consoleObj.value.length);
     consoleObj.value = beforeText + '\n' + text;
     consoleObj.scrollTop = consoleObj.scrollHeight;
-
-    return;
 };
 
 // Helpers
@@ -458,7 +448,6 @@ function closeVisTab(tabID) {
     // remove from dom. see clear console button function
     let visObj = document.getElementById("tile"+tabID)
     visObj.remove();
-    return;
 }
 
 function minimizeVisTab(tabID) {
@@ -474,7 +463,6 @@ function minimizeVisTab(tabID) {
         // closeIcon.style.display = "block";
         // menuIcon.style.display = "none";
     }
-    return;
 }
 
 // Makes a unique Tile ID for visualizer tabs
@@ -590,7 +578,6 @@ async function postJNVis(formPing, building, totalDevices, totalNotFound, devTyp
     // Put it on the page
     let progGuts = document.querySelector('.program_board .program_guts .jn_visList');
     progGuts.append(vis_container);
-    return;
 }
 
 // SETTING THE HTML DOM
@@ -755,5 +742,4 @@ DISCLAIMER: This application is moreso a proof of concept rather than a function
     // disable ceiling mics option (No ceiling mics are on the network).
     let micCheckBox = document.getElementById("cmicx");
     micCheckBox.disabled = true;
-    return;
-  }
+}

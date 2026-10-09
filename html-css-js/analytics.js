@@ -68,8 +68,8 @@ TOC:
 
 // Validates if the two date ranges in the time period selector are valid
 function validateDateRange() {
-    const startDateInput = document.getElementById("custom-start-date");
-    const endDateInput = document.getElementById("custom-end-date");
+    const startDateInput = document.getElementById("an_custom-start-date");
+    const endDateInput = document.getElementById("an_custom-end-date");
 
     const startValue = startDateInput.value;
     const endValue = endDateInput.value;
@@ -79,24 +79,26 @@ function validateDateRange() {
 
     const startDate = new Date(startValue);
     const endDate = new Date(endValue);
-
     if (startDate > endDate) {
         alert("Start date must be before end date.");
 
         // Clear both fields
         startDateInput.value = "";
         endDateInput.value = "";
+        cacheCustomDates();
         setBoard();
         return;
     }
 
+    cacheCustomDates();
     setBoard();
 }
 
 // Grabs the custom date range from the time period selector, if valid
 function getCustomDateRange() {
-    const startDateInput = document.getElementById("custom-start-date");
-    const endDateInput = document.getElementById("custom-end-date");
+    const startDateInput = document.getElementById("an_custom-start-date");
+    const endDateInput = document.getElementById("an_custom-end-date");
+    
     const startValue = startDateInput?.value;
     const endValue = endDateInput?.value;
 
@@ -162,8 +164,28 @@ async function exportButton() {
         optionalData[sectionId] = notes;
     });
 
+    // Handle custom date range
+    if (timePeriod === 5) {
+        const customRange = getCustomDateRange();
+        if (!customRange) {
+            alert("Please enter valid custom dates before exporting.");
+            return;
+        }
+        optionalData.custom_start_date = customRange.startDate.toISOString().split('T')[0];
+        optionalData.custom_end_date = customRange.endDate.toISOString().split('T')[0];
+    }
+
+    const exportButton = document.getElementById("an_exportToPDFButton");
+    exportButton.disabled = true;
+    exportButton.textContent = "Generating PDF...";
+
     const pdfBlob = await fetchExportedPDF(timePeriod, optionalData);
-    if (!pdfBlob) return;
+    if (!pdfBlob) {
+        alert("Failed to generate PDF.");
+        exportButton.disabled = false;
+        exportButton.textContent = "Export to PDF";
+        return;
+    }
 
     let reportPeriod = "ERROR";
     if (timePeriod === 0) reportPeriod = "Week";
@@ -180,15 +202,21 @@ async function exportButton() {
     a.href = url;
     a.download = filename;
     a.click();
-
     URL.revokeObjectURL(url);
-    
-    hidePopup();
+
+    exportButton.disabled = false;
+    exportButton.textContent = "Export to PDF";
+
+    showSettings();
 }
 
 // Generates the HTML for the time period radio buttons
 function getTimePeriodRadioHTML(timePeriod) {
     const selectedPeriod = parseInt(timePeriod, 10);
+    const startDate = sessionStorage.getItem("an_custom_start");
+    const endDate = sessionStorage.getItem("an_custom_end");
+    const todaysDate = new Date().toISOString().split('T')[0];
+
     return `
         <div class="an_timePeriodSelector">
             <strong>Selected Time Period:</strong>
@@ -216,12 +244,27 @@ function getTimePeriodRadioHTML(timePeriod) {
                 <input type="radio" id="custom" name="time-period" value="custom" ${selectedPeriod === 5 ? "checked" : ""}>
                 <label for="custom">*Custom Date Range</label>
                 <label for="custom">: </label>
-                <input type="date" id="custom-start-date">
+                <input type="date" id="an_custom-start-date" min="2020-01-01" max="${todaysDate}" ${startDate !== "" ? `value=${startDate}` : ""}>
                 <label for="custom"> → </label>
-                <input type="date" id="custom-end-date">
+                <input type="date" id="an_custom-end-date" min="2020-01-01" max="${todaysDate}" ${endDate !== "" ? `value=${endDate}` : ""}>
             </div>
+            <p style="font-size: 8pt; margin-top: 8px;">*Room Check counts will get rounded to 7, 30, 90, or 365 days</p>
         </div>
     `;
+}
+
+// Extract selected dates input from user (which can be blank) and cache them
+function cacheCustomDates() {
+    const startDate = document.getElementById("an_custom-start-date").value;
+    const endDate = document.getElementById("an_custom-end-date").value;
+
+    if (startDate !== null) sessionStorage.setItem("an_custom_start", startDate);
+    if (endDate !== null) sessionStorage.setItem("an_custom_end", endDate);
+
+    // Force custom date radio button to be selected, because it was just modified
+    const customRadioButton = document.getElementById("custom");
+    customRadioButton.checked = true;
+    customRadioButton.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
 // Displays the export settings in the settings widget
@@ -259,9 +302,14 @@ function showExport() {
             </div>
             <br>
             <div class="an_exportButtons">
-                <button onclick="exportButton()">Export to PDF</button>
+                <button id="an_exportToPDFButton" onclick="exportButton()">Export to PDF</button>
                 <button onclick="showSettings()">Cancel</button>
             </div>
+            <p style="float: right; font-size: 10pt; margin-top: 6px;">
+                *Larger reports take longer to generate, up to 10 minutes. 
+                <br>
+                Do not close the browser while generating...
+            </p>
         </fieldset>
     `;
 
@@ -281,7 +329,7 @@ function showSettings() {
             <button class="an_startExportButton" onclick="showExport()">Export</button>
         </fieldset>
     `;
- 
+
     initializeRadioListener();
 }
 
@@ -361,8 +409,8 @@ function initializeRadioListener() {
     });
 
     // Date Field Listeners
-    document.getElementById("custom-start-date").addEventListener("change", validateDateRange);
-    document.getElementById("custom-end-date").addEventListener("change", validateDateRange);
+    document.getElementById("an_custom-start-date").addEventListener("change", validateDateRange);
+    document.getElementById("an_custom-end-date").addEventListener("change", validateDateRange);
 }
 
 // Admin only: Populates the hidden project list for admins to manage
@@ -743,8 +791,7 @@ async function renderProjects() {
                 </a>
                 ${adminButtons}
             </div>
-            <br>
-            
+            <hr style="margin: 3px 0;">
         `;
 
         if (i < currentProjects.length - 1) {
@@ -1139,8 +1186,9 @@ async function setAnalytics() {
     clearInterval(ellipsisInterval);
     loadingMessage.remove();
 
-
-    sessionStorage.setItem("an_timePeriod", 0); // Initialize page to "Week"
+    sessionStorage.setItem("an_custom_start", ""); // Initialize as blank date
+    sessionStorage.setItem("an_custom_end", ""); // Initialize as blank date
+    sessionStorage.setItem("an_timePeriod", 1); // Initialize page to "Past Month"
 
     const leftCol = document.createElement('div');
     leftCol.classList.add('an_leftCol');
@@ -1163,7 +1211,7 @@ async function setAnalytics() {
         <div id="an_techSelector">
             <strong>Choose a tech:</strong>
             <select name="techs" id="techs">
-                <option value="lfermeli" selected>Lexus Fermelia</option>
+                <option value="johndoe" selected>John Doe</option>
                 <option value="todo">TODO: Add Users via Shibboleth</option>
             </select>
             <hr>
@@ -1175,7 +1223,7 @@ async function setAnalytics() {
 
             ${adminTechSelectorHTML}
 
-            <p>Note: "My Analytics" Widget is unavailable for development until we have shibboleth</p>
+            <p>Dev Note: "My Analytics" Widget is unavailable for development until we have shibboleth</p>
 
             <strong><u>Room Checks:</u></strong>
             <div id="an_individualRoomcheckStats">

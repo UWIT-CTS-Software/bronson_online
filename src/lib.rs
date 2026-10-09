@@ -22,7 +22,7 @@ buildingData
 Building
 PingRequest
 jack_ping
-CFMRequestFile
+RequestFile
 GeneralRequest
 */
 
@@ -34,17 +34,15 @@ mod jack_ping;
 pub use crate::jack_ping::jp;
 
 use std::{
-	string,
 	str,
 	env,
 	thread,
 	sync::{
 		mpsc, Arc, Mutex,
 	},
-	fmt::{ Debug, Display, Formatter, Result as FmtResult, },
+	fmt::{ Debug, },
 	collections::HashMap,
 	fs::{ read, read_to_string, },
-	error::Error,
 	time::Duration,
 	clone::Clone,
 };
@@ -273,7 +271,7 @@ impl Database {
 			.await {
 				Ok(b) => b,
 				Err(m) => { 
-					error!("Buildings not recieved from lsm: {}", m); 
+					error!("Buildings not received from lsm: {}", m); 
 					return None;
 				}
 			}
@@ -723,11 +721,6 @@ impl Database {
 			let _ = self.update_data(&DB_DataElement {
 				key: String::from("schedule"),
 				val: String::from(read_to_string(TSCH_JSON).unwrap().to_string()),
-			});
-
-			let _ = self.update_data(&DB_DataElement {
-				key: String::from("alias_table"),
-				val: String::from("{\"buildings\": [], \"rooms\": []}"),
 			});
 
 			let _ = self.update_data(&DB_DataElement {
@@ -1483,8 +1476,7 @@ pub struct Request {
 }
 
 impl Request {
-	pub fn from(buffer: [u8; BUFF_SIZE]) -> Request {
-		let buf_vec: Vec<u8> = Vec::from(buffer);
+	pub fn from(buf_vec: Vec<u8>) -> Request {
 		let mut lines: Vec<Vec<u8>> = Vec::new();
 
 		let buf_lines = buf_vec
@@ -1616,6 +1608,7 @@ impl Response {
 			"css"  => self.headers.insert(content_type, String::from("text/css")),
 			"js"   => self.headers.insert(content_type, String::from("text/javascript")),
 			"json" => self.headers.insert(content_type, String::from("application/json")),
+			"pdf" => self.headers.insert(content_type, String::from("application/pdf")),
 			"zip"  => {
 				self.headers.insert(content_type, String::from("application/zip"));
 				let attachment_string = format!("attachment; filename=\"{}\"", filepath);
@@ -1873,7 +1866,7 @@ impl<B: std::clone::Clone> APIEndpoint<B>  {
 
 		while let Some(chunk) = match resp.chunk().await {
 			Ok(c) => c,
-			Err(m) => { return Err(m.to_string() + &String::from_utf8(raw_body.clone()).expect("Cannot parse")); }
+			Err(m) => { return Err(m.to_string()); }
 		} {
 			raw_body.extend_from_slice(&chunk);
 		}
@@ -1898,203 +1891,6 @@ pub struct APIResponse {
 	pub body: String
 }
 
-
-
-#[derive(Debug)]
-pub enum TerminalError {
-	Unauthorized,
-	EmptyArray,
-	InvalidArgument(String),
-	StrParseError(str::Utf8Error),
-	StringParseError(string::FromUtf8Error),
-	ResponseError(String),
-}
-
-impl Display for TerminalError {
-	fn fmt(&self, f: &mut Formatter) -> FmtResult {
-		match self {
-			TerminalError::Unauthorized => write!(f, "Unauthorized.\n"),
-			TerminalError::EmptyArray => write!(f, "No command found.\n"),
-			TerminalError::InvalidArgument(item) => write!(f, "Invalid argument: {}\n", item),
-			TerminalError::StrParseError(item) => write!(f, "Unable to parse: {}\n", item),
-			TerminalError::StringParseError(item) => write!(f, "Unable to parse: {}", item),
-			TerminalError::ResponseError(item) => write!(f, "An error occured: {}\n", item),
-		}
-	}
-}
-
-impl Error for TerminalError {}
-
-pub struct Terminal;
-impl Terminal {
-    pub fn execute(req: &Request) -> Result<Response, TerminalError> {
-		let arg_str: &str = match str::from_utf8(&req.body) {
-			Ok(s) => s,
-			Err(e) => {
-				error!("Unable to parse argument string: {}", e);
-				return Err(TerminalError::StrParseError(e));
-			}
-		};
-		let arg_vec: Vec<String> = Self::group_delimited(arg_str.split(" ").collect());
-		
-		if arg_vec.len() == 0 || arg_vec[0].as_str() == "" {
-			return Err(TerminalError::EmptyArray);
-		}
-
-		let contents: Vec<u8>;
-		Ok(match arg_vec[0].as_str() {
-			"get"    => {
-				if arg_vec.len() == 1 || arg_vec[1] == "" {
-					return Err(TerminalError::InvalidArgument("Unknown `get` argument. See `get -h` for help".to_owned()));
-				}
-
-				match arg_vec[1].as_str() {
-					"-h"        => {
-						Response::new()
-								.status(STATUS_200)
-								.send_contents(
-									json!({
-										"response": "get [ log | campus | version | alerts | blacklist ]"
-									}).to_string().into()
-								)
-					},
-					"log"       => {
-						Response::new()
-								.status(STATUS_200)
-								.send_file(LOG)
-					},
-					"campus"       => {
-						// WARNING: This function call generates an entirely new Database object that will have a cookie key that is different than the database object in main.
-						// This was done because the only thing being done is data retrieval, not cookie management. 
-						// I am too lazy to pass a database object to this function.
-						contents = match Database::get_campus(&mut Database::new()) {
-							Ok(c)  => json!(c).to_string().into(),
-							Err(_) => "".into()
-						};
-
-						Response::new()
-								.status(STATUS_200)
-								.send_contents(
-									json!({
-										"response": contents
-									}).to_string().into()
-								)
-					},
-					"version"   => {
-						Response::new()
-								.status(STATUS_200)
-								.send_contents(
-									json!({
-										"response": env!("CARGO_PKG_VERSION")
-									}).to_string().into()
-								)
-					},
-					"alerts"    => {
-						Response::new()
-								.status(STATUS_200)
-								.send_contents(
-									json!({
-										"response": "none"
-									}).to_string().into()
-								)
-					},
-					"blacklist" => {
-						Response::new()
-								.status(STATUS_200)
-								.send_contents(
-									json!({
-										"response": "none"
-									}).to_string().into()
-								)
-					},
-					&_          => {
-						return Err(TerminalError::InvalidArgument("Unknown `get` argument. See `get -h` for help.".to_owned())).into();
-					}
-				}
-			},
-			"add"    => {
-				Response::new()
-						.status(STATUS_200)
-						.send_contents(
-							json!({
-								"response": "add page"
-							}).to_string().into()
-						)
-			},
-			"update" => {
-				Response::new()
-						.status(STATUS_200)
-						.send_contents(
-							json!({
-								"response": "update page"
-							}).to_string().into()
-						)
-			},
-			"delete" => {
-				Response::new()
-						.status(STATUS_200)
-						.send_contents(
-							json!({
-								"response": "delete page"
-							}).to_string().into()
-						)
-			},
-			"help"   => {
-				let contents = "
-hello  : hello NAME
-get    : get [ log | campus | version | alerts | blacklist ]
-add    : add [ user '{username: permissions}' | data '{key: val}' | key '{key: val}' ]
-update : update []
-delete : delete []
-help   : help
-            ";
-				Response::new()
-						.status(STATUS_200)
-						.send_contents(
-							json!({
-								"response": contents
-							}).to_string().into()
-						)
-			},
-			&_       => {
-				return Err(TerminalError::InvalidArgument("Unknown comand: ".to_owned() + &arg_vec[0]));
-			}
-		})
-    }
-
-	pub fn group_delimited(args: Vec<&str>) -> Vec<String> {
-		let mut ret_vec: Vec<String> = Vec::new();
-		let mut agg_string: String = String::new();
-		let mut aggregate = false;
-		let mut q_char: &str = "";
-		for word in args {
-			if word.starts_with("\"") && q_char == "" {
-				q_char = "\"";
-				aggregate = true;
-			} else if word.starts_with("\'") && q_char == "" {
-				q_char = "\'";
-				aggregate = true;
-			}
-			
-			if q_char != "" && word.ends_with(q_char) && !word.ends_with(&("\\".to_owned() + q_char)) {
-				agg_string.push(' ');
-				agg_string.push_str(word);
-				ret_vec.push(agg_string.clone());
-				q_char = "";
-				aggregate = false;
-				continue;
-			}
-
-			if aggregate {
-				agg_string.push_str(word);
-			} else {
-				ret_vec.push(String::from(word));
-			}
-		}
-		ret_vec
-	}
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ZoneRequest {
 	pub zones: Vec<String>,
@@ -2108,7 +1904,7 @@ pub struct PingRequest {
 
 // ----------- Custom structs for CFM Requests
 #[derive(Serialize, Deserialize, Debug)]
-pub struct CFMRequestFile {
+pub struct RequestFile {
 	pub filename: String
 }
 
@@ -2229,6 +2025,41 @@ pub struct Reservation {
 pub struct Space {
 	#[serde(rename="r25:space_id")]
 	pub space_id: i64
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename="r25:spaces")]
+pub struct Spaces {
+	#[serde(rename="r25:space")]
+	pub spaces: Vec<BlackoutSpace>
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct BlackoutSpace {
+	#[serde(rename="r25:space_id")]
+	pub space_id: i64,
+	#[serde(rename="r25:space_name")]
+	pub space_name: String,
+	#[serde(rename="r25:blackouts")]
+	pub blackouts: Option<Vec<Blackout>>
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Blackout {
+	#[serde(rename="r25:blackout_profile_name")]
+	pub profile_name: String,
+	#[serde(rename="r25:blackout_dates")]
+	pub blackout_dates: Vec<BlackoutDate>
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct BlackoutDate {
+	#[serde(rename="r25:blackout_id")]
+	pub blackout_id: i64,
+	#[serde(rename="r25:blackout_start")]
+	pub blackout_start: DateTime<Local>,
+	#[serde(rename="r25:blackout_end")]
+	pub blackout_end: DateTime<Local>
 }
 
 pub static BUFF_SIZE : usize = 4096;

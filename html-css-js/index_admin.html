@@ -19,38 +19,6 @@
           setAdminBronson();
         });
       })
-
-      $(function() {
-        $('#terminal').terminal(function(command) {
-            fetch("terminal", {
-              method: "POST",
-              body: command
-            }).then((response) => {
-              if (!response.ok) {
-                this.echo("Error");
-              }
-              if (response.headers.get("Content-Type") == "application/octet-stream") {
-                return response.blob();
-              } else {
-                return response.json();
-              }
-            }).then((data) => {
-              if (data instanceof Blob) {
-                const url = URL.createObjectURL(data);
-                const a = document.createElement("a");
-
-                a.href = url;
-                a.download = "output.log";
-                a.click();
-              } else {
-                this.echo(data.response);
-              }
-            })
-        }, {
-          checkArity: false,
-          greetings: greetings.innerHTML
-        });
-      });
     </script>
     <template id='greetings'>
 $$$$$$$$\                                $$\                     $$\ 
@@ -67,6 +35,5 @@ $$$$$$$$\                                $$\                     $$\
   <body>
     <div class="program_board" id="prog_placeholder">
     </div>
-    <footer id="terminal"></footer>
   </body>
 </html>

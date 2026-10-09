@@ -10,7 +10,7 @@ Backend
     - main()
     - handle_connection(req: Request, database: Database) -> Option
     - process_buffer(buffer: mut [u8]) -> String
-    - find_enclosed(s: String, delimeters: (char,char), include_delim: bool) -> String
+    - find_enclosed(s: String, delimiters: (char,char), include_delim: bool) -> String
 
 JackNet
     - execute_ping(body: Vec<u8>) -> String
@@ -29,8 +29,8 @@ CamCode
     - get_dir_contents(path: &str) -> Vec<String>
     - get_origin(req: Request) -> String
 -- Handlers -----------------------------
-    - get_file(body: Vec<u8>, root: &str) -> String
-    - get_file(body: Vec<u8>, root: &str) -> String
+    - get_file_path(body: Vec<u8>, root: &str) -> String
+    - get_file_path(body: Vec<u8>, root: &str) -> String
 
 Tickex
     - fetch_tdx_token(database: &mut Database, req: &Client) -> Result<(), String>
@@ -48,18 +48,18 @@ use server_lib::{
     BUFF_SIZE, 
     ThreadPool, ThreadSchedule, TaskSchedule, PingRequest, 
     Building, 
-    CFMRequestFile, TreeNode,
+    RequestFile, TreeNode,
     jp::{ ping_this, },
     API, APIClient::{ MultiThread, SingleThread, },
-    CFM_DIR, WIKI_DIR, /* LOG, */ TEMP_DIR, TICKT_JSON, 
+    CFM_DIR, WIKI_DIR, LOG, TEMP_DIR, TICKT_JSON, 
     Request, Response, STATUS_200, /* STATUS_303, */ STATUS_400, STATUS_404, STATUS_500, 
     SCHD_ERR, DASH_ERR, LDRB_ERR, SPRS_ERR, 
-    Database, Terminal, 
+    Database, 
     models::{
         DB_Room, DB_Building, DB_User, DB_DataElement, DB_Project, 
         DB_IpAddress, DB_Key, DB_Ticket, DB_Reservation
     },
-    LoginSuccess, Reservations, 
+    LoginSuccess, Reservations, Spaces, 
 };
 use futures_util::future::FutureExt;
 use getopts::Options;
@@ -93,7 +93,7 @@ use serde_json::{ json, Value, };
 use serde::Deserialize;
 use regex::Regex;
 use chrono::{ offset::Local, DateTime, TimeDelta, Utc, Days };
-use urlencoding::decode;
+use urlencoding::{ decode, encode };
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use diesel::{PgConnection, Connection};
 use dotenvy::dotenv;
@@ -116,6 +116,13 @@ $$$$$$$  |\$$$$$$$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |  $$ |\$$$$$$$ |
 \_______/  \_______| \_______|\__|  \__| \_______|\__|  \__| \_______|
 */
 
+//rustdoc 
+/// Entry Function for the server. 
+/// ### Returns 
+/// Upon Success - ()
+/// Upon Failure - dynamic error. 
+/// ### Example 
+/// ALEX ADD AN EXAMPLE
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // debug setting
     env::set_var("RUST_BACKTRACE", "1");
@@ -143,7 +150,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
     }
     
-    // set TcpListener and initalize
+    // set TcpListener and initialize
     // ------------------------------------------------------------------------
     let host_ip: &str;
     let mut host_port = 7878;
@@ -268,12 +275,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 continue;
             }
         };
+        let mut bytes_read: usize = 4096;
+        let mut buf_vec: Vec<u8> = Vec::with_capacity(1_073_741_824);
+        while bytes_read == 4096 {
+            match stream.read(&mut buffer) {
+                Ok(s) => {
+                    bytes_read = s;
+                    buf_vec.extend_from_slice(&buffer[0..bytes_read]);
+                },
+                Err(e) => error!("Error reading to buffer: {}", e)
+            };
 
-        match stream.read(&mut buffer) {
-            Ok(_) => (),
-            Err(e) => error!("Error reading to buffer: {}", e)
-        };
-        let req = Request::from(buffer.clone());
+            buffer = [0; BUFF_SIZE];
+        }
+        let req = Request::from(buf_vec.clone());
         let clone_db = request_database.clone();
         let req_ts = Arc::clone(&thread_schedule);
         let tc_clone = Arc::clone(&tdx_client);
@@ -284,7 +299,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 None    => {
                     Response::new()
                             .status(STATUS_500)
-                            .send_contents(format!("An internal error occured. Please contact a system administrator.\n").into())
+                            .send_contents(format!("An internal error occurred. Please contact a system administrator.\n").into())
                             .build()
                             .expect("Build failed")
                 }
@@ -294,12 +309,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             stdout().flush().unwrap();
         });
 
-        buffer = [0; BUFF_SIZE];
     }
 
     return Ok(());
 }
-
+// rustdoc 
+/// Function creates verbose server log to standard out and writes a log file.  
+/// ### Parameter 
+/// * `level` - String Reference containing the sensitivity level for the logger. 
+/// ### Returns 
+/// * The logger. 
+/// ### Example 
+/// ``` no_run
+/// if matches.opt_present("d") {
+///     match init_logger("debug") {
+///         Ok(_) => (),
+///         Err(e) => error!("Unable to init logger: {}", e)
+///       };
+/// } else {
+///     match init_logger("info") {
+///         Ok(_) => (),
+///         Err(e) => error!("Unable to init logger: {}", e)
+///     };
+/// }
+/// ```
 fn init_logger(level: &str) -> Result<(), fern::InitError> {
     let log_filter: log::LevelFilter;
     match level {
@@ -349,7 +382,19 @@ fn init_logger(level: &str) -> Result<(), fern::InitError> {
 
     Ok(())
 }
-
+//rustdoc 
+/// Function creates a space to run API calls separate from users threadpool.
+/// ### Parameters 
+///  * `thread_schedule` - cloned with Arc to control singlethread constraint. Type [`ThreadSchedule`]
+///  * `tdx_api` - cloned with Arc to because the type [`API`] may be multithread. `tdx_api` Is multi thread. 
+///  * `lsm_api` - cloned with Arc to because the type [`API`] may be multithread. `lsm_client ` Is single thread.
+///
+/// NOTE: `lsm_api` passed here and `lsm_client` passed in [`handle_connection`] serve the same purpose.
+/// Naming conventions need updated for further clarification. The same can be said for `tdx_client` and `tdx_api`.
+///  ### Returns 
+/// * Void 
+/// ### Example 
+/// ALEX MAKE AN EXAMPLE FOR THIS 
 #[tokio::main]
 #[allow(unused_assignments)]
 #[allow(unreachable_code)]
@@ -357,17 +402,8 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
     // Init Everyting
     // ThreadSchedule Init
     //let mut thread_schedule = ThreadSchedule::new();
-    // TODO: Only add print1/2 if Debug is enabled.
     {
         let mut ts = thread_schedule.write().unwrap();
-        ts.tasks.insert("print1".to_string(), TaskSchedule {
-            duration: 60,
-            timestamp: Utc::now(),
-        });
-        ts.tasks.insert("print2".to_string(), TaskSchedule {
-            duration: 120,
-            timestamp: Utc::now(),
-        });
         ts.tasks.insert("leaderboard".to_string(), TaskSchedule {
             duration: 3600,
             timestamp: Utc::now() - Duration::from_secs(3599),
@@ -444,12 +480,6 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
         for task_name in due_tasks {
             // Execute task based on task_name
             match task_name.as_str() {
-                "print1"          => { // Not-LSM
-                    debug!("[ThreadSchedule Debug] - One Minute Message");
-                },
-                "print2"          => { // Not-LSM
-                    debug!("[ThreadSchedule Debug] - Two Minute Message");
-                },
                 "leaderboard"     => {
                     info!("[Data] - Pulling New LSM Leaderboard");
                     update_room_check_leaderboard(&mut database, &lsm_api).await;
@@ -464,7 +494,7 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
                     info!("[Data] - Pulling LSM Inventory Information");
                     info!("MAYBE TODO: Get Diagnostic Information from LSM");
                     //update_lsm_data(&mut database, Arc::clone(&lsm_request)).await;
-                    info!("[Data] - Completed LSM Inventory Data Retreieval");
+                    info!("[Data] - Completed LSM Inventory Data Retrieval");
                 },
                 "checkerboard"    => {
                     info!("[Data] - Running Checkerboard");
@@ -540,7 +570,22 @@ async fn data_sync(thread_schedule: Arc<RwLock<ThreadSchedule>>, tdx_api: Arc<AP
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
 }
-
+// rustdoc 
+/// Function is the entry point to the servers on-request services. 
+/// 
+/// Note: function may be in use by any number of threads in the initialized threadpool. 
+/// ### Parameters
+///  * `req` - 
+///  * `database` - function requires [`Database`] (struct) to provide context of the Bronson database. 
+///  * `thread_schedule` - cloned with Arc to control singlethread constraint. Type [`ThreadSchedule`]
+///  * `tdx_client` - cloned with Arc to because the type [`API`] may be multithread. `tdx_client` Is multi thread. 
+///  * `lsm_client` - cloned with Arc to because the type [`API`] may be multithread. `lsm_client ` Is single thread. 
+/// ### Returns 
+/// * A [`Response`] object compiled into a byte vector. 
+/// Note: a compiled byte vector is easier to clone, so it is done before return instead of after. 
+/// ### Examples 
+/// call in [`main`]
+/// ALEX ADD AN EXAMPLE 
 #[tokio::main]
 #[allow(unused_assignments)]
 async fn handle_connection(
@@ -897,6 +942,31 @@ async fn handle_connection(
                     user.to_string().into()
                 )
         },
+        "GET /data/cbSelection HTTP/1.1" => { // Fetch a user's Checkerboard building selections
+            let selection: Value = match database.get_data(&format!("{}_cbSelections", req.get_current_username())) {
+                Ok(d) => {
+                    match serde_json::from_str(&d.val) {
+                        Ok(v) => v,
+                        Err(m) => {
+                            error!("Unable to parse json: {}", m);
+                            json!({
+                                "selections": []
+                            })
+                        }
+                    }
+                } Err(_) => {
+                    json!({
+                        "selections": []
+                    })
+                }
+            };
+
+            Response::new()
+                .status(STATUS_200)
+                .send_contents(
+                    selection.to_string().into()
+                )
+        }
         "GET /tickets HTTP/1.1" => { // OUTGOING, Tickets for Tickex
             let db_tickets = match database.get_all_tickets() {
                 Ok(t) => t,
@@ -941,6 +1011,11 @@ async fn handle_connection(
             Response::new()
                 .status(STATUS_200)
                 .send_contents(contents)
+        },
+        "GET /log HTTP/1.1" => {
+            Response::new()
+                .status(STATUS_200)
+                .send_file(LOG)
         },
         "POST /update/ticket HTTP/1.1" => {
             // Parse JSON body
@@ -1138,8 +1213,8 @@ async fn handle_connection(
             let time_period = body_json["timePeriod"].as_i64().unwrap_or(0) as i16;
             let optional_data = body_json["optionalData"].clone();
 
-            match export_to_pdf(&mut database, time_period, optional_data).await {
-                Ok(()) => (),
+            let file_name = match export_analytics_report_to_pdf(&mut database, time_period, optional_data).await {
+                Ok(f) => f,
                 Err(e) => {
                     error!("Failed to export PDF: {}", e);
                     return Response::new()
@@ -1147,9 +1222,9 @@ async fn handle_connection(
                         .send_contents("Failed to generate PDF".into())
                         .build();
                 }
-            }
+            };
 
-            let report_path = format!("{}/report.pdf", TEMP_DIR);
+            let report_path = format!("{}/{}.pdf", TEMP_DIR, &file_name);
             if !dir_exists(report_path.as_str()) {
                 return Response::new()
                     .status(STATUS_500)
@@ -1157,11 +1232,13 @@ async fn handle_connection(
                     .build();
             }
 
-            let _ = cleanup_temp_dir().await;
-
-            Response::new()
+            let resp_ret = Response::new()
                 .status(STATUS_200)
-                .send_file(report_path.as_str())
+                .send_file(report_path.as_str());
+
+            let _ = cleanup_temp_files(file_name).await;
+
+            resp_ret
         },
         "POST /update/projects/hidden HTTP/1.1" => {
             // Parse JSON body
@@ -1208,7 +1285,7 @@ async fn handle_connection(
                 Err(m) => {
                     return Response::new()
                                     .status(STATUS_500)
-                                    .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                    .send_contents(format!("An internal error occurred. Please contact a system administrator.\n{}", m).into())
                                     .build();
                 }
             };
@@ -1307,7 +1384,7 @@ async fn handle_connection(
                     error!("DB_ERR: {}", m);
                     return Response::new()
                                     .status(STATUS_500)
-                                    .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                    .send_contents(format!("An internal error occurred. Please contact a system administrator.\n{}", m).into())
                                     .build();
                 }
             };
@@ -1329,7 +1406,7 @@ async fn handle_connection(
                     error!("Unable to parse new onln field from JSON: {}", m);
                     return Response::new()
                                     .status(STATUS_500)
-                                    .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                    .send_contents(format!("An internal error occurred. Please contact a system administrator.\n{}", m).into())
                                     .build();
                 }
             };
@@ -1372,7 +1449,7 @@ async fn handle_connection(
                         error!("DB_ERR: {}", m);
                         return Response::new()
                                 .status(STATUS_500)
-                                .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                                .send_contents(format!("An internal error occurred. Please contact a system administrator.\n{}", m).into())
                                 .build();
                     }
                 };
@@ -1409,25 +1486,36 @@ async fn handle_connection(
                 .status(STATUS_200)
                 .send_contents("Successful Room Schedule Timestamps Update".into())
         },
+        "POST /update/data/cbSelection HTTP/1.1" => { // Updates a users Checkerboard building selection
+            let body_json: Value = serde_json::from_str(str::from_utf8(&req.body).unwrap()).expect("Failed parsing JSON");
+            let username: String = req.get_current_username();
+            let cb_key: String = username + "_cbSelections";
+            let cb_val: String = body_json.to_string();
+
+            match database.update_data(
+                &DB_DataElement {
+                    key: cb_key,
+                    val: cb_val.clone()
+                }
+            ) {
+                Ok(_) => {},
+                Err(m) => {
+                    return Response::new()
+                        .status(STATUS_500)
+                        .send_contents(m.to_string().into())
+                        .build();
+                }
+            };
+
+            Response::new()
+                .status(STATUS_200)
+                .send_contents(cb_val.to_string().into())
+        },
         "GET /roomSchd/timestamps HTTP/1.1" => { // Returns 25Live Report Dates
             let timestamps = database.get_data("report_timestamps").unwrap_or( DB_DataElement {key:"report_timestamps".to_string(),val:"[\"Timestamp Not Found\"]".to_string()}).val;
             debug!("Fetched Timestamps:\n {:?}", &timestamps);
             let contents = json!({
                 "timestamps": timestamps
-            }).to_string().into();
-            Response::new()
-                    .status(STATUS_200)
-                    .send_contents(contents)
-        },
-        "GET /aliasTable HTTP/1.1" => {
-            let alias_table = database.get_data("alias_table")
-                .unwrap_or(DB_DataElement {
-                    key: "alias_table".to_string(),
-                    val: "Alias Table has not been updated".to_string()
-                })
-                .val;
-            let contents = json!({
-                "response": alias_table
             }).to_string().into();
             Response::new()
                     .status(STATUS_200)
@@ -1481,110 +1569,6 @@ async fn handle_connection(
                 Response::new()
                         .status(STATUS_500)
                         .send_contents("Task Not Found".into())
-            }
-        },
-        "POST /setAliasTable HTTP/1.1" => {
-            let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-            // Parse Request Body
-            let alias_rooms = body_json["rooms"]
-                .as_array()
-                .unwrap();
-            //  Iterate through the rooms and find hostname exceptions,
-            for alias_record in alias_rooms.iter() {
-                debug!("[Alias] - Record \n {}", alias_record);
-                let hostname_exception = alias_record.get("hostnameException")
-                    .unwrap()
-                    .to_string()
-                    .replace("\"","");
-                let room_name = alias_record.get("name")
-                    .unwrap()
-                    .to_string()
-                    .replace("\"","");
-                if hostname_exception != "" {
-                    debug!("[Alias] - Hostname Exception: \n {} at {}", hostname_exception, room_name);
-                    let mut room : DB_Room = match database.get_room_by_name(&room_name) {
-                        Ok(r)  => r,
-                        Err(m) => {
-                            error!("DB_ERR: {}", m);
-                            return Response::new()
-                                    .status(STATUS_500)
-                                    .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
-                                    .build();
-                        }
-                    };
-                    let mut pd = room.ping_data.clone();
-                    for ping_record in &mut pd {
-                        ping_record
-                            .as_mut()
-                            .unwrap()
-                            .hostname.room = room_name.clone();
-                    }
-                    room.ping_data = pd;
-                    let _ = database.update_room(&room);
-                }
-            }
-            // Save Alias Table to database as dataElement
-            let alias_table = DB_DataElement {
-                key: "alias_table".to_string(),
-                val: String::from_utf8(req.body).expect("Unable to parse body contents")
-            };
-            let _ = database.update_data(&alias_table);
-
-            Response::new()
-                    .status(STATUS_200)
-                    .send_contents("Database Alias Table Updated".into())
-        },
-        "POST /resetAlias HTTP/1.1" => {
-            let body_json : Value = serde_json::from_str(std::str::from_utf8(&req.body).unwrap()).expect("Failed Parsing JSON");
-            // Get List of Rooms from body_json
-            let target_rooms = body_json["rooms"]
-                .as_array()
-                .unwrap();
-            // Change ping_data.hostname.room to original name
-            for room in target_rooms.iter() {
-                let mut room = match database.get_room_by_name(&room.to_string().replace("\"","")) {
-                    Ok(r)  => r,
-                    Err(m) => {
-                        error!("DB_ERR: {}", m);
-                        return Response::new()
-                                .status(STATUS_500)
-                                .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
-                                .build();
-                    }
-                };
-                let room_name = room.name.clone();
-                let mut pd = room.ping_data.clone();
-                for ping_record in &mut pd {
-                    ping_record
-                        .as_mut()
-                        .unwrap()
-                        .hostname.room = room_name.clone();
-                }
-                room.ping_data = pd;
-                let _ = database.update_room(&room);
-            }
-            debug!("[Alias] - Reverting Alias Change for target_rooms, {:?}", &target_rooms);
-
-            Response::new()
-                    .status(STATUS_200)
-                    .send_contents("Reset Requested Rooms".into())
-        },
-        // Terminal
-        // --------------------------------------------------------------------
-        "POST /terminal HTTP/1.1" => {
-            match Terminal::execute(&req) {
-                Ok(resp) => {
-                    resp
-                },
-                Err(e) => {
-                    Response::new()
-                            .status(STATUS_500)
-                            .send_contents(
-                                json!(
-                                    {"response": format!("Internal error: {:?}", e)}
-                                ).to_string().into()
-                            )
-                }
             }
         },
         // --------------------------------------------------------------------
@@ -1700,7 +1684,7 @@ async fn handle_connection(
                     error!("DB_ERR: {}", m);
                     return Response::new()
                             .status(STATUS_500)
-                            .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                            .send_contents(format!("An internal error occurred. Please contact a system administrator.\n{}", m).into())
                             .build();
                 }
             };
@@ -1710,7 +1694,7 @@ async fn handle_connection(
                     error!("DB_ERR: {}", m);
                     return Response::new()
                             .status(STATUS_500)
-                            .send_contents(format!("An internal error occured. Please contact a system administrator.\n{}", m).into())
+                            .send_contents(format!("An internal error occurred. Please contact a system administrator.\n{}", m).into())
                             .build();
                 }
             };
@@ -1757,7 +1741,7 @@ async fn handle_connection(
                 .send_contents(contents)
         },
         "POST /cfm_file HTTP/1.1" => {
-            let contents = get_file(req.body, CFM_DIR);
+            let contents = get_file_path(req.body, CFM_DIR);
             let mut f = match File::open(&contents) {
                 Ok(file) => file,
                 Err(e) => {
@@ -1801,7 +1785,7 @@ async fn handle_connection(
         },
 
         "POST /w_file HTTP/1.1" => {
-            let contents = get_file(req.body, WIKI_DIR);
+            let contents = get_file_path(req.body, WIKI_DIR);
             let mut f = match File::open(&contents) {
                 Ok(file) => file,
                 Err(e) => {
@@ -1837,12 +1821,12 @@ async fn handle_connection(
                 parent_path: String, 
                 fileblob: String, //base64
             }
-            //req.body was comming in as &Vec<u8>
+            //req.body was coming in as &Vec<u8>
 
             let body_to_string = match String::from_utf8(req.body.clone()) {
                  Ok(s) => s,
                 Err(e) => {
-                     error!("Invalid UTF-8 recived: {}", e);
+                     error!("Invalid UTF-8 received: {}", e);
                     return Response::new()
                          .status(STATUS_400)
                          .send_contents(format!("Invalid UTF-8: {}", e).into())
@@ -1854,7 +1838,7 @@ async fn handle_connection(
             let file_obj: UploadFile = match serde_json::from_str(&body_to_string){
                 Ok(obj) => obj,
                 Err(e) => {
-                    error!("Invalid JSON recived: {}", e);
+                    error!("Invalid JSON received: {}", e);
                     return Response::new()
                     .status(STATUS_400)
                     .insert_header("Content-Type", "application/json")
@@ -1914,12 +1898,12 @@ async fn handle_connection(
                 filename: String, 
                 parent_path: String, 
             }
-            //req.body was comming in as &Vec<u8>
+            //req.body was coming in as &Vec<u8>
 
             let body_to_string = match String::from_utf8(req.body.clone()) {
                  Ok(s) => s,
                 Err(e) => {
-                     error!("Invalid UTF-8 recived: {}", e);
+                     error!("Invalid UTF-8 received: {}", e);
                     return Response::new()
                          .status(STATUS_400)
                          .send_contents(format!("Invalid UTF-8: {}", e).into())
@@ -1931,7 +1915,7 @@ async fn handle_connection(
             let folder_obj: UploadDir = match serde_json::from_str(&body_to_string){
                 Ok(obj) => obj,
                 Err(e) => {
-                    error!("Invalid JSON recived: {}", e);
+                    error!("Invalid JSON received: {}", e);
                     return Response::new()
                     .status(STATUS_400)
                     .insert_header("Content-Type", "application/json")
@@ -1975,7 +1959,7 @@ async fn handle_connection(
               let body_to_string = match String::from_utf8(req.body.clone()) {
                  Ok(s) => s,
                 Err(e) => {
-                     error!("Invalid UTF-8 recived: {}", e);
+                     error!("Invalid UTF-8 received: {}", e);
                     return Response::new()
                          .status(STATUS_400)
                          .send_contents(format!("Invalid UTF-8: {}", e).into())
@@ -1987,7 +1971,7 @@ async fn handle_connection(
             let received_path: FilePath = match serde_json::from_str(&body_to_string.clone()){
                 Ok(obj) => obj,
                 Err(e) => {
-                    error!("Invalid JSON recived: {}", e);
+                    error!("Invalid JSON received: {}", e);
                     return Response::new()
                     .status(STATUS_400)
                     .insert_header("Content-Type", "application/json")
@@ -2114,7 +2098,28 @@ async fn handle_connection(
     
     return res.build();
 }
-
+//rustdoc 
+/// Function pulls leaderboard information from LSM APIs and updates the Bronson database. 
+/// ### Parameters 
+/// * database - function requires [`Database`] (struct) to provide context of the Bronson database. 
+/// * req - [`API`] provides information to the function of the request that was made 
+/// ### Returns 
+/// * Void 
+/// ### Example 
+/// ``` no_run 
+/// for task_name in due_tasks {
+/// // Execute task based on task_name
+///         match task_name.as_str() {
+///         // other tasks names to match on
+///         // ... => {}
+///         "leaderboard"     => {
+///             info!("[Data] - Pulling New LSM Leaderboard");
+///             update_room_check_leaderboard(&mut database, &lsm_api).await;
+///             info!("[Data] - New LSM Leaderboard Pulled")
+///       },
+///     }
+///   }
+/// ```
 async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
     let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
     let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
@@ -2207,6 +2212,30 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
     });
 }
 
+// rustdoc 
+/// Function fetches an LSM endpoint that fetches the location of our spare PCs and updates the database 
+/// ### Parameters 
+/// * database - function requires [`Database`] (struct) to provide context of the Bronson database. 
+/// * req - [`API`] provides information to the function of the request that was made 
+/// ### Returns 
+/// * Void 
+/// ### Example 
+///  call in [`data_sync`]
+/// ``` no_run 
+///  for task_name in due_tasks {
+/// // Execute task based on task_name
+///         match task_name.as_str() {
+///         // other tasks names to match on
+///         // ... => {}
+///         "spares"          => {
+///             info!("[Data] - Pulling New LSM Spare Information");
+///             update_lsm_spares(&mut database, &lsm_api).await; 
+///             info!("[Data] - New LSM Spare Information Pulled")
+///         },
+///
+///     }
+/// }
+/// ```
 async fn update_lsm_spares(database: &mut Database, req: &API) {
     let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
 
@@ -2282,48 +2311,7 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
     // Iterate over each.
     for building in buildings {
         debug!("[Checkerboard] - Processing Building: {:?}", building.1.abbrev);
-        let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last90days%22%2CParentLocation%3A%22{}%22%7D", building.1.lsm_name.as_str());
-        // Get Alias Table, to swap incoming room_names from LSM with
-        //   Bronson friendly naming. We filter Alias Table to only contain
-        //   rooms that are relevant to current LSM request.
-        let alias_table : DB_DataElement = match database.get_data("alias_table") {
-            Ok(at) => at,
-            Err(m)     => {
-                error!("DB_ERR: {}", m);
-                DB_DataElement { 
-                    key: String::from("alias_table"),
-                    val: String::from("{\"buildings\": [], \"rooms\": []}") 
-                }
-            }
-        };
-        
-        let alias_obj: Value = serde_json::from_str(&alias_table.val)
-            .expect("Unable to Parse Alias Table Contents.");
-        let alias_rooms = alias_obj.get("rooms").unwrap();
-        //
-        let mut alias_vec: Vec<(String, String)> = Vec::new();
-        if let Some(arr) = alias_rooms.as_array() {
-            for item in arr {
-                let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
-                if alias_name.contains(&building.1.abbrev.as_str()) {
-                    debug!("[Checkerboard] Relevant Alias Found");
-                    let alias_lsm = item.get("lsmName").unwrap().as_str().unwrap().to_string();
-                    alias_vec.push((alias_name, alias_lsm));
-                }
-            }
-        }
-        // Alias Building
-        let alias_buildings = alias_obj.get("buildings").unwrap();
-        let mut alias_abbrev : (String, String) = ("NOTSET".to_string(),"NOTSET".to_string());
-        if let Some(arr) = alias_buildings.as_array() {
-            for item in arr {
-                let alias_name = item.get("name").unwrap().as_str().unwrap().to_string();
-                if alias_name == building.1.abbrev.as_str() {
-                    alias_abbrev.0 = item.get("lsmName").unwrap().as_str().unwrap().to_string();
-                    alias_abbrev.1 = item.get("name").unwrap().as_str().unwrap().to_string();
-                }
-            }
-        }
+        let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last90days%22%2CParentLocation%3A%22{}%22%7D", encode(building.1.lsm_name.as_str()));
         // Process Request to LSM
         let body = match req
             .build()
@@ -2363,26 +2351,7 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
             };
             
             for i in 0..num_entries {
-                let mut check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
-                // Look to see if check["LocationName"] is in the alias_obj, replace it if so.
-                for tuple in &alias_vec {
-                    if tuple.1 == check["LocationName"].as_str().unwrap() {
-                        debug!("[Checkerboard Alias] Room - {:?} to be replaced with {:?}", check["LocationName"].as_str().unwrap(), tuple.0);
-                        check["LocationName"] = serde_json::Value::String(tuple.0.clone());
-                    }
-                }
-                
-                // Replace Abbrevition if exists
-                if alias_abbrev.0 != "NOTSET" {
-                    // check["LocationName"]
-                    debug!("[Checkerboard Alias] Building - {:?} to be replaced with {:?}", alias_abbrev.0, alias_abbrev.1);
-                    check["LocationName"] = serde_json::Value::String(
-                        check["LocationName"]
-                            .as_str()
-                            .unwrap()
-                            .replace(&alias_abbrev.0, &alias_abbrev.1)
-                    );
-                }
+                let check: serde_json::Map<std::string::String, Value> = checks[i as usize].as_object().unwrap().clone();
               
                 // Only insert if this is the first entry or if the new timestamp is more recent
                 let location_name = String::from(check["LocationName"].as_str().unwrap());
@@ -2586,6 +2555,18 @@ $$ |  $$ |$$  __$$ |$$ |      $$  _$$<  $$ |\$$$ |$$   ____| $$ |$$\
 
 */
 
+//rustdoc 
+/// Function fetches all of the rooms in a building requested.  
+/// ### Parameters 
+/// * `tmp` - String containing the request body. 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// ### Returns 
+/// * A byte vector of stringified json containing the rooms in the building. 
+/// ### Example 
+/// call in [`handle_connection`]
+/// ``` no_run
+/// let contents = ping_response(String::from_utf8(req.body).expect("Err, invalid UTF-8"), database);
+/// ```
 fn ping_response(tmp: String, mut database: Database) -> Vec<u8> {
     let pr: PingRequest = serde_json::from_str(&tmp)
         .expect("Fatal Error: Unable to parse ping request");
@@ -2613,7 +2594,26 @@ NOTE: CAMPUS_CSV -> "html-css-js/campus.csv"
       CAMPUS_STR -> "html-css-js/campus.json"
 */
 
-// call ping_this executible here
+// call ping_this executable here
+
+//rustdoc 
+/// Function grabs and iterates through rooms calling [`ping_room`] 
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// ### Returns 
+/// * Void
+/// ### Example 
+/// 
+/// ``` no_run
+///  if jn_st {
+///         let mut db_jn_clone = database.clone();
+///         jn_thread.execute( move || async {
+///             execute_ping(&mut db_jn_clone).await;
+///         }.now_or_never().unwrap());
+///         } else {
+///             execute_ping(&mut database).await;
+///        }
+/// ```
 async fn execute_ping(database: &mut Database) {
     let buildings: HashMap<String, DB_Building> = match database.get_buildings() {
         Ok(bs) => bs,
@@ -2645,6 +2645,15 @@ async fn execute_ping(database: &mut Database) {
     }
 }
 
+// rustdoc 
+/// Function sends ICMP pings room devices and returns their IP addresses if found. 
+/// 
+/// ### Parameters 
+/// * `net_elements` - vector of [`DB_IpAddress`] information needed for pings grabbed from the database. 
+/// ### Returns 
+/// * `pinged_hns` - vector of [`DB_IpAddress`] containing the hostnames of devices that ponged back. 
+/// call in [`execute_ping`]
+/// 
 fn ping_room(net_elements: Vec<Option<DB_IpAddress>>) -> Vec<Option<DB_IpAddress>> {
     let mut pinged_hns: Vec<Option<DB_IpAddress>> = Vec::new();
 
@@ -2703,6 +2712,7 @@ $$ |  $$\ $$ |  $$ |$$  _$$<  $$ |      $$ |  $$ |$$ |      $$ |  $$ |
  \______/ \__|  \__|\__|  \__|\__|      \_______/ \__|       \_______|
 */
 
+
 fn construct_headers(call_type: &str) -> Result<HeaderMap, String> {
     let k_json = match env::var("KEYS_JSON") {
         Ok(k)  => String::from(k),
@@ -2733,70 +2743,6 @@ fn construct_headers(call_type: &str) -> Result<HeaderMap, String> {
     return Ok(header_map);
 }
 
-/* fn check_schedule(room: &DB_Room) -> (bool, String) {
-    let mut available: bool = true;
-    let mut until: String = String::from("TOMORROW");
-
-    let now = Local::now();
-    let day_of_week = match now.date_naive().weekday() {
-        Weekday::Mon => "M",
-        Weekday::Tue => "T",
-        Weekday::Wed => "W",
-        Weekday::Thu => "R",
-        Weekday::Fri => "F",
-        _            => "?",
-    };
-    let now_str = now.to_string();
-    let time_filter = Regex::new(r"(?<hours>[0-9]{2}):(?<minutes>[0-9]{2})").unwrap();
-    let time = time_filter.captures(&now_str).unwrap();
-
-    let hours: u16 = match time["hours"].parse() {
-        Ok(h) => h,
-        Err(e) => {
-            error!("Unable to parse schedule hours: {}\nDefaulting to 0.", e);
-            0
-        }
-    };
-    let minutes: u16 = match time["minutes"].parse() {
-        Ok(m) => m,
-        Err(e) => {
-            error!("Unable to parse schedule minutes: {}\nDefaulting to 0.", e);
-            0
-        }
-    };
-    let adjusted_time: u16 = (hours * 100) + minutes;
-    
-    for block in &room.schedule {
-        let block_vec: Vec<&str> = block.as_ref().unwrap().split(&[' ', '-']).collect::<Vec<_>>().to_vec();
-        let adjusted_start: u16 = match block_vec[1].parse() {
-            Ok(t) => t,
-            Err(e) => {
-                error!("Unable to parse schedule start time: {}", e);
-                0
-            }
-        };
-        let adjusted_end: u16 = match block_vec[2].parse() {
-            Ok(t) => t,
-            Err(e) => {
-                error!("Unable to parse schedule end time: {}", e);
-                0
-            }
-        };
-        if block_vec[0].contains(day_of_week) {
-            if adjusted_time < adjusted_start {
-                available = true;
-                until = pad_zero((adjusted_start % 100).to_string(), 4);
-                return (available, until);
-            } else if (adjusted_start <= adjusted_time) && (adjusted_time <= adjusted_end) {
-                available = false;
-                until = pad_zero((adjusted_end).to_string(), 4);
-                return (available, until);
-            }
-        }
-    }
-
-    return (available, until);
-} */
 
 fn check_period_to_delta(period: i16) -> TimeDelta {
     match period {
@@ -2834,14 +2780,34 @@ _|        _|        _|      _|
                '                       
 */
 
+// rustdoc
+/// Function queries the file system to check if the directory exists
+/// * Returns a boolean   
+/// 
+/// Example call in [`w_build_articles`]
 fn dir_exists(path: &str) -> bool {
     return metadata(path).is_ok();
 }
 
+// rustdoc
+/// Function queries the file system to check if the path leads to a directory.  
+/// * Returns a boolean
+/// 
+/// Example call in [`build_subtree`]
 fn is_this_dir(path: &str) -> bool {
     return metadata(path).unwrap().is_dir();
 }
 
+// rustdoc 
+/// Function iterates over the entries in a directory and returns the paths 
+/// ### Returns 
+/// * A vector containing the string representation of the paths contained in the given directory. 
+/// * Note: function is non-recursive so providing a directory of directories will only retrieve the first layer. 
+/// ### Example
+/// call in [`build_tree`]
+/// ``` no_run
+///  let dirs = get_dir_contents(ex_path);
+/// ```
 fn get_dir_contents(path: &str) -> Vec<String> {
     let mut strings = Vec::new();
     let paths = match read_dir(&path) {
@@ -2870,7 +2836,27 @@ fn get_dir_contents(path: &str) -> Vec<String> {
   _/                
 */
 
-// build_tree() - build virtual tree of files and directories and store in database as JSON
+// rustdoc
+///  Entry function for the building (via DFS) of a virtual tree of files and directories as JSON.
+/// ## Parameters 
+/// * `root` -  The path to the root directory.
+/// * `blacklist` - collection of excluded file types. 
+/// ## Returns 
+/// * Result<String, String> 
+///    - The Ok variant field is the json string 
+///    - The Err variant field is an error message.
+/// ## Example 
+/// call in [`w_tree`]
+/// ```no_run
+///
+///  let json_return = match build_tree(WIKI_DIR, _wiki_blacklist) {
+///     Ok(j)     =>  j,
+///     Err(m)    => {error!("[Data] - Tree Build FAILED: {}", m); json!([]).to_string() }
+/// };
+/// 
+/// ```
+/// * Where `EXAMPLE_DIR` is a directory path stored in a macro
+/// * And `ex_blacklist` is a hashset containing excluded file extensions.
 fn build_tree(root: &str, blacklist: HashSet<&str>) -> Result<String, String> {
     let mut tree_root: TreeNode = TreeNode::with_name_path("Root", "./");
 
@@ -2894,12 +2880,18 @@ fn build_tree(root: &str, blacklist: HashSet<&str>) -> Result<String, String> {
         "tree": tree_root
     });
 
-    info!("[Data] - CFM Tree Build Complete");
-
     Ok(json_return.to_string())
 }
 
-
+// rustdoc
+/// Function to recursively build a json subtree from the node passed to it by [`build_tree`].
+/// ### Parameters
+/// * `path` - The relative path passed
+/// * `root` -  The path to the root directory.
+/// * `blacklist` - Collection of excluded file types.
+/// ### Return 
+/// * A [`TreeNode`] (struct) containing filename, filepath, and children. 
+/// Called by [`build_tree`]
 fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
     use std::path::Path;
 
@@ -2944,19 +2936,33 @@ fn build_subtree(path: &str, root: &str, blacklist: HashSet<&str>) -> TreeNode {
 }
 
 
-// get_file() - sends the selected file to the client
+// get_file_path() - sends the selected file to the client
 // TODO:
 //    [ ] - store selected file as bytes ?
 //    [ ] - send in json as usual ?
-fn get_file(body: Vec<u8>, root: &str) -> String {
+
+
+// rustdoc 
+/// Function retrieves the absolute file path. 
+/// ### Parameters 
+/// * `body` - The request body
+/// * `root` - The directory to extract the path from. 
+/// ### Returns 
+/// A string containing the raw file path.
+/// ### Example 
+/// call in [`handle_connection`]
+/// ``` no_run
+/// let contents = get_file_path_path(req.body, EX_DIR);
+/// ```
+fn get_file_path(body: Vec<u8>, root: &str) -> String {
     let tmp = String::from_utf8(body).expect("Err, invalid UTF-8");
     //
-    let cfmr_f: CFMRequestFile = serde_json::from_str(&tmp)
+    let r_f: RequestFile = serde_json::from_str(&tmp)
         .expect("Err, Failed to grab file");
-    let filename = cfmr_f
+    let filename = r_f
         .filename
         .strip_prefix("Root/")
-        .unwrap_or(&cfmr_f.filename);
+        .unwrap_or(&r_f.filename);
 
     let mut path_raw = String::from(root);
     path_raw.push('/');
@@ -2976,6 +2982,23 @@ $$$$$$$$\ $$\           $$\
    $$ |   $$ |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$  /\$$\ 
    \__|   \__| \_______|\__|  \__| \_______|\__/  \__|
 */
+
+//rustdoc 
+
+/// Functions fetches authentication token (Bearer token) for use in TeamDynamix API endpoints. 
+/// The retrieved token is stored in the Bronson Database. 
+/// ### Parameters 
+/// * database - function requires [`Database`] (struct) to provide context of the Bronson database. 
+/// * req - [`API`] provides information to the function of the request that was made 
+/// ### Returns 
+/// - Result Ok - Token was successfully stored in the database.
+/// - String  - An error occurred.
+/// ### Example 
+/// call in [`data_sync`]
+/// ``` no_run
+///  let _ = fetch_tdx_token(database, req).await;
+/// ```
+/// Note: Token has a lifespan of 24hrs 
 
 async fn fetch_tdx_token(database: &mut Database, req: &API) -> Result<(), String> {
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/auth/login";
@@ -3031,6 +3054,20 @@ async fn fetch_tdx_token(database: &mut Database, req: &API) -> Result<(), Strin
     Ok(())
 }
 
+// rustdoc
+/// Function fetches new authentication token (Bearer token) when TeamDynamix responds with "Unauthorized".
+/// ### Parameters
+/// * database - function requires [`Database`] (struct) to provide context of the Bronson database. 
+/// * req - [`API`] provides information to the function of the request that was made 
+/// * method - String Reference containing the API method. 
+/// * url - String Reference containing the TDX API url. 
+/// * request_body - the response body as JSON if required. 
+/// ### Returns 
+/// * [`APIResponse`] (struct)
+///
+///  Called in most tdx functions if response received "Unauthorized".
+/// one example call in [`get_tdx_user`]
+
 async fn retry_tdx_token(database: &mut Database, req: &API, method: &str, url: &str, request_body: Option<serde_json::Value>) -> Result<APIResponse, String> {
     warn!("Unauthorized Response from TDX while performing action, trying again with new Token...");
 
@@ -3069,6 +3106,25 @@ async fn retry_tdx_token(database: &mut Database, req: &API, method: &str, url: 
     warn!("Successfully recovered new TDX Token & fetched new description data");
     Ok(retry_resp)
 }
+
+
+//rustdoc
+/// Function first checks the database, if database comes back empty all tickets will be grabbed. Otherwise function call sinks ticket data up to the past six-months. 
+///  ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database. 
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made 
+/// ### Returns 
+/// * Result Ok - Tickex run was successful.
+/// * String  - An error occurred.
+/// ### Example 
+///  call in [`data_sync`]
+/// ``` no_run
+///  let _ = match run_tickex(&mut database, &tdx_api).await {
+///         Ok(_)     =>  info!("[Data] - Tickex Run Complete"),
+///         Err(m)    => error!("[Data] - Tickex Run FAILED: {}", m)
+///        };
+/// ```
+/// Note: Function is called every minute to keep database up to date with TDX. 
 
 async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/search";
@@ -3193,6 +3249,31 @@ async fn run_tickex(database: &mut Database, req: &API) -> Result<(), String> {
     Ok(())
 }
 
+// rustdoc 
+/// Function formats ticket information from TDX to be stored in the Bronson database. 
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database. 
+/// * `ticket_json` - JSON representation of the ticket to be serialized 
+/// ### Returns 
+/// * [`DB_Ticket`] - Upon success the function returns a new [`DB_Ticket`] object
+/// * String - Upon error a string error message is provided. 
+/// 
+/// Note: Function is called when tickets are edited or added to the Bronson database. 
+/// ### Example 
+///call in [`run_tickex`]
+/// ``` no_run
+/// for ticket_val in &tickets_json {
+///     match serialize_ticket(database, ticket_val.clone()) {
+///         Ok(ticket) => {
+///             if let Err(e) = database.update_ticket(&ticket) {
+///                  error!("Failed to insert/update ticket {}: {}", ticket.ticket_id, e);
+///                 }
+///             }
+///             Err(e) => error!("Failed to process ticket: {}", e)
+///         }
+///     }
+/// ```
+
 fn serialize_ticket(database: &mut Database, ticket_json: serde_json::Value) -> Result<DB_Ticket, String> {
     let id = ticket_json["ID"].as_i64().unwrap_or(0) as i32;
 
@@ -3241,6 +3322,25 @@ fn serialize_ticket(database: &mut Database, ticket_json: serde_json::Value) -> 
     })
 }
 
+
+// rustdoc 
+/// Function returns the description of tickets from TDX 
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made.
+/// * `ticket_id` - the identifier for the ticket requiring it's description grabbed. 
+/// ### Returns 
+/// * String - Upon success a String containing the ticket `description` is returned. 
+/// * String - Upon error a string error message is provided. 
+/// ### Example 
+/// call in [`handle_connection`]
+/// ``` no_run
+/// let result = tokio::task::block_in_place(|| {
+///     tokio::runtime::Handle::current().block_on(
+///         fetch_tdx_ticket_description(&mut database, &tdx_client, ticket_id)
+///     )
+///    });
+/// ```
 async fn fetch_tdx_ticket_description(database: &mut Database, req: &API, ticket_id: i32) -> Result<String, String> {
     // Construct the API URL to fetch ticket details
     let url = format!(
@@ -3284,6 +3384,27 @@ async fn fetch_tdx_ticket_description(database: &mut Database, req: &API, ticket
 
     Ok(description)
 }
+
+// rustdoc 
+/// Function fetches and formats ticket feed (comments) from TDX to display in Tickex
+/// ### Parameters  
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made.
+/// * `ticket_id` - the identifier for the ticket requiring it's description grabbed. 
+/// ### Returns
+/// * String - Upon success a String containing the formatted `output_json` is returned 
+/// * String - Upon error a string error message is provided. 
+/// ### Example
+/// call in [`handle_connection`]
+/// ``` no_run
+/// let result = tokio::task::block_in_place(|| {
+///     tokio::runtime::Handle::current().block_on(
+///         fetch_tdx_ticket_feed(&mut database, &tdx_client, ticket_id)
+///     )
+/// });
+
+/// ```
+
 
 async fn fetch_tdx_ticket_feed(database: &mut Database, req: &API, ticket_id: i32) -> Result<String, String> {
     // Construct the API URL to fetch ticket details
@@ -3373,6 +3494,30 @@ async fn fetch_tdx_ticket_feed(database: &mut Database, req: &API, ticket_id: i3
     Ok(output_json)
 }
 
+// rustdoc 
+/// Function fetches and formats ticket replies to comments from TDX to display in Tickex
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made.
+/// * `feed_id` - the ID to an individual comment
+/// ### Returns 
+/// * Three vectors (where each index contains the following)
+///     - `created_by` person who posted the reply.
+///     - `replies_body`  the contents of the reply.
+///     - `created_date` the date the reply was made.
+/// ### Example 
+/// called by [`fetch_tdx_ticket_feed`]
+/// ``` no_run
+///   let replies: (Vec<String>, Vec<String>, Vec<String>) = if replies_count > 0 {
+///     fetch_tdx_feed_replies(
+///         database, req, entry.get("ID").and_then(|v| v.as_i64()).unwrap_or(0)
+///     ).await.map_err(|e| format!("Failed to read response: {}", e))?
+///    } else {
+///      (Vec::new(), Vec::new(), Vec::new())
+///    };
+/// 
+/// ```
+
 async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64) -> Result<(Vec<String>, Vec<String>, Vec<String>), String> {
     // Construct the API URL to fetch feed replies
     let url = format!(
@@ -3436,6 +3581,29 @@ async fn fetch_tdx_feed_replies(database: &mut Database, req: &API, feed_id: i64
     Ok((created_by, replies_body, created_date))
 }
 
+// rustdoc
+/// Function marks ticket as false by assigning parent id to the global false id.
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made.
+/// * `body_json` - provides ticket information stored as JSON. 
+/// ### Returns 
+/// * Upon success - ()
+/// * Upon error - String containing error message.
+/// ### Example 
+///call in [`handle_connection`]
+/// ``` no_run 
+///  let _ = match toggle_mark_ticket_false(&mut database, &tdx_client, body_json).await {
+///     Ok(v) => v,
+///     Err(e) => {
+///           error!("Failed to mark Ticket as false: {}", e);   
+///           return Response::new()
+///                 .status(STATUS_500)
+///                 .send_contents("[]".into())
+///                 .build();
+///                 }
+///             };
+/// ```
 async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_json: Value) -> Result<(), String> {
     let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
     info!("[Data] - Marking Ticket as False/True (Ticket ID: {})", id);
@@ -3494,6 +3662,24 @@ async fn toggle_mark_ticket_false(database: &mut Database, req: &API, mut body_j
     Ok(())
 }
 
+
+// rustdoc 
+/// Function marks all ticket notifications as viewed. 
+/// ### Parameters 
+///  * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// ### Returns
+/// * Upon success - The log provides the number of dismissed tickets. 
+/// * Upon failure - Result Err is returned as a String and the log provides an error message.
+/// ### Example 
+/// call in [`handle_connection`]
+/// ``` no_run
+///  let _ = match dismiss_all_tickets(&mut database).await {
+///        Ok(v) => v,
+///        Err(e) => {
+///           error!("Failed to dismiss all tickets: {}", e);
+///        }
+///     };
+/// ```
 async fn dismiss_all_tickets(database: &mut Database) -> Result<(), String> {
     info!("[Data] - Dismissing all tickets notifications");
 
@@ -3508,6 +3694,23 @@ async fn dismiss_all_tickets(database: &mut Database) -> Result<(), String> {
         }
     }
 }
+
+//rustdoc 
+/// Function to create a new TDX ticket. 
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made.
+/// * `body_json` - provides ticket operation type information stored as JSON. 
+/// * `username`- current user as a String.
+/// ### Returns 
+/// * Upon success - ()
+/// * Upon failure - Returns Error with String description of the associating error. 
+/// ### Example 
+///call in [`handle_connection`]
+/// ``` no_run
+/// let _ = create_tdx_ticket(&mut database, &tdx_client, body_json, req.get_current_username()).await,
+/// 
+/// ```
 
 async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Value, username: String) -> Result<(), String> {
     info!("[Data] - Sending Create Ticket Request to TDX");
@@ -3547,7 +3750,7 @@ async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Va
     let tdx_uid = get_tdx_user(database, req, &username).await?;
     ticket_json["RequestorUid"] = tdx_uid["UID"].clone();
     
-    // Send ticket content and recieve the new ticket JSON as a verification response
+    // Send ticket content and receive the new ticket JSON as a verification response
     let mut new_ticket_resp = match req
         .build()
         .method("POST")
@@ -3582,6 +3785,24 @@ async fn create_tdx_ticket(database: &mut Database, req: &API, mut body_json: Va
 
     Ok(())
 }
+
+//rustdoc 
+/// Function to edit an existing TDX ticket. 
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made.
+/// * `body_json` - provides ticket operation type information stored as JSON. 
+
+/// ### Returns 
+/// * Upon success - ()
+/// * Upon failure - Returns Error with String description of the associating error. 
+/// ### Example
+/// call in [`handle_connection`] 
+/// ``` no_run
+/// let _ = edit_tdx_ticket(&mut database, &tdx_client, body_json) 
+/// 
+/// ```
+
 
 async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -> Result<(), String> {
     let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
@@ -3636,7 +3857,7 @@ async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -
         revised_ticket["ResponsibleUid"] = Value::String(uid.into());
     }
 
-    // Send updated ticket content and recieve the new ticket JSON as a verification response
+    // Send updated ticket content and receive the new ticket JSON as a verification response
     let mut new_ticket_resp = match req
         .build()
         .method("POST")
@@ -3680,6 +3901,26 @@ async fn edit_tdx_ticket(database: &mut Database, req: &API, body_json: Value) -
     info!("[Data] - Edit Ticket Request was Successful (Ticket ID: {})", id);
     Ok(())
 }
+
+// rustdoc
+/// Function to post a comment to an existing TDX ticket. 
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made.
+/// * `body_json` - provides request body information stored as JSON. 
+/// ### Returns 
+/// * Upon success - ()
+/// * Upon failure - Returns Error with String description of the associating error. 
+/// ### Example 
+/// call in [`handle_connection`]
+/// ``` no_rust 
+///   let _ = match post_comment(&mut database, &tdx_client, body_json).await {
+///       Ok(v) => v,
+///       Err(e) => {
+///           error!("Failed to post comment: {}", e);
+///       }
+///     };
+/// ```
 
 async fn post_comment(database: &mut Database, req: &API, body_json: Value) -> Result<(), String> {
     let id = body_json["ID"].as_i64().unwrap_or(-1) as i32;
@@ -3732,6 +3973,24 @@ async fn post_comment(database: &mut Database, req: &API, body_json: Value) -> R
     Ok(())
 }
 
+// rustdoc 
+/// Function grabs the status id to provide context when creating, and editing ticket statuses. 
+/// ### Parameters 
+///  * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+///  * `req` - [`API`] (struct) provides information to the function of the request that was made.
+///  * `status_name` - String containing the name of the status for which the id is needed. 
+/// ### Returns 
+/// * Upon Success - Returns the status id as an i32. 
+/// * Upon  Error - Returns Error with String description of the associating error. 
+/// ### Examples 
+/// call in [`edit_tdx_ticket`]
+/// ``` no_run
+///
+///     let status_id = match fetch_status_id(database, &req, status).await {
+///         Ok(v) => v,
+///         Err(e) => return Err(format!("Failed to fetch StatusID from TDX: {}", e))
+///     };
+/// ``` 
 async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) -> Result<i32, String> {
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/216/tickets/statuses/search";
 
@@ -3787,6 +4046,26 @@ async fn fetch_status_id(database: &mut Database, req: &API, status_name: &str) 
     Err(format!("Could not find StatusID for status '{}'", status_name))
 }
 
+// rustdoc 
+/// Function to grab user from TDX including UID and Display Name. 
+/// ### Parameters 
+///  * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+///  * `req` - [`API`] (struct) provides information to the function of the request that was made.
+///  * `username` - string reference with the username logged into Bronson.
+/// ### Returns 
+/// * Upon Success - A Value with a JSON object containing the fetched UID and the full name associated with the ID. 
+/// * Upon Failure - Returns Error with String description of the associating error. 
+/// ### Example
+/// call in [`handle_connection`]
+/// ``` no_run
+/// let username = req.get_current_username();
+/// let user = match get_tdx_user(&mut database, &tdx_client, &username.to_string()).await {
+///     Ok(u) => u,
+///     Err(_) => { ... }
+///    };
+/// 
+/// ```
+/// 
 async fn get_tdx_user(database: &mut Database, req: &API, username: &str) -> Result<Value, String> {
     let url = format!("https://uwyo.teamdynamix.com/TDWebApi/api/people/getuid/{}{}", username, "@uwyo.edu");
 
@@ -3882,7 +4161,22 @@ $$ |  $$ |$$ |  $$ |\$$$$$$$ |$$ |\$$$$$$$ |  \$$$$  |$$ |\$$$$$$$\ $$$$$$$  |
                                   \$$$$$$  |                                  
                                    \______/                                   
 */
-
+// rustdoc 
+/// Function grabs projects from TDX and stores them in the database. 
+/// ### Parameters 
+/// * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+/// * `req` - [`API`] (struct) provides information to the function of the request that was made.
+/// ### Returns 
+/// * Upon success - ()
+/// * Upon failure - Returns Error with String description of the associating error. 
+/// ### Example 
+/// call in [`handle_connection`]
+/// ```no_run
+///  match fetch_projects(&mut database, &tdx_client).await {
+///      Ok(()) => (),
+///      Err(e) => error!("Failed to populate projects: {}", e),
+///     }
+/// ```
 async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String> {
     let url = "https://uwyo.teamdynamix.com/TDWebApi/api/3444/projects/search";
 
@@ -4073,10 +4367,59 @@ async fn fetch_projects(database: &mut Database, req: &API) -> Result<(), String
     return Ok(());
 }
 
-async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data: serde_json::Value) -> Result<(), String> {
+//rustdoc 
+/// Function creates a pdf with information concurrent to that currently displayed by the analytics page. 
+/// 
+/// Note: The PDF engine used creates the file from which the contents are grabbed and then the file is deleted. So only the user has local copy of the export. 
+/// Nothing is stored in the Bronson Database.
+/// ### Parameters 
+///  * `database` - function requires [`Database`] (struct) to provide context of the Bronson database.
+///  * `time_period` - the current time period given by radio button selection made on the front end. 
+///  * `optional_data` - information grabbed from the JSON body. 
+/// ### Returns 
+/// * Upon Success - String containing the filename created. (to be deleted) 
+/// * Upon failure - Returns Error with String description of the associating error. 
+/// ### Example 
+/// call in [`handle_connection`]
+/// ``` no_run
+///   let file_name = match export_analytics_report_to_pdf(&mut database, time_period, optional_data).await {
+///          Ok(f) => f,
+///          Err(e) => {
+///           error!("Failed to export PDF: {}", e);
+///        }
+///     };
+/// ```
+async fn export_analytics_report_to_pdf(database: &mut Database, time_period: i16, optional_data: serde_json::Value) -> Result<String, String> {
     // Helper: get date range based on time_period
     let get_date_range = |period: i16| -> (DateTime<Utc>, DateTime<Utc>) {
         let now = Utc::now();
+        
+        // Handle custom date range separately
+        if period == 5 {
+            if let Some(custom_start) = optional_data.get("custom_start_date").and_then(|v| v.as_str()) {
+                if let Ok(date) = chrono::NaiveDate::parse_from_str(custom_start, "%Y-%m-%d") {
+                    let start_dt = DateTime::<Utc>::from_naive_utc_and_offset(
+                        date.and_hms_opt(0, 0, 0).unwrap(),
+                        Utc
+                    );
+                    // Parse custom end date
+                    if let Some(custom_end) = optional_data.get("custom_end_date").and_then(|v| v.as_str()) {
+                        if let Ok(end_date) = chrono::NaiveDate::parse_from_str(custom_end, "%Y-%m-%d") {
+                            let end_dt = DateTime::<Utc>::from_naive_utc_and_offset(
+                                end_date.and_hms_opt(23, 59, 59).unwrap(),
+                                Utc
+                            );
+                            return (start_dt, end_dt);
+                        }
+                    }
+                    // If end date fails, use now as end
+                    return (start_dt, now);
+                }
+            }
+            // Fallback to 7 days if custom dates are not provided or invalid
+            return (now - TimeDelta::days(7), now);
+        }
+        
         let start = match period {
             0 => now - TimeDelta::days(7),
             1 => now - TimeDelta::days(30),
@@ -4224,6 +4567,40 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
                     1 => "30days",
                     2 => "90days",
                     3 | 4 => "365days",
+                    5 => {
+                        let custom_start = optional_data
+                            .get("custom_start_date")
+                            .and_then(|v| v.as_str())
+                            .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok());
+
+                        let custom_end = optional_data
+                            .get("custom_end_date")
+                            .and_then(|v| v.as_str())
+                            .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok());
+
+                        // Round custom dates to closest available time period
+                        match (custom_start, custom_end) {
+                            (Some(start), Some(end)) => {
+                                let days = (end - start).num_days();
+
+                                let frames = [7, 30, 90, 365];
+                                let closest = frames
+                                    .iter()
+                                    .min_by_key(|&&frame| (frame - days).abs())
+                                    .copied()
+                                    .unwrap_or(7);
+
+                                match closest {
+                                    7 => "7days",
+                                    30 => "30days",
+                                    90 => "90days",
+                                    365 => "365days",
+                                    _ => "7days",
+                                }
+                            }
+                            _ => "7days",
+                        }
+                    },
                     _ => "7days",
                 };
                 
@@ -4340,7 +4717,7 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
         \begin{document}
          \begin{landscape} % Orient the page in landscape mode
  
-         \title{\textbf{\huge CTS Analytics - [[ time_frame ]]}}
+         \title{\textbf{\huge CTS Analytics: [[ time_frame ]]}}
          \author{} % Leave blank
          \date{} % Leave blank
  
@@ -4367,11 +4744,10 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
             \begin{tabular}{ c|c|c|c } 
                 {\small Tickets Created}                 & {\small Tickets Closed}                 & {\small Current Open Tickets}                 & {\small False Tickets}                \\ 
                 {\LARGE \textbf{[[ tickets_created ]]}}  & {\LARGE \textbf{[[ tickets_closed ]]}}  & {\LARGE \textbf{[[ current_open_tickets ]]}}  & {\LARGE \textbf{[[ false_tickets ]]}} \\ 
-                {\small Last sss: ddd}                     & {\small Last sss: ddd}                    & {\small Last sss: ddd}                          & {}                                    \\
             \hline
                 {\small Room Checks Performed}                 & {\small Tickets from Room Checks}                 & {\small WyoCast / Event Tickets}              & {\small PC Related Tickets}                \\ 
                 {\LARGE \textbf{[[ room_checks_performed ]]}}  & {\LARGE \textbf{[[ tickets_from_room_checks ]]}}  & {\Large \textbf{[[ wycast_event_tickets ]]}}  & {\Large \textbf{[[ pc_related_tickets ]]}} \\ 
-                {\small Last sss: ddd}                           & {}                                                & {}                                            & {}                                         \\ 
+                [[ roomcheck_rounding_note ]] % a note to the user if the room check count is rounded due to custom date range
             \end{tabular}
             \end{center}
     
@@ -4432,26 +4808,56 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
          \end{landscape}
         \end{document}
     "#;
-    match tera.add_raw_template("report.tex", latex_template) {
+
+    // Generate file name using timestamp
+    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+    let file_name = format!("report_{}", timestamp);
+
+    match tera.add_raw_template(&format!("{file_name}.tex"), latex_template) {
         Ok(r) => r,
         Err(e) => return Err(format!("Failed to add LaTeX template: {}", e))
     }
 
     // Sub in values
     let time_frame_label = match time_period {
-        0 => "Last 7 Days",
-        1 => "Last 30 Days",
-        2 => "Last 90 Days",
-        3 => "Last 365 Days",
-        4 => "All Time",
-        _ => "Last 7 Days",
+        0 => "Last 7 Days".to_string(),
+        1 => "Last 30 Days".to_string(),
+        2 => "Last 90 Days".to_string(),
+        3 => "Last 365 Days".to_string(),
+        4 => "All Time".to_string(),
+        5 => {
+            // Custom date range: format the dates nicely
+            if let (Some(start_str), Some(end_str)) = (
+                optional_data.get("custom_start_date").and_then(|v| v.as_str()),
+                optional_data.get("custom_end_date").and_then(|v| v.as_str())
+            ) {
+                if let (Ok(start_date), Ok(end_date)) = (
+                    chrono::NaiveDate::parse_from_str(start_str, "%Y-%m-%d"),
+                    chrono::NaiveDate::parse_from_str(end_str, "%Y-%m-%d")
+                ) {
+                    let start_formatted = start_date.format("%B %d, %Y").to_string();
+                    let end_formatted = end_date.format("%B %d, %Y").to_string();
+                    format!("{} - {}", start_formatted, end_formatted)
+                } else {
+                    "Custom Date Range".to_string()
+                }
+            } else {
+                "Custom Date Range".to_string()
+            }
+        }
+        _ => "ERROR".to_string(),
+    };
+
+    let roomcheck_rounding_note = match time_period {
+        4 | 5 => r#"{\scriptsize *Room Checks rounded to a max of 365 days} & {} & {} & {}"#.to_string(),
+        _ => "".to_string(),
     };
 
     // Format building x coordinates for LaTeX
     let building_x_coords = top_10_buildings.join(",");
 
     let mut context = Context::new();
-    context.insert("time_frame", time_frame_label);
+    context.insert("time_frame", &time_frame_label);
     context.insert("accomplishments", &latex_accomplishments);
     context.insert("future_notes", &latex_future_notes);
     context.insert("tickets_created", &tickets_created);
@@ -4462,6 +4868,7 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
     context.insert("tickets_from_room_checks", &tickets_from_room_checks);
     context.insert("wycast_event_tickets", &wycast_event_tickets);
     context.insert("pc_related_tickets", &pc_related_tickets);
+    context.insert("roomcheck_rounding_note", &roomcheck_rounding_note);
     context.insert("notes", &latex_roomcheck_tickets_notes);
     context.insert("building_coords", &building_latex_coords);
     context.insert("building_x_coords", &building_x_coords);
@@ -4470,22 +4877,22 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
 
         // Render
     // Register the template
-    match tera.add_raw_template("report.tex", latex_template) {
+    match tera.add_raw_template(&format!("{file_name}.tex"), latex_template) {
         Ok(_) => (),
         Err(e) => return Err(format!("Failed to add LaTeX template: {}", e)),
     }
     // Render the template
-    let rendered_tex = match tera.render("report.tex", &context) {
+    let rendered_tex = match tera.render(&format!("{file_name}.tex"), &context) {
         Ok(t) => t,
         Err(e) => return Err(format!("Failed to render LaTeX template: {}", e)),
     };
 
-    // Write report.tex
+    // Write .tex
     let temp_dir = Path::new(TEMP_DIR);
-    let tex_path = temp_dir.join("report.tex");
+    let tex_path = temp_dir.join(&format!("{file_name}.tex"));
     match std::fs::write(&tex_path, rendered_tex) {
         Ok(_) => (),
-        Err(e) => return Err(format!("Failed to write report.tex: {}", e)),
+        Err(e) => return Err(format!("Failed to write .tex file: {}", e)),
     }
 
     // Run pdflatex (silently, unless error) in the temp directory
@@ -4493,7 +4900,7 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
         .current_dir(temp_dir)
         .arg("-interaction=nonstopmode")
         .arg("-halt-on-error")
-        .arg("report.tex")
+        .arg(&format!("{file_name}.tex"))
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .status()
@@ -4503,14 +4910,30 @@ async fn export_to_pdf(database: &mut Database, time_period: i16, optional_data:
     };
 
     if !status.success() {
-        return Err("pdflatex failed to compile report.tex".to_string());
+        return Err("pdflatex failed to compile .tex file".to_string());
     }
 
     info!("[Data] - Analytics PDF successfully generated!");
-    return Ok(());
+    
+    Ok(file_name)
 }
 
-async fn cleanup_temp_dir() -> Result<(), String> {
+//rustdoc 
+/// Function deletes temp files used to generate the export from analytics. 
+/// ### Parameters 
+/// * `filename` - the String returned from [`export_analytics_report_to_pdf`]
+/// ### Returns 
+/// * Upon Success - ()
+/// * Upon Failure -  Returns Error with String description of the associating error. 
+/// ### Example 
+/// call to [`handle_connection`]
+/// ``` no_run
+/// match cleanup_temp_files(file_name).await {
+///      Ok(_) => (),
+///      Err(e) => error!("Failed to clean up temporary files: {}", e),
+///    };
+/// ```
+async fn cleanup_temp_files(file_name: String) -> Result<(), String> {
     if !dir_exists(TEMP_DIR) {
         return Err(format!("Missing Temp Directory: ./generated_files/temp does not exist"));
     }
@@ -4521,13 +4944,6 @@ async fn cleanup_temp_dir() -> Result<(), String> {
     };
 
     for entry in entries {
-        // Skip the generated .pdf
-        if let Ok(entry) = &entry {
-            if entry.path().ends_with("report.pdf") {
-                continue;
-            }
-        }
-
         let entry = match entry {
             Ok(entry) => entry,
             Err(e) => return Err(format!("Failed to access temp directory entry: {}", e))
@@ -4536,13 +4952,17 @@ async fn cleanup_temp_dir() -> Result<(), String> {
         let path = entry.path();
 
         if path.is_file() {
-            if let Err(e) = std::fs::remove_file(&path) {
-                return Err(format!("Failed to delete temporary file '{}': {}", path.display(), e))
+            if let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
+                if filename.starts_with(&file_name) {
+                    if let Err(e) = std::fs::remove_file(&path) {
+                        return Err(format!("Failed to delete temporary file '{}': {}", path.display(), e));
+                    }
+                }
             }
         }
     }
 
-    return Ok(());
+    Ok(())
 }
 
 /*
@@ -4556,13 +4976,32 @@ $$  /   \$$ |$$ |$$ | \$$\ $$ |
 \__/     \__|\__|\__|  \__|\__|
 */
 
-
+// rustdoc
+/// 
+/// Function builds out a JSON object with the articles in the wiki directory. 
+/// ### Returns 
+///  - A JSON object of all the articles (files) in the `WIKI_DIR` and returns them as a stringified json object   
+/// as UTF-8 bytes. 
+/// - The JSON object maps each article's filename (key) to it's base64-encoded file contents (value).
+///  
+/// ### Panics 
+/// Panics if any article file cannot be read. 
+/// ### Example
+/// ```no_run
+///  let contents = w_build_articles();
+///  assert_eq!(contents,
+///             "{
+///                 file_name1: base64Data1
+///                 file_name2: base64Data2
+///                 ...
+///               }".to_string().into()
+///       );
+///```
 
 fn w_build_articles() -> Vec<u8> {
     let mut article_names_vec: Vec<String> = Vec::new();
     let mut article_contents_vec: Vec<String> = Vec::new();
 
-    // Check for CFM_Code Directory
     if dir_exists(WIKI_DIR) {
         // Error handling
     }
@@ -4595,6 +5034,61 @@ fn w_build_articles() -> Vec<u8> {
     
 }
 
+// rustdoc
+/// Function builds a JSON representation of the wiki articles directory as a tree from a depth first search, then returns it as bytes. 
+/// ### Returns 
+/// - On success returns the tree structure produced by the call to [`build_tree`] as bytes. 
+/// - On failure the error is logged and an empty JSON array (`[]`) is returned as bytes.
+
+/// ### Example
+/// ``` no_run 
+/// tree: {
+///         name: "Root",
+///         file_path: "./",
+///         children: [
+///             {
+///              name: "example.md",
+///               file_path:"./example/path",
+///              children: null
+///             },
+///
+///             {
+///              name: "example_dir",
+///              file_path:"./example/path",
+///              children: [
+///                 {
+///                 name: "nested_file.txt",
+///                 file_path:"./example/path/example_dir",
+///                 children: null
+///                 },
+///                 {
+///                  name: "double_nested_dir",
+///                  file_path:"./example/path/example_dir",
+///                  children: [
+///                  {
+///                     name: "doubled_nested_file", 
+///                     file_path:"./example/path/example_dir/double_nested_dir",
+///                     children: null}, 
+///                   ]
+///                 },
+///                ]
+///              },
+///             {
+///             name: "empty_dir",
+///             file_path:"./example/path", 
+///             children: [] 
+///             },
+///            ]
+///       }
+///```
+/// ### Blacklist 
+/// `_wiki_blacklist`, (currently an empty hashset) can be used to "blacklist" specified file extensions by inserting them into the hashset.
+/// ### Example 
+///```no_run
+///  _wiki_blacklist.insert("txt");
+///  _wiki_blacklist.insert("xlsx");
+///```
+/// In the above example files ending with the extension txt, and xlsx would be excluded. 
 fn w_tree() -> Vec<u8>  {
     let  _wiki_blacklist = HashSet::new();
     let json_return = match build_tree(WIKI_DIR, _wiki_blacklist) {
@@ -4619,12 +5113,13 @@ $$$$$$$$\                                $$\                     $$\
 */
 
 async fn store_collegenet_reservations(database: &mut Database, cn_client: &Arc<API>) -> Result<(), String> {
+    let run_time: DateTime<Local> = DateTime::from(Utc::now());
+    let url: String = format!("https://webservices.collegenet.com/r25ws/wrd/uwyo/run/reservations.xml?start_dt={}", run_time.format("%Y%m%dT00000000"));
     let reservations_body = match cn_client
         .build()
         .method("GET")
-        .endpoint("https://webservices.collegenet.com/r25ws/wrd/uwyo/run/reservations.xml?start_dt=0")
+        .endpoint(&url)
         .timeout(Duration::from_secs(15))
-        .return_type::<Reservations>()
         .send()
         .await {
             Ok(rs) => rs,
@@ -4659,6 +5154,48 @@ async fn store_collegenet_reservations(database: &mut Database, cn_client: &Arc<
             Ok(_) => (),
             Err(m) => { return Err(m.to_string()); }
         };
+    }
+
+    let blackouts_body = match cn_client
+        .build()
+        .method("GET")
+        .endpoint("https://webservices.collegenet.com/r25ws/wrd/uwyo/run/spaces.xml?scope=extended&include=blackouts")
+        .timeout(Duration::from_secs(30))
+        .send()
+        .await {
+            Ok(bs) => bs,
+            Err(m) => { return Err(m.to_string()); }
+        }
+        .body;
+    let blackouts: Spaces = match serde_xml_rs::from_str(&blackouts_body) {
+        Ok(bs) => bs,
+        Err(m) => { return Err(m.to_string()); }
+    };
+
+    for blackout in blackouts.spaces {
+        let sid: Option<Vec<Option<i64>>> = Some(vec!(Some(blackout.space_id)));
+        let sname: String = blackout.space_name;
+        match blackout.blackouts {
+            Some(bs) => {
+                for blackout_event in bs {
+                    for date in blackout_event.blackout_dates.into_iter().filter(
+                        |event| event.blackout_start <= run_time && event.blackout_end >= run_time
+                    ) {
+                        let _ = database.update_reservation(&DB_Reservation {
+                            reservation_id: date.blackout_id,
+                            start_dt: date.blackout_start,
+                            end_dt: date.blackout_end,
+                            event_name: format!("{} Blackout", sname),
+                            event_space_id: sid.clone()
+                        });
+                    }
+                }
+            },
+            None => {
+                continue;
+            }
+        }
+
     }
 
     Ok(())

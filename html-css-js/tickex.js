@@ -23,6 +23,7 @@ TOC:
     - delay() : Simple delay/wait function
     - decodeHtmlEntities() : Decode HTML entities into plain text
     - scrubHtmlToText()    : Convert HTML snippets into readable text
+    - tokenize()            : Helper: simple tokenizer
 
     Write to TDX Functions (unimplemented for right now):
     - takeResponsibility() : Takes responsibility for a ticket
@@ -54,14 +55,9 @@ TOC:
     - initBoard()           : Add/Refreshes tickets to the board
 
     Cache Functions:
-    - getTicketCache()      : Grabs the Ticket Cache
     - getTickexSettings()   : Gets saved Tickex settings (with defaults)
     - saveTickexSettings()  : Persists Tickex settings to sessionStorage
     - updateTickexSetting() : Updates a single Tickex setting
-    - getCachedTicketData() : Grabs a Specific Ticket from the Cache
-    - setCachedTicketData() : Saves a Ticket to the Cache
-    - removeFromCache()     : Removes a Ticket from the Cache 
-    - tokenize()            : Helper: simple tokenizer
 
     Backend Calls:
     - fetchTickets()                : Grab all tickets from backend/api
@@ -107,9 +103,6 @@ const TICKETID_BLACKLIST = [
     22873142, 22873186
 ];
 
-// Stores up to 100 ticket description for every ticket
-const MAX_DESC_CACHE = 100;
-
 
 
     /* -------------------- Helpers -------------------- */
@@ -146,6 +139,10 @@ function scrubHtmlToText(html) {
     return s.trim();
 }
 
+// Simple tokenizer
+function tokenize(text) {
+    return (text || "").toString().toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+}
 
 
     /* -------------------- Write to TDX Functions -------------------- */
@@ -1329,15 +1326,6 @@ function initBoard() {
 
     /* -------------------- Cache Functions -------------------- */
 
-// Grabs the Ticket Cache
-function getTicketCache() {
-    try {
-        return JSON.parse(sessionStorage.getItem('tickex_cache')) || { order: [], data: {} };
-    } catch {
-        return { order: [], data: {} };
-    }
-}
-
 function getTickexSettings() {
     try {
         const settings = JSON.parse(sessionStorage.getItem('tickex_settings')) || {};
@@ -1362,59 +1350,6 @@ function updateTickexSetting(key, value) {
     return settings;
 }
 
-// Grabs a Specific Ticket from the Cache
-function getCachedTicketData(ticketID, type) {
-    const cache = getTicketCache();
-    return cache.data[`${ticketID}_${type}`] || null;
-}
-
-// Saves a Ticket to the Cache
-function setCachedTicketData(ticketID, type, value) {
-    const cache = getTicketCache();
-    const key = `${ticketID}_${type}`;
-    
-    // If already exists, remove from order queue to re-add at end
-    if (cache.data[key])
-        cache.order = cache.order.filter(k => k !== key);
-    
-    cache.data[key] = value;
-    cache.order.push(key);
-
-    // Evict oldest if exceeds max
-    while (cache.order.length > MAX_DESC_CACHE) {
-        const oldest = cache.order.shift();
-        delete cache.data[oldest];
-    }
-
-    // Save changes to Cache
-    try {
-        sessionStorage.setItem('tickex_cache', JSON.stringify(cache));
-    } catch (e) {
-        console.warn('Failed to save cache:', e);
-    }
-}
-
-// Removes a ticket from the Cache
-function removeFromCache(ticketID) {
-    const cache = getTicketCache();
-    const keysToRemove = [ `${ticketID}_description`, `${ticketID}_comments` ];
-
-    cache.order = cache.order.filter(k => !keysToRemove.includes(k));
-    keysToRemove.forEach(k => delete cache.data[k]);
-
-    // Save changes to Cache
-    try {
-        sessionStorage.setItem('tickex_cache', JSON.stringify(cache));
-    } catch (e) {
-        console.warn('Failed to update cache:', e);
-    }
-}
-
-// Helper: simple tokenizer
-function tokenize(text) {
-    return (text || "").toString().toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-}
-
 
 
     /* -------------------- Backend Calls -------------------- */
@@ -1433,18 +1368,12 @@ async function fetchTickets() {
 
 // Grab ticket Description from backend 
 async function fetchTicketDescription(ticketID, forceFetch=false) {
-    // Check cache first
-    const cached = getCachedTicketData(ticketID, 'description');
-    if (cached && !forceFetch) return cached;
-
     try {
         const response = await fetch(`/ticket/description/${ticketID}`);
         if (!response.ok) throw new Error('Network response was not ok');
 
         // Cache response
         const result = await response.text();
-        setCachedTicketData(ticketID, 'description', result);
-
         return result;
     } catch (error) {
         console.error('Failed to fetch ticket description:', error);

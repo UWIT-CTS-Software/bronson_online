@@ -104,13 +104,10 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 //  --- Zone 1 -----------
 //  Building1 Name / percent checked {#######---------}
 //  ...
-
-// We are currently not formatting the time in a good way, ie: 1900 is the displayed
-// time on checkerboard, so we need to have some way to make it nice.
 function FourDigitToTimeFormat(timestamp) {
     let date = new Date(timestamp);
     let now = new Date(Date.now());
-    if (((date.getMonth() * 100) + (date.getDate())) > ((now.getMonth() * 100) + (now.getDate()))) {
+    if (((date.getFullYear() * 10000) + (date.getMonth() * 100) + (date.getDate())) > ((now.getFullYear() * 10000) + (now.getMonth() * 100) + (now.getDate()))) {
         date.setHours(23);
         date.setMinutes(59);
     }
@@ -320,15 +317,23 @@ function toggleHideRooms() {
 }
 
 function updateCheckedBuildings() {
-    let checkedCount = 0;
+    let checkedVec = [];
     let buildings = document.getElementsByName("cb_dev");
     for (box in buildings) {
         if (buildings[box].checked) {
-            checkedCount += 1;
+            checkedVec.push(buildings[box].id);
         }
     }
 
-    if (checkedCount == 0) {
+    localStorage.setItem("cbSelection", JSON.stringify({selections: checkedVec}));
+    fetch("/update/data/cbSelection", {
+        method: "POST",
+        body: JSON.stringify({
+            selections: checkedVec
+        })
+    });
+
+    if (checkedVec.length == 0) {
         let checkedBtn = document.getElementById("cb_check");
         checkedBtn.onclick = checkAllBuildings;
         checkedBtn.innerHTML = "Check All";
@@ -348,6 +353,8 @@ function checkAllBuildings() {
     let checkedBtn = document.getElementById("cb_check");
     checkedBtn.onclick = uncheckAllBuildings;
     checkedBtn.innerHTML = "Uncheck All";
+
+    updateCheckedBuildings();
 }
 
 function uncheckAllBuildings() {
@@ -359,6 +366,8 @@ function uncheckAllBuildings() {
     let checkedBtn = document.getElementById("cb_check");
     checkedBtn.onclick = checkAllBuildings;
     checkedBtn.innerHTML = "Check All";
+
+    updateCheckedBuildings();
 }
 
 async function setChecker() {
@@ -485,6 +494,13 @@ async function setChecker() {
     main_container.appendChild(cb_container);
     main_container.classList.add('program_guts');
     progGuts.replaceWith(main_container);
+
+    let selections = JSON.parse(localStorage.getItem("cbSelection"))["selections"];
+    selections.forEach(s => {
+        let checkbox = document.getElementById(`${s}`);
+        checkbox.checked = true;
+    })
+    updateCheckedBuildings();
 
     // Init Hide Bool Variable in session storage
     sessionStorage.setItem("cbHideBool", "false");

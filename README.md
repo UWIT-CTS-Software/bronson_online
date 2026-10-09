@@ -1,6 +1,6 @@
 # Bronson Online
 
-<img width="1170" height="119" alt="image" src="https://github.com/user-attachments/assets/c0540131-bed3-48c4-9019-2a8d716c8f23" />
+<img width="946" height="80" alt="image" src="https://github.com/user-attachments/assets/bfd2f721-820f-47c3-8a72-89766ae45604" />
 
 `"All I do is eat oysters and speak six languages in three voices." - Action Bronson`
 
@@ -11,6 +11,14 @@ The frontend is written in JavaScript and the backend was written in Rust.
 ---
 
 ## Prerequisites
+
+### Install LaTeX Compiling Engine (Report Generation)
+
+**Debian**<br>
+`sudo apt install texlive texlive-pictures texlive-latex-extra`
+
+**Arch**<br>
+`sudo pacman -S texlive texlive-pictures texlive-latexextra`
 
 ### Install Rust and Cargo
 First, Rust needs installed. <br>
@@ -122,13 +130,20 @@ From there, access the ip:port address that is outputted in the previous step in
 ## What's included?
 
 ### Dashboard
-<img width="1537" height="558" alt="image" src="https://github.com/user-attachments/assets/c222eefb-d075-4a50-bc55-291f4fd8be0b" />
+
+<img width="1387" height="674" alt="image" src="https://github.com/user-attachments/assets/da60610e-66b5-4287-bd5d-fb9c576a6e34" />
 
 ### Checkerboard
 
-<img width="1546" height="632" alt="image" src="https://github.com/user-attachments/assets/36ef648c-dd70-48a9-bc5c-8bb48508ecf9" />
+<img width="1582" height="1033" alt="image" src="https://github.com/user-attachments/assets/e9ba97e5-a754-4b4f-9531-5a2a6de7da70" />
 
 Utilizes LSM RoomCheck history through their API and looks at C.T.S. Technician Schedules and classroom schedules to point techs to open rooms in need of checkups during their shift
+
+### Tickex
+
+<img width="1554" height="660" alt="image" src="https://github.com/user-attachments/assets/49a95b3a-ae53-47c0-9c94-d48ab71f1b1f" />
+
+Tickex integrates a TeamDynamix API to read and write ticket info for technician convenience.
 
 ### JackNet
 
@@ -140,17 +155,16 @@ This can be used to find rooms that are not online that we did not know about. W
 
 ### CamCode
 
-<img width="1398" height="651" alt="image" src="https://github.com/user-attachments/assets/25e56a0e-523a-4426-9288-0df75cfbe3e1" />
+<img width="1394" height="607" alt="image" src="https://github.com/user-attachments/assets/50cc76a8-3072-49d8-8519-dd2811d99548" />
 
 A classroom programming helper. Given a specific set of parameters describing a specific room configuration, CamCode will present the user with files to be uploaded to the system to expedite configuration time.
 
 This is intended to help program Q-SYS systems.
 
----
+### Analytics
 
-## To-Do List
-- [ ] Expand camcode functionality to include netgear switch configuration details
-- [ ] Either as part of camcode or as its own app, allow users to fill out a form that will then deliver the most appropriate Q-SYS config file for the desired room layout
-- [ ] Lean out when and how API calls are being made
-  - [ ] Cache recent calls for immediate retrieval
-  - [ ] Schedule API calls instead of performing on user request
+<img width="1281" height="708" alt="image" src="https://github.com/user-attachments/assets/733df440-ba06-4d39-b9b4-4ade8e0d297a" />
+
+Provides operational information about tickets and preventative maintenance over a time range.
+
+---
