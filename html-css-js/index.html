@@ -50,8 +50,11 @@
 
     document.addEventListener('dblclick', (event) => {
       const isInModal = event.target.closest('#hb_menu')
+      const menu = document.querySelector(".hb_menu");
       if(!isInModal) {
-        toggleHBMenu();
+        if (menu.classList.contains("showMenu")) {
+          menu.classList.remove("showMenu");
+        } 
       }
     });
 
