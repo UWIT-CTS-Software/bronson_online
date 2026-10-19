@@ -253,9 +253,7 @@ async function setCrestronFile() {
     let progGuts = document.querySelector('.program_board .program_guts');
 
     let cfm_container = document.createElement('div');
-    cfm_container.classList.add('cfm_container');
-    // cfm_container.innerHTML = `
-    // <fieldset></fieldset>`
+    cfm_container.classList.add('bronson_container');
 
 
     // Page Content

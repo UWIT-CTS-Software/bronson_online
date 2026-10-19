@@ -111,7 +111,7 @@ async function setAdminTools() {
 
     // Build Admin Tools Landing Page
     let at_container = document.createElement("div");
-    at_container.classList.add("at_container");
+    at_container.classList.add("bronson_container");
     // Admin Tool Tab Rows
     let admin_tab_row = document.createElement("div");
     admin_tab_row.classList.add("tab_row");
@@ -1050,11 +1050,11 @@ async function setThreadEditor() {
             <legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}>${tsKeys[i]}</legend>
             <div style="float:left">
                 <input type="number" id="thread-${tsKeys[i]}-interval" value="${ts[tsKeys[i]].duration}" min="60" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}> 
-                <span style="color: rgba(166, 172, 114, 1)" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}> Seconds between runs </span>
+                <span style="color: rgb(149, 157, 165)" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}> Seconds between runs </span>
                 <button onclick="setNewThreadDuration('${tsKeys[i]}')" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Set Duration </button>
             </div>
             <div style="float:${localStorage.getItem("isMobile") === "true" ? "left" : "right"}">
-                <span style="color: rgba(166, 172, 114, 1)" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}> Last Run: ${new Date(ts[tsKeys[i]].timestamp).toLocaleString()} </span>
+                <span style="color: rgb(149, 157, 165)" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}> Last Run: ${new Date(ts[tsKeys[i]].timestamp).toLocaleString()} </span>
                 <button onclick="resetThreadInterval('${tsKeys[i]}')" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Run Now </button>
             </div>
             </fieldset>`;

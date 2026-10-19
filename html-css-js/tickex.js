@@ -1570,7 +1570,7 @@ async function setTickex(openTicketByID = -1) {
     let progGuts = document.querySelector('.program_board .program_guts');
     if (cached_HTML != null) {
         // make sure cache was not overwritten with another tool.
-        if(cached_HTML.includes("tx_container")) {
+        if(cached_HTML.includes("bronson_container")) {
             progGuts.innerHTML = cached_HTML;
             return;
         }
@@ -1578,7 +1578,7 @@ async function setTickex(openTicketByID = -1) {
 
     // No HTML Cache found, build from scratch
     let tx_container = document.createElement("div");
-    tx_container.classList.add("tx_container");
+    tx_container.classList.add("bronson_container");
     tx_container.classList.add("commentsShown");
 
     // Main Container

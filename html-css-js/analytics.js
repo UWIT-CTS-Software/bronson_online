@@ -1121,7 +1121,7 @@ async function setAnalytics() {
     let progGuts = document.querySelector('.program_board .program_guts');
     if (cached_HTML != null) {
         // make sure cache was not overwritten with another tool.
-        if(cached_HTML.includes("an_container")) {
+        if(cached_HTML.includes("bronson_container")) {
             progGuts.innerHTML = cached_HTML;
             return;
         }
@@ -1129,7 +1129,7 @@ async function setAnalytics() {
 
     // No HTML Cache found, build from scratch
     let an_container = document.createElement("div");
-    an_container.classList.add("an_container");
+    an_container.classList.add("bronson_container");
 
     // Main Container
     let main_container = document.createElement('div');

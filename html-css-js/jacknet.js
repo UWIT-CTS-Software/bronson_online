@@ -451,7 +451,7 @@ function closeVisTab(tabID) {
 }
 
 function minimizeVisTab(tabID) {
-    // minimze tab
+    // minimize tab
     // add a tag to the element with the class name "visTile"
     let visObj = document.getElementById(tabID);
     if (visObj.classList.contains("hideVisTile")) {
@@ -504,7 +504,7 @@ function appendString(arr, string) {
         tp   |o  |o  |o |                        |
     ---------------------------------------------|
 */
-// There are alot of inputs here, may want to pass an object (?)
+// There are a lot of inputs here, may want to pass an object (?)
 async function postJNVis(formPing, building, totalDevices, totalNotFound, devTypes) {
     // Init Visualizer Tile
     let vis_container = document.createElement('li');
@@ -607,7 +607,7 @@ async function setJackNet() {
     let cached_HTML = sessionStorage.getItem("JackNet_html");
     if (cached_HTML != null) {
         // make sure cache was not overwritten with another tool.
-        if(cached_HTML.includes("jn_container")) {
+        if(cached_HTML.includes("bronson_container")) {
             progGuts.innerHTML = cached_HTML;
             const runButton = document.getElementById('run');
             runButton.disabled = false;
@@ -633,7 +633,7 @@ async function setJackNet() {
 
     //--- No html cache found, build from scratch
     let jn_container = document.createElement('div');
-    jn_container.classList.add('jn_container');
+    jn_container.classList.add('bronson_container');
 
     // Make a box for list of buildings
     let buildingSelect = document.createElement("div");
@@ -659,7 +659,7 @@ async function setJackNet() {
         ${set_inner_html}
         </fieldset>`;
 
-    // REDO: what flags for checkbox are neccessary?
+    // REDO: what flags for checkbox are necessary?
     //   - do we need value and name?
     let devSelect = document.createElement("div");
     devSelect.classList.add('jn_devSelect');
@@ -704,7 +704,7 @@ async function setJackNet() {
                 Console Output: </legend>
             <textarea readonly rows="15" cols ="75" class="jn_innerConsole ${isMobile ? "mobile_tx_font" : ""}" name="consoleOutput" spellcheck="false">                JackNet Console: Responses will be printed here along with some tiles below.
 
-DISCLAIMER: This application is moreso a proof of concept rather than a functional everyday tool. Just because a device does not return back, does not neccessarily mean that it is in need of servicing. Many devices such as Ceiling Mics are not even on the network to begin with (specifically the A/V VLAN). Many functional rooms on campus utilize local networks to facilitate communication. This tool does a very simple ICMP ping request using what the hostname for a given device SHOULD be and returns back the IP address if it is found. This means devices without a DHCP reservation (or port) will not appear online. The only way we can access the information as we envisioned is by connecting to a room's network switch via SNMP and pulling information from there and that is currently not implemented in this tool. We are waiting for an instance of an API used by the university that will provide the framework to utilize SNMP. The goal is to leverage the detailed information we get from SNMP to provide diagnostic recommendations. For example, if the biamp is connected but not transmitting data, indicative of a restart. Giving us a quick way to jump to the heart of the problem in the context of live troubleshooting. This tool is far from ready for that use case. 
+DISCLAIMER: This application is more so a proof of concept rather than a functional everyday tool. Just because a device does not return back, does not necessarily mean that it is in need of servicing. Many devices such as Ceiling Mics are not even on the network to begin with (specifically the A/V VLAN). Many functional rooms on campus utilize local networks to facilitate communication. This tool does a very simple ICMP ping request using what the hostname for a given device SHOULD be and returns back the IP address if it is found. This means devices without a DHCP reservation (or port) will not appear online. The only way we can access the information as we envisioned is by connecting to a room's network switch via SNMP and pulling information from there and that is currently not implemented in this tool. We are waiting for an instance of an API used by the university that will provide the framework to utilize SNMP. The goal is to leverage the detailed information we get from SNMP to provide diagnostic recommendations. For example, if the biamp is connected but not transmitting data, indicative of a restart. Giving us a quick way to jump to the heart of the problem in the context of live troubleshooting. This tool is far from ready for that use case. 
             </textarea>
         </fieldset>`;
 

@@ -21,7 +21,7 @@ TOC:
         - getBuildingName(buildingAbbrev)
     - getLocalZoneData()
         - getBuildingNamesFromZone(zone_number)
-        - getBuildingAbbrevsFromZone(zone_numebr)
+        - getBuildingAbbrevsFromZone(zone_number)
     - pad(n, width, z)
   Cache/Stash
     - stashCheckerboard(checkerboardResponse)
@@ -56,7 +56,7 @@ This file is set to host functions that are called throughout bronson suite
 
 The scope of this file is not properly defined (sorry), but the idea is this is where we 
 manage and manipulate the user storage session/local. Along with caching tool pages and 
-handling reponses when the user does not have that given tool open (stashes).
+handling responses when the user does not have that given tool open (stashes).
 
 Notes:
 There are some pieces from other files that may fit better here, such as building the HTML
@@ -77,7 +77,7 @@ These functions are used in Checkerboard, Jacknet, and the dashboard.
 
 const Days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DevTypes = ["PROC", "PJ", "DISP", "TP", "WS", "CMIC"]
-// Sets local strage for data used by the various tools
+// Sets local storage for data used by the various tools
 //  - Zone Building list array of room names for each zone
 //  - Campus.json used for various things in jacknet
 //  - Leaderboard
@@ -826,7 +826,7 @@ function setLeader(jsonValue) {
 
 // IE: YEAR-MT-DYT15:59:59Z
 function rawTimeFormat(rawTime) {
-    const MONTHS = ["Janurary","Feburary","March",
+    const MONTHS = ["January","February","March",
         "April","May","June",
         "July","August","September",
         "October","November","December"];
@@ -1058,10 +1058,10 @@ function isMobile() {
            ░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░        
     ░▒▓███████▓▒░ ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░ ▒▓██████▓▒ ░▒▓████████▓▒░▒▓████████▓▒░ 
                                                                                 
-    An automated scoller that will go through Bronson's major tools
+    An automated scroller that will go through Bronson's major tools
 */
 
-// Toggle Bronson's auto scoller feature
+// Toggle Bronson's auto scroller feature
 function toggleAutoScroll() {
     const SCROLL_TIME = 60; // in seconds
 

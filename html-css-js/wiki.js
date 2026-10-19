@@ -47,7 +47,7 @@ async function setWiki() {
     }
 
     let w_container = document.createElement('div');
-    w_container.classList.add('w_container');
+    w_container.classList.add('bronson_container');
 
     let w_toc = document.createElement("div");
     w_toc.classList.add('w_toc');
@@ -77,7 +77,7 @@ async function setWiki() {
         <fieldset class=pop_fieldset>
         <legend>Choose file </legend>
         <input id="newFile" type="file" class="wikiInput"></input>
-        <button class="close" onClick="hidePopupHTML()">X</button> 
+        <button class="close" onClick="hidePopupHTML()">&times</button> 
         <div class="modal_container">
         <button type="button" class="headButton" onclick="hidePopupHTML()">Cancel</button>
         <button class="submitButton" type="submit", onClick="submitFile(this)" style="float: right;">Submit</button>
@@ -111,7 +111,7 @@ async function setWiki() {
         <fieldset class=pop_fieldset>
         <legend>New Directory</legend>
         <input id="newFolder" type="text" class="wikiInput"></input>
-        <button class="close" onClick="hideDirPopup()">X</button> 
+        <button class="close" onClick="hideDirPopup()">&times</button> 
         <div class="modal_container">
         <button type="button" class="headButton" onclick="hideDirPopup()">Cancel</button>
         <button class="submitButton" type="submit", onClick="submitFolder(this)" style="float: right;">Submit</button>
