@@ -221,7 +221,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let lsm_client = Arc::new(API::new(
         SingleThread(
             Arc::new(RwLock::new(reqwest::Client::builder()
-                .cookie_store(true)
+                .cookie_store(false)
                 .user_agent("server_lib/1.10.1")
                 .default_headers(match construct_headers("lsm") {
                     Ok(h) => h,
