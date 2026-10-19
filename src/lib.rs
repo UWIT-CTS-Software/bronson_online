@@ -283,9 +283,9 @@ impl Database {
 			None    => Vec::new()
 		};
 
-		for b in building_vec {
+		for b in building_vec {s
 			let name_regex = Regex::new(r"^(?<name>.*)\s\((?<abbrev>.*)\)$").unwrap();
-			let name_captures = match name_regex.captures(&b["Location"]["name"].as_str().expect("Uh oh")) {
+			let name_captures = match name_regex.captures(&b["Location"].as_str().expect("Uh oh")) {
 				Some(caps) => caps,
 				None       => {
 					error!("Unable to collect building name regex."); 
@@ -297,8 +297,8 @@ impl Database {
 				&DB_Building {
 					name: name_captures["name"].to_string(),
 					abbrev: name_captures["abbrev"].to_string(),
-					building_id: b["Location"]["id"].as_i64().expect("Uh oh"),
-					lsm_name: String::from(b["Location"]["name"].as_str().expect("Uh oh")),
+					building_id: b["Id"].as_i64().expect("Uh oh"),
+					lsm_name: String::from(b["Location"].as_str().expect("Uh oh")),
 					zone: 1,
 					total_rooms: 0,
 					checked_rooms: 0
@@ -357,12 +357,12 @@ impl Database {
 			};
 
 			for proc_count in counts_vec {
-				match rooms_map.get(&proc_count["Location"]["id"].as_i64().expect("Empty")) {
+				match rooms_map.get(&proc_count["Id"].as_i64().expect("Empty")) {
 					Some(cs) =>  {
 						rooms_map.insert(
-							proc_count["Location"]["id"].as_i64().expect("Empty"), 
+							proc_count["Id"].as_i64().expect("Empty"), 
 							HostnameGenerator {
-								room: String::from(proc_count["Location"]["name"].as_str().expect("Empty")),
+								room: String::from(proc_count["Location"].as_str().expect("Empty")),
 								procs: proc_count["Processors Count"].as_i64().expect("Empty"),
 								tps: cs.tps.clone(),
 								pjs: cs.pjs.clone(),
@@ -371,9 +371,9 @@ impl Database {
 					},
 					None     => {
 						rooms_map.insert(
-							proc_count["Location"]["id"].as_i64().expect("Empty"),
+							proc_count["Id"].as_i64().expect("Empty"),
 							HostnameGenerator {
-								room: String::from(proc_count["Location"]["name"].as_str().expect("Empty")),
+								room: String::from(proc_count["Location"].as_str().expect("Empty")),
 								procs: proc_count["Processors Count"].as_i64().expect("Empty"),
 								tps: 0,
 								pjs: 0,
@@ -423,12 +423,12 @@ impl Database {
 			};
 
 			for tps_count in counts_vec {
-				match rooms_map.get(&tps_count["Location"]["id"].as_i64().expect("Empty")) {
+				match rooms_map.get(&tps_count["Id"].as_i64().expect("Empty")) {
 					Some(cs) =>  {
 						rooms_map.insert(
-							tps_count["Location"]["id"].as_i64().expect("Empty"), 
+							tps_count["Id"].as_i64().expect("Empty"), 
 							HostnameGenerator {
-								room: String::from(tps_count["Location"]["name"].as_str().expect("Empty")),
+								room: String::from(tps_count["Location"].as_str().expect("Empty")),
 								procs: cs.procs.clone(),
 								tps: tps_count["TPs Count"].as_i64().expect("Empty"),
 								pjs: cs.pjs.clone(),
@@ -437,9 +437,9 @@ impl Database {
 					},
 					None     => {
 						rooms_map.insert(
-							tps_count["Location"]["id"].as_i64().expect("Empty"),
+							tps_count["Id"].as_i64().expect("Empty"),
 							HostnameGenerator {
-								room: String::from(tps_count["Location"]["name"].as_str().expect("Empty")),
+								room: String::from(tps_count["Location"].as_str().expect("Empty")),
 								procs: 0,
 								tps: tps_count["TPs Count"].as_i64().expect("Empty"),
 								pjs: 0,
@@ -489,12 +489,12 @@ impl Database {
 			};
 
 			for pj_count in counts_vec {
-				match rooms_map.get(&pj_count["Location"]["id"].as_i64().expect("Empty")) {
+				match rooms_map.get(&pj_count["Id"].as_i64().expect("Empty")) {
 					Some(cs) =>  {
 						rooms_map.insert(
-							pj_count["Location"]["id"].as_i64().expect("Empty"), 
+							pj_count["Id"].as_i64().expect("Empty"), 
 							HostnameGenerator {
-								room: String::from(pj_count["Location"]["name"].as_str().expect("Empty")),
+								room: String::from(pj_count["Location"].as_str().expect("Empty")),
 								procs: cs.procs.clone(),
 								tps: cs.tps.clone(),
 								pjs: pj_count["Projectors Count"].as_i64().expect("Empty"),
@@ -503,9 +503,9 @@ impl Database {
 					},
 					None     => {
 						rooms_map.insert(
-							pj_count["Location"]["id"].as_i64().expect("Empty"),
+							pj_count["Id"].as_i64().expect("Empty"),
 							HostnameGenerator {
-								room: String::from(pj_count["Location"]["name"].as_str().expect("Empty")),
+								room: String::from(pj_count["Location"].as_str().expect("Empty")),
 								procs: 0,
 								tps: 0,
 								pjs: pj_count["Projectors Count"].as_i64().expect("Empty"),
@@ -555,12 +555,12 @@ impl Database {
 			};
 
 			for disp_count in counts_vec {
-				match rooms_map.get(&disp_count["Location"]["id"].as_i64().expect("Empty")) {
+				match rooms_map.get(&disp_count["Id"].as_i64().expect("Empty")) {
 					Some(cs) =>  {
 						rooms_map.insert(
-							disp_count["Location"]["id"].as_i64().expect("Empty"), 
+							disp_count["Id"].as_i64().expect("Empty"), 
 							HostnameGenerator {
-								room: String::from(disp_count["Location"]["name"].as_str().expect("Empty")),
+								room: String::from(disp_count["Location"].as_str().expect("Empty")),
 								procs: cs.procs.clone(),
 								tps: cs.tps.clone(),
 								pjs: cs.pjs.clone(),
@@ -569,9 +569,9 @@ impl Database {
 					},
 					None     => {
 						rooms_map.insert(
-							disp_count["Location"]["id"].as_i64().expect("Empty"),
+							disp_count["Id"].as_i64().expect("Empty"),
 							HostnameGenerator {
-								room: String::from(disp_count["Location"]["name"].as_str().expect("Empty")),
+								room: String::from(disp_count["Location"].as_str().expect("Empty")),
 								procs: 0,
 								tps: 0,
 								pjs: 0,
@@ -626,7 +626,7 @@ impl Database {
 
 			for room in rooms_vec {
 				let name_regex = Regex::new(r"^(?<abbrev>[A-Z]*)\s.*$").unwrap();
-				let name_captures = match name_regex.captures(&room["Location"]["name"].as_str().expect("Uh oh")) {
+				let name_captures = match name_regex.captures(&room["Location"].as_str().expect("Uh oh")) {
 					Some(caps) => caps,
 					None       => {
 						error!("Unable to collect building name regex."); 
@@ -634,21 +634,21 @@ impl Database {
 					}
 				};
 
-				let is_gp = match room["Organizational Group"]["name"].as_str().expect("Uh oh") {
+				let is_gp = match room["Organizational Group"].as_str().expect("Uh oh") {
 					"General Pool" => true,
 					_              => false
 				};
 
-				match self.get_room_by_id(room["Location"]["id"].as_i64().expect("Uh oh")) {
-					Ok(_) => { debug!("ROOM FOUND: {}", room["Location"]["name"].as_str().expect("Uh oh")); },
+				match self.get_room_by_id(room["Id"].as_i64().expect("Uh oh")) {
+					Ok(_) => { debug!("ROOM FOUND: {}", room["Location"].as_str().expect("Uh oh")); },
 					Err(_) => { }
 				}
 
 				match self.update_room(
 					&DB_Room {
-						name: room["Location"]["name"].as_str().expect("Uh oh").to_string(),
+						name: room["Location"].as_str().expect("Uh oh").to_string(),
 						abbrev: name_captures["abbrev"].to_string(),
-						room_id: room["Location"]["id"].as_i64().expect("Uh oh"),
+						room_id: room["Id"].as_i64().expect("Uh oh"),
 						parent_id: room["Parent Id"].as_i64().expect("Uh oh"),
 						collegenet_id: match room["25Live Location ID"].as_number() {
 							Some(n) => Some(n.as_i64().expect("Uh oh")),
@@ -662,7 +662,7 @@ impl Database {
 						onln: "2000-01-01T00:00:00Z".parse::<DateTime<Local>>().ok()?,
 						available: true,
 						until: Local::now() + Days::new(1),
-						ping_data: match rooms_ping_data.get(&room["Location"]["id"].as_i64().expect("Uh oh")) {
+						ping_data: match rooms_ping_data.get(&room["Id"].as_i64().expect("Uh oh")) {
 							Some(v) => v.clone(),
 							None    => Vec::new()
 						},
@@ -671,7 +671,7 @@ impl Database {
 				) {
 					Ok(_) => (),
 					Err(m) => {
-						error!("Error inserting room {}: {}", room["Location"]["name"].as_str().expect("Uh oh"), m);
+						error!("Error inserting room {}: {}", room["Location"].as_str().expect("Uh oh"), m);
 					}
 				};
 			}
