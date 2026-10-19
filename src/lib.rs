@@ -651,7 +651,7 @@ impl Database {
 						room_id: room["Location"]["id"].as_i64().expect("Uh oh"),
 						parent_id: room["Parent Id"].as_i64().expect("Uh oh"),
 						collegenet_id: match room["25Live Location ID"].as_number() {
-							Some(n) => Some(n.as_f64().unwrap() as i64),
+							Some(n) => Some(n.as_i64().expect("Uh oh")),
 							None    => None
 						},
 						checked: "2000-01-01T00:00:00Z".parse::<DateTime<Local>>().ok()?,
