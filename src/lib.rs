@@ -283,7 +283,7 @@ impl Database {
 			None    => Vec::new()
 		};
 
-		for b in building_vec {s
+		for b in building_vec {
 			let name_regex = Regex::new(r"^(?<name>.*)\s\((?<abbrev>.*)\)$").unwrap();
 			let name_captures = match name_regex.captures(&b["Location"].as_str().expect("Uh oh")) {
 				Some(caps) => caps,
