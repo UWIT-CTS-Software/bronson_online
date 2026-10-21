@@ -305,6 +305,11 @@ async function setCrestronFile() {
     let cfm_fileTreeInspector = document.createElement('fieldset');
     cfm_fileTreeInspector.classList.add("cfm_fileTreeInspector");
 
+    // let cfm_fileTreeContainer = document.createElement('div');
+    // cfm_fileTreeContainer.classList.add("cfm_fileTreeContainer");
+
+  
+
     let cfm_FileContainer = document.createElement('fieldset');
     cfm_FileContainer.classList.add("cfm_FileContainer");
 
@@ -312,17 +317,12 @@ async function setCrestronFile() {
     cfm_container.appendChild(cfm_filePathTracker);
     cfm_container.appendChild(cfm_search);
     cfm_container.appendChild(cfm_fileTreeInspector);
+    // cfm_container.appendChild(cfm_fileTreeContainer);
     cfm_container.appendChild(cfm_FileContainer);
 
 
     // main_container
     let main_container = document.createElement('div');
-    // main_container.innerHTML = `
-    //     <button id="cam_code" onclick="setCamCode()">
-    //         CamCode (Q-SYS) </button>
-    //     <p>\n</p>
-    // `;
-
 
     main_container.appendChild(cfm_container);
     main_container.classList.add('program_guts');

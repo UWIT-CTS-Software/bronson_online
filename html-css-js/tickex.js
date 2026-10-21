@@ -700,7 +700,7 @@ async function showTicket(ticket) {
 
 
     // Set the HTML for comments section. Always render it so toggle can show/hide without rebuilding.
-    const container = document.querySelector('.tx_container');
+    const container = document.querySelector('.bronson_container');
     const isCommentsShown = container?.classList.contains('commentsShown');
     const commentsHTML = `
         <div class="tx_popupComments ${isMobile ? "mobile" : ""}" style="${isCommentsShown ? "" : "display:none;"}">
