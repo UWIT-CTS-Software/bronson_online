@@ -265,7 +265,7 @@ impl Database {
 		let buildings_body = match lsm_client
 			.build()
 			.method("GET")
-			.endpoint("https://uwyo.talem3.com/lsm/api/BuildingInfo")
+			.endpoint("https://uwyo.talem3.com/lsm/api/query/v1/BuildingInfo")
 			.timeout(Duration::from_secs(15))
 			.send()
 			.await {
@@ -325,7 +325,7 @@ impl Database {
 			let proc_counts_body = match lsm_client
 				.build()
 				.method("GET")
-				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/ProcsPerRoom?offset={}", room_offset))
+				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/query/v1/ProcsPerRoom?offset={}", room_offset))
 				.timeout(Duration::from_secs(15))
 				.send()
 				.await {
@@ -391,7 +391,7 @@ impl Database {
 			let tps_counts_body = match lsm_client
 				.build()
 				.method("GET")
-				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/TPsPerRoom?offset={}", room_offset))
+				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/query/v1/TPsPerRoom?offset={}", room_offset))
 				.timeout(Duration::from_secs(15))
 				.send()
 				.await {
@@ -457,7 +457,7 @@ impl Database {
 			let pjs_counts_body = match lsm_client
 				.build()
 				.method("GET")
-				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/ProjectorsPerRoom?offset={}", room_offset))
+				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/query/v1/ProjectorsPerRoom?offset={}", room_offset))
 				.timeout(Duration::from_secs(15))
 				.send()
 				.await {
@@ -523,7 +523,7 @@ impl Database {
 			let disp_counts_body = match lsm_client
 				.build()
 				.method("GET")
-				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/DisplaysPerRoom?offset={}", room_offset))
+				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/query/v1/DisplaysPerRoom?offset={}", room_offset))
 				.timeout(Duration::from_secs(15))
 				.send()
 				.await {
@@ -593,7 +593,7 @@ impl Database {
 			let rooms_body = match lsm_client
 				.build()
 				.method("GET")
-				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/RoomInfo?offset={}&p=%7BMinAssessmentCount%3A%200%7D", room_offset))
+				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/query/v1/RoomInfo?offset={}&p=%7BMinAssessmentCount%3A%200%7D", room_offset))
 				.timeout(Duration::from_secs(15))
 				.send()
 				.await {
@@ -1820,66 +1820,86 @@ impl<B: std::clone::Clone> APIEndpoint<B>  {
 	}
 
 	pub async fn send(&mut self) -> Result<APIResponse, String> {
-		let url = match &self.endpoint {
-			Some(u) => u,
-			None    => {
-				return Err(String::from("Cannot send without URL"));
+		let mut retry: bool = true;
+		let mut ret_val: APIResponse = APIResponse {
+			status: reqwest::StatusCode::CREATED,
+			version: String::new(),
+			headers: HeaderMap::new(),
+			body: String::new()
+		};
+		
+		while retry {
+			let url = match &self.endpoint {
+				Some(u) => u,
+				None    => {
+					return Err(String::from("Cannot send without URL"));
+				}
+			};
+
+			let method = match &self.method {
+				Some(m) => m,
+				None    => {
+					return Err(String::from("No method to call with"));
+				}
+			};
+
+			if !self.data.clone().is_some() {
+				self.data = Some(Arc::new(|c, b| { reqwest::RequestBuilder::json(c, &b) }));
+				
+				assert_eq!(self.data.clone().is_some(), true);
 			}
-		};
 
-		let method = match &self.method {
-			Some(m) => m,
-			None    => {
-				return Err(String::from("No method to call with"));
+			let data_endpoint = self.data.clone().unwrap();
+
+			let client = match &self.client {
+				APIClient::SingleThread(c) => method(c.write().unwrap().clone(), url.to_string()),
+				APIClient::MultiThread(c)  => method(c.clone(),                  url.to_string()),
+			};
+
+			let send = data_endpoint(client.timeout(self.timeout)
+							.headers(self.headers.clone())
+							, self.args.clone())
+							.send()
+							.await;
+
+			let mut resp = match send {
+				Ok(r) => r,
+				Err(m) => { return Err(format!("{:?}", m)); }
+			};
+
+			if resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
+				warn!("Rate limit exceeded for {:?}. Retrying in one second.", self.endpoint.clone());
+				std::thread::sleep(std::time::Duration::from_secs(1));
+				continue;
 			}
-		};
 
-		if !self.data.clone().is_some() {
-			self.data = Some(Arc::new(|c, b| { reqwest::RequestBuilder::json(c, &b) }));
-			
-			assert_eq!(self.data.clone().is_some(), true);
-		}
+			let raw_status = resp.status().clone();
+			let raw_version = format!("{:?}", resp.version());
+			let raw_headers = resp.headers().clone();
 
-		let data_endpoint = self.data.clone().unwrap();
+			let mut raw_body: Vec<u8> = Vec::new();
 
-		let client = match &self.client {
-			APIClient::SingleThread(c) => method(c.write().unwrap().clone(), url.to_string()),
-			APIClient::MultiThread(c)  => method(c.clone(),                  url.to_string()),
-		};
-
-		let send = data_endpoint(client.timeout(self.timeout)
-						.headers(self.headers.clone())
-						, self.args.clone())
-						.send()
-						.await;
-
-		let mut resp = match send {
-			Ok(r) => r,
-			Err(m) => { return Err(format!("{:?}", m)); }
-		};
-
-		let raw_status = resp.status().clone();
-		let raw_version = format!("{:?}", resp.version());
-		let raw_headers = resp.headers().clone();
-
-		let mut raw_body: Vec<u8> = Vec::new();
-
-		while let Some(chunk) = match resp.chunk().await {
-			Ok(c) => c,
-			Err(m) => { return Err(m.to_string()); }
-		} {
-			raw_body.extend_from_slice(&chunk);
-		}
-
-		Ok(APIResponse {
-			status: raw_status,
-			version: raw_version,
-			headers: raw_headers,
-			body: match String::from_utf8(raw_body) {
-				Ok(b) => b,
+			while let Some(chunk) = match resp.chunk().await {
+				Ok(c) => c,
 				Err(m) => { return Err(m.to_string()); }
+			} {
+				raw_body.extend_from_slice(&chunk);
 			}
-		})
+
+			ret_val = APIResponse {
+				status: raw_status,
+				version: raw_version,
+				headers: raw_headers,
+				body: match String::from_utf8(raw_body) {
+					Ok(b) => b,
+					Err(m) => { return Err(m.to_string()); }
+				}
+			};
+
+			retry = false;
+		}
+
+		Ok(ret_val)
 	}
 }
 
