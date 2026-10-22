@@ -1304,7 +1304,7 @@ async fn handle_connection(
             };
             debug!("[Admin Tools] - Diagnostic API Endpoint: {}", api_endpoint);
             let url_devs = format!(
-                r"https://uwyo.talem3.com/lsm/api/{}?offset=0&p=%7BParentName%3A%22{}%22%7D", 
+                r"https://uwyo.talem3.com/lsm/api/query/v1/{}?offset=0&p=%7BParentName%3A%22{}%22%7D", 
                 &api_endpoint,
                 &lsm_building.lsm_name.as_str()
             );
@@ -2121,10 +2121,10 @@ async fn handle_connection(
 ///   }
 /// ```
 async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
-    let url_7_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
-    let url_30_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
-    let url_90_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
-    let url_365_days = "https://uwyo.talem3.com/lsm/api/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last365days%22%7D";
+    let url_7_days = "https://uwyo.talem3.com/lsm/api/query/v1/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last7days%22%7D";
+    let url_30_days = "https://uwyo.talem3.com/lsm/api/query/v1/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last30days%22%7D";
+    let url_90_days = "https://uwyo.talem3.com/lsm/api/query/v1/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last90days%22%7D";
+    let url_365_days = "https://uwyo.talem3.com/lsm/api/query/v1/Leaderboard?offset=0&p=%7BCompletedOn%3A%22last365days%22%7D";
 
     let v_7_days: Value = match serde_json::from_str(req
         .build()
@@ -2237,7 +2237,7 @@ async fn update_room_check_leaderboard(database: &mut Database, req: &API) {
 /// }
 /// ```
 async fn update_lsm_spares(database: &mut Database, req: &API) {
-    let url_spares = "https://uwyo.talem3.com/lsm/api/Spares?offset=0&p=%7B%7D";
+    let url_spares = "https://uwyo.talem3.com/lsm/api/query/v1/Spares?offset=0&p=%7B%7D";
 
     let body_spares = match req
         .build()
@@ -2274,7 +2274,7 @@ async fn update_lsm_data(_database: &mut Database, _req: &API) {
     //     for building in &buildings {
     //         debug!("LSM_DATA: Processing {:?}", building.1.abbrev);
     //         let url = format!(
-    //                 r"https://uwyo.talem3.com/lsm/api/{}?offset=0&p=%7BParentName%3A%22{}%22%7D", 
+    //                 r"https://uwyo.talem3.com/lsm/api/query/v1/{}?offset=0&p=%7BParentName%3A%22{}%22%7D", 
     //                 &api_endpoint,
     //                 building.1.lsm_name.as_str()
     //             );
@@ -2311,7 +2311,7 @@ async fn run_checkerboard(database: &mut Database, req: &API) -> Result<(), Stri
     // Iterate over each.
     for building in buildings {
         debug!("[Checkerboard] - Processing Building: {:?}", building.1.abbrev);
-        let url = format!(r"https://uwyo.talem3.com/lsm/api/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last90days%22%2CParentLocation%3A%22{}%22%7D", encode(building.1.lsm_name.as_str()));
+        let url = format!(r"https://uwyo.talem3.com/lsm/api/query/v1/RoomCheck?offset=0&p=%7BCompletedOn%3A%22last90days%22%2CParentLocation%3A%22{}%22%7D", encode(building.1.lsm_name.as_str()));
         // Process Request to LSM
         let body = match req
             .build()
