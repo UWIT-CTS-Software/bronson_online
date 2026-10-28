@@ -1021,16 +1021,16 @@ function isMobile() {
         }
 
         // Move Tool Tabs to grid-row 2 
-        const toolTabRow = document.getElementsByClassName("tab_row header")[0];
-        if (toolTabRow) { 
-            toolTabRow.classList.add("mobile"); 
-            programHeader.appendChild(toolTabRow);
-        }
-        const adminToolsButton = document.getElementsByClassName("admin_tab")[0];
-        if (adminToolsButton) {
-            adminToolsButton.classList.add("mobile");
-            programHeader.appendChild(adminToolsButton); 
-        }
+        // const toolTabRow = document.getElementsByClassName("tab_row header")[0];
+        // if (toolTabRow) { 
+        //     toolTabRow.classList.add("mobile"); 
+        //     programHeader.appendChild(toolTabRow);
+        // }
+        // const adminToolsButton = document.getElementsByClassName("admin_tab")[0];
+        // if (adminToolsButton) {
+        //     adminToolsButton.classList.add("mobile");
+        //     programHeader.appendChild(adminToolsButton); 
+        // }
 
         return true;
     } else {

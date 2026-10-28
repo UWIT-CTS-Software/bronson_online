@@ -57,8 +57,8 @@ async function setAdminBronson() {
     adminTabs = document.createElement("div");
     adminTabs.classList.add("tab_row");
     adminTabs.classList.add("admin_tab");
-    adminTabs.innerHTML = `<button id="adminButton" class="toolTab adminTab" onclick="setAdminTools()" type=button><img class="tab_img" src=button2.png></img><span>Admin Tools</span></button>`;
-    siteheader.appendChild(adminTabs);
+    // adminTabs.innerHTML = `<button id="adminButton" class="toolTab adminTab" onclick="setAdminTools()" type=button><img class="tab_img" src=button2.png></img><span>Admin Tools</span></button>`;
+    // siteheader.appendChild(adminTabs);
 
     // Add Admin Buttons to hamburger button
     //  - Hide Terminal
