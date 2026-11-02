@@ -1152,7 +1152,7 @@ async function setAnalytics() {
     // Display loading message while fetching tickets
     let loadingMessage = document.createElement("div");
     loadingMessage.classList.add("an_loadingMessage");
-    if (isMobile) loadingMessage.classList.add("mobile");
+
     loadingMessage.innerHTML = `
         <legend ${isMobile ? "class='mobile_legend'" : ""}>Loading Analytics</legend>
     `;
@@ -1165,7 +1165,7 @@ async function setAnalytics() {
         loadingMessage.innerHTML = `
             <legend ${isMobile ? "class='mobile_legend'" : ""}>Loading Analytics${ellipsis}</legend>
         `;
-    }, 1000); // Update every 1 second
+    }, 500); // Update every .5 second
 
     // Fetch all tickets
     let tickets = [];

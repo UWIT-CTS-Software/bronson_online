@@ -1615,7 +1615,7 @@ async function setTickex(openTicketByID = -1) {
         loadingMessage.innerHTML = `
             <legend ${isMobile ? "class='mobile_legend'" : ""}>Loading Tickets${ellipsis}</legend>
         `;
-    }, 1000); // Update every 1 second
+    }, 500); // Update every .5 second
 
     let tickets = [];
     while (!tickets.length) { // Keep trying until tickets are fetched
@@ -1706,7 +1706,6 @@ async function setTickex(openTicketByID = -1) {
     `;
     tx_container.append(searchBar);
 
-    if (!isMobile) {
         // TeamDynamix Hotlink
         let tdxHotlink = document.createElement("div");
         tdxHotlink.classList.add("tx_tdxHotlink");
@@ -1732,7 +1731,6 @@ async function setTickex(openTicketByID = -1) {
         let dismissAllPopupContainer = document.createElement("div");
         dismissAllPopupContainer.classList.add("tx_dismissAllPopupContainer");
         tx_container.append(dismissAllPopupContainer);
-    }
 
     // The 3 Tickex boards - New, Catch All, Closed
     let newTickets = document.createElement("div");

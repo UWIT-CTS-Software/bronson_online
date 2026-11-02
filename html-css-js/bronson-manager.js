@@ -526,7 +526,7 @@ async function dashCheckerboardHTML() {
     cb_dashDiv.setAttribute("id", "db_checker");
     let cb_dashDivHTML = `
     <fieldset>
-        <legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}>
+        <legend>
             Checkerboard Building Overview
         </legend>
     <ul class="dbCbProg">
@@ -846,7 +846,7 @@ function dashSpares() {
     let spareData = JSON.parse(localStorage.getItem("spares"));
     let tmp = `
         <fieldset ${isMobile ? "class='mobile_font'" : ""}> 
-        <legend ${isMobile ? "class='mobile_legend'" : ""}> 
+        <legend> 
             PC Spares 
         </legend> 
         <p class="spareHeader ${isMobile ? "mobile_font" : ""}"> Deployed Spares </p>
@@ -951,7 +951,7 @@ async function dashTickex() {
 
         tmp = `
             <fieldset> 
-                <legend ${isMobile ? "class='mobile_legend'" : ""}>
+                <legend>
                     New CTS Tickets
                 </legend> 
                 <p class="ticketsHeader ${isMobile ? "mobile_font" : ""}"> Only take incident when going to Ticket! </p>
@@ -989,12 +989,6 @@ function isMobile() {
         const camCodeButton = document.getElementById("CCButton");
         if (camCodeButton) camCodeButton.remove();
 
-        const terminal = document.getElementById("terminal");
-        if (terminal) terminal.remove();
-
-        const terminalButton = document.getElementById("admin_terminalButton");
-        if (terminalButton) terminalButton.remove();
-
         const adminHBFieldset = document.getElementById("admin_hb_fieldset");
         if (adminHBFieldset) adminHBFieldset.remove();
 
@@ -1006,7 +1000,7 @@ function isMobile() {
 
         // Scale page elements to be larger (done here and where html is dynamically written as well)
         const programHeader = document.getElementById("bronson_header");
-        if (programHeader) programHeader.classList.add("mobile");
+        // if (programHeader) programHeader.classList.add("mobile");
 
         const messageHeader = document.getElementsByClassName("message_header")[0];
         if (messageHeader) messageHeader.classList.add("mobile");
@@ -1071,7 +1065,6 @@ function toggleAutoScroll() {
     ];
 
     const autoScrollButton = document.getElementById("auto_scroll_button");
-    const terminal = document.getElementById("terminal");
 
     // Prevent orphaned interval by clearing any existing handle
     if (toggleAutoScroll.intervalId != null) {
@@ -1091,23 +1084,12 @@ function toggleAutoScroll() {
             clearInterval(toggleAutoScroll.intervalId);
             toggleAutoScroll.intervalId = null;
         }
-
-        // Show Terminal if it was hidden by auto scroll
-        if (terminal && terminal.classList.contains("hidden_by_auto_scroll")) {
-            terminal.style.display = "block";
-            terminal.classList.remove("hidden_by_auto_scroll");
-        }
     } 
     // Turn On Auto Scroll
     else {
         autoScrollButton.textContent = "Auto Scroll: On";
         console.log(autoScrollButton.textContent + " | Scroll rate set to " + SCROLL_TIME + " seconds");
 
-        // Hide Terminal if it is open, and add a flag to show that it was hidden by auto scroll
-        if (terminal && terminal.style.display !== "none" && !terminal.classList.contains("hidden_by_auto_scroll")) {
-            terminal.style.display = "none";
-            terminal.classList.add("hidden_by_auto_scroll");
-        }
 
         // The scroll loop
         nextScrollable(); // Do the first one instantly (no delay when clicked)

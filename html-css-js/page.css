@@ -192,10 +192,10 @@ button {
     word-wrap: break-word;
 }
 
-.mobile_legend {
+/* .mobile_legend {
     margin: 10px 0;
     font-size: x-large;
-}
+} */
 
 .mobile_button {
     padding: 2px 8px;
@@ -353,13 +353,6 @@ input:checked + .slider:before {
     border-style: none double inset double;
     box-shadow: 5px 7px 7px var(--bronson-black);
 }
-/* 
-.program_header.mobile {
-    display: grid;
-    grid-template-columns: repeat(3,1fr);
-    grid-template-rows: 2fr 1fr;
-    grid-auto-rows: 1fr 1fr;
-} */
 
 /* Bronson icon in top left, brings out hamburger menu */
 .site_header {
@@ -511,12 +504,6 @@ input:checked + .slider:before {
     grid-row: 3;
 }
 
-/* .db_spares fieldset ul {
-    padding: 0px 0px 0px 4px;
-    margin: 5px 0px 0px 0px;
-    color: var(--bronson-yellow-light);
-    font-family: var(--bronson-font-ui);
-} */
 
 .db_spares ul {
     padding: 0px 0px 0px 4px;
@@ -592,9 +579,7 @@ input:checked + .slider:before {
 
 .db_checker p {
     font-family: var(--bronson-font-emphasis);
-    /* text-align: left; */
     font-size: 18pt;
-    /* padding: 0px 0px 0px 0px; */
     margin: 0px 0px 0px 0px;
 }
 .db_cbZonep {
@@ -636,7 +621,6 @@ input:checked + .slider:before {
 }
 
 .db_checker progress {
-    /* -webket-appearance: none; */
     width: 92%;
     height: 20px;
     padding: 0px 0px 0px 0px;
@@ -644,7 +628,6 @@ input:checked + .slider:before {
     vertical-align: bottom;
     text-align: center;
     position: relative;
-    /* left: 10px;*/
     background-color: var(--bronson-grey-shadow);
     border-radius: 10px;
     border: 2px outset var(--bronson-yellow-dark);
@@ -755,13 +738,59 @@ progress::-webkit-progress-bar {
     .db_checker p {
         font-size: 22pt;
         margin: 0px 0pc 0px 0px;
-        grid-column: 1/ 9;
+        grid-column: 1/9;
     }
     .dbCbProg {
     overflow-y: scroll;
     height: 325px;
+    }
+
+    legend {
+        margin: 10px 0;
+        font-size: x-large;
+    }
+    .innerConsole {
+        font-size: x-large;
+    }
+    
+    #db_schedule_table th {
+    border: 1px outset var(--bronson-yellow-highlight);
+    width:7%;
+    font-size: small;
+    }
+
+       .tab_row.header {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(7,1fr);
+        transform: translate(0px,10px); 
+        grid-auto-rows: minmax(20px, auto);
+        overflow-y: hidden;
+        overflow-x: scroll;
+        scrollbar-width: thin;
+        padding-top: 20px;
+    }
+    .adminTab {
+        grid-column:6/7;
+        z-index: 6;
+    }
+    .anTab {
+        grid-column: 5/6;
+    }
+
+
+    /*cam code disabled for small screen sizes */
+    .ccTab {
+        display: none;
+    }
+     .leaderTab:active {
+        transform: matrix(1,0,0,.8,0,3);
+    }
+    .atTab:active {
+        transform: matrix(1,0,0,.8,0,3);
+    }
 }
-}
+
 
 
 /* JackNet Definitions 
@@ -1233,12 +1262,6 @@ progress::-webkit-progress-bar {
     text-align:center;
 }
 
-/* Window Size column changes */
-/* @media (max-width:1560px) {
-    .cbTopperBuildingList {
-        column-count:3;
-    }
-} */
 
 @media (max-width:1400px) {
     .cbVisRooms {
@@ -1550,14 +1573,7 @@ ol li::marker {
 
 .tx_loadingMessage {
     background-color: var(--bronson-grey-bg);
-    grid-column: 7 / 10;
-}
-.tx_loadingMessage.mobile {
-    background-color: var(--bronson-grey-bg);
-    grid-column: unset;
-    width: 120%;
-    margin-top: 25px;
-    margin-left: 25x;
+    grid-column: 7 / 11;
 }
 
 .tx_highlight_row {
@@ -2317,10 +2333,13 @@ p.tx_Description::-webkit-scrollbar-track {
         grid-row: 4;
     }
     .tx_addTicketButton {
-        grid-row: 5;
+        grid-row: 6;
+        scale: 200%;
     }
     .tx_dismissAllButton {
-        grid-row: 5;
+        grid-row: 6;
+        scale: 200%;
+
     }
 
 }
@@ -2338,15 +2357,9 @@ p.tx_Description::-webkit-scrollbar-track {
 
 .an_loadingMessage {
     background-color: var(--bronson-grey-bg);
-    grid-column:  7/ 10;
+    grid-column:  7/11;
 }
-.an_loadingMessage.mobile {
-    background-color: var(--bronson-grey-bg);
-    grid-column: unset;
-    width: 120%;
-    margin-top: 25px;
-    margin-left: 25x;
-}
+    
 
 .an_leftCol {
     display: flex;
@@ -2687,9 +2700,7 @@ p.tx_Description::-webkit-scrollbar-track {
     min-height: 200px;
 }
 
-.mobile_font {
-    font-size: x-large !important;
-}
+
 
 .mobile_tx_font {
     font-size: 15pt;
@@ -2705,10 +2716,6 @@ p.tx_Description::-webkit-scrollbar-track {
 
 .mobile_tx_font span {
     font-size: 22pt;
-}
-
-.mobile_font_leaderboard {
-    font-size: 14pt;
 }
 
 .tmpDBRecord {
@@ -3036,20 +3043,13 @@ p.tx_Description::-webkit-scrollbar-track {
 
 /* -------------- Tabs -------------- */
 /* Program Header Tabs */
-.tab_row{
+.tab_row {
     margin: 3px 0px;
     display: grid;
     padding: 0% 0%;
     grid-template-columns: repeat(16,1fr);
     transform: translate(0px,22px);
 }
-
-/* .tab_row.header.mobile {
-    position: absolute;
-    transform: translate(36px, 149px);
-    gap: 54px;
-} */
-
 
 .toolTab {
     margin: -10px -7px;
@@ -3199,24 +3199,7 @@ p.tx_Description::-webkit-scrollbar-track {
     grid-column: 16/17;
     z-index: 6;
 }
-@media (max-width: 1200px) { 
-    
-   .tab_row.header {
-        position: relative;
-        display: grid;
-        grid-template-columns: repeat(7,1fr);
-        transform: translate(0px,10px); 
-        grid-auto-rows: minmax(20px, auto);
-        overflow-y: hidden;
-        overflow-x: scroll;
-        scrollbar-width: thin;
-        padding-top: 20px;
-    }
-    .adminTab {
-        grid-column:7;
-        z-index: 6;
-    }
-}
+
 
 @media (max-width: 600px) { 
     .tab_row.schedule {
@@ -3253,12 +3236,12 @@ p.tx_Description::-webkit-scrollbar-track {
     z-index: 0;
     position: absolute;
 }
-/* 
+
 .schedule.mobile {
     margin-top: 10px;
     scale: 135%;
     transform: translate(111px, -15px);
-} */
+} 
 
 .leaderTab {
     margin: -12px -6px;
@@ -3523,14 +3506,14 @@ p.tx_Description::-webkit-scrollbar-track {
     height:30px;
 }
 
-@media (max-width: 1000px) {
+/* @media (max-width: 1000px) {
     .leaderTab:active {
         transform: matrix(1,0,0,.8,0,3);
     }
     .atTab:active {
         transform: matrix(1,0,0,.8,0,3);
     }
-}
+} */
 
 /* Other */
 
@@ -3764,9 +3747,6 @@ pre.md_item {
     width: fit-content;
 }
 
-/* .toc-item[data-isOpen="true"] {
-     background-color: var(--bronson-yellow-dark);
-} */
 .toc-item:hover {
     background-color: var(--bronson-yellow-dark);
     color:var(--bronson-yellow-light)
