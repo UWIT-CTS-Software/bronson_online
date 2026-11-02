@@ -275,9 +275,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 continue;
             }
         };
-        let mut bytes_read: usize = 4096;
+        let mut bytes_read: usize = BUFF_SIZE;
         let mut buf_vec: Vec<u8> = Vec::with_capacity(1_073_741_824);
-        while bytes_read == 4096 {
+        while bytes_read == BUFF_SIZE {
             match stream.read(&mut buffer) {
                 Ok(s) => {
                     bytes_read = s;
