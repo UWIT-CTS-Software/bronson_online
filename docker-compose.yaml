@@ -1,11 +1,13 @@
 volumes:
   db:
 services:
-  postgres:
-    image: postgres:16.9
-    container_name: postgres
+  postgres-db:
+    image: docker.io/library/postgres:16.9
+    container_name: postgres-db
     ports:
-      - "5432:5432"
+      - "65432:5432"
+    networks:
+      - bronson_net
     volumes:
       - db:/var/lib/postgresql/data
     env_file:
@@ -15,10 +17,15 @@ services:
     container_name: bronson_online
     restart: on-failure
     depends_on:
-      - postgres
+      - postgres-db
     env_file:
       - .env
     build: .
     ports:
       - "7878:7878"
+    networks:
+      - bronson_net
     command: cargo run --profile release -- -p
+networks:
+  bronson_net:
+    driver: "bridge"

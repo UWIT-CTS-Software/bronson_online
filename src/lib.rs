@@ -265,7 +265,7 @@ impl Database {
 		let buildings_body = match lsm_client
 			.build()
 			.method("GET")
-			.endpoint("https://uwyo.talem3.com/lsm/api/BuildingInfo")
+			.endpoint("https://uwyo.talem3.com/lsm/api/query/v1/BuildingInfo")
 			.timeout(Duration::from_secs(15))
 			.send()
 			.await {
@@ -285,7 +285,7 @@ impl Database {
 
 		for b in building_vec {
 			let name_regex = Regex::new(r"^(?<name>.*)\s\((?<abbrev>.*)\)$").unwrap();
-			let name_captures = match name_regex.captures(&b["Location"]["name"].as_str().expect("Uh oh")) {
+			let name_captures = match name_regex.captures(&b["Location"].as_str().expect("Uh oh")) {
 				Some(caps) => caps,
 				None       => {
 					error!("Unable to collect building name regex."); 
@@ -297,8 +297,8 @@ impl Database {
 				&DB_Building {
 					name: name_captures["name"].to_string(),
 					abbrev: name_captures["abbrev"].to_string(),
-					building_id: b["Location"]["id"].as_i64().expect("Uh oh"),
-					lsm_name: String::from(b["Location"]["name"].as_str().expect("Uh oh")),
+					building_id: b["Id"].as_i64().expect("Uh oh"),
+					lsm_name: String::from(b["Location"].as_str().expect("Uh oh")),
 					zone: 1,
 					total_rooms: 0,
 					checked_rooms: 0
@@ -325,7 +325,7 @@ impl Database {
 			let proc_counts_body = match lsm_client
 				.build()
 				.method("GET")
-				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/ProcsPerRoom?offset={}", room_offset))
+				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/query/v1/ProcsPerRoom?offset={}", room_offset))
 				.timeout(Duration::from_secs(15))
 				.send()
 				.await {
@@ -357,12 +357,12 @@ impl Database {
 			};
 
 			for proc_count in counts_vec {
-				match rooms_map.get(&proc_count["Location"]["id"].as_i64().expect("Empty")) {
+				match rooms_map.get(&proc_count["Id"].as_i64().expect("Empty")) {
 					Some(cs) =>  {
 						rooms_map.insert(
-							proc_count["Location"]["id"].as_i64().expect("Empty"), 
+							proc_count["Id"].as_i64().expect("Empty"), 
 							HostnameGenerator {
-								room: String::from(proc_count["Location"]["name"].as_str().expect("Empty")),
+								room: String::from(proc_count["Location"].as_str().expect("Empty")),
 								procs: proc_count["Processors Count"].as_i64().expect("Empty"),
 								tps: cs.tps.clone(),
 								pjs: cs.pjs.clone(),
@@ -371,9 +371,9 @@ impl Database {
 					},
 					None     => {
 						rooms_map.insert(
-							proc_count["Location"]["id"].as_i64().expect("Empty"),
+							proc_count["Id"].as_i64().expect("Empty"),
 							HostnameGenerator {
-								room: String::from(proc_count["Location"]["name"].as_str().expect("Empty")),
+								room: String::from(proc_count["Location"].as_str().expect("Empty")),
 								procs: proc_count["Processors Count"].as_i64().expect("Empty"),
 								tps: 0,
 								pjs: 0,
@@ -391,7 +391,7 @@ impl Database {
 			let tps_counts_body = match lsm_client
 				.build()
 				.method("GET")
-				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/TPsPerRoom?offset={}", room_offset))
+				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/query/v1/TPsPerRoom?offset={}", room_offset))
 				.timeout(Duration::from_secs(15))
 				.send()
 				.await {
@@ -423,12 +423,12 @@ impl Database {
 			};
 
 			for tps_count in counts_vec {
-				match rooms_map.get(&tps_count["Location"]["id"].as_i64().expect("Empty")) {
+				match rooms_map.get(&tps_count["Id"].as_i64().expect("Empty")) {
 					Some(cs) =>  {
 						rooms_map.insert(
-							tps_count["Location"]["id"].as_i64().expect("Empty"), 
+							tps_count["Id"].as_i64().expect("Empty"), 
 							HostnameGenerator {
-								room: String::from(tps_count["Location"]["name"].as_str().expect("Empty")),
+								room: String::from(tps_count["Location"].as_str().expect("Empty")),
 								procs: cs.procs.clone(),
 								tps: tps_count["TPs Count"].as_i64().expect("Empty"),
 								pjs: cs.pjs.clone(),
@@ -437,9 +437,9 @@ impl Database {
 					},
 					None     => {
 						rooms_map.insert(
-							tps_count["Location"]["id"].as_i64().expect("Empty"),
+							tps_count["Id"].as_i64().expect("Empty"),
 							HostnameGenerator {
-								room: String::from(tps_count["Location"]["name"].as_str().expect("Empty")),
+								room: String::from(tps_count["Location"].as_str().expect("Empty")),
 								procs: 0,
 								tps: tps_count["TPs Count"].as_i64().expect("Empty"),
 								pjs: 0,
@@ -457,7 +457,7 @@ impl Database {
 			let pjs_counts_body = match lsm_client
 				.build()
 				.method("GET")
-				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/ProjectorsPerRoom?offset={}", room_offset))
+				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/query/v1/ProjectorsPerRoom?offset={}", room_offset))
 				.timeout(Duration::from_secs(15))
 				.send()
 				.await {
@@ -489,12 +489,12 @@ impl Database {
 			};
 
 			for pj_count in counts_vec {
-				match rooms_map.get(&pj_count["Location"]["id"].as_i64().expect("Empty")) {
+				match rooms_map.get(&pj_count["Id"].as_i64().expect("Empty")) {
 					Some(cs) =>  {
 						rooms_map.insert(
-							pj_count["Location"]["id"].as_i64().expect("Empty"), 
+							pj_count["Id"].as_i64().expect("Empty"), 
 							HostnameGenerator {
-								room: String::from(pj_count["Location"]["name"].as_str().expect("Empty")),
+								room: String::from(pj_count["Location"].as_str().expect("Empty")),
 								procs: cs.procs.clone(),
 								tps: cs.tps.clone(),
 								pjs: pj_count["Projectors Count"].as_i64().expect("Empty"),
@@ -503,9 +503,9 @@ impl Database {
 					},
 					None     => {
 						rooms_map.insert(
-							pj_count["Location"]["id"].as_i64().expect("Empty"),
+							pj_count["Id"].as_i64().expect("Empty"),
 							HostnameGenerator {
-								room: String::from(pj_count["Location"]["name"].as_str().expect("Empty")),
+								room: String::from(pj_count["Location"].as_str().expect("Empty")),
 								procs: 0,
 								tps: 0,
 								pjs: pj_count["Projectors Count"].as_i64().expect("Empty"),
@@ -523,7 +523,7 @@ impl Database {
 			let disp_counts_body = match lsm_client
 				.build()
 				.method("GET")
-				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/DisplaysPerRoom?offset={}", room_offset))
+				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/query/v1/DisplaysPerRoom?offset={}", room_offset))
 				.timeout(Duration::from_secs(15))
 				.send()
 				.await {
@@ -555,12 +555,12 @@ impl Database {
 			};
 
 			for disp_count in counts_vec {
-				match rooms_map.get(&disp_count["Location"]["id"].as_i64().expect("Empty")) {
+				match rooms_map.get(&disp_count["Id"].as_i64().expect("Empty")) {
 					Some(cs) =>  {
 						rooms_map.insert(
-							disp_count["Location"]["id"].as_i64().expect("Empty"), 
+							disp_count["Id"].as_i64().expect("Empty"), 
 							HostnameGenerator {
-								room: String::from(disp_count["Location"]["name"].as_str().expect("Empty")),
+								room: String::from(disp_count["Location"].as_str().expect("Empty")),
 								procs: cs.procs.clone(),
 								tps: cs.tps.clone(),
 								pjs: cs.pjs.clone(),
@@ -569,9 +569,9 @@ impl Database {
 					},
 					None     => {
 						rooms_map.insert(
-							disp_count["Location"]["id"].as_i64().expect("Empty"),
+							disp_count["Id"].as_i64().expect("Empty"),
 							HostnameGenerator {
-								room: String::from(disp_count["Location"]["name"].as_str().expect("Empty")),
+								room: String::from(disp_count["Location"].as_str().expect("Empty")),
 								procs: 0,
 								tps: 0,
 								pjs: 0,
@@ -593,7 +593,7 @@ impl Database {
 			let rooms_body = match lsm_client
 				.build()
 				.method("GET")
-				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/RoomInfo?offset={}&p=%7BMinAssessmentCount%3A%200%7D", room_offset))
+				.endpoint(&format!("https://uwyo.talem3.com/lsm/api/query/v1/RoomInfo?offset={}&p=%7BMinAssessmentCount%3A%200%7D", room_offset))
 				.timeout(Duration::from_secs(15))
 				.send()
 				.await {
@@ -626,7 +626,7 @@ impl Database {
 
 			for room in rooms_vec {
 				let name_regex = Regex::new(r"^(?<abbrev>[A-Z]*)\s.*$").unwrap();
-				let name_captures = match name_regex.captures(&room["Location"]["name"].as_str().expect("Uh oh")) {
+				let name_captures = match name_regex.captures(&room["Location"].as_str().expect("Uh oh")) {
 					Some(caps) => caps,
 					None       => {
 						error!("Unable to collect building name regex."); 
@@ -634,24 +634,24 @@ impl Database {
 					}
 				};
 
-				let is_gp = match room["Organizational Group"]["name"].as_str().expect("Uh oh") {
+				let is_gp = match room["Organizational Group"].as_str().expect("Uh oh") {
 					"General Pool" => true,
 					_              => false
 				};
 
-				match self.get_room_by_id(room["Location"]["id"].as_i64().expect("Uh oh")) {
-					Ok(_) => { debug!("ROOM FOUND: {}", room["Location"]["name"].as_str().expect("Uh oh")); },
+				match self.get_room_by_id(room["Id"].as_i64().expect("Uh oh")) {
+					Ok(_) => { debug!("ROOM FOUND: {}", room["Location"].as_str().expect("Uh oh")); },
 					Err(_) => { }
 				}
 
 				match self.update_room(
 					&DB_Room {
-						name: room["Location"]["name"].as_str().expect("Uh oh").to_string(),
+						name: room["Location"].as_str().expect("Uh oh").to_string(),
 						abbrev: name_captures["abbrev"].to_string(),
-						room_id: room["Location"]["id"].as_i64().expect("Uh oh"),
+						room_id: room["Id"].as_i64().expect("Uh oh"),
 						parent_id: room["Parent Id"].as_i64().expect("Uh oh"),
 						collegenet_id: match room["25Live Location ID"].as_number() {
-							Some(n) => Some(n.as_f64().unwrap() as i64),
+							Some(n) => Some(n.as_i64().expect("Uh oh")),
 							None    => None
 						},
 						checked: "2000-01-01T00:00:00Z".parse::<DateTime<Local>>().ok()?,
@@ -662,7 +662,7 @@ impl Database {
 						onln: "2000-01-01T00:00:00Z".parse::<DateTime<Local>>().ok()?,
 						available: true,
 						until: Local::now() + Days::new(1),
-						ping_data: match rooms_ping_data.get(&room["Location"]["id"].as_i64().expect("Uh oh")) {
+						ping_data: match rooms_ping_data.get(&room["Id"].as_i64().expect("Uh oh")) {
 							Some(v) => v.clone(),
 							None    => Vec::new()
 						},
@@ -671,7 +671,7 @@ impl Database {
 				) {
 					Ok(_) => (),
 					Err(m) => {
-						error!("Error inserting room {}: {}", room["Location"]["name"].as_str().expect("Uh oh"), m);
+						error!("Error inserting room {}: {}", room["Location"].as_str().expect("Uh oh"), m);
 					}
 				};
 			}
@@ -1820,66 +1820,86 @@ impl<B: std::clone::Clone> APIEndpoint<B>  {
 	}
 
 	pub async fn send(&mut self) -> Result<APIResponse, String> {
-		let url = match &self.endpoint {
-			Some(u) => u,
-			None    => {
-				return Err(String::from("Cannot send without URL"));
+		let mut retry: bool = true;
+		let mut ret_val: APIResponse = APIResponse {
+			status: reqwest::StatusCode::CREATED,
+			version: String::new(),
+			headers: HeaderMap::new(),
+			body: String::new()
+		};
+		
+		while retry {
+			let url = match &self.endpoint {
+				Some(u) => u,
+				None    => {
+					return Err(String::from("Cannot send without URL"));
+				}
+			};
+
+			let method = match &self.method {
+				Some(m) => m,
+				None    => {
+					return Err(String::from("No method to call with"));
+				}
+			};
+
+			if !self.data.clone().is_some() {
+				self.data = Some(Arc::new(|c, b| { reqwest::RequestBuilder::json(c, &b) }));
+				
+				assert_eq!(self.data.clone().is_some(), true);
 			}
-		};
 
-		let method = match &self.method {
-			Some(m) => m,
-			None    => {
-				return Err(String::from("No method to call with"));
+			let data_endpoint = self.data.clone().unwrap();
+
+			let client = match &self.client {
+				APIClient::SingleThread(c) => method(c.write().unwrap().clone(), url.to_string()),
+				APIClient::MultiThread(c)  => method(c.clone(),                  url.to_string()),
+			};
+
+			let send = data_endpoint(client.timeout(self.timeout)
+							.headers(self.headers.clone())
+							, self.args.clone())
+							.send()
+							.await;
+
+			let mut resp = match send {
+				Ok(r) => r,
+				Err(m) => { return Err(format!("{:?}", m)); }
+			};
+
+			if resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
+				warn!("Rate limit exceeded for {:?}. Retrying in one second.", self.endpoint.clone());
+				std::thread::sleep(std::time::Duration::from_secs(1));
+				continue;
 			}
-		};
 
-		if !self.data.clone().is_some() {
-			self.data = Some(Arc::new(|c, b| { reqwest::RequestBuilder::json(c, &b) }));
-			
-			assert_eq!(self.data.clone().is_some(), true);
-		}
+			let raw_status = resp.status().clone();
+			let raw_version = format!("{:?}", resp.version());
+			let raw_headers = resp.headers().clone();
 
-		let data_endpoint = self.data.clone().unwrap();
+			let mut raw_body: Vec<u8> = Vec::new();
 
-		let client = match &self.client {
-			APIClient::SingleThread(c) => method(c.write().unwrap().clone(), url.to_string()),
-			APIClient::MultiThread(c)  => method(c.clone(),                  url.to_string()),
-		};
-
-		let send = data_endpoint(client.timeout(self.timeout)
-						.headers(self.headers.clone())
-						, self.args.clone())
-						.send()
-						.await;
-
-		let mut resp = match send {
-			Ok(r) => r,
-			Err(m) => { return Err(format!("{:?}", m)); }
-		};
-
-		let raw_status = resp.status().clone();
-		let raw_version = format!("{:?}", resp.version());
-		let raw_headers = resp.headers().clone();
-
-		let mut raw_body: Vec<u8> = Vec::new();
-
-		while let Some(chunk) = match resp.chunk().await {
-			Ok(c) => c,
-			Err(m) => { return Err(m.to_string()); }
-		} {
-			raw_body.extend_from_slice(&chunk);
-		}
-
-		Ok(APIResponse {
-			status: raw_status,
-			version: raw_version,
-			headers: raw_headers,
-			body: match String::from_utf8(raw_body) {
-				Ok(b) => b,
+			while let Some(chunk) = match resp.chunk().await {
+				Ok(c) => c,
 				Err(m) => { return Err(m.to_string()); }
+			} {
+				raw_body.extend_from_slice(&chunk);
 			}
-		})
+
+			ret_val = APIResponse {
+				status: raw_status,
+				version: raw_version,
+				headers: raw_headers,
+				body: match String::from_utf8(raw_body) {
+					Ok(b) => b,
+					Err(m) => { return Err(m.to_string()); }
+				}
+			};
+
+			retry = false;
+		}
+
+		Ok(ret_val)
 	}
 }
 
