@@ -192,10 +192,10 @@ button {
     word-wrap: break-word;
 }
 
-/* .mobile_legend {
+.mobile_legend {
     margin: 10px 0;
     font-size: x-large;
-} */
+}
 
 .mobile_button {
     padding: 2px 8px;
@@ -445,11 +445,7 @@ input:checked + .slider:before {
     box-shadow: 3px 4px 4px;
 }
 
-.hb_menu.mobile {
-    margin-top: 300px;
-    margin-left: 85px;
-    scale: 200%
-}
+
 
 .hb_menu legend {
     color: var(--bronson-orange-dark);
@@ -689,23 +685,6 @@ progress::-webkit-progress-bar {
 .schdtrue {
     background-color: var(--bronson-green-light);
 }
-@media(max-width: 1655px) {
-    .db_checker p {
-        font-size: 14pt;
-    }
-    .db_checker progress {
-        width:92%
-    }
-}
-
-@media(max-width: 1410px) {
-    .db_checker p {
-        font-size: 12pt;
-    }
-    .db_checker progress {
-        width:92%
-    }
-}
 
 @media (max-width: 1250px) {
     .db_leader {
@@ -764,30 +743,56 @@ progress::-webkit-progress-bar {
         display: grid;
         grid-template-columns: repeat(7,1fr);
         transform: translate(0px,10px); 
-        grid-auto-rows: minmax(20px, auto);
+        /* grid-auto-rows: minmax(20px, auto); */
         overflow-y: hidden;
         overflow-x: scroll;
         scrollbar-width: thin;
         padding-top: 20px;
     }
-    .adminTab {
-        grid-column:6/7;
-        z-index: 6;
-    }
-    .anTab {
-        grid-column: 5/6;
-    }
 
+    .anTab {
+        grid-column: 5/6 !important;
+    }
+    
 
     /*cam code disabled for small screen sizes */
     .ccTab {
         display: none;
     }
-     .leaderTab:active {
+    .leaderTab:active {
         transform: matrix(1,0,0,.8,0,3);
     }
     .atTab:active {
         transform: matrix(1,0,0,.8,0,3);
+    }
+
+
+    .hb_menu {
+    margin-top: 300px;
+    margin-left: 85px;
+    scale: 200%;
+    } 
+    .jn_devSelect {
+        grid-row: 2;
+        grid-column: 1/17;
+    }
+    .jn_buildSelect {
+        grid-row: 1;
+        grid-column: 1/17;
+    }
+    .jn_console {
+        grid-row: 3;
+        grid-column: 1/17;
+    }
+
+    .jn_bottomMenu {
+        grid-row: 4;
+        grid-column: 1/17;
+    }
+    .jn_visList {
+        column-count:1;
+        grid-column: 1/17;
+        margin: auto;
     }
 }
 
@@ -836,7 +841,7 @@ progress::-webkit-progress-bar {
     padding-left: 0px;
 }
 
-@media (max-width:1500px) {
+@media (max-width:1200px) {
     .jn_devSelect {
         grid-row: 2;
         grid-column: 1/17;
@@ -1262,17 +1267,6 @@ progress::-webkit-progress-bar {
     text-align:center;
 }
 
-
-@media (max-width:1400px) {
-    .cbVisRooms {
-        column-count:3;
-    }
-    .cbTopperBuildingList {
-        column-count:2;
-    }
-}
-
-
 @media (max-width:1100px) {
     .cbVisRooms {
         column-count:2;
@@ -1288,7 +1282,7 @@ progress::-webkit-progress-bar {
         overflow-y: scroll;
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-        gap: 1px;
+        gap: 5px;
         column-fill: balance;
     }
 
@@ -1300,6 +1294,16 @@ progress::-webkit-progress-bar {
         grid-row: 1;
         grid-column: 1/17;
     }
+    
+    .cbTopperBuildingList {
+        margin: 0px 0px 0px 0px;
+        padding: 0px 5% 0px 5%;
+        column-count: 2;
+    }
+
+    /* .bronson_checkBox {
+        scale: 150%;
+    } */
 }
 
 /* CamCode Definitions 
@@ -2441,7 +2445,7 @@ p.tx_Description::-webkit-scrollbar-track {
     row-gap: 0.75rem;
     min-width: 0;
     min-height: 0;
-    overflow-x: hidden;
+    overflow-x: scroll;
 }
 
 #an_departmentTimePeriod {
@@ -2463,7 +2467,7 @@ p.tx_Description::-webkit-scrollbar-track {
     grid-row: 2;
 }
 
-#an_departmentTicketStats {
+#an_departmentTicketStats { 
     grid-column: 2 / 3;
     grid-row: 2;
     display: flex;
@@ -2477,7 +2481,7 @@ p.tx_Description::-webkit-scrollbar-track {
     display: flex;
     flex-wrap: wrap;
     flex-direction: column;
-    max-height: 200px;
+    max-height: 200px; 
 }
 
 #an_statsLabel {
@@ -2600,6 +2604,7 @@ p.tx_Description::-webkit-scrollbar-track {
     width: 40%;
     min-width: 100px;
     margin: 0 auto;
+    color: var(--bronson-red-bright);
 }
 
 .an_barGraph {
@@ -2630,16 +2635,6 @@ p.tx_Description::-webkit-scrollbar-track {
 
 .an_noteButtons {
     margin: 0px 0px 0px 30px;
-}
-
-@media (max-width: 1600px) {
-    .an_leftCol {
-        grid-column: 1 / 5;
-    }
-
-    .an_rightCol {
-        grid-column: 5 / 11;
-    }
 }
 
 @media (max-width: 1100px) {
@@ -3196,7 +3191,7 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .adminTab {
-    grid-column: 16/17;
+    grid-column: -1;
     z-index: 6;
 }
 
@@ -3506,14 +3501,6 @@ p.tx_Description::-webkit-scrollbar-track {
     height:30px;
 }
 
-/* @media (max-width: 1000px) {
-    .leaderTab:active {
-        transform: matrix(1,0,0,.8,0,3);
-    }
-    .atTab:active {
-        transform: matrix(1,0,0,.8,0,3);
-    }
-} */
 
 /* Other */
 

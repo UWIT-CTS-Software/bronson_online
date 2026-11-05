@@ -436,7 +436,7 @@ async function setChecker() {
     let campus = JSON.parse(localStorage.getItem("campData"));
     Object.keys(campus).forEach(bldg => {
         building_checkboxes += `
-            <label for="${bldg}" ${isMobile ? "class='mobile_font'" : ""}>
+            <label for="${bldg}">
             <input class="bronson_checkBox ${isMobile ? "mobile_checkbox" : ""}" onclick="updateCheckedBuildings()" type="checkbox" id="${bldg}" name="cb_dev" value="${bldg}"/>
                 ${bldg}
             </label>
@@ -469,7 +469,7 @@ async function setChecker() {
                 <input id="cbToggleHide" type="checkbox" onclick="toggleHideRooms()">
                 <span class="slider round"></span>
             </label>
-            <label id="cbToggleLabel" for="cbHideChkedRoomsToggle" ${isMobile ? "class='mobile_font'" : ""} style="font-size: medium; float: center;">
+            <label id="cbToggleLabel" for="cbHideChkedRoomsToggle"style="font-size: medium; float: center;">
                 Showing \nChecked Rooms</label>
         </fieldset>`;
 
@@ -480,7 +480,7 @@ async function setChecker() {
         <fieldset>
             <legend ${isMobile ? "class='mobile_legend'" : ""}>Console Output: </legend>
             <div class="cbTopperContainer" id="cbTopID">
-                <p class="cfm_text ${isMobile ? "mobile_font" : ""}">Select Building(s) and click Run to run search.</p>
+                <p class="cfm_text">Select Building(s) and click Run to run search.</p>
             </div>
             <div id="cbVisConID" class="cbVisContainer">
             </div>

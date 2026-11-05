@@ -537,8 +537,8 @@ async function dashCheckerboardHTML() {
         percent = String((Math.floor(10000*percent) / 100).toFixed(2)).padStart(5, "0");
         cb_dashDivHTML += `
             <li>
-                <div style="display:none;" id="${bldg}_div"><p class="db_cbZonep ${isMobile ? "mobile_font" : "" }">${bldg}</p><p class="db_cbRoomCountp">${bldg_info["checked_rooms"]} / ${bldg_info["rooms"].length}</p>
-                <label class="dbCbProgLabel ${isMobile ? "mobile_font" : ""}" for="${bldg}_prog"> ${bldg_info["rooms"].length > 0 ? percent+"%" : "N/A" }</label>
+                <div style="display:none;" id="${bldg}_div"><p class="db_cbZonep">${bldg}</p><p class="db_cbRoomCountp">${bldg_info["checked_rooms"]} / ${bldg_info["rooms"].length}</p>
+                <label class="dbCbProgLabel" for="${bldg}_prog"> ${bldg_info["rooms"].length > 0 ? percent+"%" : "N/A" }</label>
                 <progress id="${bldg}_prog" value="${percent}" max="100"></progress>
                 </div>
             </li>
@@ -845,30 +845,30 @@ function dashSpares() {
     let spareDiv = document.getElementById("db_spare");
     let spareData = JSON.parse(localStorage.getItem("spares"));
     let tmp = `
-        <fieldset ${isMobile ? "class='mobile_font'" : ""}> 
+        <fieldset> 
         <legend> 
             PC Spares 
         </legend> 
-        <p class="spareHeader ${isMobile ? "mobile_font" : ""}"> Deployed Spares </p>
+        <p class="spareHeader"> Deployed Spares </p>
         <ul>
     `;
     let tmp_deployed = ``;
     let tmp_notDeployed = ``;
     for(let i = 0; i < spareData.length; i++) {
         if(spareData[i]["Location"]["name"] == "ITC 0173") {
-            tmp_notDeployed += `<li><span class="sparePCName ${isMobile ? "mobile_font" : ""}">${spareData[i]["Asset Tag"]}: </span>
+            tmp_notDeployed += `<li><span class="sparePCName">${spareData[i]["Asset Tag"]}: </span>
         <span class="spareLocale">Located in ${spareData[i]["Location"]["name"]} </span><br> 
         <span class="spareUpdate">Updated ${rawTimeFormat(spareData[i]["Last Updated"])} <br>
         by ${spareData[i]["User"]["displayName"]}</span></li>`;
         } else {
-            tmp_deployed += `<li><span class="sparePCName ${isMobile ? "mobile_font" : ""}">${spareData[i]["Asset Tag"]}: </span>
+            tmp_deployed += `<li><span class="sparePCName $">${spareData[i]["Asset Tag"]}: </span>
         <span class="spareLocale">Located in ${spareData[i]["Location"]["name"]} </span><br> 
         <span class="spareUpdate">Updated ${rawTimeFormat(spareData[i]["Last Updated"])} <br>
         by ${spareData[i]["User"]["displayName"]}</span></li>`;
         }
     }
     tmp += tmp_deployed;
-    tmp += `</ul><p ${isMobile ? "class='mobile_font'" : ""}> Stored in ITC 173 </p><ul>`;
+    tmp += `</ul><p> Stored in ITC 173 </p><ul>`;
     tmp += tmp_notDeployed;
     tmp += `</ul></fieldset>`;
     spareDiv.innerHTML = tmp;
@@ -886,7 +886,7 @@ async function dashTickex() {
     // Loading Screen until Tickets are fetched
     let tmp = `
         <fieldset> 
-            <p ${isMobile ? "class='mobile_font'" : ""}>Loading Tickets...</p>
+            <p>Loading Tickets...</p>
         </fieldset>
     `;
     ticketsDiv.innerHTML = tmp;
@@ -918,7 +918,7 @@ async function dashTickex() {
 
         // Build the Ticket Content
         let ticketsContent = `
-            <table ${isMobile ? "class='mobile_font'" : ""}>
+            <table>
                 <thead><tr>
                     <th>Title</th>
                     ${isMobile ? "" : "<th>ID</th>"}
@@ -954,7 +954,7 @@ async function dashTickex() {
                 <legend>
                     New CTS Tickets
                 </legend> 
-                <p class="ticketsHeader ${isMobile ? "mobile_font" : ""}"> Only take incident when going to Ticket! </p>
+                <p class="ticketsHeader"> Only take incident when going to Ticket! </p>
                 ${ticketsContent}
             </fieldset>
         `;
@@ -998,21 +998,17 @@ function isMobile() {
         const autoScrollButton = document.getElementById("auto_scroll_button");
         if (autoScrollButton) autoScrollButton.remove();
 
-        // Scale page elements to be larger (done here and where html is dynamically written as well)
         const programHeader = document.getElementById("bronson_header");
-        // if (programHeader) programHeader.classList.add("mobile");
 
         const messageHeader = document.getElementsByClassName("message_header")[0];
-        if (messageHeader) messageHeader.classList.add("mobile");
 
         const hamburgerMenu = document.getElementById("hb_menu");
-        if (hamburgerMenu) hamburgerMenu.classList.add("mobile"); 
 
-        const toolTabs = document.getElementsByClassName("toolTab");
-        if (toolTabs.length > 0) {
-            for (let i = 0; i < toolTabs.length; i++) 
-                toolTabs[i].classList.add("mobile");
-        }
+        // const toolTabs = document.getElementsByClassName("toolTab");
+        // if (toolTabs.length > 0) {
+        //     for (let i = 0; i < toolTabs.length; i++) 
+        //         toolTabs[i].classList.add("mobile");
+        // }
 
         // Move Tool Tabs to grid-row 2 
         // const toolTabRow = document.getElementsByClassName("tab_row header")[0];
@@ -1028,7 +1024,7 @@ function isMobile() {
 
         return true;
     } else {
-        // console.log("Desktop User Detected");
+        console.log("Desktop User Detected");
         return false;
     }
 }

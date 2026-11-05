@@ -446,7 +446,7 @@ async function setHideProject(projectId, isHidden) {
 
 // Only called once, builds the graphs with placeholder data
 async function buildGraphs() {
-    const donutGraphColor = ["rgb(236, 200, 101)", "rgb(195, 161, 68)"];
+    const donutGraphColor = [" rgb(57, 125, 54)","rgb(236, 200, 101)"];
     const barGraphColor = ["rgb(236, 200, 101)"]
 
     // Individual Room Check Donut Chart
