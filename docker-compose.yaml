@@ -1,9 +1,9 @@
 volumes:
   db:
 services:
-  postgres-db:
+  bronson-db:
     image: docker.io/library/postgres:16.9
-    container_name: postgres-db
+    container_name: bronson-db
     ports:
       - "65432:5432"
     networks:
@@ -17,7 +17,7 @@ services:
     container_name: bronson_online
     restart: on-failure
     depends_on:
-      - postgres-db
+      - bronson-db
     env_file:
       - .env
     build: .
