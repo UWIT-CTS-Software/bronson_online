@@ -1141,10 +1141,6 @@ async function setAnalytics() {
     if (isMobile) an_container.classList.add('mobile');
     
     progGuts.replaceWith(main_container);
-
-    // Hide Terminal
-    const terminal = document.getElementById('terminal');
-    if (terminal && terminal.style.display !== "none") hideTerminal();
     
 
     /* -------------------- Analytics Page -------------------- */

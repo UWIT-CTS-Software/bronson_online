@@ -639,7 +639,7 @@ async function setJackNet() {
     let buildingSelect = document.createElement("div");
     buildingSelect.classList.add('jn_buildSelect');
     let set_inner_html = `
-        <select id="building_list" ${isMobile ? "class='mobile_font'" : ""}>
+        <select id="building_list">
         <option>
             All Buildings
         </option>`;

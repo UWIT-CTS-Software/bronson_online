@@ -1740,7 +1740,7 @@ async function setTickex(openTicketByID = -1) {
     newTickets.innerHTML = `
         <fieldset><legend ${isMobile ? "class='mobile_legend'" : ""}>New CTS Tickets</legend>
             <div class="tx_ticketContainer" id="new">
-                <table ${isMobile ? "class='mobile_font'" : ""}>
+                <table>
                     <thead><tr>
                         <th>Title</th>
                         ${isMobile ? "" : "<th>ID</th>"}
@@ -1751,13 +1751,13 @@ async function setTickex(openTicketByID = -1) {
                 <div class="k_pager" id="newPager">
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="new_minus10" onclick="kPagerButton(-10, 'newTicket_input', 'newMaxPage')">-10</button>
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="new_minus1" onclick="kPagerButton(-1, 'newTicket_input', 'newMaxPage')"><</button>
-                    <input type="number" class="k_input_inner ${isMobile ? "mobile_font" : ""}" id="newTicket_input" autocomplete="off" value="1"></input>
-                    <span ${isMobile ? "class='mobile_font'" : ""}>of </span>
-                    <span ${isMobile ? "class='mobile_font'" : ""} id="newMaxPage">1</span>
+                    <input type="number" class="k_input_inner" id="newTicket_input" autocomplete="off" value="1"></input>
+                    <span>of </span>
+                    <span id="newMaxPage">1</span>
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="new_plus1" onclick="kPagerButton(1, 'newTicket_input', 'newMaxPage')">></button>
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="new_plus10" onclick="kPagerButton(10, 'newTicket_input', 'newMaxPage')">+10</button>
-                    <div><span ${isMobile ? "class='mobile_font'" : ""}>Max Items per Page: </span>
-                    <select class="k_pager_button ${isMobile ? "mobile_font" : ""}" id="newTicket_dropdown">
+                    <div><span>Max Items per Page: </span>
+                    <select class="k_pager_button" id="newTicket_dropdown">
                         <option value="5" ${tickexSettings.newTicketMaxItems === 5 ? 'selected' : ''}>5</option>
                         <option value="10" ${tickexSettings.newTicketMaxItems === 10 ? 'selected' : ''}>10</option>
                         <option value="15" ${tickexSettings.newTicketMaxItems === 15 ? 'selected' : ''}>15</option>
@@ -1782,7 +1782,7 @@ async function setTickex(openTicketByID = -1) {
     catchAll.innerHTML = `
         <fieldset><legend ${isMobile ? "class='mobile_legend'" : ""}>CTS Ticket Catch All</legend>
             <div class="tx_ticketContainer" id="catchAll">
-                <table ${isMobile ? "class='mobile_font'" : ""}>
+                <table>
                     <thead><tr>
                         <th>Title</th>
                         ${isMobile ? "" : "<th>ID</th>"}
@@ -1793,16 +1793,16 @@ async function setTickex(openTicketByID = -1) {
                 <div class="k_pager" id="catchAllPager">
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="catchAll_minus10" onclick="kPagerButton(-10, 'catchAllTicket_input', 'catchAllMaxPage')">-10</button>
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="catchAll_minus1" onclick="kPagerButton(-1, 'catchAllTicket_input', 'catchAllMaxPage')"><</button>
-                    <input type="number" class="k_input_inner ${isMobile ? "mobile_font" : ""}" id="catchAllTicket_input" autocomplete="off" value="1"></input>
-                    <span ${isMobile ? "class='mobile_font'" : ""}>of </span>
-                    <span ${isMobile ? "class='mobile_font'" : ""} id="catchAllMaxPage">1</span>
+                    <input type="number" class="k_input_inner" id="catchAllTicket_input" autocomplete="off" value="1"></input>
+                    <span>of </span>
+                    <span id="catchAllMaxPage">1</span>
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="catchAll_plus1" onclick="kPagerButton(1, 'catchAllTicket_input', 'catchAllMaxPage')">></button>
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="catchAll_plus10" onclick="kPagerButton(10, 'catchAllTicket_input', 'catchAllMaxPage')">+10</button>
-                    <div><span ${isMobile ? "class='mobile_font'" : ""}>Max Items per Page: </span>
-                    <select class="k_pager_button ${isMobile ? "mobile_font" : ""}" id="catchAllTicket_dropdown">
+                    <div><span>Max Items per Page: </span>
+                    <select class="k_pager_button" id="catchAllTicket_dropdown">
                         <option value="5" ${tickexSettings.catchAllMaxItems === 5 ? 'selected' : ''}>5</option>
                         <option value="10" ${tickexSettings.catchAllMaxItems === 10 ? 'selected' : ''}>10</option>
-                        <option value="15" ${tickexSettings.catchAllMaxItems === 15 ? 'selected' : ''}>15</option>
+                        <option value="15" ${tickexSettings.catchAllMaxItems === 15 ? 'selected' : ''}>15</option> 
                         <option value="20" ${tickexSettings.catchAllMaxItems === 20 ? 'selected' : ''}>20</option>
                         <option value="30" ${tickexSettings.catchAllMaxItems === 30 ? 'selected' : ''}>30</option>
                         ${!isMobile ? `
@@ -1824,7 +1824,7 @@ async function setTickex(openTicketByID = -1) {
     closedTickets.innerHTML = `
         <fieldset><legend ${isMobile ? "class='mobile_legend'" : ""}>Closed CTS Tickets</legend>
             <div class="tx_ticketContainer" id="closed">
-                <table ${isMobile ? "class='mobile_font'" : ""}>
+                <table>
                     <thead><tr>
                         <th>Title</th>
                         ${isMobile ? "" : "<th>ID</th>"}
@@ -1834,13 +1834,13 @@ async function setTickex(openTicketByID = -1) {
                 <div class="k_pagerClosed" id="closedPager">
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="closed_minus10" onclick="kPagerButton(-10, 'closedTicket_input', 'closedMaxPage')">-10</button>
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="closed_minus1" onclick="kPagerButton(-1, 'closedTicket_input', 'closedMaxPage')"><</button>
-                    <input type="number" class="k_input_inner ${isMobile ? "mobile_font" : ""}" id="closedTicket_input" autocomplete="off" value="1"></input>
-                    <span ${isMobile ? "class='mobile_font'" : ""}>of </span>
-                    <span ${isMobile ? "class='mobile_font'" : ""} id="closedMaxPage">1</span>
+                    <input type="number" class="k_input_inner" id="closedTicket_input" autocomplete="off" value="1"></input>
+                    <span>of </span>
+                    <span id="closedMaxPage">1</span>
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="closed_plus1" onclick="kPagerButton(1, 'closedTicket_input', 'closedMaxPage')">></button>
                     <button class="k_pager_button ${isMobile ? "mobile_button" : ""}" id="closed_plus10" onclick="kPagerButton(10, 'closedTicket_input', 'closedMaxPage')">+10</button>
-                    <div><span ${isMobile ? "class='mobile_font'" : ""}>Max Items per Page: </span>
-                    <select class="k_pager_button ${isMobile ? "mobile_font" : ""}" id="closedTicket_dropdown">
+                    <div><span>Max Items per Page: </span>
+                    <select class="k_pager_button" id="closedTicket_dropdown">
                         <option value="5" ${tickexSettings.closedMaxItems === 5 ? 'selected' : ''}>5</option>
                         <option value="10" ${tickexSettings.closedMaxItems === 10 ? 'selected' : ''}>10</option>
                         <option value="15" ${tickexSettings.closedMaxItems === 15 ? 'selected' : ''}>15</option>

@@ -218,102 +218,102 @@ button:hover {
     text-decoration: none;
     transition-duration: 0.1s;
 }
-  
+
 button:disabled {
     background-color: var(--bronson-yellow-shadow);
     border-color: var(--bronson-blue-dark);
     color: var(--bronson-grey-light);
     cursor: default;
 }
-  
+
 button:active {
     box-shadow: var(--bronson-grey-dark) 0 1px 0 inset;
     transition: none 0s;
 }
-  
+
 button:focus {
     outline: 1px transparent;
 }
-  
+
 button:before {
     display: none;
 }
-  
+
 button:-webkit-details-marker {
     display: none;
 }
 
 ::-webkit-scrollbar {
-  display: none;
+    display: none;
 }
 
 /* Switch Toggle */
 .switch {
-  position: relative;
-  display: inline-block;
-  width: 42px;
-  height: 18px;
-  margin: 5px 2px 2px 2px;
+    position: relative;
+    display: inline-block;
+    width: 42px;
+    height: 18px;
+    margin: 5px 2px 2px 2px;
 }
 
 .mobile_switch {
-  scale: 150%;
-  margin: 10px 4px 10px 10px;
+    scale: 150%;
+    margin: 10px 4px 10px 10px;
 }
 
 /* Hide default HTML checkbox */
 .switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
+    opacity: 0;
+    width: 0;
+    height: 0;
 }
 
 /* The slider */
 .slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--bronson-grey-light);
-  -webkit-transition: .4s;
-  transition: .4s;
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bronson-grey-light);
+    -webkit-transition: .4s;
+    transition: .4s;
 }
 
 .slider:before {
-  position: absolute;
-  content: "";
-  height: 12px;
-  width: 12px;
-  left: 2px;
-  bottom: 3px;
-  background-color: var(--bronson-white);
-  -webkit-transition: .4s;
-  transition: .4s;
+    position: absolute;
+    content: "";
+    height: 12px;
+    width: 12px;
+    left: 2px;
+    bottom: 3px;
+    background-color: var(--bronson-white);
+    -webkit-transition: .4s;
+    transition: .4s;
 }
 
 input:checked + .slider {
-  background-color: var(--bronson-yellow-dark);
+    background-color: var(--bronson-yellow-dark);
 }
 
 input:focus + .slider {
-  box-shadow: 0 0 1px var(--bronson-yellow-shadow);
+    box-shadow: 0 0 1px var(--bronson-yellow-shadow);
 }
 
 input:checked + .slider:before {
-  -webkit-transform: translateX(26px);
-  -ms-transform: translateX(26px);
-  transform: translateX(26px);
-}
+    -webkit-transform: translateX(26px);
+    -ms-transform: translateX(26px);
+    transform: translateX(26px);
+    }
 
 /* Rounded sliders */
 .slider.round {
-  border-radius: 34px;
+    border-radius: 34px;
 }
 
 .slider.round:before {
-  border-radius: 50%;
+    border-radius: 50%;
 }
 
 
@@ -383,7 +383,7 @@ input:checked + .slider:before {
     text-decoration: none;
     transition-duration: 0.1s;
     box-shadow: 5px 7px 7px;
-  }
+}
 
 /* Middle panel, contains tabs and message of the day */
 .middle_section {
@@ -601,7 +601,7 @@ input:checked + .slider:before {
     width: 8px;
 }
 .dbCbProg::-webkit-scrollbar-thumb {
-     background: var(--bronson-yellow-light);
+    background: var(--bronson-yellow-light);
     border-radius: 4px;
 }
 .dbCbProg::-webkit-scrollbar-track {
@@ -738,11 +738,11 @@ progress::-webkit-progress-bar {
     font-size: small;
     }
 
-       .tab_row.header {
+    .tab_row.header {
         position: relative;
         display: grid;
         grid-template-columns: repeat(7,1fr);
-        transform: translate(0px,10px); 
+        transform: translate(0px,8px); 
         /* grid-auto-rows: minmax(20px, auto); */
         overflow-y: hidden;
         overflow-x: scroll;
@@ -753,7 +753,6 @@ progress::-webkit-progress-bar {
     .anTab {
         grid-column: 5/6 !important;
     }
-    
 
     /*cam code disabled for small screen sizes */
     .ccTab {
@@ -1125,11 +1124,11 @@ progress::-webkit-progress-bar {
 
 .cbProgress::-webkit-progress-value {
     border-radius: 0px 0px 10px 10px;
-      background-color: var(--bronson-green-light);
+    background-color: var(--bronson-green-light);
 }
 
 .cbProgress::-moz-progress-bar {
-      background-color: var(--bronson-green-light);
+    background-color: var(--bronson-green-light);
 }
 
 .cbProgLabel {
@@ -1301,9 +1300,6 @@ progress::-webkit-progress-bar {
         column-count: 2;
     }
 
-    /* .bronson_checkBox {
-        scale: 150%;
-    } */
 }
 
 /* CamCode Definitions 
@@ -1678,13 +1674,13 @@ td.mobile_th {
 
 .tx_ticketContainer input::-webkit-outer-spin-button,
 .tx_ticketContainer input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 .tx_ticketContainer input[type=number] {
-  -moz-appearance: textfield;
-  appearance: textfield; 
+    -moz-appearance: textfield;
+    appearance: textfield; 
 }
 
 #tx_editTicketEmailCheckbox {
@@ -2321,7 +2317,7 @@ p.tx_Description::-webkit-scrollbar-track {
         grid-row: 1;
     }
     .tx_search {
-         grid-column: 7/17;
+        grid-column: 7/17;
         grid-row: 1;
     }
     .tx_newTickets {
@@ -2546,7 +2542,6 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 .an_projects progress {
-    /* -webket-appearance: none; */
     width: 97%;
     height: 20px;
     padding: 0px 0px 0px 0px;
@@ -3482,7 +3477,6 @@ p.tx_Description::-webkit-scrollbar-track {
     transform: matrix(1, 0, 0, .7, 0, 3.5);
     transition-duration: 0.1s;
     filter: hue-rotate(-60deg);
-    /* margin: -12px -6px; */
 }
 
 .atTab.at_selected span {
@@ -3642,11 +3636,11 @@ span.psw {
 }
 
 p.toc-item{
-     border-radius: 12px;
-     text-align: left;
-     margin-left: 10px;
-     width: fit-content;
-     margin-right: 4px;
+    border-radius: 12px;
+    text-align: left;
+    margin-left: 10px;
+    width: fit-content;
+    margin-right: 4px;
     
 }
 
@@ -3679,11 +3673,11 @@ pre.md_item {
         color:rgb(--bronson-yellow-light);
         margin-left: 10px;
     }
-   
+    
     h3 {
         color:var(--bronson-yellow-light);
         margin-left: 10px;
-   } 
+    } 
     ul {
         list-style-type: square;
         color:var(--bronson-yellow-light);
@@ -3739,8 +3733,8 @@ pre.md_item {
     color:var(--bronson-yellow-light)
 }
 pre.plain-text {
-     color: var(--bronson-yellow-light);
-     white-space: pre-wrap;
+    color: var(--bronson-yellow-light);
+    white-space: pre-wrap;
     
 }
 

@@ -41,9 +41,8 @@ Functions
     - getBuildingDeviceInfo(building, deviceType)
     - formatLSMDevices(lsm_data)
 */
-// Note, I think it would be good to put the terminal stuff in here that is currently in index_admin.html but it utilizes JQueury in a way that I am not hundred percent sure of so I will not be doing that just yet because I don't want to break anything.
 
-// quick sleep function, used to wait for server response when jquery delays retreiveing
+// quick sleep function, used to wait for server response when jquery delays retrieving
 // something from the backend. Which should only really need to happen when an admin
 // refreshes the page.
 function sleep(ms) {
@@ -57,11 +56,8 @@ async function setAdminBronson() {
     adminTabs = document.createElement("div");
     adminTabs.classList.add("tab_row");
     adminTabs.classList.add("admin_tab");
-    // adminTabs.innerHTML = `<button id="adminButton" class="toolTab adminTab" onclick="setAdminTools()" type=button><img class="tab_img" src=button2.png></img><span>Admin Tools</span></button>`;
-    // siteheader.appendChild(adminTabs);
 
     // Add Admin Buttons to hamburger button
-    //  - Hide Terminal
     hamburger = document.getElementById("hb_menu");
     hamburger.innerHTML += `<fieldset id="admin_hb_fieldset">
     <legend>Admin Buttons</legend>
@@ -140,7 +136,7 @@ async function setAdminTools() {
     // init admin tool guts
     let admin_internals = document.createElement("div");
     admin_internals.setAttribute("id", "admin_internals");
-    admin_internals.innerHTML = `<p ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}> Please Select an Administrative Tool </p>`;
+    admin_internals.innerHTML = `<p> Please Select an Administrative Tool </p>`;
     // fieldset
     let at_fieldset = document.createElement('fieldset');
     at_fieldset.classList.add('at_fieldset');
@@ -176,7 +172,7 @@ function setMessageEditor() {
     dashboard_message_editor.innerHTML = `
     <fieldset>
         <legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}> Edit Dashboard Message: </legend>
-        <textarea id="dme_editor" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}></textarea>
+        <textarea id="dme_editor"></textarea>
         <button onclick="setDashboardMessage()" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Set Message </button>
         <button onclick="clearEditor()" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Clear Editor </button> 
     </fieldset>`;
@@ -310,7 +306,7 @@ async function setRemoveMode() {
     <ul id="techSchdRemoveList">`;
     Object.values(scheduleData).forEach(function(tech) {
         html += `<li id="rm_${tech.Name}" onclick="removeTechSelect('rm_${tech.Name}')">
-            <span style="text-align: left; color: rgb(236, 200, 101)" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}>${tech.Name}</span>
+            <span style="text-align: left; color: rgb(236, 200, 101)">${tech.Name}</span>
         </li>`;
     })
     html +=`</ul>`;
@@ -1049,12 +1045,12 @@ async function setThreadEditor() {
         tmp += `<fieldset>
             <legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}>${tsKeys[i]}</legend>
             <div style="float:left">
-                <input type="number" id="thread-${tsKeys[i]}-interval" value="${ts[tsKeys[i]].duration}" min="60" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}> 
-                <span style="color: rgb(149, 157, 165)" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}> Seconds between runs </span>
+                <input type="number" id="thread-${tsKeys[i]}-interval" value="${ts[tsKeys[i]].duration}" min="60">
+                <span style="color: rgb(149, 157, 165)"> Seconds between runs </span>
                 <button onclick="setNewThreadDuration('${tsKeys[i]}')" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Set Duration </button>
             </div>
             <div style="float:${localStorage.getItem("isMobile") === "true" ? "left" : "right"}">
-                <span style="color: rgb(149, 157, 165)" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_font'" : ""}> Last Run: ${new Date(ts[tsKeys[i]].timestamp).toLocaleString()} </span>
+                <span style="color: rgb(149, 157, 165)"> Last Run: ${new Date(ts[tsKeys[i]].timestamp).toLocaleString()} </span>
                 <button onclick="resetThreadInterval('${tsKeys[i]}')" ${localStorage.getItem("isMobile") === "true" ? "class='mobile_button'" : ""}> Run Now </button>
             </div>
             </fieldset>`;

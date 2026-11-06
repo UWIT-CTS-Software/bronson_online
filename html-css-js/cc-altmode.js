@@ -36,7 +36,7 @@ const cfmState = {
     expandedFolders: new Set() // Track which folders are expanded in the tree
 };
 
-  
+
 // cfmFiles()
 //// onclick for "generate files"
 async function cfmFiles() {
@@ -44,7 +44,7 @@ async function cfmFiles() {
     let brm = cfmGetBuildingRoom(); //brm[0] = building, brm[1] = room
     let files = [];
     let header = "";
-  
+
     // Get Files (Add Error Check: Room Directory Not Found)
     let received_filenames = await getCFM_FileDirectory(brm[0], brm[1]);
     
@@ -53,7 +53,7 @@ async function cfmFiles() {
         header = tmp.split(brm[1] + "/")[0] + brm[1] + "/";
         files.push(tmp.split(brm[1] + "/")[1]);
     }
-  
+
     setFileBrowser(header, files);
 }
 
@@ -93,7 +93,7 @@ function downloadFile(s, fn) {
     a.download = fn;
     a.click();
 }
-  
+
 /*
 $$\   $$\ $$$$$$$$\ $$\      $$\ $$\       
 $$ |  $$ |\__$$  __|$$$\    $$$ |$$ |      
@@ -108,10 +108,10 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 function cfmGetBuildingRoom(){
     let bl = document.getElementById('building_list');
     let rl = document.getElementById('room_list');
-  
+
     let building = bl.options[bl.selectedIndex].text;
     let room     = rl.options[rl.selectedIndex].text;
-  
+
     return [building, room];
 }
 
@@ -247,7 +247,7 @@ async function setCrestronFile() {
     history.pushState("test", "CamCode", "/cc-altmode");
 
 
-  
+
     /* --------------------- CC-AltMode (CamCode) --------------------- */
 
     let progGuts = document.querySelector('.program_board .program_guts');
@@ -308,7 +308,7 @@ async function setCrestronFile() {
     // let cfm_fileTreeContainer = document.createElement('div');
     // cfm_fileTreeContainer.classList.add("cfm_fileTreeContainer");
 
-  
+
 
     let cfm_FileContainer = document.createElement('fieldset');
     cfm_FileContainer.classList.add("cfm_FileContainer");
@@ -404,7 +404,7 @@ async function initializeCFM() {
     if (searchBar) searchBar.value = ""; // clear
 
     cfmState.fullTree = await getCFMTree();
-   
+
     cfmState.currentNode = cfmState.fullTree;
     cfmState.currentPath = [cfmState.fullTree.name];
     cfmState.highlightedFile = null; // Clear highlight when initializing/going home

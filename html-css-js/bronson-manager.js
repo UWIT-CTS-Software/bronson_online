@@ -997,32 +997,9 @@ function isMobile() {
 
         const autoScrollButton = document.getElementById("auto_scroll_button");
         if (autoScrollButton) autoScrollButton.remove();
-
-        const programHeader = document.getElementById("bronson_header");
-
-        const messageHeader = document.getElementsByClassName("message_header")[0];
-
-        const hamburgerMenu = document.getElementById("hb_menu");
-
-        // const toolTabs = document.getElementsByClassName("toolTab");
-        // if (toolTabs.length > 0) {
-        //     for (let i = 0; i < toolTabs.length; i++) 
-        //         toolTabs[i].classList.add("mobile");
-        // }
-
-        // Move Tool Tabs to grid-row 2 
-        // const toolTabRow = document.getElementsByClassName("tab_row header")[0];
-        // if (toolTabRow) { 
-        //     toolTabRow.classList.add("mobile"); 
-        //     programHeader.appendChild(toolTabRow);
-        // }
-        // const adminToolsButton = document.getElementsByClassName("admin_tab")[0];
-        // if (adminToolsButton) {
-        //     adminToolsButton.classList.add("mobile");
-        //     programHeader.appendChild(adminToolsButton); 
-        // }
-
+        
         return true;
+    
     } else {
         console.log("Desktop User Detected");
         return false;
