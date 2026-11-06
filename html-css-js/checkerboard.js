@@ -155,7 +155,7 @@ async function updateTopperElement(topperID, buildingName, numberChecked, number
     <div class="cbTopperBuildingStatus">
     <div class="cbTopperLabels">
     <p class="cbBStatusText">Rooms Checked: ${numberChecked}/${numberRooms}</p>
-    <label class="cbProgLabel" for="${buildingName}_status">${percent}%</label>
+    <label class="cbProgLabel" for="${buildingName}_status">${(numberRooms == 0 ) ? "N/A" : percent+"%"}</label>
     </div>
     <progress id="${buildingName}_status" class="cbProgress" value="${percent}" max="100">
     <span>test</span>

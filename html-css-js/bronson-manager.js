@@ -855,16 +855,16 @@ function dashSpares() {
     let tmp_deployed = ``;
     let tmp_notDeployed = ``;
     for(let i = 0; i < spareData.length; i++) {
-        if(spareData[i]["Location"]["name"] == "ITC 0173") {
+        if(spareData[i]["Location"] == "ITC 0173") {
             tmp_notDeployed += `<li><span class="sparePCName">${spareData[i]["Asset Tag"]}: </span>
-        <span class="spareLocale">Located in ${spareData[i]["Location"]["name"]} </span><br> 
+        <span class="spareLocale">Located in ${spareData[i]["Location"]} </span><br> 
         <span class="spareUpdate">Updated ${rawTimeFormat(spareData[i]["Last Updated"])} <br>
-        by ${spareData[i]["User"]["displayName"]}</span></li>`;
+        by ${spareData[i]["User"]}</span></li>`;
         } else {
             tmp_deployed += `<li><span class="sparePCName $">${spareData[i]["Asset Tag"]}: </span>
-        <span class="spareLocale">Located in ${spareData[i]["Location"]["name"]} </span><br> 
+        <span class="spareLocale">Located in ${spareData[i]["Location"]} </span><br> 
         <span class="spareUpdate">Updated ${rawTimeFormat(spareData[i]["Last Updated"])} <br>
-        by ${spareData[i]["User"]["displayName"]}</span></li>`;
+        by ${spareData[i]["User"]}</span></li>`;
         }
     }
     tmp += tmp_deployed;
