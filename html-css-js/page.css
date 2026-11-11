@@ -686,7 +686,7 @@ progress::-webkit-progress-bar {
     background-color: var(--bronson-green-light);
 }
 
-@media (max-width: 1250px) {
+@media (max-aspect-ratio:3/2) {
     .db_leader {
         grid-column: 8/17;
         grid-row: 2;
@@ -840,7 +840,7 @@ progress::-webkit-progress-bar {
     padding-left: 0px;
 }
 
-@media (max-width:1200px) {
+@media (max-aspect-ratio:3/2) {
     .jn_devSelect {
         grid-row: 2;
         grid-column: 1/17;
@@ -1266,7 +1266,7 @@ progress::-webkit-progress-bar {
     text-align:center;
 }
 
-@media (max-width:1100px) {
+@media (max-aspect-ratio:3/2) {
     .cbVisRooms {
         column-count:2;
     }
@@ -1458,7 +1458,7 @@ ol li::marker {
 }
 
 
-@media (max-width:1100px) {
+@media (max-aspect-ratio:3/2) {
     .cfm_fileController {
         display: none;
     }
@@ -1506,14 +1506,6 @@ ol li::marker {
     width: 35px;
     height: 35px;
     font-size: 18pt;
-}
-
-.tx_container.mobile {
-    display: grid;
-    grid-template-columns: repeat(100, 1fr);
-    gap: 1px;
-    overflow-y: auto;
-    margin: 0 7% 0 7%;
 }
 
 .tx_sortByBox {
@@ -2311,7 +2303,8 @@ p.tx_Description::-webkit-scrollbar-track {
 .tx_waiting-cursor {
     cursor: progress !important;
 }
-@media (max-width:1100px) {
+
+@media (max-aspect-ratio:3/2) {
     .tx_sortByBox {
         grid-column: 1/7;
         grid-row: 1;
@@ -2632,7 +2625,7 @@ p.tx_Description::-webkit-scrollbar-track {
     margin: 0px 0px 0px 30px;
 }
 
-@media (max-width: 1100px) {
+@media (max-aspect-ratio:3/2) {
     .an_leftCol {
         grid-column: 1 / -1;
         grid-row: 1;
@@ -2958,9 +2951,9 @@ p.tx_Description::-webkit-scrollbar-track {
     background-color: var(--bronson-green-light);
 }
 
-@media (max-width: 1000px) {
+@media (max-aspect-ratio:3/2) {
     #admin_internals {
-        width: 900px;
+        width: 95%;
     }
 }
 
@@ -3191,7 +3184,7 @@ p.tx_Description::-webkit-scrollbar-track {
 }
 
 
-@media (max-width: 600px) { 
+@media (max-width: 800px) { 
     .tab_row.schedule {
         position: relative;
         display: grid;
@@ -3767,7 +3760,7 @@ pre.plain-text {
     background-color: transparent;
 }
 
-@media (max-width: 1100px) {
+@media (max-aspect-ratio:3/2) {
     .w_viwer {
         grid-column: 1/17;
         grid-row: 2;
