@@ -446,7 +446,7 @@ async function setHideProject(projectId, isHidden) {
 
 // Only called once, builds the graphs with placeholder data
 async function buildGraphs() {
-    const donutGraphColor = ["rgb(236, 200, 101)", "rgb(195, 161, 68)"];
+    const donutGraphColor = [" rgb(57, 125, 54)","rgb(236, 200, 101)"];
     const barGraphColor = ["rgb(236, 200, 101)"]
 
     // Individual Room Check Donut Chart
@@ -1121,7 +1121,7 @@ async function setAnalytics() {
     let progGuts = document.querySelector('.program_board .program_guts');
     if (cached_HTML != null) {
         // make sure cache was not overwritten with another tool.
-        if(cached_HTML.includes("an_container")) {
+        if(cached_HTML.includes("bronson_container")) {
             progGuts.innerHTML = cached_HTML;
             return;
         }
@@ -1129,7 +1129,7 @@ async function setAnalytics() {
 
     // No HTML Cache found, build from scratch
     let an_container = document.createElement("div");
-    an_container.classList.add("an_container");
+    an_container.classList.add("bronson_container");
 
     // Main Container
     let main_container = document.createElement('div');
@@ -1141,10 +1141,6 @@ async function setAnalytics() {
     if (isMobile) an_container.classList.add('mobile');
     
     progGuts.replaceWith(main_container);
-
-    // Hide Terminal
-    const terminal = document.getElementById('terminal');
-    if (terminal && terminal.style.display !== "none") hideTerminal();
     
 
     /* -------------------- Analytics Page -------------------- */
@@ -1152,7 +1148,7 @@ async function setAnalytics() {
     // Display loading message while fetching tickets
     let loadingMessage = document.createElement("div");
     loadingMessage.classList.add("an_loadingMessage");
-    if (isMobile) loadingMessage.classList.add("mobile");
+
     loadingMessage.innerHTML = `
         <legend ${isMobile ? "class='mobile_legend'" : ""}>Loading Analytics</legend>
     `;
@@ -1165,7 +1161,7 @@ async function setAnalytics() {
         loadingMessage.innerHTML = `
             <legend ${isMobile ? "class='mobile_legend'" : ""}>Loading Analytics${ellipsis}</legend>
         `;
-    }, 1000); // Update every 1 second
+    }, 500); // Update every .5 second
 
     // Fetch all tickets
     let tickets = [];
