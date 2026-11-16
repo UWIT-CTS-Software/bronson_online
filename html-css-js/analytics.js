@@ -757,7 +757,7 @@ async function renderProjects() {
     let matchingProjects = localStorage.getItem("matchingProjects");
     matchingProjects = JSON.parse(matchingProjects);
 
-    const getPage = (data, page, size) => data.slice((page-1)* size, page * size);
+    const getPage = (data, page, size) => data.slice((page-1)* size, page * size); 
     const currentProjects = getPage(matchingProjects, currentPage, 5);
 
 

@@ -1699,7 +1699,7 @@ async function setTickex(openTicketByID = -1) {
     if (isMobile) searchBar.classList.add("mobile");
     searchBar.innerHTML = `
         <legend ${isMobile ? "class='mobile_legend'" : ""}>Search</legend>
-        <fieldset max-width="fit-content" max-height = fit-content>
+        <fieldset max-width="fit-content" max-height="fit-content">
         <textarea id="searchBar" placeholder="${isMobile ? "Search..." : "Search: Title, ID, Description, Room, Date, etc... (Press Enter)"}"></textarea>
         </fieldset>
         <ul>
@@ -1802,7 +1802,7 @@ async function setTickex(openTicketByID = -1) {
                     <select class="k_pager_button" id="catchAllTicket_dropdown">
                         <option value="5" ${tickexSettings.catchAllMaxItems === 5 ? 'selected' : ''}>5</option>
                         <option value="10" ${tickexSettings.catchAllMaxItems === 10 ? 'selected' : ''}>10</option>
-                        <option value="15" ${tickexSettings.catchAllMaxItems === 15 ? 'selected' : ''}>15</option> 
+                        <option value="15" ${tickexSettings.catchAllMaxItems === 15 ? 'selected' : ''}>15</option>
                         <option value="20" ${tickexSettings.catchAllMaxItems === 20 ? 'selected' : ''}>20</option>
                         <option value="30" ${tickexSettings.catchAllMaxItems === 30 ? 'selected' : ''}>30</option>
                         ${!isMobile ? `

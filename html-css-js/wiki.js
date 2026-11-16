@@ -142,8 +142,8 @@ async function renderToC(treeJSON) {
         <legend> Table of Contents </legend>
         ${ await parseTreeToC(treeJSON.tree)}
         ${(isAuthorized) ? 
-        ` <button class="toc-btn " id=${"Root"} data-path="${""}" onClick="uploadNewFile(this)">📄</button>
-        <button class="toc-btn " id=${"Root"} data-path="${""}" onClick="uploadNewFolder(this)">📁</button>`
+        ` <button class="toc-btn" id=${"Root"} data-path="${""}" onClick="uploadNewFile(this)">📄</button>
+        <button class="toc-btn" id=${"Root"} data-path="${""}" onClick="uploadNewFolder(this)">📁</button>`
         :"" } 
     `;
     return;
@@ -159,7 +159,7 @@ function parseTreeToC(root) {
         if(isFile) { // Child is null
         buttonHTML = deleteButton(node);
         retHTML = ` 
-            <div id ='${node.name}' data-isOpen="false">
+            <div id='${node.name}' data-isOpen="false">
             <p class="toc-item" onClick="clickableFiles('${node.file_path}')" data-path="${node.file_path}">${node.name}${(true) ? buttonHTML : " "}</p>
             </div>
         `;
@@ -308,7 +308,6 @@ function deleteButton(node) {
 //-------------------------------------------------------------------
 async function getArticleHTML(blob, filename) {
     const isMobile = localStorage.getItem("isMobile") === "true";
-    console.log(isMobile)
     if (filename.endsWith('.md')) {
         let parsed_md = "";
         let md = await blob.text();
@@ -323,19 +322,7 @@ async function getArticleHTML(blob, filename) {
             </fieldset>           
         `;
         w_viwer.innerHTML = html;
-
         }
-        // else if(isMobile) {
-        //     let html = `
-        //     <fieldset "class = 'wA_fieldset_mobile'">
-        //         <legend "class = mobile_legend"> 
-        //             ${filename}
-        //         </legend>  
-        //         <pre class="md_item">${parsed_md} </pre>
-        //     </fieldset>           
-        // `; w_viwer.innerHTML = html;
-        // }
-
         return;
         
     } else if (filename.endsWith('.pdf')) {
@@ -343,31 +330,31 @@ async function getArticleHTML(blob, filename) {
         let pdf_blob = new Blob([raw_blob], {type: "application/pdf"});
         const blobUrl = URL.createObjectURL(pdf_blob); 
 
-         if(!isMobile) {
+        if(!isMobile) {
             let html = `
             <fieldset>
                 <legend> 
                     ${filename}
-                </legend>  
+                </legend>
                 <iframe id="pdfViewer" src="${blobUrl}"></iframe>
             </fieldset>           
         `;
         w_viwer.innerHTML = html;
 
-        }else if(isMobile) {
+        } else if(isMobile) {
             let html = `
             <fieldset "class = 'wA_fieldset_mobile'">
                 <legend "class = mobile_legend"> 
                     ${filename}
-                </legend>  
+                </legend>
                 <iframe id="pdfViewer" src="${blobUrl}"></iframe>
-            </fieldset>           
+            </fieldset>
         `; w_viwer.innerHTML = html;
         }
         return;
 
     } else {
-      
+    
         let text = await blob.text();
         if(!isMobile) {
             let html = `
@@ -380,7 +367,7 @@ async function getArticleHTML(blob, filename) {
         `;
         w_viwer.innerHTML = html;
 
-        }else if(isMobile) {
+        } else if (isMobile) {
             let html = `
             <fieldset "class='wA_fieldset_mobile'">
                 <legend "class='mobile_legend'"> 
@@ -388,7 +375,8 @@ async function getArticleHTML(blob, filename) {
                 </legend>  
                 <pre class="plain-text">${text}<pre>
             </fieldset>           
-        `; w_viwer.innerHTML = html;
+        `; 
+        w_viwer.innerHTML = html;
         }
         return; 
     }
