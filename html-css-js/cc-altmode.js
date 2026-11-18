@@ -36,7 +36,7 @@ const cfmState = {
     expandedFolders: new Set() // Track which folders are expanded in the tree
 };
 
-  
+
 // cfmFiles()
 //// onclick for "generate files"
 async function cfmFiles() {
@@ -44,7 +44,7 @@ async function cfmFiles() {
     let brm = cfmGetBuildingRoom(); //brm[0] = building, brm[1] = room
     let files = [];
     let header = "";
-  
+
     // Get Files (Add Error Check: Room Directory Not Found)
     let received_filenames = await getCFM_FileDirectory(brm[0], brm[1]);
     
@@ -53,7 +53,7 @@ async function cfmFiles() {
         header = tmp.split(brm[1] + "/")[0] + brm[1] + "/";
         files.push(tmp.split(brm[1] + "/")[1]);
     }
-  
+
     setFileBrowser(header, files);
 }
 
@@ -93,7 +93,7 @@ function downloadFile(s, fn) {
     a.download = fn;
     a.click();
 }
-  
+
 /*
 $$\   $$\ $$$$$$$$\ $$\      $$\ $$\       
 $$ |  $$ |\__$$  __|$$$\    $$$ |$$ |      
@@ -108,10 +108,10 @@ $$ |  $$ |   $$ |   $$ | \_/ $$ |$$$$$$$$\
 function cfmGetBuildingRoom(){
     let bl = document.getElementById('building_list');
     let rl = document.getElementById('room_list');
-  
+
     let building = bl.options[bl.selectedIndex].text;
     let room     = rl.options[rl.selectedIndex].text;
-  
+
     return [building, room];
 }
 
@@ -140,7 +140,7 @@ async function setFileBrowser(header, files) {
     fs.replaceWith(new_fs);
 }
 
-// Need to figure out a mechanism to differntiate file types
+// Need to figure out a mechanism to differentiate file types
 async function populateFileList(list) {
     html = ``;
     let classtype  = "";
@@ -247,18 +247,18 @@ async function setCrestronFile() {
     history.pushState("test", "CamCode", "/cc-altmode");
 
 
-  
+
     /* --------------------- CC-AltMode (CamCode) --------------------- */
 
     let progGuts = document.querySelector('.program_board .program_guts');
 
     let cfm_container = document.createElement('div');
-    cfm_container.classList.add('cfm_container');
+    cfm_container.classList.add('bronson_container');
 
 
     // Page Content
 
-    let cfm_fileController = document.createElement('div');
+    let cfm_fileController = document.createElement('legend');
     cfm_fileController.classList.add("cfm_fileController");
     cfm_fileController.innerHTML = `
         <button class="cfm_fileControllerButtons" onclick="controlButton('back')"> < </button>
@@ -267,7 +267,7 @@ async function setCrestronFile() {
         <button class="cfm_fileControllerButtons" onclick="controlButton('forward')"> > </button>
     `;
 
-    let cfm_filePathTracker = document.createElement('div');
+    let cfm_filePathTracker = document.createElement('legend');
     cfm_filePathTracker.classList.add("cfm_filePathTracker");
 
     let cfm_search = document.createElement('div');
@@ -302,26 +302,27 @@ async function setCrestronFile() {
         if (e.key == 'Escape') initializeCFM(); // clear search and return to home page
     });
 
-    let cfm_fileTreeInspector = document.createElement('div');
+    let cfm_fileTreeInspector = document.createElement('fieldset');
     cfm_fileTreeInspector.classList.add("cfm_fileTreeInspector");
 
-    let cfm_FileContainer = document.createElement('div');
+    // let cfm_fileTreeContainer = document.createElement('div');
+    // cfm_fileTreeContainer.classList.add("cfm_fileTreeContainer");
+
+
+
+    let cfm_FileContainer = document.createElement('fieldset');
     cfm_FileContainer.classList.add("cfm_FileContainer");
 
     cfm_container.appendChild(cfm_fileController);
     cfm_container.appendChild(cfm_filePathTracker);
     cfm_container.appendChild(cfm_search);
     cfm_container.appendChild(cfm_fileTreeInspector);
+    // cfm_container.appendChild(cfm_fileTreeContainer);
     cfm_container.appendChild(cfm_FileContainer);
 
 
     // main_container
     let main_container = document.createElement('div');
-    // main_container.innerHTML = `
-    //     <button id="cam_code" onclick="setCamCode()">
-    //         CamCode (Q-SYS) </button>
-    //     <p>\n</p>
-    // `;
 
     main_container.appendChild(cfm_container);
     main_container.classList.add('program_guts');
@@ -403,7 +404,7 @@ async function initializeCFM() {
     if (searchBar) searchBar.value = ""; // clear
 
     cfmState.fullTree = await getCFMTree();
-   
+
     cfmState.currentNode = cfmState.fullTree;
     cfmState.currentPath = [cfmState.fullTree.name];
     cfmState.highlightedFile = null; // Clear highlight when initializing/going home

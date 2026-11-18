@@ -397,7 +397,7 @@ async function setChecker() {
         let cached_isMobile = sessionStorage.getItem("CheckerBoard_isMobile");
     if (cached_HTML != null && cached_isMobile == String(isMobile)) {
         // make sure cache was not overwritten with another tool.
-        if(cached_HTML.includes("cb_container")) {
+        if(cached_HTML.includes("bronson_container")) {
             progGuts.innerHTML = cached_HTML;
             // Quickly make sure that run is enabled
             const runButton = document.getElementById('cb_run');
@@ -421,7 +421,7 @@ async function setChecker() {
     
     // -- No HTML Cache found, build from scratch
     let cb_container = document.createElement("div");
-    cb_container.classList.add("cb_container");
+    cb_container.classList.add("bronson_container");
 
     // map_select Section
     let map_select = document.createElement("div");
@@ -436,8 +436,8 @@ async function setChecker() {
     let campus = JSON.parse(localStorage.getItem("campData"));
     Object.keys(campus).forEach(bldg => {
         building_checkboxes += `
-            <input class="cbDev ${isMobile ? "mobile_checkbox" : ""}" onclick="updateCheckedBuildings()" type="checkbox" id="${bldg}" name="cb_dev" value="${bldg}"/>
-            <label for="${bldg}" ${isMobile ? "class='mobile_font'" : ""}>
+            <label for="${bldg}">
+            <input class="bronson_checkBox ${isMobile ? "mobile_checkbox" : ""}" onclick="updateCheckedBuildings()" type="checkbox" id="${bldg}" name="cb_dev" value="${bldg}"/>
                 ${bldg}
             </label>
             <br>
@@ -469,7 +469,7 @@ async function setChecker() {
                 <input id="cbToggleHide" type="checkbox" onclick="toggleHideRooms()">
                 <span class="slider round"></span>
             </label>
-            <label id="cbToggleLabel" for="cbHideChkedRoomsToggle" ${isMobile ? "class='mobile_font'" : ""} style="font-size: medium; float: center;">
+            <label id="cbToggleLabel" for="cbHideChkedRoomsToggle"style="font-size: medium; float: center;">
                 Showing \nChecked Rooms</label>
         </fieldset>`;
 
@@ -480,7 +480,7 @@ async function setChecker() {
         <fieldset>
             <legend ${isMobile ? "class='mobile_legend'" : ""}>Console Output: </legend>
             <div class="cbTopperContainer" id="cbTopID">
-                <p class="cfm_text ${isMobile ? "mobile_font" : ""}">Select Building(s) and click Run to run search.</p>
+                <p class="cfm_text">Select Building(s) and click Run to run search.</p>
             </div>
             <div id="cbVisConID" class="cbVisContainer">
             </div>
