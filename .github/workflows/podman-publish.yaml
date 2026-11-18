@@ -28,13 +28,13 @@ jobs:
         with:
           image: ${{ env.IMAGE_NAME }}
           tags: ${{ env.IMAGE_TAGS }}
+          containerfiles: ./Dockerfile
           context: .
 
       - name: Push to ghcr
         id: push
         uses: redhat-actions/push-to-registry@v2
         with:
-          base-imaage: registry.fedoraproject.org/fedora:latest
           image: ${{ steps.build.outputs.image }}
           tags: ${{ steps.build.outputs.tags }}
           registry: ${{ env.IMAGE_REGISTRY }}
