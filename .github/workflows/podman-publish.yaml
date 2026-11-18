@@ -1,0 +1,47 @@
+name: Publish Podman image
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+    IMAGE_NAME: bronson_online_image
+    IMAGE_TAGS: latest ${{ github.sha }}
+    IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+    REGISTRY_USER: ${{ github.actor }}
+    REGISTRY_PASSWORD: ${{ github.token }}
+
+jobs:
+  build-and-push-image:
+    runs-on: fedora-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build with Buildah
+        id: build
+        uses: redhat-actions/buildah-build@v3
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          tags: ${{ env.IMAGE_TAGS }}
+          context: .
+
+      - name: Push to ghcr
+        id: push
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build.outputs.image }}
+          tags: ${{ steps.build.outputs.tags }}
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ env.REGISTRY_USER }}
+          password: ${{ env.REGISTRY_PASSWORD }}
+          extra-args: |
+            --disable-content-trust
+
+      - name: Echo outputs
+        run: |
+          echo "${{ toJSON(steps.push.outputs) }}"

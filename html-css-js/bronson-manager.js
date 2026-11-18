@@ -21,7 +21,7 @@ TOC:
         - getBuildingName(buildingAbbrev)
     - getLocalZoneData()
         - getBuildingNamesFromZone(zone_number)
-        - getBuildingAbbrevsFromZone(zone_numebr)
+        - getBuildingAbbrevsFromZone(zone_number)
     - pad(n, width, z)
   Cache/Stash
     - stashCheckerboard(checkerboardResponse)
@@ -56,7 +56,7 @@ This file is set to host functions that are called throughout bronson suite
 
 The scope of this file is not properly defined (sorry), but the idea is this is where we 
 manage and manipulate the user storage session/local. Along with caching tool pages and 
-handling reponses when the user does not have that given tool open (stashes).
+handling responses when the user does not have that given tool open (stashes).
 
 Notes:
 There are some pieces from other files that may fit better here, such as building the HTML
@@ -77,7 +77,7 @@ These functions are used in Checkerboard, Jacknet, and the dashboard.
 
 const Days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DevTypes = ["PROC", "PJ", "DISP", "TP", "WS", "CMIC"]
-// Sets local strage for data used by the various tools
+// Sets local storage for data used by the various tools
 //  - Zone Building list array of room names for each zone
 //  - Campus.json used for various things in jacknet
 //  - Leaderboard
@@ -526,7 +526,7 @@ async function dashCheckerboardHTML() {
     cb_dashDiv.setAttribute("id", "db_checker");
     let cb_dashDivHTML = `
     <fieldset>
-        <legend ${localStorage.getItem("isMobile") === "true" ? "class='mobile_legend'" : ""}>
+        <legend>
             Checkerboard Building Overview
         </legend>
     <ul class="dbCbProg">
@@ -537,8 +537,8 @@ async function dashCheckerboardHTML() {
         percent = String((Math.floor(10000*percent) / 100).toFixed(2)).padStart(5, "0");
         cb_dashDivHTML += `
             <li>
-                <div style="display:none;" id="${bldg}_div"><p class="db_cbZonep ${isMobile ? "mobile_font" : "" }">${bldg}</p><p class="db_cbRoomCountp">${bldg_info["checked_rooms"]} / ${bldg_info["rooms"].length}</p>
-                <label class="dbCbProgLabel ${isMobile ? "mobile_font" : ""}" for="${bldg}_prog"> ${bldg_info["rooms"].length > 0 ? percent+"%" : "N/A" }</label>
+                <div style="display:none;" id="${bldg}_div"><p class="db_cbZonep">${bldg}</p><p class="db_cbRoomCountp">${bldg_info["checked_rooms"]} / ${bldg_info["rooms"].length}</p>
+                <label class="dbCbProgLabel" for="${bldg}_prog"> ${bldg_info["rooms"].length > 0 ? percent+"%" : "N/A" }</label>
                 <progress id="${bldg}_prog" value="${percent}" max="100"></progress>
                 </div>
             </li>
@@ -826,7 +826,7 @@ function setLeader(jsonValue) {
 
 // IE: YEAR-MT-DYT15:59:59Z
 function rawTimeFormat(rawTime) {
-    const MONTHS = ["Janurary","Feburary","March",
+    const MONTHS = ["January","February","March",
         "April","May","June",
         "July","August","September",
         "October","November","December"];
@@ -845,30 +845,30 @@ function dashSpares() {
     let spareDiv = document.getElementById("db_spare");
     let spareData = JSON.parse(localStorage.getItem("spares"));
     let tmp = `
-        <fieldset ${isMobile ? "class='mobile_font'" : ""}> 
-        <legend ${isMobile ? "class='mobile_legend'" : ""}> 
+        <fieldset> 
+        <legend> 
             PC Spares 
         </legend> 
-        <p class="spareHeader ${isMobile ? "mobile_font" : ""}"> Deployed Spares </p>
+        <p class="spareHeader"> Deployed Spares </p>
         <ul>
     `;
     let tmp_deployed = ``;
     let tmp_notDeployed = ``;
     for(let i = 0; i < spareData.length; i++) {
         if(spareData[i]["Location"] == "ITC 0173") {
-            tmp_notDeployed += `<li><span class="sparePCName ${isMobile ? "mobile_font" : ""}">${spareData[i]["Asset Tag"]}: </span>
+            tmp_notDeployed += `<li><span class="sparePCName">${spareData[i]["Asset Tag"]}: </span>
         <span class="spareLocale">Located in ${spareData[i]["Location"]} </span><br> 
         <span class="spareUpdate">Updated ${rawTimeFormat(spareData[i]["Last Updated"])} <br>
         by ${spareData[i]["User"]}</span></li>`;
         } else {
-            tmp_deployed += `<li><span class="sparePCName ${isMobile ? "mobile_font" : ""}">${spareData[i]["Asset Tag"]}: </span>
+            tmp_deployed += `<li><span class="sparePCName $">${spareData[i]["Asset Tag"]}: </span>
         <span class="spareLocale">Located in ${spareData[i]["Location"]} </span><br> 
         <span class="spareUpdate">Updated ${rawTimeFormat(spareData[i]["Last Updated"])} <br>
         by ${spareData[i]["User"]}</span></li>`;
         }
     }
     tmp += tmp_deployed;
-    tmp += `</ul><p ${isMobile ? "class='mobile_font'" : ""}> Stored in ITC 173 </p><ul>`;
+    tmp += `</ul><p> Stored in ITC 173 </p><ul>`;
     tmp += tmp_notDeployed;
     tmp += `</ul></fieldset>`;
     spareDiv.innerHTML = tmp;
@@ -886,7 +886,7 @@ async function dashTickex() {
     // Loading Screen until Tickets are fetched
     let tmp = `
         <fieldset> 
-            <p ${isMobile ? "class='mobile_font'" : ""}>Loading Tickets...</p>
+            <p>Loading Tickets...</p>
         </fieldset>
     `;
     ticketsDiv.innerHTML = tmp;
@@ -918,7 +918,7 @@ async function dashTickex() {
 
         // Build the Ticket Content
         let ticketsContent = `
-            <table ${isMobile ? "class='mobile_font'" : ""}>
+            <table>
                 <thead><tr>
                     <th>Title</th>
                     ${isMobile ? "" : "<th>ID</th>"}
@@ -951,10 +951,10 @@ async function dashTickex() {
 
         tmp = `
             <fieldset> 
-                <legend ${isMobile ? "class='mobile_legend'" : ""}>
+                <legend>
                     New CTS Tickets
                 </legend> 
-                <p class="ticketsHeader ${isMobile ? "mobile_font" : ""}"> Only take incident when going to Ticket! </p>
+                <p class="ticketsHeader"> Only take incident when going to Ticket! </p>
                 ${ticketsContent}
             </fieldset>
         `;
@@ -989,12 +989,6 @@ function isMobile() {
         const camCodeButton = document.getElementById("CCButton");
         if (camCodeButton) camCodeButton.remove();
 
-        const terminal = document.getElementById("terminal");
-        if (terminal) terminal.remove();
-
-        const terminalButton = document.getElementById("admin_terminalButton");
-        if (terminalButton) terminalButton.remove();
-
         const adminHBFieldset = document.getElementById("admin_hb_fieldset");
         if (adminHBFieldset) adminHBFieldset.remove();
 
@@ -1003,38 +997,11 @@ function isMobile() {
 
         const autoScrollButton = document.getElementById("auto_scroll_button");
         if (autoScrollButton) autoScrollButton.remove();
-
-        // Scale page elements to be larger (done here and where html is dynamically written as well)
-        const programHeader = document.getElementById("bronson_header");
-        if (programHeader) programHeader.classList.add("mobile");
-
-        const messageHeader = document.getElementsByClassName("message_header")[0];
-        if (messageHeader) messageHeader.classList.add("mobile");
-
-        const hamburgerMenu = document.getElementById("hb_menu");
-        if (hamburgerMenu) hamburgerMenu.classList.add("mobile"); 
-
-        const toolTabs = document.getElementsByClassName("toolTab");
-        if (toolTabs.length > 0) {
-            for (let i = 0; i < toolTabs.length; i++) 
-                toolTabs[i].classList.add("mobile");
-        }
-
-        // Move Tool Tabs to grid-row 2 
-        const toolTabRow = document.getElementsByClassName("tab_row header")[0];
-        if (toolTabRow) { 
-            toolTabRow.classList.add("mobile"); 
-            programHeader.appendChild(toolTabRow);
-        }
-        const adminToolsButton = document.getElementsByClassName("admin_tab")[0];
-        if (adminToolsButton) {
-            adminToolsButton.classList.add("mobile");
-            programHeader.appendChild(adminToolsButton); 
-        }
-
+        
         return true;
+    
     } else {
-        // console.log("Desktop User Detected");
+        console.log("Desktop User Detected");
         return false;
     }
 }
@@ -1058,10 +1025,10 @@ function isMobile() {
            ░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░        
     ░▒▓███████▓▒░ ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░ ▒▓██████▓▒ ░▒▓████████▓▒░▒▓████████▓▒░ 
                                                                                 
-    An automated scoller that will go through Bronson's major tools
+    An automated scroller that will go through Bronson's major tools
 */
 
-// Toggle Bronson's auto scoller feature
+// Toggle Bronson's auto scroller feature
 function toggleAutoScroll() {
     const SCROLL_TIME = 60; // in seconds
 
@@ -1071,7 +1038,6 @@ function toggleAutoScroll() {
     ];
 
     const autoScrollButton = document.getElementById("auto_scroll_button");
-    const terminal = document.getElementById("terminal");
 
     // Prevent orphaned interval by clearing any existing handle
     if (toggleAutoScroll.intervalId != null) {
@@ -1091,23 +1057,12 @@ function toggleAutoScroll() {
             clearInterval(toggleAutoScroll.intervalId);
             toggleAutoScroll.intervalId = null;
         }
-
-        // Show Terminal if it was hidden by auto scroll
-        if (terminal && terminal.classList.contains("hidden_by_auto_scroll")) {
-            terminal.style.display = "block";
-            terminal.classList.remove("hidden_by_auto_scroll");
-        }
     } 
     // Turn On Auto Scroll
     else {
         autoScrollButton.textContent = "Auto Scroll: On";
         console.log(autoScrollButton.textContent + " | Scroll rate set to " + SCROLL_TIME + " seconds");
 
-        // Hide Terminal if it is open, and add a flag to show that it was hidden by auto scroll
-        if (terminal && terminal.style.display !== "none" && !terminal.classList.contains("hidden_by_auto_scroll")) {
-            terminal.style.display = "none";
-            terminal.classList.add("hidden_by_auto_scroll");
-        }
 
         // The scroll loop
         nextScrollable(); // Do the first one instantly (no delay when clicked)

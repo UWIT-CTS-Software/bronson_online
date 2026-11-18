@@ -6,7 +6,7 @@ RUN cargo --version && \
     rustc --version
 RUN sudo dnf update -y
 RUN sudo dnf clean all -y
-RUN git clone -b main https://github.com/UWIT-CTS-Software/bronson_online.git
+RUN git clone --depth 1 https://github.com/UWIT-CTS-Software/bronson_online.git
 WORKDIR /bronson_online
 RUN git clone https://github.com/UWIT-CTS-Software/CFM_Code.git
 RUN cargo build --profile release
