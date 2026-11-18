@@ -5,9 +5,9 @@ on:
     branches: [ "main" ]
 
 env:
-    IMAGE_NAME: bronson_online_image
+    IMAGE_NAME: ${{ github.repository }}
     IMAGE_TAGS: latest ${{ github.sha }}
-    IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+    IMAGE_REGISTRY: ghcr.io/${{ github.repository }}
     REGISTRY_USER: ${{ github.actor }}
     REGISTRY_PASSWORD: ${{ github.token }}
 
@@ -33,7 +33,7 @@ jobs:
 
       - name: Push to ghcr
         id: push
-        uses: redhat-actions/push-to-registry@v2
+        uses: redhat-actions/push-to-registry@v3
         with:
           image: ${{ steps.build.outputs.image }}
           tags: ${{ steps.build.outputs.tags }}
