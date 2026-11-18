@@ -4,8 +4,6 @@ services:
   bronson-db:
     image: docker.io/library/postgres:16.9
     container_name: bronson-db
-    ports:
-      - "65432:5432"
     networks:
       - bronson_net
     volumes:
@@ -22,7 +20,7 @@ services:
       - .env
     build: .
     ports:
-      - "7878:7878"
+      - 7878:7878
     networks:
       - bronson_net
     command: cargo run --profile release -- -p
